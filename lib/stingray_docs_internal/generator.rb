@@ -14,12 +14,11 @@ module StingrayDocsInternal # :nodoc:
         YARD.parse_string(code)
         YARD::Registry.all(:class, :module).map do |method_obj|
           class_name = method_obj.name
-          methods = public_interface(method_obj, class_name).map { |n| n + "\n\n" }.join.rstrip
-
+          methods = public_interface(method_obj, class_name).map { |n| "#{n}\n\n" }.join.rstrip
           private_methods = private_interface(method_obj, class_name, private_methods_list)
 
           private_methods_block = private_methods.empty? ? nil : "# private\n#{private_methods.join.strip}"
-          docstring(method_obj.type, class_name, methods, private_methods_block )
+          docstring(method_obj.type, class_name, methods, private_methods_block)
         end.join("\n")
       end
 
@@ -150,17 +149,16 @@ module StingrayDocsInternal # :nodoc:
       # @param [String] private_methods_block The documentation for the private methods.
       # @return [String] The final documentation string.
       def docstring(struct_type, class_name, methods, private_methods_block)
-          content = [
-          struct_type.to_s + ' ' + class_name.to_s,
+        content = [
+          "#{struct_type} #{class_name}",
           methods,
           private_methods_block
         ].compact.join("\n")
 
-
-      <<~DOC
-        #{content}
-        end
-      DOC
+        <<~DOC.rstrip
+          #{content}
+          end
+        DOC
       end
     end
   end
