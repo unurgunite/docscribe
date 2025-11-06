@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 require 'stingray_docs_internal'
+require 'support/header_regex'
 
 RSpec.configure do |config|
+  config.include HeaderRegex
   # Enable flags like --only-failures and --next-failure
   config.example_status_persistence_file_path = '.rspec_status'
 

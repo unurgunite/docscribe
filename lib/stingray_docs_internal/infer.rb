@@ -96,7 +96,7 @@ module StingrayDocsInternal
         when :float then 'Float'
         when :str, :dstr then 'String'
         when :sym then 'Symbol'
-        when true, false then 'Boolean'
+        when :true, :false then 'Boolean' # rubocop:disable Lint/BooleanSymbol
         when :nil then 'nil'
         when :array then 'Array'
         when :hash then 'Hash'

@@ -2,6 +2,7 @@ plugins:
   - rubocop-sorted_methods_by_call
 
 AllCops:
+  NewCops: enable
   TargetRubyVersion: 2.7
 
 SortedMethodsByCall/Waterfall:
