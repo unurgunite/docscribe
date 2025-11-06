@@ -1,65 +1,73 @@
 PATH
   remote: .
   specs:
-    stingray_docs_internal (0.1.0)
+    stingray_docs (1.0.0)
+      parser (>= 3.0)
+      yard (>= 0.9.34)
 
 GEM
   remote: https://rubygems.org/
   specs:
-    ast (2.4.2)
-    diff-lcs (1.5.1)
-    json (2.7.2)
-    language_server-protocol (3.17.0.3)
-    parallel (1.24.0)
-    parser (3.3.0.5)
+    ast (2.4.3)
+    diff-lcs (1.6.2)
+    json (2.15.2)
+    language_server-protocol (3.17.0.5)
+    lint_roller (1.1.0)
+    parallel (1.27.0)
+    parser (3.3.10.0)
       ast (~> 2.4.1)
       racc
-    racc (1.7.3)
+    prism (1.6.0)
+    racc (1.8.1)
     rainbow (3.1.1)
-    rake (13.2.1)
-    regexp_parser (2.9.0)
-    rexml (3.2.6)
-    rspec (3.13.0)
+    rake (13.3.1)
+    regexp_parser (2.11.3)
+    rspec (3.13.2)
       rspec-core (~> 3.13.0)
       rspec-expectations (~> 3.13.0)
       rspec-mocks (~> 3.13.0)
-    rspec-core (3.13.0)
+    rspec-core (3.13.6)
       rspec-support (~> 3.13.0)
-    rspec-expectations (3.13.0)
+    rspec-expectations (3.13.5)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
-    rspec-mocks (3.13.0)
+    rspec-mocks (3.13.7)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
-    rspec-support (3.13.1)
-    rubocop (1.63.1)
+    rspec-support (3.13.6)
+    rubocop (1.81.7)
       json (~> 2.3)
-      language_server-protocol (>= 3.17.0)
+      language_server-protocol (~> 3.17.0.2)
+      lint_roller (~> 1.1.0)
       parallel (~> 1.10)
       parser (>= 3.3.0.2)
       rainbow (>= 2.2.2, < 4.0)
-      regexp_parser (>= 1.8, < 3.0)
-      rexml (>= 3.2.5, < 4.0)
-      rubocop-ast (>= 1.31.1, < 2.0)
+      regexp_parser (>= 2.9.3, < 3.0)
+      rubocop-ast (>= 1.47.1, < 2.0)
       ruby-progressbar (~> 1.7)
-      unicode-display_width (>= 2.4.0, < 3.0)
-    rubocop-ast (1.31.2)
-      parser (>= 3.3.0.4)
+      unicode-display_width (>= 2.4.0, < 4.0)
+    rubocop-ast (1.47.1)
+      parser (>= 3.3.7.2)
+      prism (~> 1.4)
+    rubocop-sorted_methods_by_call (1.1.1)
+      lint_roller
+      rubocop (>= 1.72.0)
     ruby-progressbar (1.13.0)
-    unicode-display_width (2.5.0)
-    yard (0.9.36)
+    unicode-display_width (3.2.0)
+      unicode-emoji (~> 4.1)
+    unicode-emoji (4.1.0)
+    yard (0.9.37)
 
 PLATFORMS
   ruby
   x86_64-linux
 
 DEPENDENCIES
-  parser
   rake
   rspec (~> 3.0)
   rubocop
-  stingray_docs_internal!
-  yard
+  rubocop-sorted_methods_by_call
+  stingray_docs!
 
 BUNDLED WITH
    2.5.9

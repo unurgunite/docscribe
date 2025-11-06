@@ -1,13 +1,11 @@
+plugins:
+  - rubocop-sorted_methods_by_call
+
 AllCops:
-  TargetRubyVersion: 2.6
+  TargetRubyVersion: 2.7
 
-Style/StringLiterals:
+SortedMethodsByCall/Waterfall:
   Enabled: true
-  EnforcedStyle: double_quotes
-
-Style/StringLiteralsInInterpolation:
-  Enabled: true
-  EnforcedStyle: double_quotes
 
 Layout/LineLength:
   Max: 120

@@ -1,0 +1,58 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+require 'optparse'
+require 'stingray_docs_internal'
+
+options = {
+  stdin: false,
+  output: nil
+}
+
+parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: stingray_docs [options] [files...]'
+
+  opts.on('--stdin', 'Read code from STDIN') { options[:stdin] = true }
+  opts.on('-o', '--output PATH', 'Write output to PATH (single concatenated file)') { |v| options[:output] = v }
+  opts.on('--version', 'Print version and exit') do
+    puts StingrayDocsInternal::VERSION
+    exit
+  end
+  opts.on('-h', '--help', 'Show this help') do
+    puts opts
+    exit
+  end
+end
+
+parser.parse!(ARGV)
+
+def generate_for(code)
+  StingrayDocsInternal::Generator.generate_documentation(code)
+end
+
+def write_out(str, path)
+  if path
+    File.write(path, str)
+  else
+    puts str
+  end
+end
+
+if options[:stdin]
+  code = $stdin.read
+  out = generate_for(code)
+else
+  if ARGV.empty?
+    warn 'No input. Use --stdin or pass file paths. See --help.'
+    exit 1
+  end
+
+  outputs = ARGV.map do |path|
+    code = File.read(path)
+    generate_for(code)
+  end
+
+  out = outputs.join("\n")
+end
+write_out(out, options[:output])
