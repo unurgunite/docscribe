@@ -2,7 +2,7 @@
 
 RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
   def inline(code)
-    StingrayDocsInternal::InlineRewriter.insert_comments(code)
+    Docscribe::InlineRewriter.insert_comments(code)
   end
 
   it 'adds @raise for explicit exception classes and conditional @return for rescue branch' do

@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require 'optparse'
-require 'stingray_docs_internal/inline_rewriter'
+require 'docscribe/inline_rewriter'
 
 options = {
   stdin: false,
@@ -12,15 +12,15 @@ options = {
 }
 
 parser = OptionParser.new do |opts|
-  opts.banner = 'Usage: stingray_docs [options] [files...]'
+  opts.banner = 'Usage: docscribe [options] [files...]'
   opts.on('--stdin', 'Read code from STDIN and print with docs inserted') { options[:stdin] = true }
   opts.on('--write', 'Rewrite files in place') { options[:write] = true }
   opts.on('--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
   opts.on('--rewrite', 'Replace existing comment blocks above methods') { options[:rewrite] = true }
   opts.on('--debug', 'Enable debug logs') { ENV['DEBUG_INLINE'] = '1' }
   opts.on('--version', 'Print version and exit') do
-    require 'stingray_docs_internal/version'
-    puts StingrayDocsInternal::VERSION
+    require 'docscribe/version'
+    puts Docscribe::VERSION
     exit
   end
   opts.on('-h', '--help', 'Show this help') do
@@ -32,7 +32,7 @@ end
 parser.parse!(ARGV)
 
 def rewrite(code, replace:)
-  StingrayDocsInternal::InlineRewriter.insert_comments(code, rewrite: replace)
+  Docscribe::InlineRewriter.insert_comments(code, rewrite: replace)
 end
 
 if options[:stdin]

@@ -1,21 +1,20 @@
 # frozen_string_literal: true
 
-require_relative 'lib/stingray_docs_internal/version'
+require_relative 'lib/docscribe/version'
 
 Gem::Specification.new do |spec|
-  spec.name = 'stingray_docs'
-  spec.version = StingrayDocsInternal::VERSION
+  spec.name = 'docscribe'
+  spec.version = Docscribe::VERSION
   spec.authors = ['unurgunite']
   spec.email = ['senpaiguru1488@gmail.com']
 
-  spec.summary = 'This gem is used only for internal purposes in Stingray Technical LTD.'
-  spec.description = 'Gem for generating internal documentation in Stingray Technical LTD.'
-  spec.homepage = 'https://github.com/unurgunite/stingray_docs_internal'
+  spec.summary = 'Autogenerate documentation for Ruby code with YARD syntax.'
+  spec.homepage = 'https://github.com/unurgunite/docscribe'
   spec.required_ruby_version = '>= 3.0'
 
   spec.metadata['homepage_uri'] = spec.homepage
-  spec.metadata['source_code_uri'] = 'https://github.com/unurgunite/stingray_docs_internal'
-  spec.metadata['changelog_uri'] = 'https://github.com/unurgunite/stingray_docs_internal/blob/master/CHANGELOG.md'
+  spec.metadata['source_code_uri'] = 'https://github.com/unurgunite/docscribe'
+  spec.metadata['changelog_uri'] = 'https://github.com/unurgunite/docscribe/blob/master/CHANGELOG.md'
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   # Specify which files should be added to the gem when it is released.

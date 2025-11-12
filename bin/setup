@@ -3,7 +3,7 @@ set -euo pipefail
 IFS=$'\n\t'
 set -vx
 
-PROJECT_NAME='stingray_docs_internal'
+PROJECT_NAME='docscribe'
 if pwd | grep $PROJECT_NAME; then
   cd "${PWD%$PROJECT_NAME*}$PROJECT_NAME"
 else

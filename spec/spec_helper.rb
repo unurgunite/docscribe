@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require 'stingray_docs_internal'
+require 'docscribe'
 require 'support/header_regex'
 
 module InlineHelper
   def inline(code)
-    StingrayDocsInternal::InlineRewriter.insert_comments(code)
+    Docscribe::InlineRewriter.insert_comments(code)
   end
 end
 

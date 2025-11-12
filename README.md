@@ -1,6 +1,6 @@
-# Stingray Docs
+# Docscribe
 
-Generate inline, YARD-style documentation comments for Ruby methods by analyzing your code’s AST. Stingray Docs inserts
+Generate inline, YARD-style documentation comments for Ruby methods by analyzing your code’s AST. Docscribe inserts
 doc headers before method definitions, infers parameter and return types, and respects Ruby visibility semantics —
 without using YARD to parse.
 
@@ -13,7 +13,7 @@ source structure and control over visibility semantics.
 
 ## Table of Contents
 
-* [Stingray Docs](#stingray-docs)
+* [Docscribe](#docscribe)
     * [Table of Contents](#table-of-contents)
     * [Installation](#installation)
     * [Quick start](#quick-start)
@@ -33,7 +33,7 @@ source structure and control over visibility semantics.
 Add to your Gemfile:
 
 ```ruby
-gem 'stingray_docs'
+gem 'docscribe'
 ```
 
 Then:
@@ -45,7 +45,7 @@ bundle install
 Or install globally:
 
 ```bash
-gem install stingray_docs
+gem install docscribe
 ```
 
 Requires Ruby 2.7+.
@@ -82,7 +82,7 @@ end
 Run:
 
 ```bash
-echo "…code above…" | stingray_docs --stdin
+echo "…code above…" | docscribe --stdin
 ```
 
 Output:
@@ -145,7 +145,7 @@ Notes:
 ## CLI
 
 ```bash
-stingray_docs [options] [files...]
+docscribe [options] [files...]
 ```
 
 Options:
@@ -161,15 +161,15 @@ Examples:
 
 - Print to stdout for one file:
   ```bash
-  stingray_docs path/to/file.rb
+  docscribe path/to/file.rb
   ```
 - Rewrite files in place (make sure you have a clean working tree):
   ```bash
-  stingray_docs --write lib/**/*.rb
+  docscribe --write lib/**/*.rb
   ```
 - CI check (fail if docs are missing):
   ```bash
-  stingray_docs --check lib/**/*.rb
+  docscribe --check lib/**/*.rb
   ```
 
 ## Inline behavior
@@ -222,7 +222,7 @@ Inline rewriter tags:
 ## API (library) usage
 
 ```ruby
-require 'stingray_docs_internal/inline_rewriter'
+require 'docscribe/inline_rewriter'
 
 code = <<~RUBY
   class Demo
@@ -231,7 +231,7 @@ code = <<~RUBY
   end
 RUBY
 
-out = StingrayDocsInternal::InlineRewriter.insert_comments(code)
+out = Docscribe::InlineRewriter.insert_comments(code)
 puts out
 ```
 
@@ -239,7 +239,7 @@ Enable debug logs:
 
 ```ruby
 ENV['DEBUG_INLINE'] = '1'
-out = StingrayDocsInternal::InlineRewriter.insert_comments(code)
+out = Docscribe::InlineRewriter.insert_comments(code)
 ```
 
 ## CI integration
@@ -248,14 +248,14 @@ Fail the build if files would change:
 
 ```yaml
 - name: Check docs inline
-  run: stingray_docs --check lib/**/*.rb
+  run: docscribe --check lib/**/*.rb
 ```
 
 Auto-fix before test stage:
 
 ```yaml
 - name: Insert docs inline
-  run: stingray_docs --write lib/**/*.rb
+  run: docscribe --write lib/**/*.rb
 ```
 
 ## Limitations

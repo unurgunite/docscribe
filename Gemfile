@@ -2,5 +2,5 @@
 
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in stingray_docs.gemspec
+# Specify your gem's dependencies in docscribe.gemspec
 gemspec

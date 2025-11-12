@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    stingray_docs (1.0.0)
+    docscribe (1.0.0)
       parser (>= 3.0)
 
 GEM
@@ -62,11 +62,11 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  docscribe!
   rake
   rspec (~> 3.0)
   rubocop
   rubocop-sorted_methods_by_call
-  stingray_docs!
   yard (>= 0.9.34)
 
 BUNDLED WITH

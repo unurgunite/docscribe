@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 require 'parser/current'
-require 'stingray_docs_internal/infer'
+require 'docscribe/infer'
 
-module StingrayDocsInternal
+module Docscribe
   module InlineRewriter
-    # +StingrayDocsInternal::InlineRewriter.insert_comments+ -> Object
+    # +Docscribe::InlineRewriter.insert_comments+ -> Object
     #
     # Method documentation.
     #
@@ -48,7 +48,7 @@ module StingrayDocsInternal
       rewriter.process
     end
 
-    # +StingrayDocsInternal::InlineRewriter.line_start_range+ -> Range
+    # +Docscribe::InlineRewriter.line_start_range+ -> Range
     #
     # Method documentation.
     #
@@ -62,7 +62,7 @@ module StingrayDocsInternal
       Parser::Source::Range.new(buffer, bol + 1, bol + 1)
     end
 
-    # +StingrayDocsInternal::InlineRewriter.node_name+ -> Object
+    # +Docscribe::InlineRewriter.node_name+ -> Object
     #
     # Method documentation.
     #
@@ -77,7 +77,7 @@ module StingrayDocsInternal
       end
     end
 
-    # +StingrayDocsInternal::InlineRewriter.comment_block_removal_range+ -> Range
+    # +Docscribe::InlineRewriter.comment_block_removal_range+ -> Range
     #
     # Method documentation.
     #
@@ -113,7 +113,7 @@ module StingrayDocsInternal
       Parser::Source::Range.new(buffer, start_pos, def_bol_pos)
     end
 
-    # +StingrayDocsInternal::InlineRewriter.already_has_doc_immediately_above?+ -> Object
+    # +Docscribe::InlineRewriter.already_has_doc_immediately_above?+ -> Object
     #
     # Method documentation.
     #
@@ -131,7 +131,7 @@ module StingrayDocsInternal
       !!(lines[i] =~ /^\s*#/)
     end
 
-    # +StingrayDocsInternal::InlineRewriter.build_doc_for_node+ -> Object
+    # +Docscribe::InlineRewriter.build_doc_for_node+ -> Object
     #
     # Method documentation.
     #
@@ -194,7 +194,7 @@ module StingrayDocsInternal
       nil
     end
 
-    # +StingrayDocsInternal::InlineRewriter.build_params_block+ -> Object?
+    # +Docscribe::InlineRewriter.build_params_block+ -> Object?
     #
     # Method documentation.
     #
@@ -257,7 +257,7 @@ module StingrayDocsInternal
       attr_accessor :default_instance_vis, :default_class_vis, :inside_sclass
       attr_reader :explicit_instance, :explicit_class
 
-      # +StingrayDocsInternal::InlineRewriter::VisibilityCtx#initialize+ -> Object
+      # +Docscribe::InlineRewriter::VisibilityCtx#initialize+ -> Object
       #
       # Method documentation.
       #
@@ -270,7 +270,7 @@ module StingrayDocsInternal
         @inside_sclass = false
       end
 
-      # +StingrayDocsInternal::InlineRewriter::VisibilityCtx#dup+ -> Object
+      # +Docscribe::InlineRewriter::VisibilityCtx#dup+ -> Object
       #
       # Method documentation.
       #
@@ -292,7 +292,7 @@ module StingrayDocsInternal
 
       attr_reader :insertions
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#initialize+ -> Object
+      # +Docscribe::InlineRewriter::Collector#initialize+ -> Object
       #
       # Method documentation.
       #
@@ -305,7 +305,7 @@ module StingrayDocsInternal
         @name_stack = [] # e.g., ['Demo']
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#on_class+ -> Object
+      # +Docscribe::InlineRewriter::Collector#on_class+ -> Object
       #
       # Method documentation.
       #
@@ -320,7 +320,7 @@ module StingrayDocsInternal
         node
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#on_module+ -> Object
+      # +Docscribe::InlineRewriter::Collector#on_module+ -> Object
       #
       # Method documentation.
       #
@@ -335,7 +335,7 @@ module StingrayDocsInternal
         node
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#on_def+ -> Object
+      # +Docscribe::InlineRewriter::Collector#on_def+ -> Object
       #
       # Method documentation.
       #
@@ -346,7 +346,7 @@ module StingrayDocsInternal
         node
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#on_defs+ -> Object
+      # +Docscribe::InlineRewriter::Collector#on_defs+ -> Object
       #
       # Method documentation.
       #
@@ -359,7 +359,7 @@ module StingrayDocsInternal
 
       private
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#process_stmt+ -> Object
+      # +Docscribe::InlineRewriter::Collector#process_stmt+ -> Object
       #
       # Method documentation.
       #
@@ -402,7 +402,7 @@ module StingrayDocsInternal
         end
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#process_visibility_send+ -> Object
+      # +Docscribe::InlineRewriter::Collector#process_visibility_send+ -> Object
       #
       # Method documentation.
       #
@@ -443,7 +443,7 @@ module StingrayDocsInternal
         end
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#extract_name_sym+ -> Object
+      # +Docscribe::InlineRewriter::Collector#extract_name_sym+ -> Object
       #
       # Method documentation.
       #
@@ -457,7 +457,7 @@ module StingrayDocsInternal
         end
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#self_node?+ -> Object
+      # +Docscribe::InlineRewriter::Collector#self_node?+ -> Object
       #
       # Method documentation.
       #
@@ -468,7 +468,7 @@ module StingrayDocsInternal
         node && node.type == :self
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#current_container+ -> Object
+      # +Docscribe::InlineRewriter::Collector#current_container+ -> Object
       #
       # Method documentation.
       #
@@ -478,7 +478,7 @@ module StingrayDocsInternal
         @name_stack.empty? ? 'Object' : @name_stack.join('::')
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#const_name+ -> Object
+      # +Docscribe::InlineRewriter::Collector#const_name+ -> Object
       #
       # Method documentation.
       #
@@ -500,7 +500,7 @@ module StingrayDocsInternal
         end
       end
 
-      # +StingrayDocsInternal::InlineRewriter::Collector#process_body+ -> Object
+      # +Docscribe::InlineRewriter::Collector#process_body+ -> Object
       #
       # Method documentation.
       #

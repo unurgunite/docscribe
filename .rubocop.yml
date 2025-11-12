@@ -1,12 +1,11 @@
+inherit_from: .rubocop_todo.yml
+
 plugins:
   - rubocop-sorted_methods_by_call
 
 AllCops:
   NewCops: enable
   TargetRubyVersion: 3.0
-
-SortedMethodsByCall/Waterfall:
-  Enabled: true
 
 Layout/LineLength:
   Max: 120

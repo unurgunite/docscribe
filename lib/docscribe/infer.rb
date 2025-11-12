@@ -2,10 +2,10 @@
 
 require 'parser/current'
 
-module StingrayDocsInternal
+module Docscribe
   module Infer
     class << self
-      # +StingrayDocsInternal::Infer.infer_raises_from_node+ -> Object
+      # +Docscribe::Infer.infer_raises_from_node+ -> Object
       #
       # Method documentation.
       #
@@ -48,7 +48,7 @@ module StingrayDocsInternal
         raises.uniq
       end
 
-      # +StingrayDocsInternal::Infer.infer_param_type+ -> Object
+      # +Docscribe::Infer.infer_param_type+ -> Object
       #
       # Method documentation.
       #
@@ -78,7 +78,7 @@ module StingrayDocsInternal
         ty
       end
 
-      # +StingrayDocsInternal::Infer.parse_expr+ -> Object
+      # +Docscribe::Infer.parse_expr+ -> Object
       #
       # Method documentation.
       #
@@ -96,7 +96,7 @@ module StingrayDocsInternal
         nil
       end
 
-      # +StingrayDocsInternal::Infer.infer_return_type+ -> Object
+      # +Docscribe::Infer.infer_return_type+ -> Object
       #
       # Method documentation.
       #
@@ -119,7 +119,7 @@ module StingrayDocsInternal
         'Object'
       end
 
-      # +StingrayDocsInternal::Infer.infer_return_type_from_node+ -> Object
+      # +Docscribe::Infer.infer_return_type_from_node+ -> Object
       #
       # Method documentation.
       #
@@ -137,7 +137,7 @@ module StingrayDocsInternal
         ty || 'Object'
       end
 
-      # +StingrayDocsInternal::Infer.returns_spec_from_node+ -> Object
+      # +Docscribe::Infer.returns_spec_from_node+ -> Object
       #
       # Method documentation.
       #
@@ -188,7 +188,7 @@ module StingrayDocsInternal
         spec
       end
 
-      # +StingrayDocsInternal::Infer.last_expr_type+ -> Object
+      # +Docscribe::Infer.last_expr_type+ -> Object
       #
       # Method documentation.
       #
@@ -223,7 +223,7 @@ module StingrayDocsInternal
         end
       end
 
-      # +StingrayDocsInternal::Infer.const_full_name+ -> Object
+      # +Docscribe::Infer.const_full_name+ -> Object
       #
       # Method documentation.
       #
@@ -248,7 +248,7 @@ module StingrayDocsInternal
         end
       end
 
-      # +StingrayDocsInternal::Infer.type_from_literal+ -> Object
+      # +Docscribe::Infer.type_from_literal+ -> Object
       #
       # Method documentation.
       #
@@ -281,7 +281,7 @@ module StingrayDocsInternal
         end
       end
 
-      # +StingrayDocsInternal::Infer.unify_types+ -> String
+      # +Docscribe::Infer.unify_types+ -> String
       #
       # Method documentation.
       #
