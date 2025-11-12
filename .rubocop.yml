@@ -1,13 +1,11 @@
+inherit_from: .rubocop_todo.yml
+
+plugins:
+  - rubocop-sorted_methods_by_call
+
 AllCops:
-  TargetRubyVersion: 2.6
-
-Style/StringLiterals:
-  Enabled: true
-  EnforcedStyle: double_quotes
-
-Style/StringLiteralsInInterpolation:
-  Enabled: true
-  EnforcedStyle: double_quotes
+  NewCops: enable
+  TargetRubyVersion: 3.0
 
 Layout/LineLength:
   Max: 120

@@ -6,7 +6,10 @@
 /pkg/
 /spec/reports/
 /tmp/
+.ruby-version
 
 # rspec failure tracking
 .rspec_status
 .idea
+
+*.gem
