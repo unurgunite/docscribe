@@ -5,7 +5,6 @@ require 'stingray_docs_internal/infer'
 
 module StingrayDocsInternal
   module InlineRewriter
-    # Holds the ambient visibility state while walking a class/module body
     def self.debug?
       ENV['DEBUG_INLINE'] == '1'
     end
@@ -17,6 +16,153 @@ module StingrayDocsInternal
       when :defs
         node.children[1] # method name symbol
       end
+    end
+
+    # Public API: inserts docstrings into code and returns new code
+    def self.insert_comments(code)
+      buffer = Parser::Source::Buffer.new('(inline)')
+      buffer.source = code
+      parser = Parser::CurrentRuby.new
+      ast = parser.parse(buffer)
+      return code unless ast
+
+      collector = Collector.new(buffer)
+      collector.process(ast)
+
+      # Prefer TreeRewriter in the future; Rewriter still works
+
+      rewriter = Parser::Source::TreeRewriter.new(buffer)
+
+      collector.insertions
+               .sort_by { |ins| ins.node.loc.expression.begin_pos }
+               .reverse_each do |ins|
+        bol_range = line_start_range(buffer, ins.node)
+        if debug?
+          puts "[insert] type=#{ins.node.type} name=#{node_name(ins.node)} scope=#{ins.scope} vis=#{ins.visibility}
+container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_range.begin_pos}"
+        end
+
+        if already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
+          puts "[insert] skip (doc above) name=#{node_name(ins.node)}" if debug?
+          next
+        end
+
+        doc = build_doc_for_node(buffer, ins)
+        unless doc && !doc.empty?
+          puts "[insert] skip (no doc built) name=#{node_name(ins.node)}" if debug?
+          next
+        end
+
+        rewriter.insert_before(bol_range, doc)
+        puts "[insert] OK name=#{node_name(ins.node)}" if debug?
+      end
+
+      rewriter.process
+    end
+
+    # Helper: range at beginning of the line containing node
+    def self.line_start_range(buffer, node)
+      start_pos = node.loc.expression.begin_pos
+      src = buffer.source
+      bol = src.rindex("\n", start_pos - 1) || -1
+      Parser::Source::Range.new(buffer, bol + 1, bol + 1)
+    end
+
+    # Robust "is there a doc comment directly above this line?"
+    def self.already_has_doc_immediately_above?(buffer, insert_pos)
+      src = buffer.source
+      lines = src.lines
+      current_line_index = src[0...insert_pos].count("\n")
+      i = current_line_index - 1
+      i -= 1 while i >= 0 && lines[i].strip.empty?
+      return false if i < 0
+
+      !!(lines[i] =~ /^\s*#/)
+    end
+
+    def self.build_doc_for_node(_buffer, insertion)
+      node = insertion.node
+      indent = ' ' * node.loc.expression.column
+
+      name =
+        case node.type
+        when :def then node.children[0]
+        when :defs then node.children[1] # [recv, name, args, body]
+        end
+
+      method_symbol = insertion.scope == :instance ? '#' : '.'
+      container = insertion.container
+
+      params_block = build_params_block(node, indent)
+      return_type = Infer.infer_return_type_from_node(node)
+
+      lines = []
+      lines << "#{indent}# +#{container}#{method_symbol}#{name}+ -> #{return_type}"
+      lines << "#{indent}#"
+      lines << "#{indent}# Method documentation."
+      lines << "#{indent}#"
+      case insertion.visibility
+      when :private then lines << "#{indent}# @private"
+      when :protected then lines << "#{indent}# @protected"
+      end
+      lines.concat(params_block) if params_block
+      lines << "#{indent}# @return [#{return_type}]"
+      lines.map { |l| l + "\n" }.join
+    rescue StandardError => e
+      puts "[build] error name=#{name.inspect} type=#{node.type} #{e.class}: #{e.message}" if debug?
+      nil
+    end
+
+    def self.build_params_block(node, indent)
+      args =
+        case node.type
+        when :def  then node.children[1]
+        when :defs then node.children[2] # FIX: args is children[2], not [3]
+        end
+      return nil unless args
+
+      params = []
+      (args.children || []).each do |a|
+        case a.type
+        when :arg
+          name = a.children.first.to_s
+          ty   = Infer.infer_param_type(name, nil)
+          params << "#{indent}# @param [#{ty}] #{name} Param documentation."
+        when :optarg
+          name, default = *a
+          ty = Infer.infer_param_type(name.to_s, default&.loc&.expression&.source)
+          params << "#{indent}# @param [#{ty}] #{name} Param documentation."
+        when :kwarg
+          name = "#{a.children.first}:"
+          ty   = Infer.infer_param_type(name, nil)
+          pname = name.sub(/:$/, '')
+          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+        when :kwoptarg
+          name, default = *a
+          name = "#{name}:"
+          ty   = Infer.infer_param_type(name, default&.loc&.expression&.source)
+          pname = name.sub(/:$/, '')
+          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+        when :restarg
+          name = "*#{a.children.first}"
+          ty   = Infer.infer_param_type(name, nil)
+          pname = a.children.first.to_s
+          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+        when :kwrestarg
+          name = "**#{a.children.first || 'kwargs'}"
+          ty   = Infer.infer_param_type(name, nil)
+          pname = (a.children.first || 'kwargs').to_s
+          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+        when :blockarg
+          name = "&#{a.children.first}"
+          ty   = Infer.infer_param_type(name, nil)
+          pname = a.children.first.to_s
+          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+        when :forward_arg
+          # Ruby 3 '...' forwarding; skip
+        end
+      end
+      params.empty? ? nil : params
     end
 
     class VisibilityCtx
@@ -85,16 +231,6 @@ module StingrayDocsInternal
 
       private
 
-      def process_body(body, ctx)
-        return unless body
-
-        if body.type == :begin
-          body.children.each { |child| process_stmt(child, ctx) }
-        else
-          process_stmt(body, ctx)
-        end
-      end
-
       def process_stmt(node, ctx)
         return unless node
 
@@ -114,7 +250,7 @@ module StingrayDocsInternal
           @insertions << Insertion.new(node, scope, vis, current_container)
 
         when :defs
-          _, name, _args, _body = *node # CORRECT: children[1] is the method name
+          _, name, _args, _body = *node
           vis = ctx.explicit_class[name] || ctx.default_class_vis
           if StingrayDocsInternal::InlineRewriter.debug?
             puts "[collector] defs name=#{name} scope=class vis=#{vis} container=#{current_container} pos=#{node.loc.expression.begin_pos}"
@@ -210,153 +346,16 @@ module StingrayDocsInternal
           node.loc.expression.source # fallback
         end
       end
-    end
 
-    # Public API: inserts docstrings into code and returns new code
-    def self.insert_comments(code)
-      buffer = Parser::Source::Buffer.new('(inline)')
-      buffer.source = code
-      parser = Parser::CurrentRuby.new
-      ast = parser.parse(buffer)
-      return code unless ast
+      def process_body(body, ctx)
+        return unless body
 
-      collector = Collector.new(buffer)
-      collector.process(ast)
-
-      # Prefer TreeRewriter in the future; Rewriter still works
-
-      rewriter = Parser::Source::TreeRewriter.new(buffer)
-
-      collector.insertions
-               .sort_by { |ins| ins.node.loc.expression.begin_pos }
-               .reverse_each do |ins|
-        bol_range = line_start_range(buffer, ins.node)
-        if debug?
-          puts "[insert] type=#{ins.node.type} name=#{node_name(ins.node)} scope=#{ins.scope} vis=#{ins.visibility}
-container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_range.begin_pos}"
-        end
-
-        if already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
-          puts "[insert] skip (doc above) name=#{node_name(ins.node)}" if debug?
-          next
-        end
-
-        doc = build_doc_for_node(buffer, ins)
-        unless doc && !doc.empty?
-          puts "[insert] skip (no doc built) name=#{node_name(ins.node)}" if debug?
-          next
-        end
-
-        rewriter.insert_before(bol_range, doc)
-        puts "[insert] OK name=#{node_name(ins.node)}" if debug?
-      end
-
-      rewriter.process
-    end
-
-    # Helper: range at beginning of the line containing node
-    def self.line_start_range(buffer, node)
-      start_pos = node.loc.expression.begin_pos
-      src = buffer.source
-      bol = src.rindex("\n", start_pos - 1) || -1
-      Parser::Source::Range.new(buffer, bol + 1, bol + 1)
-    end
-
-    # Robust “is there a doc comment directly above this line?”
-    def self.already_has_doc_immediately_above?(buffer, insert_pos)
-      src = buffer.source
-      lines = src.lines
-      current_line_index = src[0...insert_pos].count("\n")
-      i = current_line_index - 1
-      i -= 1 while i >= 0 && lines[i].strip.empty?
-      return false if i < 0
-
-      !!(lines[i] =~ /^\s*#/)
-    end
-
-    def self.build_doc_for_node(_buffer, insertion)
-      node = insertion.node
-      indent = ' ' * node.loc.expression.column
-
-      name =
-        case node.type
-        when :def then node.children[0]
-        when :defs then node.children[1] # [recv, name, args, body]
-        end
-
-      method_symbol = insertion.scope == :instance ? '#' : '.'
-      container = insertion.container
-
-      params_block = build_params_block(node, indent)
-      return_type = Infer.infer_return_type_from_node(node)
-
-      lines = []
-      lines << "#{indent}# +#{container}#{method_symbol}#{name}+ -> #{return_type}"
-      lines << "#{indent}#"
-      lines << "#{indent}# Method documentation."
-      lines << "#{indent}#"
-      case insertion.visibility
-      when :private then lines << "#{indent}# @private"
-      when :protected then lines << "#{indent}# @protected"
-      end
-      lines.concat(params_block) if params_block
-      lines << "#{indent}# @return [#{return_type}]"
-      lines.map { |l| l + "\n" }.join
-    rescue StandardError => e
-      puts "[build] error name=#{name.inspect} type=#{node.type} #{e.class}: #{e.message}" if debug?
-      nil
-    end
-
-    def self.build_params_block(node, indent)
-      args =
-        case node.type
-        when :def  then node.children[1]
-        when :defs then node.children[2] # FIX: args is children[2], not [3]
-        end
-      return nil unless args
-
-      params = []
-      (args.children || []).each do |a|
-        case a.type
-        when :arg
-          name = a.children.first.to_s
-          ty   = Infer.infer_param_type(name, nil)
-          params << "#{indent}# @param [#{ty}] #{name} Param documentation."
-        when :optarg
-          name, default = *a
-          ty = Infer.infer_param_type(name.to_s, default&.loc&.expression&.source)
-          params << "#{indent}# @param [#{ty}] #{name} Param documentation."
-        when :kwarg
-          name = "#{a.children.first}:"
-          ty   = Infer.infer_param_type(name, nil)
-          pname = name.sub(/:$/, '')
-          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
-        when :kwoptarg
-          name, default = *a
-          name = "#{name}:"
-          ty   = Infer.infer_param_type(name, default&.loc&.expression&.source)
-          pname = name.sub(/:$/, '')
-          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
-        when :restarg
-          name = "*#{a.children.first}"
-          ty   = Infer.infer_param_type(name, nil)
-          pname = a.children.first.to_s
-          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
-        when :kwrestarg
-          name = "**#{a.children.first || 'kwargs'}"
-          ty   = Infer.infer_param_type(name, nil)
-          pname = (a.children.first || 'kwargs').to_s
-          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
-        when :blockarg
-          name = "&#{a.children.first}"
-          ty   = Infer.infer_param_type(name, nil)
-          pname = a.children.first.to_s
-          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
-        when :forward_arg
-          # Ruby 3 '...' forwarding; skip
+        if body.type == :begin
+          body.children.each { |child| process_stmt(child, ctx) }
+        else
+          process_stmt(body, ctx)
         end
       end
-      params.empty? ? nil : params
     end
   end
 end
