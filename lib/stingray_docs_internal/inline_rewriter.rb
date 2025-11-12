@@ -139,6 +139,7 @@ module StingrayDocsInternal
     # @param [Object] insertion Param documentation.
     # @raise [StandardError]
     # @return [Object]
+    # @return [nil] if StandardError
     def self.build_doc_for_node(_buffer, insertion)
       node = insertion.node
       indent = ' ' * node.loc.expression.column
@@ -152,12 +153,19 @@ module StingrayDocsInternal
       method_symbol = insertion.scope == :instance ? '#' : '.'
       container = insertion.container
 
+      # Params
       params_block = build_params_block(node, indent)
-      return_type = Infer.infer_return_type_from_node(node)
-      raise_types = Infer.infer_raises_from_node(node) # <-- new
+
+      # Raises (from rescue clauses and/or raise calls if you added that)
+      raise_types = Infer.infer_raises_from_node(node)
+
+      # Returns: normal + conditional rescue returns
+      spec = Infer.returns_spec_from_node(node)
+      normal_type = spec[:normal]
+      rescue_specs = spec[:rescues] # [[['Foo','Bar'], 'Type'], ...]
 
       lines = []
-      lines << "#{indent}# +#{container}#{method_symbol}#{name}+ -> #{return_type}"
+      lines << "#{indent}# +#{container}#{method_symbol}#{name}+ -> #{normal_type}"
       lines << "#{indent}#"
       lines << "#{indent}# Method documentation."
       lines << "#{indent}#"
@@ -166,11 +174,21 @@ module StingrayDocsInternal
       when :protected then lines << "#{indent}# @protected"
       end
       lines.concat(params_block) if params_block
-      # Add one @raise line per exception class found
+
+      # Emit @raise lines (your desired behavior is to document rescue exceptions as raises)
       raise_types.each do |rt|
         lines << "#{indent}# @raise [#{rt}]"
       end
-      lines << "#{indent}# @return [#{return_type}]"
+
+      # Emit normal @return
+      lines << "#{indent}# @return [#{normal_type}]"
+
+      # Emit conditional @return for each rescue
+      rescue_specs.each do |(exceptions, rtype)|
+        ex_display = exceptions.join(', ')
+        lines << "#{indent}# @return [#{rtype}] if #{ex_display}"
+      end
+
       lines.map { |l| "#{l}\n" }.join
     rescue StandardError
       nil

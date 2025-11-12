@@ -48,31 +48,6 @@ module StingrayDocsInternal
         raises.uniq
       end
 
-      # +StingrayDocsInternal::Infer.const_full_name+ -> Object
-      #
-      # Method documentation.
-      #
-      # @param [Object] n Param documentation.
-      # @return [Object]
-      def const_full_name(n)
-        return nil unless n.is_a?(Parser::AST::Node)
-
-        case n.type
-        when :const
-          scope, name = *n
-          scope_name = const_full_name(scope)
-          if scope_name && !scope_name.empty?
-            "#{scope_name}::#{name}"
-          elsif scope_name == '' # leading ::
-            "::#{name}"
-          else
-            name.to_s
-          end
-        when :cbase
-          '' # represents leading :: scope
-        end
-      end
-
       # +StingrayDocsInternal::Infer.infer_param_type+ -> Object
       #
       # Method documentation.
@@ -110,6 +85,7 @@ module StingrayDocsInternal
       # @param [Object] src Param documentation.
       # @raise [Parser::SyntaxError]
       # @return [Object]
+      # @return [nil] if Parser::SyntaxError
       def parse_expr(src)
         return nil if src.nil? || src.strip.empty?
 
@@ -127,6 +103,7 @@ module StingrayDocsInternal
       # @param [Object] method_source Param documentation.
       # @raise [Parser::SyntaxError]
       # @return [Object]
+      # @return [String] if Parser::SyntaxError
       def infer_return_type(method_source)
         return 'Object' if method_source.nil? || method_source.strip.empty?
 
@@ -158,6 +135,57 @@ module StingrayDocsInternal
 
         ty = last_expr_type(body)
         ty || 'Object'
+      end
+
+      # +StingrayDocsInternal::Infer.returns_spec_from_node+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
+      def returns_spec_from_node(node)
+        # Returns a Hash like: { normal: 'Type', rescues: [[['Foo','Bar'], 'Type'], ...] }
+        body =
+          case node.type
+          when :def then node.children[2] # [name, args, body]
+          when :defs then node.children[3] # [recv, name, args, body]
+          end
+
+        spec = { normal: 'Object', rescues: [] }
+        return spec unless body
+
+        if body.type == :rescue
+          # child[0] is the main body (before rescue)
+          main_body = body.children[0]
+          spec[:normal] = last_expr_type(main_body) || 'Object'
+
+          # :resbody nodes hold exception list, optional var, and rescue body
+          body.children.each do |ch|
+            next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody
+
+            exc_list, _asgn, rescue_body = *ch
+
+            exc_names = []
+            if exc_list.nil?
+              exc_names << 'StandardError'
+            elsif exc_list.type == :array
+              exc_list.children.each do |e|
+                name = const_full_name(e)
+                exc_names << (name || 'StandardError')
+              end
+            else
+              name = const_full_name(exc_list)
+              exc_names << (name || 'StandardError')
+            end
+
+            rtype = last_expr_type(rescue_body) || 'Object'
+            spec[:rescues] << [exc_names, rtype]
+          end
+        else
+          spec[:normal] = last_expr_type(body) || 'Object'
+        end
+
+        spec
       end
 
       # +StingrayDocsInternal::Infer.last_expr_type+ -> Object
@@ -192,6 +220,31 @@ module StingrayDocsInternal
           type_from_literal(node.children.first)
         else
           type_from_literal(node)
+        end
+      end
+
+      # +StingrayDocsInternal::Infer.const_full_name+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] n Param documentation.
+      # @return [Object]
+      def const_full_name(n)
+        return nil unless n.is_a?(Parser::AST::Node)
+
+        case n.type
+        when :const
+          scope, name = *n
+          scope_name = const_full_name(scope)
+          if scope_name && !scope_name.empty?
+            "#{scope_name}::#{name}"
+          elsif scope_name == '' # leading ::
+            "::#{name}"
+          else
+            name.to_s
+          end
+        when :cbase
+          '' # represents leading :: scope
         end
       end
 
