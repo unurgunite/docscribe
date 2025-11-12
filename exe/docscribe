@@ -2,13 +2,15 @@
 # frozen_string_literal: true
 
 require 'optparse'
+require 'docscribe/config'
 require 'docscribe/inline_rewriter'
 
 options = {
   stdin: false,
   write: false, # rewrite files in place
   check: false, # dry-run (exit 1 if any file would change)
-  rewrite: false # replace existing comment blocks when inserting
+  rewrite: false, # replace existing comment blocks when inserting
+  config: nil
 }
 
 parser = OptionParser.new do |opts|
@@ -17,7 +19,7 @@ parser = OptionParser.new do |opts|
   opts.on('--write', 'Rewrite files in place') { options[:write] = true }
   opts.on('--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
   opts.on('--rewrite', 'Replace existing comment blocks above methods') { options[:rewrite] = true }
-  opts.on('--debug', 'Enable debug logs') { ENV['DEBUG_INLINE'] = '1' }
+  opts.on('--config PATH', 'Path to config YAML (default: docscribe.yml)') { |v| options[:config] = v }
   opts.on('--version', 'Print version and exit') do
     require 'docscribe/version'
     puts Docscribe::VERSION
@@ -30,6 +32,12 @@ parser = OptionParser.new do |opts|
 end
 
 parser.parse!(ARGV)
+
+conf = Docscribe::Config.load(options[:config])
+
+def transform(code, replace:, config:)
+  Docscribe::InlineRewriter.insert_comments(code, rewrite: replace, config: config)
+end
 
 def rewrite(code, replace:)
   Docscribe::InlineRewriter.insert_comments(code, rewrite: replace)
@@ -50,7 +58,7 @@ changed = false
 
 ARGV.each do |path|
   src = File.read(path)
-  out = rewrite(src, replace: options[:rewrite])
+  out = transform(src, replace: options[:rewrite], config: conf)
   if options[:check]
     if out != src
       warn "Would change: #{path}"

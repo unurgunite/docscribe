@@ -28,6 +28,8 @@ source structure and exact control over Ruby semantics.
     * [Rescue-aware returns and @raise](#rescue-aware-returns-and-raise)
     * [Visibility semantics](#visibility-semantics)
     * [API (library) usage](#api-library-usage)
+    * [Configuration](#configuration)
+        * [CLI](#cli-1)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
     * [Limitations](#limitations)
@@ -62,6 +64,7 @@ Requires Ruby 3.0+.
 Given code:
 
 ```ruby
+
 class Demo
   def foo(a, options: {})
     42
@@ -160,7 +163,6 @@ Options:
 - `--write` Rewrite files in place (inline mode).
 - `--check` Dry-run: exit 1 if any file would change (useful in CI).
 - `--rewrite` Replace any existing comment block above methods (see “Rewrite mode” below).
-- `--debug` Enable debug logs (DEBUG_INLINE=1).
 - `--version` Print version and exit.
 - `-h`, `--help` Show help.
 
@@ -239,6 +241,7 @@ Docscribe detects exceptions and rescue branches:
 Example:
 
 ```ruby
+
 class X
   def a
     42
@@ -257,6 +260,7 @@ end
 Becomes:
 
 ```ruby
+
 class X
   # +X#a+ -> Integer
   #
@@ -291,10 +295,10 @@ end
 
 We match Ruby's behavior:
 
-- A bare private/protected/public in a class/module body affects instance methods only.
-- Inside class << self, a bare visibility keyword affects class methods only.
-- def self.x in a class body remains public unless private_class_method is used or it's inside class << self under
-  private.
+- A bare `private`/`protected`/`public` in a class/module body affects instance methods only.
+- Inside `class << self`, a bare visibility keyword affects class methods only.
+- `def self.x` in a class body remains `public` unless `private_class_method` is used or it's inside `class << self` under
+  `private`.
 
 Inline tags:
 
@@ -319,6 +323,51 @@ puts out
 
 # Replace existing comment blocks above methods
 out2 = Docscribe::InlineRewriter.insert_comments(code, rewrite: true)
+```
+
+## Configuration
+
+Docscribe can be configured via a YAML file (docscribe.yml by default, or pass --config PATH).
+
+Example:
+
+```yaml
+emit:
+  header: true           # controls "# +Class#method+ -> Type"
+  param_tags: true       # include @param lines
+  return_tag: true       # include normal @return
+  visibility_tags: true  # include @private/@protected
+  raise_tags: true       # include @raise [Error]
+  rescue_conditional_returns: true  # include "@return [...] if Exception"
+
+doc:
+  default_message: "Method documentation."
+
+methods:
+  instance:
+    public:
+      return_tag: true
+      default_message: "Public API. Please document purpose and params."
+  class:
+    private:
+      return_tag: false
+
+inference:
+  fallback_type: "Object"
+  nil_as_optional: true
+  treat_options_keyword_as_hash: true
+```
+
+- emit.* toggles control which tags are emitted globally.
+- methods.<scope>.<visibility> allows per-method overrides:
+    - return_tag: true/false
+    - default_message: override the message for that bucket
+- inference.* tunes type inference defaults.
+
+### CLI
+
+```bash
+docscribe --config docscribe.yml --write lib/**/*.rb
 ```
 
 ## CI integration

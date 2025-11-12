@@ -11,13 +11,16 @@ module Docscribe
     #
     # @param [Object] code Param documentation.
     # @param [Boolean] rewrite Param documentation.
+    # @param [nil] config Param documentation.
     # @return [Object]
-    def self.insert_comments(code, rewrite: false)
+    def self.insert_comments(code, rewrite: false, config: nil)
       buffer = Parser::Source::Buffer.new('(inline)')
       buffer.source = code
       parser = Parser::CurrentRuby.new
       ast = parser.parse(buffer)
       return code unless ast
+
+      config ||= Docscribe::Config.load
 
       collector = Collector.new(buffer)
       collector.process(ast)
@@ -39,7 +42,7 @@ module Docscribe
           next
         end
 
-        doc = build_doc_for_node(buffer, ins)
+        doc = build_doc_for_node(buffer, ins, config)
         next unless doc && !doc.empty?
 
         rewriter.insert_before(bol_range, doc)
@@ -137,56 +140,65 @@ module Docscribe
     #
     # @param [Object] _buffer Param documentation.
     # @param [Object] insertion Param documentation.
+    # @param [Object] config Param documentation.
     # @raise [StandardError]
     # @return [Object]
     # @return [nil] if StandardError
-    def self.build_doc_for_node(_buffer, insertion)
+    def self.build_doc_for_node(_buffer, insertion, config)
       node = insertion.node
       indent = ' ' * node.loc.expression.column
 
       name =
         case node.type
         when :def then node.children[0]
-        when :defs then node.children[1] # [recv, name, args, body]
+        when :defs then node.children[1]
         end
 
-      method_symbol = insertion.scope == :instance ? '#' : '.'
+      scope = insertion.scope
+      visibility = insertion.visibility
+
+      method_symbol = scope == :instance ? '#' : '.'
       container = insertion.container
 
       # Params
-      params_block = build_params_block(node, indent)
+      params_block = config.emit_param_tags? ? build_params_block(node, indent) : nil
 
-      # Raises (from rescue clauses and/or raise calls if you added that)
-      raise_types = Infer.infer_raises_from_node(node)
+      # Raises (rescue and/or raise calls)
+      raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
 
       # Returns: normal + conditional rescue returns
-      spec = Infer.returns_spec_from_node(node)
+      spec = Docscribe::Infer.returns_spec_from_node(node)
       normal_type = spec[:normal]
-      rescue_specs = spec[:rescues] # [[['Foo','Bar'], 'Type'], ...]
+      rescue_specs = spec[:rescues]
 
       lines = []
-      lines << "#{indent}# +#{container}#{method_symbol}#{name}+ -> #{normal_type}"
-      lines << "#{indent}#"
-      lines << "#{indent}# Method documentation."
-      lines << "#{indent}#"
-      case insertion.visibility
-      when :private then lines << "#{indent}# @private"
-      when :protected then lines << "#{indent}# @protected"
+      if config.emit_header?
+        lines << "#{indent}# +#{container}#{method_symbol}#{name}+ -> #{normal_type}"
+        lines << "#{indent}#"
       end
+
+      # Default doc text (configurable per scope/vis)
+      lines << "#{indent}# #{config.default_message(scope, visibility)}"
+      lines << "#{indent}#"
+
+      if config.emit_visibility_tags?
+        case visibility
+        when :private then lines << "#{indent}# @private"
+        when :protected then lines << "#{indent}# @protected"
+        end
+      end
+
       lines.concat(params_block) if params_block
 
-      # Emit @raise lines (your desired behavior is to document rescue exceptions as raises)
-      raise_types.each do |rt|
-        lines << "#{indent}# @raise [#{rt}]"
-      end
+      raise_types.each { |rt| lines << "#{indent}# @raise [#{rt}]" } if config.emit_raise_tags?
 
-      # Emit normal @return
-      lines << "#{indent}# @return [#{normal_type}]"
+      lines << "#{indent}# @return [#{normal_type}]" if config.emit_return_tag?(scope, visibility)
 
-      # Emit conditional @return for each rescue
-      rescue_specs.each do |(exceptions, rtype)|
-        ex_display = exceptions.join(', ')
-        lines << "#{indent}# @return [#{rtype}] if #{ex_display}"
+      if config.emit_rescue_conditional_returns?
+        rescue_specs.each do |(exceptions, rtype)|
+          ex_display = exceptions.join(', ')
+          lines << "#{indent}# @return [#{rtype}] if #{ex_display}"
+        end
       end
 
       lines.map { |l| "#{l}\n" }.join

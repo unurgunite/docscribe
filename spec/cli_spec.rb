@@ -12,4 +12,10 @@ RSpec.describe 'CLI docscribe' do
     expect(status.success?).to be true
     expect(stdout).to include('# +D#x+')
   end
+
+  it 'respects emit.return_tag override in YAML' do
+    yaml = { 'emit' => { 'return_tag' => false } }
+    conf = Docscribe::Config.new(yaml)
+    expect(conf.emit_return_tag?(:instance, :public)).to be false
+  end
 end
