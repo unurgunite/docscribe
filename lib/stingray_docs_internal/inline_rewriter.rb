@@ -25,14 +25,10 @@ module StingrayDocsInternal
                .reverse_each do |ins|
         bol_range = line_start_range(buffer, ins.node)
 
-        if already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
-          next
-        end
+        next if already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
 
         doc = build_doc_for_node(buffer, ins)
-        unless doc && !doc.empty?
-          next
-        end
+        next unless doc && !doc.empty?
 
         rewriter.insert_before(bol_range, doc)
       end
@@ -63,7 +59,7 @@ module StingrayDocsInternal
       current_line_index = src[0...insert_pos].count("\n")
       i = current_line_index - 1
       i -= 1 while i >= 0 && lines[i].strip.empty?
-      return false if i < 0
+      return false if i.negative?
 
       !!(lines[i] =~ /^\s*#/)
     end
@@ -95,7 +91,7 @@ module StingrayDocsInternal
       end
       lines.concat(params_block) if params_block
       lines << "#{indent}# @return [#{return_type}]"
-      lines.map { |l| l + "\n" }.join
+      lines.map { |l| "#{l}\n" }.join
     end
 
     def self.build_params_block(node, indent)

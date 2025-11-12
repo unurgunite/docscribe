@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.describe 'Inline rewriter respects existing tags' do
   it 'does not insert when user provided @param/@option above the method' do
     code = <<~RUBY

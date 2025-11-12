@@ -62,9 +62,9 @@ module StingrayDocsInternal
           case node.type
           when :def then node.children[2] # [name, args, body]
           when :defs then node.children[3] # [recv, name, args, body]
-          else nil
           end
         return 'Object' unless body
+
         ty = last_expr_type(body)
         ty || 'Object'
       end

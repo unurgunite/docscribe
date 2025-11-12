@@ -31,11 +31,11 @@ Gem::Specification.new do |spec|
 
   # Uncomment to register a new dependency of your gem
   spec.add_dependency 'parser', '>= 3.0'
-  spec.add_development_dependency 'yard', '>= 0.9.34'
   spec.add_development_dependency 'rake'
   spec.add_development_dependency 'rspec', '~> 3.0'
   spec.add_development_dependency 'rubocop'
   spec.add_development_dependency 'rubocop-sorted_methods_by_call'
+  spec.add_development_dependency 'yard', '>= 0.9.34'
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
