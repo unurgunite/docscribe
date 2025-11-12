@@ -3,15 +3,15 @@
 [![Gem Version](https://img.shields.io/gem/v/docscribe.svg)](https://rubygems.org/gems/docscribe)
 [![RubyGems Downloads](https://img.shields.io/gem/dt/docscribe.svg)](https://rubygems.org/gems/docscribe)
 [![CI](https://github.com/unurgunite/docscribe/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/unurgunite/docscribe/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/unurgunite/docscribe.svg)](https://github.com/unurgunite/docscribe/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/unurgunite/docscribe.svg)](https://github.com/unurgunite/docscribe/blob/master/LICENSE.txt)
 [![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.0-blue.svg)](#installation)
 
 Generate inline, YARD-style documentation comments for Ruby methods by analyzing your code's AST. Docscribe inserts doc
 headers before method definitions, infers parameter and return types (including rescue-aware returns), and respects Ruby
 visibility semantics — without using YARD to parse.
 
-- No AST reprinting. Your original code, formatting, and constructs (like class << self, heredocs, %i[]) are preserved.
-- Inline-first. Comments are inserted surgically at the start of each def/defs line.
+- No AST reprinting. Your original code, formatting, and constructs (like `class << self`, `heredocs`, `%i[]`) are preserved.
+- Inline-first. Comments are inserted surgically at the start of each `def`/`defs` line.
 - Heuristic type inference for params and return values, including conditional returns in rescue branches.
 - Optional rewrite mode for regenerating existing method docs.
 
@@ -148,8 +148,8 @@ end
 Notes:
 
 - The tool inserts doc headers at the start of def/defs lines and preserves everything else.
-- Class methods show with a dot (+Demo.bump+, +Demo.internal+).
-- Methods inside class << self under private are marked `@private.`
+- Class methods show with a dot (`+Demo.bump+`, `+Demo.internal+`).
+- Methods inside `class << self` under private are marked `@private.`
 
 ## CLI
 
@@ -223,7 +223,7 @@ Return values:
     - `42` -> `Integer`
     - `:ok` -> `Symbol`
     - Unions with nil become optional types (e.g., `String` or `nil` -> `String?`).
-- For control flow (if/case), it unifies branches conservatively.
+- For control flow (`if`/`case`), it unifies branches conservatively.
 
 ## Rescue-aware returns and @raise
 
