@@ -5,6 +5,68 @@ require 'parser/current'
 module StingrayDocsInternal
   module Infer
     class << self
+      # +StingrayDocsInternal::Infer.infer_raises_from_node+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
+      def infer_raises_from_node(node)
+        raises = []
+        walk = lambda do |n|
+          return unless n.is_a?(Parser::AST::Node)
+
+          case n.type
+          when :rescue
+            n.children.each { |ch| walk.call(ch) }
+          when :resbody
+            exc_list = n.children[0]
+            if exc_list.nil?
+              raises << 'StandardError'
+            elsif exc_list.type == :array
+              exc_list.children.each { |e| (c = const_full_name(e)) && (raises << c) }
+            else
+              (c = const_full_name(exc_list)) && (raises << c)
+            end
+            n.children.each { |ch| walk.call(ch) if ch.is_a?(Parser::AST::Node) }
+          when :send
+            recv, meth, *args = *n
+            if recv.nil? && %i[raise fail].include?(meth)
+              if args.empty?
+                raises << 'StandardError'
+              else
+                c = const_full_name(args[0])
+                raises << (c || 'StandardError')
+              end
+            end
+            n.children.each { |ch| walk.call(ch) if ch.is_a?(Parser::AST::Node) }
+          else
+            n.children.each { |ch| walk.call(ch) if ch.is_a?(Parser::AST::Node) }
+          end
+        end
+        walk.call(node)
+        raises.uniq
+      end
+
+      def const_full_name(n)
+        return nil unless n.is_a?(Parser::AST::Node)
+
+        case n.type
+        when :const
+          scope, name = *n
+          scope_name = const_full_name(scope)
+          if scope_name && !scope_name.empty?
+            "#{scope_name}::#{name}"
+          elsif scope_name == '' # leading ::
+            "::#{name}"
+          else
+            name.to_s
+          end
+        when :cbase
+          '' # represents leading :: scope
+        end
+      end
+
       # +StingrayDocsInternal::Infer.infer_param_type+ -> Object
       #
       # Method documentation.
@@ -40,7 +102,7 @@ module StingrayDocsInternal
       # Method documentation.
       #
       # @param [Object] src Param documentation.
-      # @return [nil] if Parser::SyntaxError raised
+      # @raise [Parser::SyntaxError]
       # @return [Object]
       def parse_expr(src)
         return nil if src.nil? || src.strip.empty?

@@ -108,6 +108,7 @@ module StingrayDocsInternal
 
       params_block = build_params_block(node, indent)
       return_type = Infer.infer_return_type_from_node(node)
+      raise_types = Infer.infer_raises_from_node(node) # <-- new
 
       lines = []
       lines << "#{indent}# +#{container}#{method_symbol}#{name}+ -> #{return_type}"
@@ -119,8 +120,15 @@ module StingrayDocsInternal
       when :protected then lines << "#{indent}# @protected"
       end
       lines.concat(params_block) if params_block
+      # Add one @raise line per exception class found
+      raise_types.each do |rt|
+        lines << "#{indent}# @raise [#{rt}]"
+      end
       lines << "#{indent}# @return [#{return_type}]"
       lines.map { |l| "#{l}\n" }.join
+    rescue StandardError => e
+      puts "[build] error name=#{name.inspect} type=#{node.type} #{e.class}: #{e.message}" if debug?
+      nil
     end
 
     # +StingrayDocsInternal::InlineRewriter.build_params_block+ -> Object?
