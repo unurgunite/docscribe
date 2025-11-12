@@ -1,17 +1,13 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Generator inference' do
-  def generate(code)
-    StingrayDocsInternal::Generator.generate_documentation(code)
-  end
-
+RSpec.describe 'Inline rewriter inference' do
   it 'infers Boolean and Hash from keyword defaults' do
     code = <<~RUBY
       class Demo
       def foo(verbose: true, options: {}); 0; end
       end
     RUBY
-    out = generate(code)
+    out = inline(code)
     expect(out).to include('@param [Boolean] verbose')
     expect(out).to include('@param [Hash] options')
   end
@@ -22,7 +18,7 @@ RSpec.describe 'Generator inference' do
       def foo(*args, **kwargs, &block); 0; end
       end
     RUBY
-    out = generate(code)
+    out = inline(code)
     expect(out).to include('@param [Array] args')
     expect(out).to include('@param [Hash] kwargs')
     expect(out).to include('@param [Proc] block')
@@ -35,7 +31,7 @@ RSpec.describe 'Generator inference' do
       def b; :ok; end
       end
     RUBY
-    out = generate(code)
+    out = inline(code)
     expect(out).to match(header_regex('Demo', 'a', 'Integer'))
     expect(out).to include('@return [Integer]')
     expect(out).to match(header_regex('Demo', 'b', 'Symbol'))
@@ -48,7 +44,7 @@ RSpec.describe 'Generator inference' do
       def foo(options:, kw:); 0; end
       end
     RUBY
-    out = generate(code)
+    out = inline(code)
     expect(out).to include('@param [Hash] options')
     expect(out).to include('@param [Object] kw')
   end

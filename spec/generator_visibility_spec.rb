@@ -1,11 +1,7 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Generator visibility grouping' do
-  def generate(code)
-    StingrayDocsInternal::Generator.generate_documentation(code)
-  end
-
-  it 'keeps def self.bump public after a bare private; and groups private instance methods' do
+RSpec.describe 'Inline rewriter visibility' do
+  it 'keeps def self.bump public after a bare private; and marks internal as private' do
     code = <<~RUBY
       class Demo
       def pub; end
@@ -23,20 +19,16 @@ RSpec.describe 'Generator visibility grouping' do
             end
     RUBY
 
-    out = generate(code)
-
-    # public method header
+    out = inline(code)
     expect(out).to include('# +Demo#pub+')
-    # singleton def after bare private stays public
     expect(out).to include('# +Demo.bump+')
-
-    # private section exists and contains private instance and private class methods
-    expect(out).to include('# private')
-    expect(out).to include('# +Demo#priv+')
+    expect(out).to include('# +Demo#priv+').or include('# +Demo#priv+ ')
+    # def internal is a class method under class << self with private => @private
     expect(out).to include('# +Demo.internal+')
+    expect(out).to include('@private')
   end
 
-  it 'groups protected methods under a protected section' do
+  it 'marks protected instance methods with @protected' do
     code = <<~RUBY
       class P
       protected
@@ -48,10 +40,11 @@ RSpec.describe 'Generator visibility grouping' do
             end
     RUBY
 
-    out = generate(code)
-    expect(out).to include('# protected')
+    out = inline(code)
+    # The inline rewriter adds @protected on the protected methods
     expect(out).to include('# +P#prot+')
     expect(out).to include('# +P#prot2+')
+    expect(out.scan('@protected').size).to be >= 1
     expect(out).to include('# +P#pub+')
   end
 end
