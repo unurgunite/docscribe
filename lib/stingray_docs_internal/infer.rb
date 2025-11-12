@@ -48,6 +48,12 @@ module StingrayDocsInternal
         raises.uniq
       end
 
+      # +StingrayDocsInternal::Infer.const_full_name+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] n Param documentation.
+      # @return [Object]
       def const_full_name(n)
         return nil unless n.is_a?(Parser::AST::Node)
 
@@ -119,6 +125,7 @@ module StingrayDocsInternal
       # Method documentation.
       #
       # @param [Object] method_source Param documentation.
+      # @raise [Parser::SyntaxError]
       # @return [Object]
       def infer_return_type(method_source)
         return 'Object' if method_source.nil? || method_source.strip.empty?

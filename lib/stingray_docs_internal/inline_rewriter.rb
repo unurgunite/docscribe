@@ -10,8 +10,9 @@ module StingrayDocsInternal
     # Method documentation.
     #
     # @param [Object] code Param documentation.
+    # @param [Boolean] rewrite Param documentation.
     # @return [Object]
-    def self.insert_comments(code)
+    def self.insert_comments(code, rewrite: false)
       buffer = Parser::Source::Buffer.new('(inline)')
       buffer.source = code
       parser = Parser::CurrentRuby.new
@@ -28,7 +29,15 @@ module StingrayDocsInternal
                .reverse_each do |ins|
         bol_range = line_start_range(buffer, ins.node)
 
-        next if already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
+        if rewrite
+          # If there is a comment block immediately above, remove it (and its trailing blank lines)
+          if (range = comment_block_removal_range(buffer, bol_range.begin_pos))
+            rewriter.remove(range)
+          end
+        elsif already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
+          # Skip if a doc already exists immediately above
+          next
+        end
 
         doc = build_doc_for_node(buffer, ins)
         next unless doc && !doc.empty?
@@ -68,6 +77,42 @@ module StingrayDocsInternal
       end
     end
 
+    # +StingrayDocsInternal::InlineRewriter.comment_block_removal_range+ -> Range
+    #
+    # Method documentation.
+    #
+    # @param [Object] buffer Param documentation.
+    # @param [Object] def_bol_pos Param documentation.
+    # @return [Range]
+    def self.comment_block_removal_range(buffer, def_bol_pos)
+      src = buffer.source
+      lines = src.lines
+      # Find def line index
+      def_line_idx = src[0...def_bol_pos].count("\n")
+      i = def_line_idx - 1
+
+      # Walk up and skip blank lines directly above def
+      i -= 1 while i >= 0 && lines[i].strip.empty?
+      # Now if the nearest non-blank line isn't a comment, nothing to remove
+      return nil unless i >= 0 && lines[i] =~ /^\s*#/
+
+      # Find the start of the contiguous comment block
+      start_idx = i
+      start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
+      start_idx += 1
+
+      # End position is at def_bol_pos; start position is BOL of start_idx
+      # Compute absolute buffer positions
+      # Position of BOL for start_idx:
+      start_pos = 0
+      if start_idx.positive?
+        # Sum lengths of all preceding lines
+        start_pos = lines[0...start_idx].join.length
+      end
+
+      Parser::Source::Range.new(buffer, start_pos, def_bol_pos)
+    end
+
     # +StingrayDocsInternal::InlineRewriter.already_has_doc_immediately_above?+ -> Object
     #
     # Method documentation.
@@ -92,6 +137,7 @@ module StingrayDocsInternal
     #
     # @param [Object] _buffer Param documentation.
     # @param [Object] insertion Param documentation.
+    # @raise [StandardError]
     # @return [Object]
     def self.build_doc_for_node(_buffer, insertion)
       node = insertion.node
@@ -126,8 +172,7 @@ module StingrayDocsInternal
       end
       lines << "#{indent}# @return [#{return_type}]"
       lines.map { |l| "#{l}\n" }.join
-    rescue StandardError => e
-      puts "[build] error name=#{name.inspect} type=#{node.type} #{e.class}: #{e.message}" if debug?
+    rescue StandardError
       nil
     end
 
