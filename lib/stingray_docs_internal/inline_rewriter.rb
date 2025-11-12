@@ -5,19 +5,6 @@ require 'stingray_docs_internal/infer'
 
 module StingrayDocsInternal
   module InlineRewriter
-    def self.debug?
-      ENV['DEBUG_INLINE'] == '1'
-    end
-
-    def self.node_name(node)
-      case node.type
-      when :def
-        node.children[0]
-      when :defs
-        node.children[1] # method name symbol
-      end
-    end
-
     # Public API: inserts docstrings into code and returns new code
     def self.insert_comments(code)
       buffer = Parser::Source::Buffer.new('(inline)')
@@ -37,24 +24,17 @@ module StingrayDocsInternal
                .sort_by { |ins| ins.node.loc.expression.begin_pos }
                .reverse_each do |ins|
         bol_range = line_start_range(buffer, ins.node)
-        if debug?
-          puts "[insert] type=#{ins.node.type} name=#{node_name(ins.node)} scope=#{ins.scope} vis=#{ins.visibility}
-container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_range.begin_pos}"
-        end
 
         if already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
-          puts "[insert] skip (doc above) name=#{node_name(ins.node)}" if debug?
           next
         end
 
         doc = build_doc_for_node(buffer, ins)
         unless doc && !doc.empty?
-          puts "[insert] skip (no doc built) name=#{node_name(ins.node)}" if debug?
           next
         end
 
         rewriter.insert_before(bol_range, doc)
-        puts "[insert] OK name=#{node_name(ins.node)}" if debug?
       end
 
       rewriter.process
@@ -68,7 +48,15 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
       Parser::Source::Range.new(buffer, bol + 1, bol + 1)
     end
 
-    # Robust "is there a doc comment directly above this line?"
+    def self.node_name(node)
+      case node.type
+      when :def
+        node.children[0]
+      when :defs
+        node.children[1] # method name symbol
+      end
+    end
+
     def self.already_has_doc_immediately_above?(buffer, insert_pos)
       src = buffer.source
       lines = src.lines
@@ -108,15 +96,12 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
       lines.concat(params_block) if params_block
       lines << "#{indent}# @return [#{return_type}]"
       lines.map { |l| l + "\n" }.join
-    rescue StandardError => e
-      puts "[build] error name=#{name.inspect} type=#{node.type} #{e.class}: #{e.message}" if debug?
-      nil
     end
 
     def self.build_params_block(node, indent)
       args =
         case node.type
-        when :def  then node.children[1]
+        when :def then node.children[1]
         when :defs then node.children[2] # FIX: args is children[2], not [3]
         end
       return nil unless args
@@ -126,7 +111,7 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
         case a.type
         when :arg
           name = a.children.first.to_s
-          ty   = Infer.infer_param_type(name, nil)
+          ty = Infer.infer_param_type(name, nil)
           params << "#{indent}# @param [#{ty}] #{name} Param documentation."
         when :optarg
           name, default = *a
@@ -134,28 +119,28 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
           params << "#{indent}# @param [#{ty}] #{name} Param documentation."
         when :kwarg
           name = "#{a.children.first}:"
-          ty   = Infer.infer_param_type(name, nil)
+          ty = Infer.infer_param_type(name, nil)
           pname = name.sub(/:$/, '')
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
         when :kwoptarg
           name, default = *a
           name = "#{name}:"
-          ty   = Infer.infer_param_type(name, default&.loc&.expression&.source)
+          ty = Infer.infer_param_type(name, default&.loc&.expression&.source)
           pname = name.sub(/:$/, '')
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
         when :restarg
           name = "*#{a.children.first}"
-          ty   = Infer.infer_param_type(name, nil)
+          ty = Infer.infer_param_type(name, nil)
           pname = a.children.first.to_s
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
         when :kwrestarg
           name = "**#{a.children.first || 'kwargs'}"
-          ty   = Infer.infer_param_type(name, nil)
+          ty = Infer.infer_param_type(name, nil)
           pname = (a.children.first || 'kwargs').to_s
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
         when :blockarg
           name = "&#{a.children.first}"
-          ty   = Infer.infer_param_type(name, nil)
+          ty = Infer.infer_param_type(name, nil)
           pname = a.children.first.to_s
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
         when :forward_arg
@@ -244,17 +229,11 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
             vis = ctx.explicit_instance[name] || ctx.default_instance_vis
             scope = :instance
           end
-          if StingrayDocsInternal::InlineRewriter.debug?
-            puts "[collector] def name=#{name} scope=#{scope} vis=#{vis} container=#{current_container} pos=#{node.loc.expression.begin_pos}"
-          end
           @insertions << Insertion.new(node, scope, vis, current_container)
 
         when :defs
           _, name, _args, _body = *node
           vis = ctx.explicit_class[name] || ctx.default_class_vis
-          if StingrayDocsInternal::InlineRewriter.debug?
-            puts "[collector] defs name=#{name} scope=class vis=#{vis} container=#{current_container} pos=#{node.loc.expression.begin_pos}"
-          end
           @insertions << Insertion.new(node, :class, vis, current_container)
 
         when :sclass
@@ -262,9 +241,6 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
           inner_ctx = ctx.dup
           inner_ctx.inside_sclass = self_node?(recv)
           inner_ctx.default_class_vis = :public
-          if StingrayDocsInternal::InlineRewriter.debug?
-            puts "[collector] sclass inside_sclass=#{inner_ctx.inside_sclass} container=#{current_container} pos=#{node.loc.expression.begin_pos}"
-          end
           process_body(body, inner_ctx)
 
         when :send
@@ -286,14 +262,6 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
           else
             ctx.default_instance_vis = meth
           end
-          if StingrayDocsInternal::InlineRewriter.debug?
-            target = ctx.inside_sclass ? 'class' : 'instance'
-            if args.empty?
-              puts "[vis] bare #{meth} -> default_#{target}_vis=#{meth}"
-            else
-              puts "[vis] explicit #{meth} -> #{target} names=#{args.map { |a| extract_name_sym(a) }.inspect}"
-            end
-          end
         else
           # explicit list: affects current def-target
           args.each do |arg|
@@ -305,7 +273,6 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
             else
               ctx.explicit_instance[sym] = meth
             end
-            next unless StingrayDocsInternal::InlineRewriter.debug?
 
             target = ctx.inside_sclass ? 'class' : 'instance'
             if args.empty?
