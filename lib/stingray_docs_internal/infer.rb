@@ -5,7 +5,13 @@ require 'parser/current'
 module StingrayDocsInternal
   module Infer
     class << self
-      # Guess param type from default string and param name
+      # +StingrayDocsInternal::Infer.infer_param_type+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] name Param documentation.
+      # @param [Object] default_str Param documentation.
+      # @return [Object]
       def infer_param_type(name, default_str)
         # splats and kwargs are driven by name shape
         return 'Array' if name.start_with?('*') && !name.start_with?('**')
@@ -29,7 +35,13 @@ module StingrayDocsInternal
         ty
       end
 
-      # Best-effort parse of a Ruby expression into an AST for classification.
+      # +StingrayDocsInternal::Infer.parse_expr+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] src Param documentation.
+      # @return [nil] if Parser::SyntaxError raised
+      # @return [Object]
       def parse_expr(src)
         return nil if src.nil? || src.strip.empty?
 
@@ -40,8 +52,12 @@ module StingrayDocsInternal
         nil
       end
 
-      # Very conservative return type from method source (def...end)
-      # Looks for last expression or explicit return literals.
+      # +StingrayDocsInternal::Infer.infer_return_type+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] method_source Param documentation.
+      # @return [Object]
       def infer_return_type(method_source)
         return 'Object' if method_source.nil? || method_source.strip.empty?
 
@@ -57,6 +73,12 @@ module StingrayDocsInternal
         'Object'
       end
 
+      # +StingrayDocsInternal::Infer.infer_return_type_from_node+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def infer_return_type_from_node(node)
         body =
           case node.type
@@ -69,7 +91,12 @@ module StingrayDocsInternal
         ty || 'Object'
       end
 
-      # Walk down to last expression type in simple bodies; unify returns.
+      # +StingrayDocsInternal::Infer.last_expr_type+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def last_expr_type(node)
         return nil unless node
 
@@ -99,7 +126,12 @@ module StingrayDocsInternal
         end
       end
 
-      # Convert a literal AST node to a YARD type string
+      # +StingrayDocsInternal::Infer.type_from_literal+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def type_from_literal(node)
         return 'Object' unless node
 
@@ -127,6 +159,13 @@ module StingrayDocsInternal
         end
       end
 
+      # +StingrayDocsInternal::Infer.unify_types+ -> String
+      #
+      # Method documentation.
+      #
+      # @param [Object] a Param documentation.
+      # @param [Object] b Param documentation.
+      # @return [String]
       def unify_types(a, b)
         a ||= 'Object'
         b ||= 'Object'

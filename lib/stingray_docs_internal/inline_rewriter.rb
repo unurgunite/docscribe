@@ -5,7 +5,12 @@ require 'stingray_docs_internal/infer'
 
 module StingrayDocsInternal
   module InlineRewriter
-    # Public API: inserts docstrings into code and returns new code
+    # +StingrayDocsInternal::InlineRewriter.insert_comments+ -> Object
+    #
+    # Method documentation.
+    #
+    # @param [Object] code Param documentation.
+    # @return [Object]
     def self.insert_comments(code)
       buffer = Parser::Source::Buffer.new('(inline)')
       buffer.source = code
@@ -15,8 +20,6 @@ module StingrayDocsInternal
 
       collector = Collector.new(buffer)
       collector.process(ast)
-
-      # Prefer TreeRewriter in the future; Rewriter still works
 
       rewriter = Parser::Source::TreeRewriter.new(buffer)
 
@@ -36,7 +39,13 @@ module StingrayDocsInternal
       rewriter.process
     end
 
-    # Helper: range at beginning of the line containing node
+    # +StingrayDocsInternal::InlineRewriter.line_start_range+ -> Range
+    #
+    # Method documentation.
+    #
+    # @param [Object] buffer Param documentation.
+    # @param [Object] node Param documentation.
+    # @return [Range]
     def self.line_start_range(buffer, node)
       start_pos = node.loc.expression.begin_pos
       src = buffer.source
@@ -44,6 +53,12 @@ module StingrayDocsInternal
       Parser::Source::Range.new(buffer, bol + 1, bol + 1)
     end
 
+    # +StingrayDocsInternal::InlineRewriter.node_name+ -> Object
+    #
+    # Method documentation.
+    #
+    # @param [Object] node Param documentation.
+    # @return [Object]
     def self.node_name(node)
       case node.type
       when :def
@@ -53,6 +68,13 @@ module StingrayDocsInternal
       end
     end
 
+    # +StingrayDocsInternal::InlineRewriter.already_has_doc_immediately_above?+ -> Object
+    #
+    # Method documentation.
+    #
+    # @param [Object] buffer Param documentation.
+    # @param [Object] insert_pos Param documentation.
+    # @return [Object]
     def self.already_has_doc_immediately_above?(buffer, insert_pos)
       src = buffer.source
       lines = src.lines
@@ -64,6 +86,13 @@ module StingrayDocsInternal
       !!(lines[i] =~ /^\s*#/)
     end
 
+    # +StingrayDocsInternal::InlineRewriter.build_doc_for_node+ -> Object
+    #
+    # Method documentation.
+    #
+    # @param [Object] _buffer Param documentation.
+    # @param [Object] insertion Param documentation.
+    # @return [Object]
     def self.build_doc_for_node(_buffer, insertion)
       node = insertion.node
       indent = ' ' * node.loc.expression.column
@@ -94,6 +123,13 @@ module StingrayDocsInternal
       lines.map { |l| "#{l}\n" }.join
     end
 
+    # +StingrayDocsInternal::InlineRewriter.build_params_block+ -> Object?
+    #
+    # Method documentation.
+    #
+    # @param [Object] node Param documentation.
+    # @param [Object] indent Param documentation.
+    # @return [Object?]
     def self.build_params_block(node, indent)
       args =
         case node.type
@@ -150,6 +186,11 @@ module StingrayDocsInternal
       attr_accessor :default_instance_vis, :default_class_vis, :inside_sclass
       attr_reader :explicit_instance, :explicit_class
 
+      # +StingrayDocsInternal::InlineRewriter::VisibilityCtx#initialize+ -> Object
+      #
+      # Method documentation.
+      #
+      # @return [Object]
       def initialize
         @default_instance_vis = :public
         @default_class_vis = :public
@@ -158,6 +199,11 @@ module StingrayDocsInternal
         @inside_sclass = false
       end
 
+      # +StingrayDocsInternal::InlineRewriter::VisibilityCtx#dup+ -> Object
+      #
+      # Method documentation.
+      #
+      # @return [Object]
       def dup
         c = VisibilityCtx.new
         c.default_instance_vis = default_instance_vis
@@ -175,6 +221,12 @@ module StingrayDocsInternal
 
       attr_reader :insertions
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#initialize+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] buffer Param documentation.
+      # @return [Object]
       def initialize(buffer)
         super()
         @buffer = buffer
@@ -182,6 +234,12 @@ module StingrayDocsInternal
         @name_stack = [] # e.g., ['Demo']
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#on_class+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def on_class(node)
         cname_node, _super_node, body = *node
         @name_stack.push(const_name(cname_node))
@@ -191,6 +249,12 @@ module StingrayDocsInternal
         node
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#on_module+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def on_module(node)
         cname_node, body = *node
         @name_stack.push(const_name(cname_node))
@@ -200,11 +264,23 @@ module StingrayDocsInternal
         node
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#on_def+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def on_def(node)
         @insertions << Insertion.new(node, :instance, :public, current_container)
         node
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#on_defs+ -> Object
+      #
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def on_defs(node)
         @insertions << Insertion.new(node, :class, :public, current_container)
         node
@@ -212,6 +288,14 @@ module StingrayDocsInternal
 
       private
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#process_stmt+ -> Object
+      #
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def process_stmt(node, ctx)
         return unless node
 
@@ -247,6 +331,14 @@ module StingrayDocsInternal
         end
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#process_visibility_send+ -> Object
+      #
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def process_visibility_send(node, ctx)
         recv, meth, *args = *node
         return unless recv.nil? && %i[private protected public].include?(meth)
@@ -280,6 +372,13 @@ module StingrayDocsInternal
         end
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#extract_name_sym+ -> Object
+      #
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] arg Param documentation.
+      # @return [Object]
       def extract_name_sym(arg)
         case arg.type
         when :sym then arg.children.first
@@ -287,14 +386,34 @@ module StingrayDocsInternal
         end
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#self_node?+ -> Object
+      #
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def self_node?(node)
         node && node.type == :self
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#current_container+ -> Object
+      #
+      # Method documentation.
+      #
+      # @private
+      # @return [Object]
       def current_container
         @name_stack.empty? ? 'Object' : @name_stack.join('::')
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#const_name+ -> Object
+      #
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def const_name(node)
         return 'Object' unless node
 
@@ -310,6 +429,14 @@ module StingrayDocsInternal
         end
       end
 
+      # +StingrayDocsInternal::InlineRewriter::Collector#process_body+ -> Object
+      #
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] body Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def process_body(body, ctx)
         return unless body
 
