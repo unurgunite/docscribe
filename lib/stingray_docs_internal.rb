@@ -4,7 +4,6 @@ module StingrayDocsInternal
   class Error < StandardError; end
 end
 
-require_relative 'extensions/extensions' # loads 'yard' early
 require_relative 'stingray_docs_internal/version'
 require_relative 'stingray_docs_internal/infer'
-require_relative 'stingray_docs_internal/generator'
+require_relative 'stingray_docs_internal/inline_rewriter'

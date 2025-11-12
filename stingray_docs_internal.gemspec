@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.summary = 'This gem is used only for internal purposes in Stingray Technical LTD.'
   spec.description = 'Gem for generating internal documentation in Stingray Technical LTD.'
   spec.homepage = 'https://github.com/unurgunite/stingray_docs_internal'
-  spec.required_ruby_version = '>= 2.7.0'
+  spec.required_ruby_version = '>= 3.0'
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://github.com/unurgunite/stingray_docs_internal'
@@ -31,7 +31,7 @@ Gem::Specification.new do |spec|
 
   # Uncomment to register a new dependency of your gem
   spec.add_dependency 'parser', '>= 3.0'
-  spec.add_dependency 'yard', '>= 0.9.34'
+  spec.add_development_dependency 'yard', '>= 0.9.34'
   spec.add_development_dependency 'rake'
   spec.add_development_dependency 'rspec', '~> 3.0'
   spec.add_development_dependency 'rubocop'

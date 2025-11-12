@@ -3,7 +3,6 @@ PATH
   specs:
     stingray_docs (1.0.0)
       parser (>= 3.0)
-      yard (>= 0.9.34)
 
 GEM
   remote: https://rubygems.org/
@@ -68,6 +67,7 @@ DEPENDENCIES
   rubocop
   rubocop-sorted_methods_by_call
   stingray_docs!
+  yard (>= 0.9.34)
 
 BUNDLED WITH
    2.5.9

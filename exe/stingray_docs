@@ -3,56 +3,63 @@
 # frozen_string_literal: true
 
 require 'optparse'
-require 'stingray_docs_internal'
+require 'stingray_docs_internal/inline_rewriter'
 
 options = {
   stdin: false,
-  output: nil
+  write: false, # rewrite files in place
+  check: false # exits 1 if any file would change
 }
 
 parser = OptionParser.new do |opts|
   opts.banner = 'Usage: stingray_docs [options] [files...]'
-
-  opts.on('--stdin', 'Read code from STDIN') { options[:stdin] = true }
-  opts.on('-o', '--output PATH', 'Write output to PATH (single concatenated file)') { |v| options[:output] = v }
+  opts.on('--stdin', 'Read code from STDIN and print with docs inserted') { options[:stdin] = true }
+  opts.on('--write', 'Rewrite files in place (inline mode)') { options[:write] = true }
+  opts.on('--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
+  opts.on('--debug', 'Enable inline debug logs') { ENV['DEBUG_INLINE'] = '1' }
   opts.on('--version', 'Print version and exit') do
+    require 'stingray_docs_internal/version'
     puts StingrayDocsInternal::VERSION
     exit
   end
-  opts.on('-h', '--help', 'Show this help') do
-    puts opts
-    exit
-  end
+  opts.on('-h', '--help', 'Show this help') { puts opts; exit }
 end
 
 parser.parse!(ARGV)
 
-def generate_for(code)
-  StingrayDocsInternal::Generator.generate_documentation(code)
-end
-
-def write_out(str, path)
-  if path
-    File.write(path, str)
-  else
-    puts str
-  end
+def rewrite(code)
+  StingrayDocsInternal::InlineRewriter.insert_comments(code)
 end
 
 if options[:stdin]
-  code = $stdin.read
-  out = generate_for(code)
-else
-  if ARGV.empty?
-    warn 'No input. Use --stdin or pass file paths. See --help.'
-    exit 1
-  end
-
-  outputs = ARGV.map do |path|
-    code = File.read(path)
-    generate_for(code)
-  end
-
-  out = outputs.join("\n")
+  code = STDIN.read
+  puts rewrite(code)
+  exit 0
 end
-write_out(out, options[:output])
+
+if ARGV.empty?
+  warn 'No input. Use --stdin or pass file paths. See --help.'
+  exit 1
+end
+
+changed = false
+
+ARGV.each do |path|
+  src = File.read(path)
+  out = rewrite(src)
+  if options[:check]
+    if out != src
+      warn "Would change: #{path}"
+      changed = true
+    end
+  elsif options[:write]
+    if out != src
+      File.write(path, out)
+      puts "Updated: #{path}"
+    end
+  else
+    puts out
+  end
+end
+
+exit(options[:check] && changed ? 1 : 0)

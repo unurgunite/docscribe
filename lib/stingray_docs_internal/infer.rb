@@ -57,6 +57,18 @@ module StingrayDocsInternal
         'Object'
       end
 
+      def infer_return_type_from_node(node)
+        body =
+          case node.type
+          when :def then node.children[2] # [name, args, body]
+          when :defs then node.children[3] # [recv, name, args, body]
+          else nil
+          end
+        return 'Object' unless body
+        ty = last_expr_type(body)
+        ty || 'Object'
+      end
+
       # Walk down to last expression type in simple bodies; unify returns.
       def last_expr_type(node)
         return nil unless node

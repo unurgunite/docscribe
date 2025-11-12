@@ -225,7 +225,7 @@ module StingrayDocsInternal
 
       # Prefer TreeRewriter in the future; Rewriter still works
 
-      rewriter = Parser::Source::Rewriter.new(buffer)
+      rewriter = Parser::Source::TreeRewriter.new(buffer)
 
       collector.insertions
                .sort_by { |ins| ins.node.loc.expression.begin_pos }
@@ -274,26 +274,6 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
       !!(lines[i] =~ /^\s*#/)
     end
 
-    # Check if there is already a comment directly above the def
-    def self.already_has_doc?(buffer, node)
-      start_pos = node.loc.expression.begin_pos
-      src = buffer.source
-      # Find start of line
-      bol = src.rindex("\n", start_pos - 1) || -1
-      # Scan upward lines if they are comment lines
-      i = bol
-      count = 0
-      while i >= 0
-        prev_nl = src.rindex("\n", i - 1) || -1
-        line = src[(prev_nl + 1)..i]
-        break unless line =~ /^\s*#/
-
-        count += 1
-        i = prev_nl
-      end
-      count.positive?
-    end
-
     def self.build_doc_for_node(_buffer, insertion)
       node = insertion.node
       indent = ' ' * node.loc.expression.column
@@ -308,7 +288,7 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
       container = insertion.container
 
       params_block = build_params_block(node, indent)
-      return_type = Infer.infer_return_type(node.loc.expression.source)
+      return_type = Infer.infer_return_type_from_node(node)
 
       lines = []
       lines << "#{indent}# +#{container}#{method_symbol}#{name}+ -> #{return_type}"
@@ -325,16 +305,6 @@ container=#{ins.container} pos=#{ins.node.loc.expression.begin_pos} bol=#{bol_ra
     rescue StandardError => e
       puts "[build] error name=#{name.inspect} type=#{node.type} #{e.class}: #{e.message}" if debug?
       nil
-    end
-
-    def self.enclosing_class_name(_buffer, node)
-      # Best-effort: walk up to nearest class/module
-      pn = node
-      pn = pn.parent while pn.respond_to?(:parent)
-      # Parser::AST::Node doesn’t keep parent links by default; if you need exact names, pass context in Collector
-      # For now, omit class name or compute by scanning text. Simplest approach:
-      # Use a placeholder or try to find constant around the node by backtracking; for demo, return 'Self'
-      'Self' # Replace with better resolution if you thread context in Collector
     end
 
     def self.build_params_block(node, indent)
