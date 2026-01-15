@@ -2,6 +2,11 @@
 
 require 'parser/current'
 require 'docscribe/infer'
+require 'parser/source/buffer'
+require 'parser/source/range'
+require 'parser/source/tree_rewriter'
+require 'parser/ast/processor'
+require 'docscribe/parsing'
 
 module Docscribe
   module InlineRewriter
@@ -16,8 +21,7 @@ module Docscribe
     def self.insert_comments(code, rewrite: false, config: nil)
       buffer = Parser::Source::Buffer.new('(inline)')
       buffer.source = code
-      parser = Parser::CurrentRuby.new
-      ast = parser.parse(buffer)
+      ast = Docscribe::Parsing.parse_buffer(buffer)
       return code unless ast
 
       config ||= Docscribe::Config.load

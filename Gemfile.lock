@@ -3,6 +3,7 @@ PATH
   specs:
     docscribe (1.1.0)
       parser (>= 3.3)
+      prism (~> 1.8)
 
 GEM
   remote: https://rubygems.org/
@@ -19,7 +20,6 @@ GEM
     prism (1.8.0)
     racc (1.8.1)
     rainbow (3.1.1)
-    rake (13.3.1)
     regexp_parser (2.11.3)
     rspec (3.13.2)
       rspec-core (~> 3.13.0)
@@ -54,7 +54,7 @@ GEM
     rubocop-rspec (3.9.0)
       lint_roller (~> 1.1)
       rubocop (~> 1.81)
-    rubocop-sorted_methods_by_call (1.2.0)
+    rubocop-sorted_methods_by_call (1.2.1)
       lint_roller
       rubocop (>= 1.72.0)
     ruby-progressbar (1.13.0)
@@ -69,7 +69,6 @@ PLATFORMS
 
 DEPENDENCIES
   docscribe!
-  rake
   rspec (~> 3.0)
   rubocop
   rubocop-rake
