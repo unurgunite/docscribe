@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = 'Autogenerate documentation for Ruby code with YARD syntax.'
   spec.homepage = 'https://github.com/unurgunite/docscribe'
-  spec.required_ruby_version = '>= 3.0'
+  spec.required_ruby_version = '>= 2.7'
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://github.com/unurgunite/docscribe'
@@ -29,12 +29,14 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   # Uncomment to register a new dependency of your gem
-  spec.add_dependency 'parser', '>= 3.0'
+  spec.add_dependency 'parser', '>= 3.3'
   spec.add_development_dependency 'rake'
   spec.add_development_dependency 'rspec', '~> 3.0'
   spec.add_development_dependency 'rubocop'
+  spec.add_development_dependency 'rubocop-rake'
+  spec.add_development_dependency 'rubocop-rspec'
   spec.add_development_dependency 'rubocop-sorted_methods_by_call'
-  spec.add_development_dependency 'yard', '>= 0.9.34'
+  spec.add_development_dependency 'yard', '>= 0.9.38'
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html

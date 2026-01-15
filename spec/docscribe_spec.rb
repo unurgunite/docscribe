@@ -2,6 +2,6 @@
 
 RSpec.describe Docscribe do
   it 'has a version number' do
-    expect(Docscribe::VERSION).not_to be nil
+    expect(Docscribe::VERSION).not_to be_nil
   end
 end
