@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
-require 'parser/current'
+require 'racc/parser'
+require 'ast'
+require 'parser/deprecation'
+require 'parser/source/buffer'
+require 'parser/source/range'
+require 'parser/source/tree_rewriter'
+require 'parser/ast/processor'
+
+require 'docscribe/config'
 require 'docscribe/infer'
 require 'docscribe/parsing'
 

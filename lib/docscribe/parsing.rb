@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'parser/source/buffer'
-require 'rubygems' # for Gem::Version
 
 module Docscribe
   # Picks the correct Ruby parser backend and returns a `parser`-gem-compatible AST.

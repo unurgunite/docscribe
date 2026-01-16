@@ -43,6 +43,22 @@ def rewrite(code, replace:)
   Docscribe::InlineRewriter.insert_comments(code, rewrite: replace)
 end
 
+def expand_paths(args)
+  files = []
+
+  args.each do |path|
+    if File.directory?(path)
+      files.concat(Dir.glob(File.join(path, '**', '*.rb')))
+    elsif File.file?(path)
+      files << path
+    else
+      warn "Skipping missing path: #{path}"
+    end
+  end
+
+  files.uniq.sort
+end
+
 if options[:stdin]
   code = $stdin.read
   puts rewrite(code, replace: options[:rewrite])
@@ -54,24 +70,60 @@ if ARGV.empty?
   exit 1
 end
 
-changed = false
+$stdout.sync = true
 
-ARGV.each do |path|
+paths = expand_paths(ARGV)
+if paths.empty?
+  warn 'No files found. Pass files or directories (e.g. `docscribe --check lib`).'
+  exit 1
+end
+
+changed = false
+checked_ok = 0
+checked_fail = 0
+corrected = 0
+fail_paths = []
+
+paths.each do |path|
   src = File.read(path)
   out = transform(src, replace: options[:rewrite], config: conf)
+
   if options[:check]
-    if out != src
-      warn "Would change: #{path}"
+    if out == src
+      print '.'
+      checked_ok += 1
+    else
+      print 'F'
+      checked_fail += 1
       changed = true
+      fail_paths << path
     end
+
   elsif options[:write]
-    if out != src
+    if out == src
+      print '.'
+    else
       File.write(path, out)
-      puts "Updated: #{path}"
+      print 'C'
+      corrected += 1
     end
+
   else
     puts out
   end
+end
+
+if options[:check]
+  puts
+  if checked_fail.zero?
+    puts "Docscribe: OK (#{checked_ok} files checked)"
+  else
+    puts "Docscribe: FAILED (#{checked_fail} failing, #{checked_ok} ok)"
+    fail_paths.each { |p| warn "Missing docs: #{p}" }
+  end
+elsif options[:write]
+  puts
+  puts "Docscribe: updated #{corrected} file(s)" if corrected.positive?
 end
 
 exit(options[:check] && changed ? 1 : 0)
