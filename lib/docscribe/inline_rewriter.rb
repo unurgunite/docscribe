@@ -2,10 +2,6 @@
 
 require 'parser/current'
 require 'docscribe/infer'
-require 'parser/source/buffer'
-require 'parser/source/range'
-require 'parser/source/tree_rewriter'
-require 'parser/ast/processor'
 require 'docscribe/parsing'
 
 module Docscribe

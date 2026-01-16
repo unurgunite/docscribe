@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require 'parser/ast/node'
-require 'parser/source/buffer'
-require 'parser/base'
+require 'parser/current'
 require 'docscribe/parsing'
 
 module Docscribe
