@@ -13,3 +13,5 @@
 .idea
 
 *.gem
+/vendor/bundle/
+test_project/Gemfile.lock
