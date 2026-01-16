@@ -24,6 +24,12 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
 
+      - name: Docscribe (check docs are up-to-date)
+        run: |
+          cd test_project
+          bundle install
+          bundle exec docscribe --check $(cd .. && git ls-files 'lib/**/*.rb' 'exe/*')
+
       - name: RuboCop (self‑check)
         run: |
           bundle exec rubocop
