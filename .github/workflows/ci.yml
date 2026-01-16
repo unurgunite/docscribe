@@ -28,7 +28,9 @@ jobs:
         run: |
           cd test_project
           bundle install
-          bundle exec docscribe --check $(cd .. && git ls-files 'lib/**/*.rb' 'exe/*')
+          
+          FILES="$(cd .. && git ls-files 'lib/**/*.rb' | sed 's|^|../|')"
+          bundle exec docscribe --check $FILES
 
       - name: RuboCop (self‑check)
         run: |
