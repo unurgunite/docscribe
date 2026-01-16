@@ -1,25 +1,25 @@
 PATH
   remote: .
   specs:
-    docscribe (1.0.0)
-      parser (>= 3.0)
+    docscribe (1.1.0)
+      parser (>= 3.3)
+      prism (~> 1.8)
 
 GEM
   remote: https://rubygems.org/
   specs:
     ast (2.4.3)
     diff-lcs (1.6.2)
-    json (2.16.0)
+    json (2.18.0)
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
     parallel (1.27.0)
-    parser (3.3.10.0)
+    parser (3.3.10.1)
       ast (~> 2.4.1)
       racc
-    prism (1.6.0)
+    prism (1.8.0)
     racc (1.8.1)
     rainbow (3.1.1)
-    rake (13.3.1)
     regexp_parser (2.11.3)
     rspec (3.13.2)
       rspec-core (~> 3.13.0)
@@ -34,7 +34,7 @@ GEM
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.13.0)
     rspec-support (3.13.6)
-    rubocop (1.81.7)
+    rubocop (1.82.1)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
       lint_roller (~> 1.1.0)
@@ -42,20 +42,26 @@ GEM
       parser (>= 3.3.0.2)
       rainbow (>= 2.2.2, < 4.0)
       regexp_parser (>= 2.9.3, < 3.0)
-      rubocop-ast (>= 1.47.1, < 2.0)
+      rubocop-ast (>= 1.48.0, < 2.0)
       ruby-progressbar (~> 1.7)
       unicode-display_width (>= 2.4.0, < 4.0)
-    rubocop-ast (1.48.0)
+    rubocop-ast (1.49.0)
       parser (>= 3.3.7.2)
-      prism (~> 1.4)
-    rubocop-sorted_methods_by_call (1.1.2)
+      prism (~> 1.7)
+    rubocop-rake (0.7.1)
+      lint_roller (~> 1.1)
+      rubocop (>= 1.72.1)
+    rubocop-rspec (3.9.0)
+      lint_roller (~> 1.1)
+      rubocop (~> 1.81)
+    rubocop-sorted_methods_by_call (1.2.1)
       lint_roller
       rubocop (>= 1.72.0)
     ruby-progressbar (1.13.0)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
-    unicode-emoji (4.1.0)
-    yard (0.9.37)
+    unicode-emoji (4.2.0)
+    yard (0.9.38)
 
 PLATFORMS
   ruby
@@ -63,11 +69,12 @@ PLATFORMS
 
 DEPENDENCIES
   docscribe!
-  rake
   rspec (~> 3.0)
   rubocop
+  rubocop-rake
+  rubocop-rspec
   rubocop-sorted_methods_by_call
-  yard (>= 0.9.34)
+  yard (>= 0.9.38)
 
 BUNDLED WITH
-   2.5.9
+   2.4.22

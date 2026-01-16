@@ -2,10 +2,12 @@ inherit_from: .rubocop_todo.yml
 
 plugins:
   - rubocop-sorted_methods_by_call
+  - rubocop-rspec
+  - rubocop-rake
 
 AllCops:
   NewCops: enable
-  TargetRubyVersion: 3.0
+  TargetRubyVersion: 2.7
 
 Layout/LineLength:
   Max: 120

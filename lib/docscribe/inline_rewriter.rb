@@ -1,7 +1,16 @@
 # frozen_string_literal: true
 
-require 'parser/current'
+require 'racc/parser'
+require 'ast'
+require 'parser/deprecation'
+require 'parser/source/buffer'
+require 'parser/source/range'
+require 'parser/source/tree_rewriter'
+require 'parser/ast/processor'
+
+require 'docscribe/config'
 require 'docscribe/infer'
+require 'docscribe/parsing'
 
 module Docscribe
   module InlineRewriter
@@ -16,8 +25,7 @@ module Docscribe
     def self.insert_comments(code, rewrite: false, config: nil)
       buffer = Parser::Source::Buffer.new('(inline)')
       buffer.source = code
-      parser = Parser::CurrentRuby.new
-      ast = parser.parse(buffer)
+      ast = Docscribe::Parsing.parse_buffer(buffer)
       return code unless ast
 
       config ||= Docscribe::Config.load
@@ -30,22 +38,22 @@ module Docscribe
       collector.insertions
                .sort_by { |ins| ins.node.loc.expression.begin_pos }
                .reverse_each do |ins|
-        bol_range = line_start_range(buffer, ins.node)
+                 bol_range = line_start_range(buffer, ins.node)
 
-        if rewrite
-          # If there is a comment block immediately above, remove it (and its trailing blank lines)
-          if (range = comment_block_removal_range(buffer, bol_range.begin_pos))
-            rewriter.remove(range)
-          end
-        elsif already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
-          # Skip if a doc already exists immediately above
-          next
-        end
+                 if rewrite
+                   # If there is a comment block immediately above, remove it (and its trailing blank lines)
+                   if (range = comment_block_removal_range(buffer, bol_range.begin_pos))
+                     rewriter.remove(range)
+                   end
+                 elsif already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
+                   # Skip if a doc already exists immediately above
+                   next
+                 end
 
-        doc = build_doc_for_node(buffer, ins, config)
-        next unless doc && !doc.empty?
+                 doc = build_doc_for_node(buffer, ins, config)
+                 next unless doc && !doc.empty?
 
-        rewriter.insert_before(bol_range, doc)
+                 rewriter.insert_before(bol_range, doc)
       end
 
       rewriter.process

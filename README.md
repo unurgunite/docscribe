@@ -4,16 +4,19 @@
 [![RubyGems Downloads](https://img.shields.io/gem/dt/docscribe.svg)](https://rubygems.org/gems/docscribe)
 [![CI](https://github.com/unurgunite/docscribe/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/unurgunite/docscribe/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/unurgunite/docscribe.svg)](https://github.com/unurgunite/docscribe/blob/master/LICENSE.txt)
-[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%203.0-blue.svg)](#installation)
+[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%202.7-blue.svg)](#installation)
 
-Generate inline, YARD-style documentation comments for Ruby methods by analyzing your code's AST. Docscribe inserts doc
-headers before method definitions, infers parameter and return types (including rescue-aware returns), and respects Ruby
-visibility semantics — without using YARD to parse.
+Generate inline, YARD-style documentation comments for Ruby methods by analyzing your code's AST.
 
-- No AST reprinting. Your original code, formatting, and constructs (like `class << self`, `heredocs`, `%i[]`) are preserved.
-- Inline-first. Comments are inserted surgically at the start of each `def`/`defs` line.
+Docscribe inserts doc headers before method definitions, infers parameter and return types (including rescue-aware
+returns), and respects Ruby visibility semantics — without using YARD to parse.
+
+- No AST reprinting. Your original code, formatting, and constructs (like `class << self`, `heredocs`, `%i[]`) are
+  preserved.
+- Inline-first. Comments are inserted at the start of each `def`/`defs` line.
 - Heuristic type inference for params and return values, including conditional returns in rescue branches.
 - Optional rewrite mode for regenerating existing method docs.
+- Ruby 3.4+ syntax supported using Prism translation (see "Parser backend" below).
 
 Why not YARD? We started with YARD's parser, but switched to an AST-based in-place rewriter for maximum preservation of
 source structure and exact control over Ruby semantics.
@@ -57,7 +60,7 @@ Or install globally:
 gem install docscribe
 ```
 
-Requires Ruby 3.0+.
+Requires Ruby 2.7+.
 
 ## Quick start
 
@@ -184,6 +187,10 @@ Examples:
   ```shell
   docscribe --rewrite --write lib/**/*.rb
   ```
+- Check a directory (Docscribe expands directories to `**/*.rb`):
+  ```bash
+  docscribe --check lib
+  ```
 
 ## Inline behavior
 
@@ -199,6 +206,36 @@ Examples:
   lines) and replace it with a fresh generated block.
 - This is useful to refresh docs across a codebase after improving inference or rules.
 - Use with caution (prefer a clean working tree and review diffs).
+
+### Output markers in CI
+
+When using `--check`, Docscribe prints one character per file:
+
+- `.` = file is up-to-date
+- `F` = file would change (missing/stale docs)
+
+When using `--write`:
+
+- `.` = file already OK
+- `C` = file was corrected and rewritten
+
+Docscribe prints a summary at the end and exits non-zero in `--check` mode if any file would change.
+
+## Parser backend (Parser gem vs Prism)
+
+Docscribe internally works with `parser`-gem-compatible AST nodes and `Parser::Source::*` objects (so it can use
+`Parser::Source::TreeRewriter` without changing your formatting).
+
+- On Ruby **<= 3.3**, Docscribe parses using the `parser` gem.
+- On Ruby **>= 3.4**, Docscribe parses using **Prism** and translates the tree into the `parser` gem’s AST (so tooling
+  stays compatible).
+
+You can force a backend with an environment variable:
+
+```bash
+DOCSCRIBE_PARSER_BACKEND=parser bundle exec docscribe --check lib
+DOCSCRIBE_PARSER_BACKEND=prism  bundle exec docscribe --check lib
+```
 
 ## Type inference
 
@@ -297,8 +334,8 @@ We match Ruby's behavior:
 
 - A bare `private`/`protected`/`public` in a class/module body affects instance methods only.
 - Inside `class << self`, a bare visibility keyword affects class methods only.
-- `def self.x` in a class body remains `public` unless `private_class_method` is used or it's inside `class << self` under
-  `private`.
+- `def self.x` in a class body remains `public` unless `private_class_method` is used, or it's inside `class << self`
+  under `private`.
 
 Inline tags:
 
@@ -425,7 +462,7 @@ Docscribe and YARD solve different parts of the documentation problem:
 - Does not merge into existing comments; in normal mode, a method with a comment directly above it is skipped. Use
   `--rewrite` to regenerate.
 - Type inference is heuristic. Complex flows and meta-programming will fall back to Object or best-effort types.
-- Only Ruby 3.0+ is officially supported.
+- Ruby 2.7+ supported.
 - Inline rewrite is textual; ensure a clean working tree before using `--write` or `--rewrite`.
 
 ## Roadmap

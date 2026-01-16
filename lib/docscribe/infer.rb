@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
-require 'parser/current'
+require 'racc/parser'
+require 'ast'
+require 'parser/ast/node'
+require 'parser/source/buffer'
+require 'parser/base'
+require 'docscribe/parsing'
 
 module Docscribe
   module Infer
@@ -91,7 +96,7 @@ module Docscribe
 
         buffer = Parser::Source::Buffer.new('(param)')
         buffer.source = src
-        Parser::CurrentRuby.new.parse(buffer)
+        Docscribe::Parsing.parse_buffer(buffer)
       rescue Parser::SyntaxError
         nil
       end
@@ -109,7 +114,7 @@ module Docscribe
 
         buffer = Parser::Source::Buffer.new('(method)')
         buffer.source = method_source
-        root = Parser::CurrentRuby.new.parse(buffer)
+        root = Docscribe::Parsing.parse_buffer(buffer)
         return 'Object' unless root && %i[def defs].include?(root.type)
 
         body = root.children.last # method body node
