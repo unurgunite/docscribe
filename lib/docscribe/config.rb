@@ -90,7 +90,7 @@ module Docscribe
         #   bundle exec docscribe --write lib
         #
         # Regenerate docs even if a comment block already exists:
-        #   bundle exec docscribe --rewrite --write lib
+        #   bundle exec docscribe --refresh --write lib
         #
 
         emit:

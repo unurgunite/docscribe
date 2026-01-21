@@ -1,13 +1,13 @@
 # Docscribe configuration file
 #
 # CI check (fails if any file would change):
-#   bundle exec docscribe --check lib
+#   bundle exec docscribe --dry lib
 #
 # Auto-fix (rewrites files):
 #   bundle exec docscribe --write lib
 #
 # Regenerate docs even if a comment block already exists:
-#   bundle exec docscribe --rewrite --write lib
+#   bundle exec docscribe --refresh --write lib
 #
 
 emit:
