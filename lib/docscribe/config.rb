@@ -2,6 +2,7 @@
 
 require 'yaml'
 require 'pathname'
+require 'psych'
 
 module Docscribe
   class Config
@@ -71,11 +72,44 @@ module Docscribe
     def self.load(path = nil)
       raw = {}
       if path && File.file?(path)
-        raw = YAML.safe_load_file(path, permitted_classes: [], aliases: true) || {}
+        raw = safe_load_file_compat(path)
       elsif File.file?('docscribe.yml')
-        raw = YAML.safe_load_file('docscribe.yml', permitted_classes: [], aliases: true) || {}
+        raw = safe_load_file_compat('docscribe.yml')
       end
       new(raw)
+    end
+
+    # Safely load YAML from a file across Ruby/Psych versions.
+    #
+    # Ruby 2.7 Psych does not implement `safe_load_file`, so we fall back to
+    # reading the file and calling `safe_load`.
+    #
+    # @param [String] path
+    # @return [Hash]
+    def self.safe_load_file_compat(path)
+      if YAML.respond_to?(:safe_load_file)
+        YAML.safe_load_file(path, permitted_classes: [], permitted_symbols: [], aliases: true) || {}
+      else
+        yaml = File.open(path, 'r:bom|utf-8', &:read)
+        safe_load_compat(yaml, filename: path) || {}
+      end
+    end
+
+    # Safely load YAML from a string across Psych API versions.
+    #
+    # @param [String] yaml
+    # @param [String, nil] filename
+    # @return [Object]
+    def self.safe_load_compat(yaml, filename: nil)
+      Psych.safe_load(
+        yaml,
+        permitted_classes: [],
+        permitted_symbols: [],
+        aliases: true,
+        filename: filename
+      )
+    rescue ArgumentError
+      Psych.safe_load(yaml, [], [], true, filename)
     end
 
     # +Docscribe::Config.load+ -> Object
