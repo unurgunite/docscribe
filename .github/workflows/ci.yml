@@ -30,7 +30,7 @@ jobs:
           bundle install
           
           FILES="$(cd .. && git ls-files 'lib/**/*.rb' | sed 's|^|../|')"
-          bundle exec docscribe --dry $FILES
+          bundle exec docscribe --dry $FILES -C ../docscribe.yml
 
       - name: RuboCop (self‑check)
         run: |
