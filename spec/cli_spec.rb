@@ -8,9 +8,11 @@ RSpec.describe 'CLI docscribe' do
     code = <<~RUBY
       class D; def x; 1; end; end
     RUBY
-    stdout, status = Open3.capture2('ruby', exe, '--stdin', stdin_data: code)
-    expect(status.success?).to be true
-    expect(stdout).to include('# +D#x+')
+    Dir.mktmpdir do |dir|
+      stdout, status = Open3.capture2('ruby', exe, '--stdin', stdin_data: code, chdir: dir)
+      expect(status.success?).to be true
+      expect(stdout).to include('# +D#x+')
+    end
   end
 
   it 'respects emit.return_tag override in YAML' do
