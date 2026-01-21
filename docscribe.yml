@@ -51,7 +51,7 @@ inference:
 # - exclude always wins
 # - if include is empty => include everything (subject to allow-lists)
 filter:
-  visibilities: ["public", "protected", "private"]
+  visibilities: ["public"]
   scopes: ["instance", "class"]
   include: []
   exclude: []

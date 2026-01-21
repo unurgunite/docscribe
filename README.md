@@ -34,6 +34,7 @@ source structure and exact control over Ruby semantics.
     * [Visibility semantics](#visibility-semantics)
     * [API (library) usage](#api-library-usage)
     * [Configuration](#configuration)
+        * [Filtering](#filtering)
         * [CLI](#cli-1)
         * [Create a starter config](#create-a-starter-config)
     * [CI integration](#ci-integration)
