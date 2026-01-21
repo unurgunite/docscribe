@@ -3,7 +3,6 @@
 
 require 'optparse'
 require 'docscribe/config'
-require 'docscribe/inline_rewriter'
 
 options = {
   stdin: false,
@@ -13,6 +12,44 @@ options = {
   config: nil
 }
 
+if ARGV.first == 'init'
+  ARGV.shift
+
+  init_options = {
+    config: 'docscribe.yml',
+    force: false,
+    stdout: false
+  }
+
+  OptionParser.new do |opts|
+    opts.banner = 'Usage: docscribe init [options]'
+    opts.on('--config PATH', 'Where to write the config (default: docscribe.yml)') { |v| init_options[:config] = v }
+    opts.on('-f', '--force', 'Overwrite if the file already exists') { init_options[:force] = true }
+    opts.on('--stdout', 'Print config template to STDOUT instead of writing a file') { init_options[:stdout] = true }
+    opts.on('-h', '--help', 'Show this help') do
+      puts opts
+      exit 0
+    end
+  end.parse!(ARGV)
+
+  yaml = Docscribe::Config.default_yaml
+
+  if init_options[:stdout]
+    puts yaml
+    exit 0
+  end
+
+  path = init_options[:config]
+  if File.exist?(path) && !init_options[:force]
+    warn "Config already exists: #{path} (use --force to overwrite)"
+    exit 1
+  end
+
+  File.write(path, yaml)
+  puts "Created: #{path}"
+  exit 0
+end
+
 parser = OptionParser.new do |opts|
   opts.banner = 'Usage: docscribe [options] [files...]'
   opts.on('--stdin', 'Read code from STDIN and print with docs inserted') { options[:stdin] = true }
@@ -20,6 +57,10 @@ parser = OptionParser.new do |opts|
   opts.on('--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
   opts.on('--rewrite', 'Replace existing comment blocks above methods') { options[:rewrite] = true }
   opts.on('--config PATH', 'Path to config YAML (default: docscribe.yml)') { |v| options[:config] = v }
+  opts.on('--include PATTERN', 'Only process methods matching PATTERN (glob or /regex/)') { |v| options[:include] << v }
+  opts.on('--exclude PATTERN', 'Skip methods matching PATTERN (glob or /regex/). Exclude wins.') do |v|
+    options[:exclude] << v
+  end
   opts.on('--version', 'Print version and exit') do
     require 'docscribe/version'
     puts Docscribe::VERSION
@@ -34,6 +75,16 @@ end
 parser.parse!(ARGV)
 
 conf = Docscribe::Config.load(options[:config])
+
+if options[:include]&.any? || options[:exclude]&.any?
+  raw = Marshal.load(Marshal.dump(conf.raw)) # deep dup, simplest drop-in
+  raw['filter'] ||= {}
+  raw['filter']['include'] = Array(raw['filter']['include']) + options[:include]
+  raw['filter']['exclude'] = Array(raw['filter']['exclude']) + options[:exclude]
+  conf = Docscribe::Config.new(raw)
+end
+
+require 'docscribe/inline_rewriter'
 
 def transform(code, replace:, config:)
   Docscribe::InlineRewriter.insert_comments(code, rewrite: replace, config: config)
@@ -73,6 +124,7 @@ end
 $stdout.sync = true
 
 paths = expand_paths(ARGV)
+paths = paths.select { |p| conf.process_file?(p) }
 if paths.empty?
   warn 'No files found. Pass files or directories (e.g. `docscribe --check lib`).'
   exit 1

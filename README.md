@@ -27,12 +27,15 @@ source structure and exact control over Ruby semantics.
     * [CLI](#cli)
     * [Inline behavior](#inline-behavior)
         * [Rewrite mode](#rewrite-mode)
+        * [Output markers in CI](#output-markers-in-ci)
+    * [Parser backend (Parser gem vs Prism)](#parser-backend-parser-gem-vs-prism)
     * [Type inference](#type-inference)
     * [Rescue-aware returns and @raise](#rescue-aware-returns-and-raise)
     * [Visibility semantics](#visibility-semantics)
     * [API (library) usage](#api-library-usage)
     * [Configuration](#configuration)
         * [CLI](#cli-1)
+        * [Create a starter config](#create-a-starter-config)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
     * [Limitations](#limitations)
@@ -188,7 +191,7 @@ Examples:
   docscribe --rewrite --write lib/**/*.rb
   ```
 - Check a directory (Docscribe expands directories to `**/*.rb`):
-  ```bash
+  ```shell
   docscribe --check lib
   ```
 
@@ -232,7 +235,7 @@ Docscribe internally works with `parser`-gem-compatible AST nodes and `Parser::S
 
 You can force a backend with an environment variable:
 
-```bash
+```shell
 DOCSCRIBE_PARSER_BACKEND=parser bundle exec docscribe --check lib
 DOCSCRIBE_PARSER_BACKEND=prism  bundle exec docscribe --check lib
 ```
@@ -403,8 +406,33 @@ inference:
 
 ### CLI
 
-```bash
+```shell
 docscribe --config docscribe.yml --write lib/**/*.rb
+```
+
+### Create a starter config
+
+Create `docscribe.yml` in the current directory:
+
+```shell
+docscribe init
+```
+
+Write to a custom path:
+
+```shell
+docscribe init --config config/docscribe.yml
+Overwrite if it already exists:
+```
+
+```shell
+docscribe init --force
+```
+
+Print the template to stdout (no file written):
+
+```shell
+docscribe init --stdout
 ```
 
 ## CI integration
