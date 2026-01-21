@@ -84,7 +84,7 @@ module Docscribe
         # Docscribe configuration file
         #
         # CI check (fails if any file would change):
-        #   bundle exec docscribe --check lib
+        #   bundle exec docscribe --dry lib
         #
         # Auto-fix (rewrites files):
         #   bundle exec docscribe --write lib
