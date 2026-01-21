@@ -6,12 +6,18 @@ require 'docscribe/config'
 
 options = {
   stdin: false,
-  write: false, # rewrite files in place
-  check: false, # dry-run (exit 1 if any file would change)
-  rewrite: false, # replace existing comment blocks when inserting
-  config: nil
+  write: false,
+  check: false,
+  rewrite: false,
+  config: nil,
+  include: [],        # method include patterns
+  exclude: [],        # method exclude patterns
+  include_file: [],   # file include patterns
+  exclude_file: []    # file exclude patterns
 }
-
+def looks_like_file_pattern?(pat)
+  pat.include?('/') || pat.include?('**') || pat.end_with?('.rb')
+end
 if ARGV.first == 'init'
   ARGV.shift
 
@@ -52,14 +58,34 @@ end
 
 parser = OptionParser.new do |opts|
   opts.banner = 'Usage: docscribe [options] [files...]'
-  opts.on('--stdin', 'Read code from STDIN and print with docs inserted') { options[:stdin] = true }
-  opts.on('--write', 'Rewrite files in place') { options[:write] = true }
   opts.on('--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
+  opts.on('--write', 'Rewrite files in place') { options[:write] = true }
   opts.on('--rewrite', 'Replace existing comment blocks above methods') { options[:rewrite] = true }
+  opts.on('--stdin', 'Read code from STDIN and print with docs inserted') { options[:stdin] = true }
   opts.on('--config PATH', 'Path to config YAML (default: docscribe.yml)') { |v| options[:config] = v }
-  opts.on('--include PATTERN', 'Only process methods matching PATTERN (glob or /regex/)') { |v| options[:include] << v }
-  opts.on('--exclude PATTERN', 'Skip methods matching PATTERN (glob or /regex/). Exclude wins.') do |v|
-    options[:exclude] << v
+  # Method filters (glob or /regex/) — but if it looks like a file/path, route to file filters.
+  opts.on('--include PATTERN',
+          'Include methods matching PATTERN; if PATTERN looks like a path, includes files instead') do |v|
+    if looks_like_file_pattern?(v)
+      options[:include_file] << v
+    else
+      options[:include] << v
+    end
+  end
+  opts.on('--exclude PATTERN',
+          'Exclude methods matching PATTERN; if PATTERN looks like a path, excludes files instead') do |v|
+    if looks_like_file_pattern?(v)
+      options[:exclude_file] << v
+    else
+      options[:exclude] << v
+    end
+  end
+  opts.on('--include-file PATTERN', 'Only process files matching PATTERN (glob or /regex/)') do |v|
+    options[:include_file] << v
+  end
+
+  opts.on('--exclude-file PATTERN', 'Skip files matching PATTERN (glob or /regex/). Exclude wins.') do |v|
+    options[:exclude_file] << v
   end
   opts.on('--version', 'Print version and exit') do
     require 'docscribe/version'
@@ -75,6 +101,22 @@ end
 parser.parse!(ARGV)
 
 conf = Docscribe::Config.load(options[:config])
+
+if options[:include]&.any? || options[:exclude]&.any? || options[:include_file]&.any? || options[:exclude_file]&.any?
+  raw = Marshal.load(Marshal.dump(conf.raw)) # deep dup (drop-in, works fine)
+  raw['filter'] ||= {}
+
+  # method filters
+  raw['filter']['include'] = Array(raw['filter']['include']) + options[:include]
+  raw['filter']['exclude'] = Array(raw['filter']['exclude']) + options[:exclude]
+
+  # file filters
+  raw['filter']['files'] ||= {}
+  raw['filter']['files']['include'] = Array(raw['filter']['files']['include']) + options[:include_file]
+  raw['filter']['files']['exclude'] = Array(raw['filter']['files']['exclude']) + options[:exclude_file]
+
+  conf = Docscribe::Config.new(raw)
+end
 
 if options[:include]&.any? || options[:exclude]&.any?
   raw = Marshal.load(Marshal.dump(conf.raw)) # deep dup, simplest drop-in
@@ -161,7 +203,8 @@ paths.each do |path|
     end
 
   else
-    puts out
+    warn 'No arguments provided. Use --check or pass other flags. See --help.'
+    exit 1
   end
 end
 
