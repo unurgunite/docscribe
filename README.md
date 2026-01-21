@@ -27,12 +27,16 @@ source structure and exact control over Ruby semantics.
     * [CLI](#cli)
     * [Inline behavior](#inline-behavior)
         * [Rewrite mode](#rewrite-mode)
+        * [Output markers in CI](#output-markers-in-ci)
+    * [Parser backend (Parser gem vs Prism)](#parser-backend-parser-gem-vs-prism)
     * [Type inference](#type-inference)
     * [Rescue-aware returns and @raise](#rescue-aware-returns-and-raise)
     * [Visibility semantics](#visibility-semantics)
     * [API (library) usage](#api-library-usage)
     * [Configuration](#configuration)
+        * [Filtering](#filtering)
         * [CLI](#cli-1)
+        * [Create a starter config](#create-a-starter-config)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
     * [Limitations](#limitations)
@@ -163,9 +167,14 @@ docscribe [options] [files...]
 Options:
 
 - `--stdin` Read source from STDIN and print with docs inserted.
-- `--write` Rewrite files in place (inline mode).
-- `--check` Dry-run: exit 1 if any file would change (useful in CI).
-- `--rewrite` Replace any existing comment block above methods (see “Rewrite mode” below).
+- `--write` Rewrite files in place.
+- `--check`, `--dry` Dry-run: exit 1 if any file would change (useful in CI).
+- `--refresh` Replace any existing comment block above methods (see "Rewrite mode" below).
+- `--include PATTERN` Only process methods matching PATTERN (glob or /regex/).
+- `--exclude PATTERN` Skip methods matching PATTERN (glob or /regex/). Exclude wins.
+- `--include-file PATTERN` Only process files matching PATTERN (glob or /regex/).
+- `--exclude-file PATTERN` Skip files matching PATTERN (glob or /regex/). Exclude wins.
+- `--config PATH` Path to config YAML (default: `docscribe.yml`).
 - `--version` Print version and exit.
 - `-h`, `--help` Show help.
 
@@ -181,27 +190,30 @@ Examples:
   ```
 - CI check (fail if docs are missing/stale):
   ```shell
-  docscribe --check lib/**/*.rb
+  docscribe --dry lib/**/*.rb
   ```
 - Rewrite existing doc blocks above methods (regenerate headers/tags):
   ```shell
-  docscribe --rewrite --write lib/**/*.rb
+  docscribe --refresh --write lib/**/*.rb
   ```
 - Check a directory (Docscribe expands directories to `**/*.rb`):
-  ```bash
-  docscribe --check lib
+  ```shell
+  docscribe --dry lib
   ```
+
+Tip: `--dry --refresh` is a "refresh dry-run" — it tells you whether regenerating docs would change anything (useful
+after changing config or upgrading Docscribe).
 
 ## Inline behavior
 
 - Inserts comment blocks immediately above def/defs nodes.
 - Skips methods that already have a comment directly above them (does not merge into existing comments) unless you pass
-  `--rewrite`.
+  `--refresh`.
 - Maintains original formatting and constructs; only adds comments.
 
 ### Rewrite mode
 
-- With `--rewrite`, Docscribe will remove the contiguous comment block immediately above a method (plus intervening
+- With `--refresh`, Docscribe will remove the contiguous comment block immediately above a method (plus intervening
   blank
   lines) and replace it with a fresh generated block.
 - This is useful to refresh docs across a codebase after improving inference or rules.
@@ -209,7 +221,7 @@ Examples:
 
 ### Output markers in CI
 
-When using `--check`, Docscribe prints one character per file:
+When using `--dry`, Docscribe prints one character per file:
 
 - `.` = file is up-to-date
 - `F` = file would change (missing/stale docs)
@@ -219,7 +231,7 @@ When using `--write`:
 - `.` = file already OK
 - `C` = file was corrected and rewritten
 
-Docscribe prints a summary at the end and exits non-zero in `--check` mode if any file would change.
+Docscribe prints a summary at the end and exits non-zero in `--dry` mode if any file would change.
 
 ## Parser backend (Parser gem vs Prism)
 
@@ -232,9 +244,9 @@ Docscribe internally works with `parser`-gem-compatible AST nodes and `Parser::S
 
 You can force a backend with an environment variable:
 
-```bash
-DOCSCRIBE_PARSER_BACKEND=parser bundle exec docscribe --check lib
-DOCSCRIBE_PARSER_BACKEND=prism  bundle exec docscribe --check lib
+```shell
+DOCSCRIBE_PARSER_BACKEND=parser bundle exec docscribe --dry lib
+DOCSCRIBE_PARSER_BACKEND=prism  bundle exec docscribe --dry lib
 ```
 
 ## Type inference
@@ -401,10 +413,68 @@ inference:
     - default_message: override the message for that bucket
 - inference.* tunes type inference defaults.
 
+### Filtering
+
+Docscribe can filter both *files* and *methods*.
+
+File filtering (recommended for excluding specs, vendor code, etc.):
+
+```yaml
+filter:
+  files:
+    exclude: [ "spec" ]
+```
+
+Method filtering matches method ids like:
+
+- `MyModule::MyClass#instance_method`
+- `MyModule::MyClass.class_method`
+
+Example:
+
+```yaml
+filter:
+  exclude:
+    - "*#initialize"
+```
+
+CLI overrides are available too:
+
+```shell
+docscribe --dry --exclude '*#initialize' lib
+docscribe --dry --exclude-file 'spec' lib spec
+```
+
 ### CLI
 
-```bash
+```shell
 docscribe --config docscribe.yml --write lib/**/*.rb
+```
+
+### Create a starter config
+
+Create `docscribe.yml` in the current directory:
+
+```shell
+docscribe init
+```
+
+Write to a custom path:
+
+```shell
+docscribe init --config config/docscribe.yml
+```
+
+Overwrite if it already exists:
+
+```shell
+docscribe init --force
+```
+
+Print the template to stdout (no file written):
+
+```shell
+docscribe init --stdout
 ```
 
 ## CI integration
@@ -413,7 +483,7 @@ Fail the build if files would change:
 
 ```yaml
 - name: Check inline docs
-  run: docscribe --check lib/**/*.rb
+  run: docscribe --dry lib/**/*.rb
 ```
 
 Auto-fix before test stage:
@@ -427,7 +497,7 @@ Rewrite mode (regenerate existing method docs):
 
 ```yaml
 - name: Refresh inline docs
-  run: docscribe --rewrite --write lib/**/*.rb
+  run: docscribe --refresh --write lib/**/*.rb
 ```
 
 ## Comparison to YARD's parser
@@ -460,10 +530,10 @@ Docscribe and YARD solve different parts of the documentation problem:
 ## Limitations
 
 - Does not merge into existing comments; in normal mode, a method with a comment directly above it is skipped. Use
-  `--rewrite` to regenerate.
+  `--refresh` to regenerate.
 - Type inference is heuristic. Complex flows and meta-programming will fall back to Object or best-effort types.
 - Ruby 2.7+ supported.
-- Inline rewrite is textual; ensure a clean working tree before using `--write` or `--rewrite`.
+- Inline rewrite is textual; ensure a clean working tree before using `--write` or `--refresh`.
 
 ## Roadmap
 

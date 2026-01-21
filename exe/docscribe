@@ -3,24 +3,93 @@
 
 require 'optparse'
 require 'docscribe/config'
-require 'docscribe/inline_rewriter'
 
 options = {
   stdin: false,
-  write: false, # rewrite files in place
-  check: false, # dry-run (exit 1 if any file would change)
-  rewrite: false, # replace existing comment blocks when inserting
-  config: nil
+  write: false,
+  check: false,
+  rewrite: false,
+  config: nil,
+  include: [], # method include patterns
+  exclude: [], # method exclude patterns
+  include_file: [], # file include patterns
+  exclude_file: [] # file exclude patterns
 }
+
+def looks_like_file_pattern?(pat)
+  pat.include?('/') || pat.include?('**') || pat.end_with?('.rb')
+end
+
+if ARGV.first == 'init'
+  ARGV.shift
+
+  init_options = {
+    config: 'docscribe.yml',
+    force: false,
+    stdout: false
+  }
+
+  OptionParser.new do |opts|
+    opts.banner = 'Usage: docscribe init [options]'
+    opts.on('--config PATH', 'Where to write the config (default: docscribe.yml)') { |v| init_options[:config] = v }
+    opts.on('-f', '--force', 'Overwrite if the file already exists') { init_options[:force] = true }
+    opts.on('--stdout', 'Print config template to STDOUT instead of writing a file') { init_options[:stdout] = true }
+    opts.on('-h', '--help', 'Show this help') do
+      puts opts
+      exit 0
+    end
+  end.parse!(ARGV)
+
+  yaml = Docscribe::Config.default_yaml
+
+  if init_options[:stdout]
+    puts yaml
+    exit 0
+  end
+
+  path = init_options[:config]
+  if File.exist?(path) && !init_options[:force]
+    warn "Config already exists: #{path} (use --force to overwrite)"
+    exit 1
+  end
+
+  File.write(path, yaml)
+  puts "Created: #{path}"
+  exit 0
+end
 
 parser = OptionParser.new do |opts|
   opts.banner = 'Usage: docscribe [options] [files...]'
+  opts.on('-d', '-c', '--dry', '--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
+  opts.on('-w', '--write', 'Rewrite files in place') { options[:write] = true }
+  opts.on('-r', '--refresh', 'Replace existing comment blocks above methods') { options[:refresh] = true }
   opts.on('--stdin', 'Read code from STDIN and print with docs inserted') { options[:stdin] = true }
-  opts.on('--write', 'Rewrite files in place') { options[:write] = true }
-  opts.on('--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
-  opts.on('--rewrite', 'Replace existing comment blocks above methods') { options[:rewrite] = true }
-  opts.on('--config PATH', 'Path to config YAML (default: docscribe.yml)') { |v| options[:config] = v }
-  opts.on('--version', 'Print version and exit') do
+  opts.on('-C', '--config PATH', 'Path to config YAML (default: docscribe.yml)') { |v| options[:config] = v }
+  # Method filters (glob or /regex/) — but if it looks like a file/path, route to file filters.
+  opts.on('--include PATTERN',
+          'Include methods matching PATTERN; if PATTERN looks like a path, includes files instead') do |v|
+    if looks_like_file_pattern?(v)
+      options[:include_file] << v
+    else
+      options[:include] << v
+    end
+  end
+  opts.on('--exclude PATTERN',
+          'Exclude methods matching PATTERN; if PATTERN looks like a path, excludes files instead') do |v|
+    if looks_like_file_pattern?(v)
+      options[:exclude_file] << v
+    else
+      options[:exclude] << v
+    end
+  end
+  opts.on('--include-file PATTERN', 'Only process files matching PATTERN (glob or /regex/)') do |v|
+    options[:include_file] << v
+  end
+
+  opts.on('--exclude-file PATTERN', 'Skip files matching PATTERN (glob or /regex/). Exclude wins.') do |v|
+    options[:exclude_file] << v
+  end
+  opts.on('-v', '--version', 'Print version and exit') do
     require 'docscribe/version'
     puts Docscribe::VERSION
     exit
@@ -34,6 +103,32 @@ end
 parser.parse!(ARGV)
 
 conf = Docscribe::Config.load(options[:config])
+
+if options[:include]&.any? || options[:exclude]&.any? || options[:include_file]&.any? || options[:exclude_file]&.any?
+  raw = Marshal.load(Marshal.dump(conf.raw)) # deep dup (drop-in, works fine)
+  raw['filter'] ||= {}
+
+  # method filters
+  raw['filter']['include'] = Array(raw['filter']['include']) + options[:include]
+  raw['filter']['exclude'] = Array(raw['filter']['exclude']) + options[:exclude]
+
+  # file filters
+  raw['filter']['files'] ||= {}
+  raw['filter']['files']['include'] = Array(raw['filter']['files']['include']) + options[:include_file]
+  raw['filter']['files']['exclude'] = Array(raw['filter']['files']['exclude']) + options[:exclude_file]
+
+  conf = Docscribe::Config.new(raw)
+end
+
+if options[:include]&.any? || options[:exclude]&.any?
+  raw = Marshal.load(Marshal.dump(conf.raw)) # deep dup, simplest drop-in
+  raw['filter'] ||= {}
+  raw['filter']['include'] = Array(raw['filter']['include']) + options[:include]
+  raw['filter']['exclude'] = Array(raw['filter']['exclude']) + options[:exclude]
+  conf = Docscribe::Config.new(raw)
+end
+
+require 'docscribe/inline_rewriter'
 
 def transform(code, replace:, config:)
   Docscribe::InlineRewriter.insert_comments(code, rewrite: replace, config: config)
@@ -61,7 +156,7 @@ end
 
 if options[:stdin]
   code = $stdin.read
-  puts rewrite(code, replace: options[:rewrite])
+  puts rewrite(code, replace: options[:refresh])
   exit 0
 end
 
@@ -73,8 +168,9 @@ end
 $stdout.sync = true
 
 paths = expand_paths(ARGV)
+paths = paths.select { |p| conf.process_file?(p) }
 if paths.empty?
-  warn 'No files found. Pass files or directories (e.g. `docscribe --check lib`).'
+  warn 'No files found. Pass files or directories (e.g. `docscribe --dry lib`).'
   exit 1
 end
 
@@ -86,7 +182,7 @@ fail_paths = []
 
 paths.each do |path|
   src = File.read(path)
-  out = transform(src, replace: options[:rewrite], config: conf)
+  out = transform(src, replace: options[:refresh], config: conf)
 
   if options[:check]
     if out == src
@@ -109,7 +205,8 @@ paths.each do |path|
     end
 
   else
-    puts out
+    warn 'No mode selected. Use --dry, --write, or --stdin. See --help.'
+    exit 1
   end
 end
 

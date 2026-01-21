@@ -4,8 +4,8 @@ require 'docscribe'
 require 'support/header_regex'
 
 module InlineHelper
-  def inline(code)
-    Docscribe::InlineRewriter.insert_comments(code)
+  def inline(code, config: Docscribe::Config.new({}))
+    Docscribe::InlineRewriter.insert_comments(code, config: config)
   end
 end
 

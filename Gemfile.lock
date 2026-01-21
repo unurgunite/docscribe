@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    docscribe (1.1.0)
+    docscribe (1.1.1)
       parser (>= 3.3)
       prism (~> 1.8)
 
@@ -55,7 +55,7 @@ GEM
     rubocop-rspec (3.9.0)
       lint_roller (~> 1.1)
       rubocop (~> 1.81)
-    rubocop-sorted_methods_by_call (1.2.1)
+    rubocop-sorted_methods_by_call (1.2.2)
       lint_roller
       rubocop (>= 1.72.0)
     ruby-progressbar (1.13.0)

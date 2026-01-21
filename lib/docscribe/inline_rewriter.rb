@@ -38,6 +38,14 @@ module Docscribe
       collector.insertions
                .sort_by { |ins| ins.node.loc.expression.begin_pos }
                .reverse_each do |ins|
+                 name = node_name(ins.node)
+                 next unless config.process_method?(
+                   container: ins.container,
+                   scope: ins.scope,
+                   visibility: ins.visibility,
+                   name: name
+                 )
+
                  bol_range = line_start_range(buffer, ins.node)
 
                  if rewrite
@@ -59,20 +67,6 @@ module Docscribe
       rewriter.process
     end
 
-    # +Docscribe::InlineRewriter.line_start_range+ -> Range
-    #
-    # Method documentation.
-    #
-    # @param [Object] buffer Param documentation.
-    # @param [Object] node Param documentation.
-    # @return [Range]
-    def self.line_start_range(buffer, node)
-      start_pos = node.loc.expression.begin_pos
-      src = buffer.source
-      bol = src.rindex("\n", start_pos - 1) || -1
-      Parser::Source::Range.new(buffer, bol + 1, bol + 1)
-    end
-
     # +Docscribe::InlineRewriter.node_name+ -> Object
     #
     # Method documentation.
@@ -86,6 +80,20 @@ module Docscribe
       when :defs
         node.children[1] # method name symbol
       end
+    end
+
+    # +Docscribe::InlineRewriter.line_start_range+ -> Range
+    #
+    # Method documentation.
+    #
+    # @param [Object] buffer Param documentation.
+    # @param [Object] node Param documentation.
+    # @return [Range]
+    def self.line_start_range(buffer, node)
+      start_pos = node.loc.expression.begin_pos
+      src = buffer.source
+      bol = src.rindex("\n", start_pos - 1) || -1
+      Parser::Source::Range.new(buffer, bol + 1, bol + 1)
     end
 
     # +Docscribe::InlineRewriter.comment_block_removal_range+ -> Range

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'yaml'
+require 'pathname'
+require 'psych'
 
 module Docscribe
   class Config
@@ -37,7 +39,11 @@ module Docscribe
         'visibilities' => %w[public protected private],
         'scopes' => %w[instance class],
         'include' => [],
-        'exclude' => []
+        'exclude' => [],
+        'files' => {
+          'include' => [],
+          'exclude' => []
+        }
       }
     }.freeze
 
@@ -45,9 +51,9 @@ module Docscribe
 
     # +Docscribe::Config#initialize+ -> Object
     #
-    # Method documentation.
+    # `raw` is merged into {DEFAULT}. Any missing keys are filled from defaults.
     #
-    # @param [Hash] raw Param documentation.
+    # @param raw [Hash, nil] user configuration loaded from YAML (or overrides)
     # @return [Object]
     def initialize(raw = {})
       @raw = deep_merge(DEFAULT, raw || {})
@@ -55,18 +61,157 @@ module Docscribe
 
     # +Docscribe::Config.load+ -> Object
     #
-    # Method documentation.
+    # Load configuration from YAML.
     #
-    # @param [nil] path Param documentation.
-    # @return [Object]
+    # If `path` is provided and exists, it is used. Otherwise, `docscribe.yml`
+    # in the current working directory is used if present. If no file is found,
+    # defaults are used.
+    #
+    # @param path [String, nil] optional path to a YAML config
+    # @return [Docscribe::Config]
     def self.load(path = nil)
       raw = {}
       if path && File.file?(path)
-        raw = YAML.safe_load_file(path, permitted_classes: [], aliases: true) || {}
+        raw = safe_load_file_compat(path)
       elsif File.file?('docscribe.yml')
-        raw = YAML.safe_load_file('docscribe.yml', permitted_classes: [], aliases: true) || {}
+        raw = safe_load_file_compat('docscribe.yml')
       end
       new(raw)
+    end
+
+    # Safely load YAML from a file across Ruby/Psych versions.
+    #
+    # Ruby 2.7 Psych does not implement `safe_load_file`, so we fall back to
+    # reading the file and calling `safe_load`.
+    #
+    # @param [String] path
+    # @return [Hash]
+    def self.safe_load_file_compat(path)
+      if YAML.respond_to?(:safe_load_file)
+        YAML.safe_load_file(path, permitted_classes: [], permitted_symbols: [], aliases: true) || {}
+      else
+        yaml = File.open(path, 'r:bom|utf-8', &:read)
+        safe_load_compat(yaml, filename: path) || {}
+      end
+    end
+
+    # Safely load YAML from a string across Psych API versions.
+    #
+    # @param [String] yaml
+    # @param [String, nil] filename
+    # @return [Object]
+    def self.safe_load_compat(yaml, filename: nil)
+      Psych.safe_load(
+        yaml,
+        permitted_classes: [],
+        permitted_symbols: [],
+        aliases: true,
+        filename: filename
+      )
+    rescue ArgumentError
+      Psych.safe_load(yaml, [], [], true, filename)
+    end
+
+    # +Docscribe::Config.load+ -> Object
+    #
+    # Default configuration file template used by `docscribe init`.
+    #
+    # @return [String] YAML contents for a starter `docscribe.yml`
+    def self.default_yaml
+      <<~YAML
+        # Docscribe configuration file
+        #
+        # CI check (fails if any file would change):
+        #   bundle exec docscribe --dry lib
+        #
+        # Auto-fix (rewrites files):
+        #   bundle exec docscribe --write lib
+        #
+        # Regenerate docs even if a comment block already exists:
+        #   bundle exec docscribe --refresh --write lib
+        #
+
+        emit:
+          header: true
+          param_tags: true
+          return_tag: true
+          visibility_tags: true
+          raise_tags: true
+          rescue_conditional_returns: true
+
+        doc:
+          default_message: "Method documentation."
+
+        methods:
+          instance:
+            public: {}
+            protected: {}
+            private: {}
+          class:
+            public: {}
+            protected: {}
+            private: {}
+
+        inference:
+          fallback_type: "Object"
+          nil_as_optional: true
+          treat_options_keyword_as_hash: true
+
+        # Filter which methods Docscribe touches.
+        #
+        # Method id format:
+        #   "MyModule::MyClass#instance_method"
+        #   "MyModule::MyClass.class_method"
+        #
+        # Patterns:
+        # - glob strings like "*#initialize", "MyApp::*#*"
+        # - or regex strings like "/^MyApp::.*#(foo|bar)$/"
+        #
+        # Semantics:
+        # - scopes/visibilities act as allow-lists
+        # - exclude always wins
+        # - if include is empty => include everything (subject to allow-lists)
+        filter:
+          visibilities: ["public", "protected", "private"]
+          scopes: ["instance", "class"]
+          include: []
+          exclude: []
+          files:
+            include: []
+            exclude: []
+      YAML
+    end
+
+    # Decide whether a file should be processed based on `filter.files`.
+    #
+    # Patterns are matched against paths relative to the current working directory.
+    # Supported patterns:
+    # - glob strings (e.g. "spec", "spec/**/*.rb")
+    # - regex strings wrapped in slashes (e.g. "/^spec\\//")
+    #
+    # Exclude wins. If include is empty, everything is included.
+    #
+    # @param path [String] file path from CLI expansion
+    # @return [Boolean]
+    def process_file?(path)
+      files = raw.dig('filter', 'files') || {}
+      include_patterns = normalize_file_patterns(files['include'])
+      exclude_patterns = normalize_file_patterns(files['exclude'])
+
+      # Compare against a clean, relative path (best UX for patterns like "spec/**/*.rb")
+      rel = begin
+        Pathname.new(path).relative_path_from(Pathname.pwd).to_s
+      rescue StandardError
+        path
+      end
+
+      # Exclude wins
+      return false if file_matches_any?(exclude_patterns, rel)
+
+      # Empty include means “include everything”
+      return true if include_patterns.empty?
+
+      file_matches_any?(include_patterns, rel)
     end
 
     # +Docscribe::Config#emit_header?+ -> Object
@@ -165,7 +310,106 @@ module Docscribe
       fetch_bool(%w[inference treat_options_keyword_as_hash], true)
     end
 
+    # +Docscribe::Config#process_method?+ -> Boolean
+    #
+    # Decide whether a method should be processed based on `filter` rules.
+    #
+    # Method id format:
+    # - instance: "MyModule::MyClass#method_name"
+    # - class:    "MyModule::MyClass.method_name"
+    #
+    # Exclude wins. If include is empty, everything is included (subject to
+    # scope/visibility allow-lists).
+    #
+    # @param container [String] e.g. "MyApp::User"
+    # @param scope [Symbol] :instance or :class
+    # @param visibility [Symbol] :public, :protected, :private
+    # @param name [String, Symbol] method name
+    # @return [Boolean]
+    def process_method?(container:, scope:, visibility:, name:)
+      return false unless filter_scopes.include?(scope.to_s)
+      return false unless filter_visibilities.include?(visibility.to_s)
+
+      method_id = "#{container}#{scope == :instance ? '#' : '.'}#{name}"
+      # Exclude always wins
+      return false if matches_any?(filter_exclude_patterns, method_id)
+
+      # Empty include means "include everything"
+      inc = filter_include_patterns
+      return true if inc.empty?
+
+      matches_any?(inc, method_id)
+    end
+
     private
+
+    # +Docscribe::Config#normalize_file_patterns+ -> Object
+    #
+    # Method documentation.
+    #
+    # @private
+    # @param [Object] list Param documentation.
+    # @return [Object]
+    def normalize_file_patterns(list)
+      Array(list).compact.map(&:to_s).reject(&:empty?).flat_map do |pat|
+        expand_directory_shorthand(pat)
+      end.uniq
+    end
+
+    # +Docscribe::Config#expand_directory_shorthand+ -> Array
+    #
+    # Method documentation.
+    #
+    # @private
+    # @param [Object] pattern Param documentation.
+    # @return [Array]
+    def expand_directory_shorthand(pattern)
+      pat = pattern.dup
+
+      if pat.end_with?('/')
+        ["#{pat}**/*"]
+      elsif !pat.match?(/[*?\[]|{/) && File.directory?(pat)
+        ["#{pat}/**/*"]
+      else
+        [pat]
+      end
+    end
+
+    # +Docscribe::Config#file_matches_any?+ -> Object
+    #
+    # Method documentation.
+    #
+    # @private
+    # @param [Object] patterns Param documentation.
+    # @param [Object] path Param documentation.
+    # @return [Object]
+    def file_matches_any?(patterns, path)
+      patterns.any? { |pat| file_match_pattern?(pat, path) }
+    end
+
+    # +Docscribe::Config#file_match_pattern?+ -> Object
+    #
+    # Method documentation.
+    #
+    # @private
+    # @param [Object] pattern Param documentation.
+    # @param [Object] path Param documentation.
+    # @return [Object]
+    def file_match_pattern?(pattern, path)
+      # Regex form: "/.../"
+      if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
+        return Regexp.new(pattern[1..-2]).match?(path)
+      end
+
+      # Globstar fix:
+      # If pattern contains "/**/", also try the “zero dirs” variant by collapsing it to "/"
+      patterns_to_try = [pattern]
+      patterns_to_try << pattern.gsub('/**/', '/') if pattern.include?('/**/')
+
+      patterns_to_try.any? do |pat|
+        File.fnmatch?(pat, path, File::FNM_EXTGLOB | File::FNM_PATHNAME)
+      end
+    end
 
     # +Docscribe::Config#method_override_bool+ -> Object
     #
@@ -240,6 +484,69 @@ module Docscribe
           v2
         end
       end
+    end
+
+    # +Docscribe::Config#filter_scopes+ -> Object
+    #
+    # Method documentation.
+    #
+    # @private
+    # @return [Object]
+    def filter_scopes
+      Array(raw.dig('filter', 'scopes') || DEFAULT.dig('filter', 'scopes')).map(&:to_s)
+    end
+
+    # +Docscribe::Config#filter_visibilities+ -> Object
+    #
+    # Method documentation.
+    #
+    # @private
+    # @return [Object]
+    def filter_visibilities
+      Array(raw.dig('filter', 'visibilities') || DEFAULT.dig('filter', 'visibilities')).map(&:to_s)
+    end
+
+    # +Docscribe::Config#matches_any?+ -> Object
+    #
+    # Method documentation.
+    #
+    # @private
+    # @param [Object] patterns Param documentation.
+    # @param [Object] text Param documentation.
+    # @return [Object]
+    def matches_any?(patterns, text)
+      patterns.any? { |pat| match_pattern?(pat, text) }
+    end
+
+    # +Docscribe::Config#match_pattern?+ -> Object
+    #
+    # Method documentation.
+    #
+    # @private
+    # @param [Object] pattern Param documentation.
+    # @param [Object] text Param documentation.
+    # @return [Object]
+    def match_pattern?(pattern, text)
+      # Regex syntax: "/.../"
+      if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
+        Regexp.new(pattern[1..-2]).match?(text)
+      else
+        File.fnmatch?(pattern, text, File::FNM_EXTGLOB)
+      end
+    end
+
+    # +Docscribe::Config#filter_exclude_patterns+ -> Object
+    #
+    # Method documentation.
+    #
+    # @private
+    # @return [Object]
+    def filter_exclude_patterns
+      Array(raw.dig('filter', 'exclude')).map(&:to_s).reject(&:empty?)
+    end
+
+    def filter_include_patterns
+      Array(raw.dig('filter', 'include')).map(&:to_s).reject(&:empty?)
     end
   end
 end

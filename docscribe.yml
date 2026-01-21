@@ -1,0 +1,60 @@
+# Docscribe configuration file
+#
+# CI check (fails if any file would change):
+#   bundle exec docscribe --dry lib
+#
+# Auto-fix (rewrites files):
+#   bundle exec docscribe --write lib
+#
+# Regenerate docs even if a comment block already exists:
+#   bundle exec docscribe --refresh --write lib
+#
+
+emit:
+  header: true
+  param_tags: true
+  return_tag: true
+  visibility_tags: true
+  raise_tags: true
+  rescue_conditional_returns: true
+
+doc:
+  default_message: "Method documentation."
+
+methods:
+  instance:
+    public: {}
+    protected: {}
+    private: {}
+  class:
+    public: {}
+    protected: {}
+    private: {}
+
+inference:
+  fallback_type: "Object"
+  nil_as_optional: true
+  treat_options_keyword_as_hash: true
+
+# Filter which methods Docscribe touches.
+#
+# Method id format:
+#   "MyModule::MyClass#instance_method"
+#   "MyModule::MyClass.class_method"
+#
+# Patterns:
+# - glob strings like "*#initialize", "MyApp::*#*"
+# - or regex strings like "/^MyApp::.*#(foo|bar)$/"
+#
+# Semantics:
+# - scopes/visibilities act as allow-lists
+# - exclude always wins
+# - if include is empty => include everything (subject to allow-lists)
+filter:
+  visibilities: ["public"]
+  scopes: ["instance", "class"]
+  include: []
+  exclude: []
+  files:
+    include: []
+    exclude: ['spec']
