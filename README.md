@@ -18,8 +18,19 @@ returns), and respects Ruby visibility semantics — without using YARD to parse
 - Optional rewrite mode for regenerating existing method docs.
 - Ruby 3.4+ syntax supported using Prism translation (see "Parser backend" below).
 
-Why not YARD? We started with YARD's parser, but switched to an AST-based in-place rewriter for maximum preservation of
-source structure and exact control over Ruby semantics.
+Common workflows:
+
+- Generate docs (write changes):
+  `docscribe --write lib`
+
+- Check in CI (no changes, fails if docs would change):
+  `docscribe --dry lib`
+
+- Refresh/rebaseline docs (rewrite existing doc blocks):
+  `docscribe --write --refresh lib`
+
+- Use RBS signatures when available:
+  `docscribe --rbs --write lib`
 
 * [Docscribe](#docscribe)
     * [Installation](#installation)

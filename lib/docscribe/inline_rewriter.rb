@@ -175,16 +175,20 @@ module Docscribe
 
       method_symbol = scope == :instance ? '#' : '.'
       container = insertion.container
-
+      rbs_sig = config.rbs_provider&.signature_for(
+        container: container,
+        scope: scope,
+        name: name
+      )
       # Params
-      params_block = config.emit_param_tags? ? build_params_block(node, indent) : nil
+      params_block = build_params_block(node, indent, rbs_sig: rbs_sig) if config.emit_param_tags?
 
       # Raises (rescue and/or raise calls)
       raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
 
       # Returns: normal + conditional rescue returns
       spec = Docscribe::Infer.returns_spec_from_node(node)
-      normal_type = spec[:normal]
+      normal_type = rbs_sig&.return_type || spec[:normal]
       rescue_specs = spec[:rescues]
 
       lines = []
@@ -229,55 +233,67 @@ module Docscribe
     # @param [Object] node Param documentation.
     # @param [Object] indent Param documentation.
     # @return [Object?]
-    def self.build_params_block(node, indent)
+    def self.build_params_block(node, indent, rbs_sig: nil)
       args =
         case node.type
         when :def then node.children[1]
-        when :defs then node.children[2] # FIX: args is children[2], not [3]
+        when :defs then node.children[2] # args is children[2]
         end
       return nil unless args
 
       params = []
+
       (args.children || []).each do |a|
         case a.type
         when :arg
-          name = a.children.first.to_s
-          ty = Infer.infer_param_type(name, nil)
-          params << "#{indent}# @param [#{ty}] #{name} Param documentation."
+          pname = a.children.first.to_s
+          ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type(pname, nil)
+          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+
         when :optarg
-          name, default = *a
-          ty = Infer.infer_param_type(name.to_s, default&.loc&.expression&.source)
-          params << "#{indent}# @param [#{ty}] #{name} Param documentation."
+          pname, default = *a
+          pname = pname.to_s
+          default_src = default&.loc&.expression&.source
+          ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type(pname, default_src)
+          params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+
         when :kwarg
-          name = "#{a.children.first}:"
-          ty = Infer.infer_param_type(name, nil)
-          pname = name.sub(/:$/, '')
+          pname = a.children.first.to_s
+          ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type("#{pname}:", nil)
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+
         when :kwoptarg
-          name, default = *a
-          name = "#{name}:"
-          ty = Infer.infer_param_type(name, default&.loc&.expression&.source)
-          pname = name.sub(/:$/, '')
+          pname, default = *a
+          pname = pname.to_s
+          default_src = default&.loc&.expression&.source
+          ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type("#{pname}:", default_src)
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+
         when :restarg
-          name = "*#{a.children.first}"
-          ty = Infer.infer_param_type(name, nil)
-          pname = a.children.first.to_s
+          pname = (a.children.first || 'args').to_s
+          ty =
+            if rbs_sig&.rest_positional&.element_type
+              "Array<#{rbs_sig.rest_positional.element_type}>"
+            else
+              Infer.infer_param_type("*#{pname}", nil)
+            end
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+
         when :kwrestarg
-          name = "**#{a.children.first || 'kwargs'}"
-          ty = Infer.infer_param_type(name, nil)
           pname = (a.children.first || 'kwargs').to_s
+          ty = rbs_sig&.rest_keywords&.type || Infer.infer_param_type("**#{pname}", nil)
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+
         when :blockarg
-          name = "&#{a.children.first}"
-          ty = Infer.infer_param_type(name, nil)
-          pname = a.children.first.to_s
+          pname = (a.children.first || 'block').to_s
+          ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type("&#{pname}", nil)
           params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+
         when :forward_arg
           # Ruby 3 '...' forwarding; skip
         end
       end
+
       params.empty? ? nil : params
     end
 

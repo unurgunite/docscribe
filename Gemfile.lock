@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    docscribe (1.1.1)
+    docscribe (1.2.0)
       parser (>= 3.3)
       prism (~> 1.8)
 
@@ -13,6 +13,7 @@ GEM
     json (2.18.0)
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
+    logger (1.7.0)
     parallel (1.27.0)
     parser (3.3.10.1)
       ast (~> 2.4.1)
@@ -21,6 +22,9 @@ GEM
     racc (1.8.1)
     rainbow (3.1.1)
     rake (13.3.1)
+    rbs (3.10.3)
+      logger
+      tsort
     regexp_parser (2.11.3)
     rspec (3.13.2)
       rspec-core (~> 3.13.0)
@@ -59,6 +63,7 @@ GEM
       lint_roller
       rubocop (>= 1.72.0)
     ruby-progressbar (1.13.0)
+    tsort (0.2.0)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.2.0)
@@ -71,6 +76,7 @@ PLATFORMS
 DEPENDENCIES
   docscribe!
   rake
+  rbs
   rspec (~> 3.0)
   rubocop
   rubocop-rake
