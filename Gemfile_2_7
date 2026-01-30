@@ -2,7 +2,7 @@
 
 source 'https://rubygems.org'
 
-gem 'docscribe', path: '..'
+gemspec
 
 if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new('3.0')
   group :rbs do
