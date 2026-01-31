@@ -1,306 +1,112 @@
 # frozen_string_literal: true
 
+# NOTE: parser/base references Racc::Parser in some environments, so require runtime first.
 require 'racc/parser'
 require 'ast'
 require 'parser/ast/node'
 require 'parser/source/buffer'
 require 'parser/base'
+
 require 'docscribe/parsing'
 
+require_relative 'infer/constants'
+require_relative 'infer/ast_walk'
+require_relative 'infer/names'
+require_relative 'infer/literals'
+require_relative 'infer/params'
+require_relative 'infer/returns'
+require_relative 'infer/raises'
+
 module Docscribe
+  # Best-effort inference utilities used to generate YARD tags.
+  #
+  # This module is intentionally heuristic:
+  # - It aims to be correct for common Ruby patterns and safe for unknown cases.
+  # - When inference is uncertain, it returns "Object".
+  #
+  # RBS-based typing (when enabled) is applied in the doc builder, not here.
   module Infer
     class << self
-      # +Docscribe::Infer.infer_raises_from_node+ -> Object
+      # Infer exception class names that the method may raise.
       #
-      # Method documentation.
-      #
-      # @param [Object] node Param documentation.
-      # @return [Object]
+      # @param node [Parser::AST::Node] a method node (`:def` or `:defs`)
+      # @return [Array<String>] unique exception class names
       def infer_raises_from_node(node)
-        raises = []
-        walk = lambda do |n|
-          return unless n.is_a?(Parser::AST::Node)
-
-          case n.type
-          when :rescue
-            n.children.each { |ch| walk.call(ch) }
-          when :resbody
-            exc_list = n.children[0]
-            if exc_list.nil?
-              raises << 'StandardError'
-            elsif exc_list.type == :array
-              exc_list.children.each { |e| (c = const_full_name(e)) && (raises << c) }
-            else
-              (c = const_full_name(exc_list)) && (raises << c)
-            end
-            n.children.each { |ch| walk.call(ch) if ch.is_a?(Parser::AST::Node) }
-          when :send
-            recv, meth, *args = *n
-            if recv.nil? && %i[raise fail].include?(meth)
-              if args.empty?
-                raises << 'StandardError'
-              else
-                c = const_full_name(args[0])
-                raises << (c || 'StandardError')
-              end
-            end
-            n.children.each { |ch| walk.call(ch) if ch.is_a?(Parser::AST::Node) }
-          else
-            n.children.each { |ch| walk.call(ch) if ch.is_a?(Parser::AST::Node) }
-          end
-        end
-        walk.call(node)
-        raises.uniq
+        Raises.infer_raises_from_node(node)
       end
 
-      # +Docscribe::Infer.infer_param_type+ -> Object
+      # Infer parameter type from name and default value string.
       #
-      # Method documentation.
-      #
-      # @param [Object] name Param documentation.
-      # @param [Object] default_str Param documentation.
-      # @return [Object]
+      # @param name [String]
+      # @param default_str [String, nil]
+      # @return [String]
       def infer_param_type(name, default_str)
-        # splats and kwargs are driven by name shape
-        return 'Array' if name.start_with?('*') && !name.start_with?('**')
-        return 'Hash'  if name.start_with?('**')
-        return 'Proc'  if name.start_with?('&')
-
-        # keyword arg e.g. "verbose:" — default_str might be nil or something
-        is_kw = name.end_with?(':')
-
-        node = parse_expr(default_str)
-        ty = type_from_literal(node)
-
-        # If kw with no default, still show Object (or Hash for options:)
-        if is_kw && default_str.nil?
-          return (name == 'options:' ? 'Hash' : 'Object')
-        end
-
-        # If param named options and default is {}, call it Hash
-        return 'Hash' if name == 'options:' && (default_str == '{}' || ty == 'Hash')
-
-        ty
+        Params.infer_param_type(name, default_str)
       end
 
-      # +Docscribe::Infer.parse_expr+ -> Object
+      # Parse a Ruby expression from a string into an AST node.
       #
-      # Method documentation.
-      #
-      # @param [Object] src Param documentation.
-      # @raise [Parser::SyntaxError]
-      # @return [Object]
-      # @return [nil] if Parser::SyntaxError
+      # @param src [String, nil]
+      # @return [Parser::AST::Node, nil]
       def parse_expr(src)
-        return nil if src.nil? || src.strip.empty?
-
-        buffer = Parser::Source::Buffer.new('(param)')
-        buffer.source = src
-        Docscribe::Parsing.parse_buffer(buffer)
-      rescue Parser::SyntaxError
-        nil
+        Params.parse_expr(src)
       end
 
-      # +Docscribe::Infer.infer_return_type+ -> Object
+      # Infer return type of method from its source text.
       #
-      # Method documentation.
-      #
-      # @param [Object] method_source Param documentation.
-      # @raise [Parser::SyntaxError]
-      # @return [Object]
-      # @return [String] if Parser::SyntaxError
+      # @param method_source [String, nil]
+      # @return [String]
       def infer_return_type(method_source)
-        return 'Object' if method_source.nil? || method_source.strip.empty?
-
-        buffer = Parser::Source::Buffer.new('(method)')
-        buffer.source = method_source
-        root = Docscribe::Parsing.parse_buffer(buffer)
-        return 'Object' unless root && %i[def defs].include?(root.type)
-
-        body = root.children.last # method body node
-        ty = last_expr_type(body)
-        ty || 'Object'
-      rescue Parser::SyntaxError
-        'Object'
+        Returns.infer_return_type(method_source)
       end
 
-      # +Docscribe::Infer.infer_return_type_from_node+ -> Object
+      # Infer return type from an already-parsed method node.
       #
-      # Method documentation.
-      #
-      # @param [Object] node Param documentation.
-      # @return [Object]
+      # @param node [Parser::AST::Node] `:def` or `:defs`
+      # @return [String]
       def infer_return_type_from_node(node)
-        body =
-          case node.type
-          when :def then node.children[2] # [name, args, body]
-          when :defs then node.children[3] # [recv, name, args, body]
-          end
-        return 'Object' unless body
-
-        ty = last_expr_type(body)
-        ty || 'Object'
+        Returns.infer_return_type_from_node(node)
       end
 
-      # +Docscribe::Infer.returns_spec_from_node+ -> Object
+      # Compute normal return type and rescue-conditional return types for a method.
       #
-      # Method documentation.
-      #
-      # @param [Object] node Param documentation.
-      # @return [Object]
+      # @param node [Parser::AST::Node]
+      # @return [Hash{Symbol=>Object}] `{ normal: String, rescues: Array<[Array<String>, String]> }`
       def returns_spec_from_node(node)
-        # Returns a Hash like: { normal: 'Type', rescues: [[['Foo','Bar'], 'Type'], ...] }
-        body =
-          case node.type
-          when :def then node.children[2] # [name, args, body]
-          when :defs then node.children[3] # [recv, name, args, body]
-          end
-
-        spec = { normal: 'Object', rescues: [] }
-        return spec unless body
-
-        if body.type == :rescue
-          # child[0] is the main body (before rescue)
-          main_body = body.children[0]
-          spec[:normal] = last_expr_type(main_body) || 'Object'
-
-          # :resbody nodes hold exception list, optional var, and rescue body
-          body.children.each do |ch|
-            next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody
-
-            exc_list, _asgn, rescue_body = *ch
-
-            exc_names = []
-            if exc_list.nil?
-              exc_names << 'StandardError'
-            elsif exc_list.type == :array
-              exc_list.children.each do |e|
-                name = const_full_name(e)
-                exc_names << (name || 'StandardError')
-              end
-            else
-              name = const_full_name(exc_list)
-              exc_names << (name || 'StandardError')
-            end
-
-            rtype = last_expr_type(rescue_body) || 'Object'
-            spec[:rescues] << [exc_names, rtype]
-          end
-        else
-          spec[:normal] = last_expr_type(body) || 'Object'
-        end
-
-        spec
+        Returns.returns_spec_from_node(node)
       end
 
-      # +Docscribe::Infer.last_expr_type+ -> Object
+      # Infer the type of the "last expression" of a Ruby AST node.
       #
-      # Method documentation.
-      #
-      # @param [Object] node Param documentation.
-      # @return [Object]
+      # @param node [Parser::AST::Node, nil]
+      # @return [String, nil]
       def last_expr_type(node)
-        return nil unless node
-
-        case node.type
-        when :begin
-          last = node.children.last
-          last_expr_type(last)
-        when :if
-          t = last_expr_type(node.children[1])
-          e = last_expr_type(node.children[2])
-          unify_types(t, e)
-        when :case
-          # check whens and else
-          branches = node.children[1..].compact.flat_map do |child|
-            if child && child.type == :when
-              last_expr_type(child.children.last)
-            else
-              last_expr_type(child)
-            end
-          end
-          branches.compact!
-          branches.empty? ? 'Object' : branches.reduce { |a, b| unify_types(a, b) }
-        when :return
-          type_from_literal(node.children.first)
-        else
-          type_from_literal(node)
-        end
+        Returns.last_expr_type(node)
       end
 
-      # +Docscribe::Infer.const_full_name+ -> Object
+      # Convert a constant-like AST node into a fully qualified name.
       #
-      # Method documentation.
-      #
-      # @param [Object] n Param documentation.
-      # @return [Object]
+      # @param n [Parser::AST::Node, nil]
+      # @return [String, nil]
       def const_full_name(n)
-        return nil unless n.is_a?(Parser::AST::Node)
-
-        case n.type
-        when :const
-          scope, name = *n
-          scope_name = const_full_name(scope)
-          if scope_name && !scope_name.empty?
-            "#{scope_name}::#{name}"
-          elsif scope_name == '' # leading ::
-            "::#{name}"
-          else
-            name.to_s
-          end
-        when :cbase
-          '' # represents leading :: scope
-        end
+        Names.const_full_name(n)
       end
 
-      # +Docscribe::Infer.type_from_literal+ -> Object
+      # Infer a type name from a literal node.
       #
-      # Method documentation.
-      #
-      # @param [Object] node Param documentation.
-      # @return [Object]
+      # @param node [Parser::AST::Node, nil]
+      # @return [String]
       def type_from_literal(node)
-        return 'Object' unless node
-
-        case node.type
-        when :int then 'Integer'
-        when :float then 'Float'
-        when :str, :dstr then 'String'
-        when :sym then 'Symbol'
-        when :true, :false then 'Boolean' # rubocop:disable Lint/BooleanSymbol
-        when :nil then 'nil'
-        when :array then 'Array'
-        when :hash then 'Hash'
-        when :regexp then 'Regexp'
-        when :const
-          node.children.last.to_s
-        when :send
-          recv, meth, = node.children
-          if meth == :new && recv && recv.type == :const
-            recv.children.last.to_s
-          else
-            'Object'
-          end
-        else
-          'Object'
-        end
+        Literals.type_from_literal(node)
       end
 
-      # +Docscribe::Infer.unify_types+ -> String
+      # Unify two inferred types conservatively.
       #
-      # Method documentation.
-      #
-      # @param [Object] a Param documentation.
-      # @param [Object] b Param documentation.
+      # @param a [String, nil]
+      # @param b [String, nil]
       # @return [String]
       def unify_types(a, b)
-        a ||= 'Object'
-        b ||= 'Object'
-        return a if a == b
-        # nil-union => Optional
-        return "#{a == 'nil' ? b : a}?" if a == 'nil' || b == 'nil'
-
-        'Object'
+        Returns.unify_types(a, b)
       end
     end
   end

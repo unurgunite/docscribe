@@ -223,7 +223,7 @@ Examples:
   docscribe --dry lib
   ```
 
-Tip: `--dry --refresh` is a “refresh dry-run” — it tells you whether regenerating docs would change anything.
+Tip: `--dry --refresh` is a "refresh dry-run" — it tells you whether regenerating docs would change anything.
 
 ## Inline behavior
 
