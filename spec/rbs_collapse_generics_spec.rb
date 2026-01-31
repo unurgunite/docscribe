@@ -48,7 +48,7 @@ RSpec.describe 'RBS collapse_generics option' do
   end
 
   it 'keeps generics when rbs.collapse_generics is false' do
-    out = inline_with_rbs(code: code, rbs: rbs, collapse_generics: false).first
+    out = inline_with_rbs(code: code, rbs: rbs, collapse_generics: false)
 
     # Prove RBS is actually used (otherwise inference would be String)
     expect(out).to include('# @return [Integer]')
