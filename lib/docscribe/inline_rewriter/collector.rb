@@ -4,7 +4,7 @@ require 'parser/ast/processor'
 
 module Docscribe
   module InlineRewriter
-    # AST walker that collects “doc insertion targets” for methods.
+    # AST walker that collects "doc insertion targets" for methods.
     #
     # This is where Docscribe models Ruby scoping/visibility semantics, so the doc generator can:
     # - know whether a method is an instance method or class method (`#` vs `.`)

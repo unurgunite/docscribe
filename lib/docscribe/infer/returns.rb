@@ -6,7 +6,7 @@ module Docscribe
     module Returns
       module_function
 
-      # Infer return type of a method from its source text.
+      # Infer return type of method from its source text.
       #
       # @param method_source [String, nil]
       # @return [String]
@@ -43,7 +43,7 @@ module Docscribe
       # Compute normal return type and rescue-conditional return types for a method.
       #
       # @param node [Parser::AST::Node]
-      # @return [Hash{Symbol=>Object}] `{ normal: String, rescues: Array<[Array<String>, String]> }`
+      # @return [Hash{Symbol=>Object}] +{ normal: String, rescues: Array<[Array<String>, String]> }+
       def returns_spec_from_node(node)
         body =
           case node.type
@@ -73,7 +73,7 @@ module Docscribe
         spec
       end
 
-      # Infer the type of the “last expression” of a Ruby AST node.
+      # Infer the type of the "last expression" of a Ruby AST node.
       #
       # @param node [Parser::AST::Node, nil]
       # @return [String, nil]

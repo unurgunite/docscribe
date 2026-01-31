@@ -76,7 +76,7 @@ module Docscribe
         Returns.returns_spec_from_node(node)
       end
 
-      # Infer the type of the “last expression” of a Ruby AST node.
+      # Infer the type of the "last expression" of a Ruby AST node.
       #
       # @param node [Parser::AST::Node, nil]
       # @return [String, nil]

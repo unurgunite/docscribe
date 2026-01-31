@@ -15,7 +15,7 @@ require 'docscribe/inline_rewriter/collector'
 module Docscribe
   # Rewrites Ruby source to insert YARD-style doc comments above method definitions.
   #
-  # This is the “top-level” API most callers use:
+  # This is the "top-level" API most callers use:
   #
   # - CLI mode uses it to process files and print `.` / `F` / `C`.
   # - Library users can call {Docscribe::InlineRewriter.insert_comments}.
