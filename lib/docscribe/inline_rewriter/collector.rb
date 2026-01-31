@@ -344,7 +344,8 @@ module Docscribe
           next unless ins.node.children[0] == name_sym
 
           ins.scope = :class
-          # If the instance method was private, keep module docs user-facing.
+          # If `def foo` was previously treated as a private instance method (because it was under private),
+          # but we later promote it to a module/class-style doc (M.foo), then don't mark it @private—keep it user-facing
           ins.visibility = :public if ins.visibility == :private
         end
       end
