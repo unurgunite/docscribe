@@ -8,12 +8,14 @@ options = {
   stdin: false,
   write: false,
   check: false,
-  rewrite: false,
+  rewrite: false, # set by --refresh
   config: nil,
   include: [], # method include patterns
   exclude: [], # method exclude patterns
   include_file: [], # file include patterns
-  exclude_file: [] # file exclude patterns
+  exclude_file: [], # file exclude patterns
+  rbs: false,
+  sig_dirs: []
 }
 
 def looks_like_file_pattern?(pat)
@@ -62,20 +64,25 @@ parser = OptionParser.new do |opts|
   opts.banner = 'Usage: docscribe [options] [files...]'
   opts.on('-d', '-c', '--dry', '--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
   opts.on('-w', '--write', 'Rewrite files in place') { options[:write] = true }
-  opts.on('-r', '--refresh', 'Replace existing comment blocks above methods') { options[:refresh] = true }
+  opts.on('-r', '--refresh', 'Regenerate docs: replace existing doc blocks above methods') { options[:rewrite] = true }
   opts.on('--stdin', 'Read code from STDIN and print with docs inserted') { options[:stdin] = true }
   opts.on('-C', '--config PATH', 'Path to config YAML (default: docscribe.yml)') { |v| options[:config] = v }
+  opts.on('--rbs', 'Use RBS signatures for @param/@return when available (falls back to inference)') do
+    options[:rbs] = true
+  end
+  opts.on('--sig-dir DIR', 'Add an RBS signature directory (repeatable). Implies --rbs.') do |v|
+    options[:rbs] = true
+    options[:sig_dirs] << v
+  end
   # Method filters (glob or /regex/) — but if it looks like a file/path, route to file filters.
-  opts.on('--include PATTERN',
-          'Include methods matching PATTERN; if PATTERN looks like a path, includes files instead') do |v|
+  opts.on('--include PATTERN', 'Include PATTERN (method id or file path; glob or /regex/)') do |v|
     if looks_like_file_pattern?(v)
       options[:include_file] << v
     else
       options[:include] << v
     end
   end
-  opts.on('--exclude PATTERN',
-          'Exclude methods matching PATTERN; if PATTERN looks like a path, excludes files instead') do |v|
+  opts.on('--exclude PATTERN', 'Exclude PATTERN (method id or file path; glob or /regex/). Exclude wins.') do |v|
     if looks_like_file_pattern?(v)
       options[:exclude_file] << v
     else
@@ -85,7 +92,6 @@ parser = OptionParser.new do |opts|
   opts.on('--include-file PATTERN', 'Only process files matching PATTERN (glob or /regex/)') do |v|
     options[:include_file] << v
   end
-
   opts.on('--exclude-file PATTERN', 'Skip files matching PATTERN (glob or /regex/). Exclude wins.') do |v|
     options[:exclude_file] << v
   end
@@ -104,27 +110,24 @@ parser.parse!(ARGV)
 
 conf = Docscribe::Config.load(options[:config])
 
-if options[:include]&.any? || options[:exclude]&.any? || options[:include_file]&.any? || options[:exclude_file]&.any?
-  raw = Marshal.load(Marshal.dump(conf.raw)) # deep dup (drop-in, works fine)
+if options[:include].any? || options[:exclude].any? ||
+   options[:include_file].any? || options[:exclude_file].any? || options[:rbs]
+  raw = Marshal.load(Marshal.dump(conf.raw))
   raw['filter'] ||= {}
 
-  # method filters
   raw['filter']['include'] = Array(raw['filter']['include']) + options[:include]
   raw['filter']['exclude'] = Array(raw['filter']['exclude']) + options[:exclude]
 
-  # file filters
   raw['filter']['files'] ||= {}
   raw['filter']['files']['include'] = Array(raw['filter']['files']['include']) + options[:include_file]
   raw['filter']['files']['exclude'] = Array(raw['filter']['files']['exclude']) + options[:exclude_file]
 
-  conf = Docscribe::Config.new(raw)
-end
+  if options[:rbs]
+    raw['rbs'] ||= {}
+    raw['rbs']['enabled'] = true
+    raw['rbs']['sig_dirs'] = Array(raw['rbs']['sig_dirs']) + options[:sig_dirs] if options[:sig_dirs].any?
+  end
 
-if options[:include]&.any? || options[:exclude]&.any?
-  raw = Marshal.load(Marshal.dump(conf.raw)) # deep dup, simplest drop-in
-  raw['filter'] ||= {}
-  raw['filter']['include'] = Array(raw['filter']['include']) + options[:include]
-  raw['filter']['exclude'] = Array(raw['filter']['exclude']) + options[:exclude]
   conf = Docscribe::Config.new(raw)
 end
 
@@ -156,7 +159,7 @@ end
 
 if options[:stdin]
   code = $stdin.read
-  puts rewrite(code, replace: options[:refresh])
+  puts transform(code, replace: options[:rewrite], config: conf)
   exit 0
 end
 
@@ -182,7 +185,7 @@ fail_paths = []
 
 paths.each do |path|
   src = File.read(path)
-  out = transform(src, replace: options[:refresh], config: conf)
+  out = transform(src, replace: options[:rewrite], config: conf)
 
   if options[:check]
     if out == src

@@ -11,3 +11,6 @@ AllCops:
 
 Layout/LineLength:
   Max: 120
+
+Style/DoubleNegation:
+  Enabled: false

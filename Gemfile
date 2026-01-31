@@ -2,5 +2,10 @@
 
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in docscribe.gemspec
 gemspec
+
+if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new('3.0')
+  group :rbs do
+    gem 'rbs', require: false
+  end
+end
