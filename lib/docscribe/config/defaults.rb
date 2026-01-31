@@ -46,7 +46,8 @@ module Docscribe
         'enabled' => false,
         'sig_dirs' => ['sig'],
         'collapse_generics' => false
-      }
+      },
+      'attributes' => false
     }.freeze
   end
 end
