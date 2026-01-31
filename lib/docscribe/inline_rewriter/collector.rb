@@ -28,6 +28,24 @@ module Docscribe
       #   @return [String] container name, e.g. "MyModule::MyClass"
       Insertion = Struct.new(:node, :scope, :visibility, :container)
 
+      # One attribute macro call that Docscribe intends to document.
+      #
+      # This corresponds to an `attr_reader`, `attr_writer`, or `attr_accessor` call in Ruby source.
+      # We record it separately from method insertions because these macros generate methods that
+      # do not appear as `def`/`defs` nodes in the AST.
+      #
+      # @!attribute node
+      #   @return [Parser::AST::Node] the `:send` node (e.g. `attr_reader :name`)
+      # @!attribute scope
+      #   @return [Symbol] :instance or :class (class when inside `class << self`)
+      # @!attribute visibility
+      #   @return [Symbol] :public, :protected, or :private (based on current visibility context)
+      # @!attribute container
+      #   @return [String] container name, e.g. "MyModule::MyClass"
+      # @!attribute access
+      #   @return [Symbol] :r, :w, or :rw (reader/writer/accessor)
+      # @!attribute names
+      #   @return [Array<Symbol>] attribute names (symbols) extracted from the macro arguments
       AttrInsertion = Struct.new(:node, :scope, :visibility, :container, :access, :names)
 
       # Tracks Ruby visibility state while walking a class/module body.

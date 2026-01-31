@@ -19,6 +19,7 @@ and respects Ruby visibility semantics — without using YARD to parse.
 - Optional refresh mode (`--refresh`) for regenerating existing method docs.
 - Ruby 3.4+ syntax supported using Prism translation (see "Parser backend" below).
 - Optional RBS integration (`--rbs`, `--sig-dir`) for more accurate `@param`/`@return` types.
+- Optional `attr_reader`/`attr_writer`/`attr_accessor` documentation via YARD `@!attribute` (see Configuration).
 
 Common workflows:
 
@@ -87,7 +88,6 @@ Requires Ruby 2.7+.
 Given code:
 
 ```ruby
-
 class Demo
   def foo(a, options: {})
     42
@@ -120,7 +120,6 @@ echo "...code above..." | docscribe --stdin
 Output:
 
 ```ruby
-
 class Demo
   # +Demo#foo+ -> Integer
   #
@@ -347,10 +346,10 @@ Inline tags:
 - `@protected` is added similarly for protected methods.
 
 > [!IMPORTANT]
-> - `module_function`: Docscribe documents methods affected by `module_function` as module methods (`M.foo`) rather than
-    instance methods (`M#foo`), because that is usually the callable/public API. If a method was previously private as
-    an instance method, Docscribe will avoid marking the generated docs as `@private` after it is promoted to a module
-    method.
+> `module_function`: Docscribe documents methods affected by `module_function` as module methods (`M.foo`) rather than
+> instance methods (`M#foo`), because that is usually the callable/public API. If a method was previously private as
+> an instance method, Docscribe will avoid marking the generated docs as `@private` after it is promoted to a module
+> method.
 
 ```ruby
 module M
@@ -417,6 +416,52 @@ CLI overrides are available too:
 docscribe --dry --exclude '*#initialize' lib
 docscribe --dry --exclude-file 'spec' lib spec
 ```
+
+### Attribute macros (`attr_*`)
+
+Docscribe can generate YARD `@!attribute` directives above `attr_reader`, `attr_writer`, and `attr_accessor`.
+
+Enable it:
+
+```yaml
+emit:
+  attributes: true
+```
+
+Example:
+
+```ruby
+class User
+  attr_reader :name
+
+  private
+
+  attr_accessor :token
+end
+```
+
+Becomes:
+
+```ruby
+class User
+  # @!attribute [r] name
+  #   @return [Object]
+  attr_reader :name
+
+  private
+
+  # @!attribute [rw] token
+  # @private
+  #   @return [Object]
+  #   @param value [Object]
+  attr_accessor :token
+end
+```
+
+> [!NOTE]
+> - Attribute docs are inserted above the attr_* call, not above generated methods (since they don’t exist as def
+    nodes).
+> - If RBS is enabled, Docscribe will try to use the RBS return type of the reader method as the attribute type.
 
 ### Create a starter config
 

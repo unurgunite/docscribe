@@ -41,6 +41,8 @@ module Docscribe
           #   # @return [String] if FooError, BarError
           rescue_conditional_returns: true
 
+          # Generate @!attribute docs for attr_reader/attr_writer/attr_accessor
+          attributes: false
         doc:
           # Default text inserted into each generated doc block.
           default_message: "Method documentation."
