@@ -47,7 +47,8 @@ module Docscribe
       },
       'rbs' => {
         'enabled' => false,
-        'sig_dirs' => ['sig']
+        'sig_dirs' => ['sig'],
+        'collapse_generics' => false
       }
     }.freeze
 
@@ -187,6 +188,7 @@ module Docscribe
         rbs:
           enabled: false
           sig_dirs: ["sig"]
+          collapse_generics: false
       YAML
     end
 
@@ -357,7 +359,10 @@ module Docscribe
 
       @rbs_provider ||= begin
         require 'docscribe/types/rbs_provider'
-        Docscribe::Types::RBSProvider.new(sig_dirs: rbs_sig_dirs)
+        Docscribe::Types::RBSProvider.new(
+          sig_dirs: rbs_sig_dirs,
+          collapse_generics: rbs_collapse_generics?
+        )
       rescue LoadError
         nil
       end
@@ -375,6 +380,15 @@ module Docscribe
     # @return [Array<String>]
     def rbs_sig_dirs
       Array(raw.dig('rbs', 'sig_dirs') || DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s)
+    end
+
+    # +Docscribe::Config#rbs_collapse_generics?+ -> Object
+    #
+    # Method documentation.
+    #
+    # @return [Object]
+    def rbs_collapse_generics?
+      fetch_bool(%w[rbs collapse_generics], false)
     end
 
     private

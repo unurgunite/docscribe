@@ -285,9 +285,15 @@ Config:
 rbs:
   enabled: true
   sig_dirs: [ "sig" ]
+  collapse_generics: false
 ```
 
 > [!NOTE]
+> If `collapse_generics` is set to `true`, Docscribe will simplify generic types from RBS:
+> - `Hash<Symbol, Object>` -> `Hash`
+> - `Array<String>` -> `Array`
+
+> [!IMPORTANT]
 > If you run Docscribe via Bundler (`bundle exec docscribe`), you may need to add `gem "rbs"` to your project's
 > Gemfile (or use a Gemfile that includes it) so `require "rbs"` works reliably. If RBS can't be loaded, Docscribe falls
 > back to inference.

@@ -16,10 +16,11 @@ module Docscribe
       #
       # @param [Object] sig_dirs Param documentation.
       # @return [Object]
-      def initialize(sig_dirs:)
+      def initialize(sig_dirs:, collapse_generics: false)
         require 'rbs'
 
         @sig_dirs = Array(sig_dirs).map(&:to_s)
+        @collapse_generics = !!collapse_generics
         @env = nil
         @builder = nil
       end
@@ -31,8 +32,11 @@ module Docscribe
       # @param [Object] container Param documentation.
       # @param [Object] scope Param documentation.
       # @param [Object] name Param documentation.
+      # @raise [RBS::ParsingError]
+      # @raise [RBS::DefinitionBuilder::UnknownTypeNameError]
       # @raise [StandardError]
       # @return [Signature]
+      # @return [nil] if RBS::ParsingError, RBS::DefinitionBuilder::UnknownTypeNameError
       # @return [nil] if StandardError
       def signature_for(container:, scope:, name:)
         load_env!
@@ -52,22 +56,41 @@ module Docscribe
         return nil unless method_type
 
         func = method_type.type # RBS::Types::Function
-        return_type = RBSTypeFormatter.to_yard(func.return_type)
+        return_type = RBSTypeFormatter.to_yard(func.return_type, collapse_generics: @collapse_generics)
 
         param_types = {}
 
-        func.required_positionals.each { |p| param_types[p.name.to_s] = RBSTypeFormatter.to_yard(p.type) if p.name }
-        func.optional_positionals.each { |p| param_types[p.name.to_s] = RBSTypeFormatter.to_yard(p.type) if p.name }
-        func.trailing_positionals.each { |p| param_types[p.name.to_s] = RBSTypeFormatter.to_yard(p.type) if p.name }
+        func.required_positionals.each do |p|
+          if p.name
+            param_types[p.name.to_s] =
+              RBSTypeFormatter.to_yard(p.type, collapse_generics: @collapse_generics)
+          end
+        end
+        func.optional_positionals.each do |p|
+          if p.name
+            param_types[p.name.to_s] =
+              RBSTypeFormatter.to_yard(p.type, collapse_generics: @collapse_generics)
+          end
+        end
+        func.trailing_positionals.each do |p|
+          if p.name
+            param_types[p.name.to_s] =
+              RBSTypeFormatter.to_yard(p.type, collapse_generics: @collapse_generics)
+          end
+        end
 
-        func.required_keywords.each { |kw, p| param_types[kw.to_s] = RBSTypeFormatter.to_yard(p.type) }
-        func.optional_keywords.each { |kw, p| param_types[kw.to_s] = RBSTypeFormatter.to_yard(p.type) }
+        func.required_keywords.each do |kw, p|
+          param_types[kw.to_s] = RBSTypeFormatter.to_yard(p.type,  collapse_generics: @collapse_generics)
+        end
+        func.optional_keywords.each do |kw, p|
+          param_types[kw.to_s] = RBSTypeFormatter.to_yard(p.type,  collapse_generics: @collapse_generics)
+        end
 
         rest_positional = nil
         if (rp = func.rest_positionals)
           rest_positional = RestPositional.new(
             name: rp.name&.to_s,
-            element_type: RBSTypeFormatter.to_yard(rp.type)
+            element_type: RBSTypeFormatter.to_yard(rp.type, collapse_generics: @collapse_generics)
           )
         end
 
@@ -85,7 +108,11 @@ module Docscribe
           rest_positional: rest_positional,
           rest_keywords: rest_keywords
         )
-      rescue StandardError
+      rescue RBS::ParsingError, RBS::DefinitionBuilder::UnknownTypeNameError => e
+        warn_once("Docscribe: RBS error: #{e.class}: #{e.message}")
+        nil
+      rescue StandardError => e
+        warn_once("Docscribe: RBS integration failed (falling back to inference): #{e.class}: #{e.message}")
         nil
       end
 
@@ -107,6 +134,14 @@ module Docscribe
       def absolute_const(container)
         s = container.to_s
         s.start_with?('::') ? s : "::#{s}"
+      end
+
+      def warn_once(msg)
+        return unless ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
+        return if defined?(@warned) && @warned
+
+        @warned = true
+        warn msg
       end
     end
   end

@@ -11,7 +11,7 @@ module Docscribe
       #
       # @param [Object] type Param documentation.
       # @return [Object]
-      def to_yard(type)
+      def to_yard(type, collapse_generics: false)
         return 'Object' unless type
 
         case type
@@ -25,17 +25,20 @@ module Docscribe
           'nil'
 
         when RBS::Types::Optional
-          "#{to_yard(type.type)}?"
+          "#{to_yard(type.type, collapse_generics: collapse_generics)}?"
 
         when RBS::Types::Union
           # YARD union style: "String, Integer, nil"
-          type.types.map { |t| to_yard(t) }.uniq.join(', ')
+          type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }.uniq.join(', ')
 
         when RBS::Types::ClassInstance, RBS::Types::ClassSingleton, RBS::Types::Interface, RBS::Types::Alias
           name = type.name.to_s.delete_prefix('::')
           args = type.respond_to?(:args) ? type.args : []
+
           if args && !args.empty?
-            "#{name}<#{args.map { |a| to_yard(a) }.join(', ')}>"
+            return name if collapse_generics
+
+            "#{name}<#{args.map { |a| to_yard(a, collapse_generics: collapse_generics) }.join(', ')}>"
           else
             name
           end
