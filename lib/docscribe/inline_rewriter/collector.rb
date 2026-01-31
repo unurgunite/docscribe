@@ -30,8 +30,8 @@ module Docscribe
       # - Inside `class << self`, the same keywords set default visibility for subsequent *class* methods.
       # - `private :foo` (with args) sets visibility only for named methods.
       class VisibilityCtx
-        attr_accessor :default_instance_vis, :default_class_vis, :inside_sclass
-        attr_reader :explicit_instance, :explicit_class
+        attr_accessor :default_instance_vis, :default_class_vis, :inside_sclass, :module_function_default
+        attr_reader :explicit_instance, :explicit_class, :module_function_explicit
 
         # Initialize a fresh visibility context with Ruby defaults (public).
         #
@@ -42,6 +42,8 @@ module Docscribe
           @explicit_instance = {}
           @explicit_class = {}
           @inside_sclass = false
+          @module_function_default = false
+          @module_function_explicit = {} # { name_sym => true }
         end
 
         # Duplicate context for nested scopes (e.g., entering `class << self`).
@@ -52,6 +54,8 @@ module Docscribe
           c.default_instance_vis = default_instance_vis
           c.default_class_vis = default_class_vis
           c.inside_sclass = inside_sclass
+          c.module_function_default = module_function_default
+          c.module_function_explicit.merge!(module_function_explicit)
           c.explicit_instance.merge!(explicit_instance)
           c.explicit_class.merge!(explicit_class)
           c
@@ -109,7 +113,12 @@ module Docscribe
         when :def
           name, _args, _body = *node
 
-          if ctx.inside_sclass
+          if module_function_applies?(ctx, name)
+            # module_function turns these into module-level functions for most users,
+            # so document as "Container.name" (scope :class).
+            scope = :class
+            vis = ctx.explicit_class[name] || ctx.default_class_vis
+          elsif ctx.inside_sclass
             vis = ctx.explicit_class[name] || ctx.default_class_vis
             scope = :class
           else
@@ -134,7 +143,11 @@ module Docscribe
 
         when :send
           # visibility modifiers: private/protected/public
-          process_visibility_send(node, ctx)
+          if process_module_function_send(node, ctx)
+            # handled
+          else
+            process_visibility_send(node, ctx)
+          end
 
         else
           process(node)
@@ -174,30 +187,12 @@ module Docscribe
         end
       end
 
-      # Extract a symbol method name from `:sym` or `:str` arguments to visibility calls.
-      #
-      # @param arg [Parser::AST::Node]
-      # @return [Symbol, nil]
-      def extract_name_sym(arg)
-        case arg.type
-        when :sym then arg.children.first
-        when :str then arg.children.first.to_sym
-        end
-      end
-
       # True if the node is `self` (used to detect `class << self`).
       #
       # @param node [Parser::AST::Node, nil]
       # @return [Boolean]
       def self_node?(node)
         node && node.type == :self
-      end
-
-      # Current container name as a string (e.g. "A::B").
-      #
-      # @return [String]
-      def current_container
-        @name_stack.empty? ? 'Object' : @name_stack.join('::')
       end
 
       # Convert a constant AST node into a string name.
@@ -238,6 +233,63 @@ module Docscribe
         else
           process_stmt(body, ctx)
         end
+      end
+
+      def module_function_applies?(ctx, name)
+        return false if ctx.inside_sclass
+
+        ctx.module_function_default || ctx.module_function_explicit[name]
+      end
+
+      # returns true if it handled the send
+      def process_module_function_send(node, ctx)
+        recv, meth, *args = *node
+        return false unless recv.nil? && meth == :module_function
+        return true if ctx.inside_sclass # ignore inside class << self
+
+        if args.empty?
+          # Affects subsequent defs in the current module/class body
+          ctx.module_function_default = true
+          return true
+        end
+
+        # module_function :foo, :bar (can appear after defs — we handle retroactively)
+        names = args.map { |arg| extract_name_sym(arg) }.compact
+        names.each do |sym|
+          ctx.module_function_explicit[sym] = true
+          retroactively_promote_module_function(sym)
+        end
+
+        true
+      end
+
+      # Extract a symbol method name from `:sym` or `:str` arguments to visibility calls.
+      #
+      # @param arg [Parser::AST::Node]
+      # @return [Symbol, nil]
+      def extract_name_sym(arg)
+        case arg.type
+        when :sym then arg.children.first
+        when :str then arg.children.first.to_sym
+        end
+      end
+
+      def retroactively_promote_module_function(name_sym)
+        @insertions.reverse_each do |ins|
+          next unless ins.container == current_container
+          next unless ins.node.type == :def
+          next unless ins.node.children[0] == name_sym
+
+          ins.scope = :class
+          ins.visibility = :public if ins.visibility == :private # optional: keep docs user-facing
+        end
+      end
+
+      # Current container name as a string (e.g. "A::B").
+      #
+      # @return [String]
+      def current_container
+        @name_stack.empty? ? 'Object' : @name_stack.join('::')
       end
     end
   end
