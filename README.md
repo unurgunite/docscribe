@@ -168,11 +168,10 @@ class Demo
 end
 ```
 
-Notes:
-
-- The tool inserts doc headers at the start of def/defs lines and preserves everything else.
-- Class methods show with a dot (`+Demo.bump+`, `+Demo.internal+`).
-- Methods inside `class << self` under private are marked `@private`.
+> [!NOTE]
+> - The tool inserts doc headers at the start of def/defs lines and preserves everything else.
+> - Class methods show with a dot (`+Demo.bump+`, `+Demo.internal+`).
+> - Methods inside `class << self` under private are marked `@private`.
 
 ## CLI
 
@@ -346,6 +345,22 @@ Inline tags:
 
 - `@private` is added for methods that are private in context.
 - `@protected` is added similarly for protected methods.
+
+> [!IMPORTANT]
+> - `module_function`: Docscribe documents methods affected by `module_function` as module methods (`M.foo`) rather than
+    instance methods (`M#foo`), because that is usually the callable/public API. If a method was previously private as
+    an instance method, Docscribe will avoid marking the generated docs as `@private` after it is promoted to a module
+    method.
+
+```ruby
+module M
+  private
+
+  def foo; end
+
+  module_function :foo
+end
+```
 
 ## API (library) usage
 

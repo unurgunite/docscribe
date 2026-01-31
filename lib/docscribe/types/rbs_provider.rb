@@ -188,7 +188,7 @@ module Docscribe
 
         RestKeywords.new(
           name: rk.name&.to_s,
-          type: format_type(rk.type) # <-- now respects collapse_generics
+          type: format_type(rk.type)
         )
       end
 
