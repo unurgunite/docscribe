@@ -5,15 +5,23 @@ require 'docscribe/inline_rewriter/source_helpers'
 
 module Docscribe
   module InlineRewriter
-    # Builds the docstring text for an insertion (method node + computed metadata).
+    # Builds a full docstring block for a single method insertion.
+    #
+    # Responsibilities:
+    # - Combine config decisions (emit header/params/return/raise/visibility tags)
+    # - Use RBS types (when enabled and available) for `@param` and `@return`
+    # - Fall back to AST heuristics from {Docscribe::Infer} when RBS is not available
     module DocBuilder
       module_function
 
-      # Build the full YARD-style doc block for one method insertion.
+      # Build a doc block for a method insertion.
+      #
+      # The returned string includes trailing newlines and is intended to be inserted
+      # at the beginning-of-line directly above the method definition.
       #
       # @param insertion [Docscribe::InlineRewriter::Collector::Insertion]
       # @param config [Docscribe::Config]
-      # @return [String, nil] doc block including trailing newlines, or nil on error
+      # @return [String, nil] doc block string, or nil on error
       def build(insertion, config:)
         node = insertion.node
         name = SourceHelpers.node_name(node)
@@ -26,10 +34,11 @@ module Docscribe
         container = insertion.container
         method_symbol = scope == :instance ? '#' : '.'
 
+        # Best-effort RBS signature. If unavailable, returns nil and we fall back to inference.
         rbs_sig = config.rbs_provider&.signature_for(container: container, scope: scope, name: name)
 
         # Params
-        params_lines = config.emit_param_tags? ? build_params_lines(node, indent, rbs_sig: rbs_sig) : nil
+        params_lines = build_params_lines(node, indent, rbs_sig: rbs_sig) if config.emit_param_tags?
 
         # Raises
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
@@ -73,12 +82,17 @@ module Docscribe
         nil
       end
 
-      # Build only the `@param` lines for a method.
+      # Build only `@param` lines for a def/defs node.
       #
-      # @param node [Parser::AST::Node] def/defs node
-      # @param indent [String] indentation prefix
+      # This method understands Ruby parameter node types (`:arg`, `:optarg`, `:kwarg`, etc.)
+      # and chooses types from:
+      # - RBS signature, when available (`rbs_sig.param_types`)
+      # - otherwise Docscribe::Infer heuristics
+      #
+      # @param node [Parser::AST::Node] `:def` or `:defs` node
+      # @param indent [String] indentation prefix (spaces)
       # @param rbs_sig [Docscribe::Types::RBSProvider::Signature, nil]
-      # @return [Array<String>, nil]
+      # @return [Array<String>, nil] array of fully formatted `# @param ...` lines (without trailing "\n"), or nil
       def build_params_lines(node, indent, rbs_sig:)
         args =
           case node.type

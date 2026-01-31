@@ -4,14 +4,20 @@ require 'parser/source/range'
 
 module Docscribe
   module InlineRewriter
-    # Source-level helpers for locating insertion points and detecting/removing comment blocks.
+    # Source-level helpers: ranges, insertion positions, and comment-block detection.
+    #
+    # These helpers operate on:
+    # - {Parser::Source::Buffer} (the full source)
+    # - {Parser::AST::Node} locations (`node.loc.expression.begin_pos`, etc.)
+    #
+    # They intentionally do not parse Ruby semantics; they just handle raw text/ranges.
     module SourceHelpers
       module_function
 
-      # Return the method name for a def/defs node.
+      # Extract the Ruby method name from a `def` or `defs` node.
       #
-      # @param node [Parser::AST::Node]
-      # @return [Symbol, nil]
+      # @param node [Parser::AST::Node] a `:def` or `:defs` node
+      # @return [Symbol, nil] method name symbol, or nil if node type is not supported
       def node_name(node)
         case node.type
         when :def then node.children[0]
@@ -19,13 +25,13 @@ module Docscribe
         end
       end
 
-      # Return a Range representing the start-of-line where a node begins.
+      # Compute the beginning-of-line range for the line containing the method definition.
       #
-      # Used as the insertion point for doc blocks.
+      # Docscribe uses this as the insertion point so docs appear flush above the `def`.
       #
       # @param buffer [Parser::Source::Buffer]
       # @param node [Parser::AST::Node]
-      # @return [Parser::Source::Range]
+      # @return [Parser::Source::Range] a zero-width range at the BOL
       def line_start_range(buffer, node)
         start_pos = node.loc.expression.begin_pos
         src = buffer.source
@@ -33,14 +39,17 @@ module Docscribe
         Parser::Source::Range.new(buffer, bol + 1, bol + 1)
       end
 
-      # Compute the source range to remove when refreshing docs.
+      # Compute the range to remove when refreshing docs (`--refresh` / rewrite: true).
       #
-      # This removes the contiguous comment block immediately above the method definition,
-      # plus any blank lines separating it from the `def` line.
+      # The algorithm:
+      # - Identify the line index of the method definition (based on `def_bol_pos`)
+      # - Walk upward skipping blank lines
+      # - If the first non-blank line is not a comment (`#`), do nothing
+      # - Otherwise walk upward to include the entire contiguous comment block
       #
       # @param buffer [Parser::Source::Buffer]
-      # @param def_bol_pos [Integer] absolute offset of the beginning-of-line of the `def`
-      # @return [Parser::Source::Range, nil]
+      # @param def_bol_pos [Integer] absolute offset of the beginning of the `def` line
+      # @return [Parser::Source::Range, nil] range to remove, or nil if nothing to remove
       def comment_block_removal_range(buffer, def_bol_pos)
         src = buffer.source
         lines = src.lines
@@ -53,7 +62,7 @@ module Docscribe
         # Nearest non-blank line must be a comment to remove anything
         return nil unless i >= 0 && lines[i] =~ /^\s*#/
 
-        # Walk up to find start of contiguous comment block
+        # Walk upward to the first line that is not a comment
         start_idx = i
         start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
         start_idx += 1
@@ -62,9 +71,12 @@ module Docscribe
         Parser::Source::Range.new(buffer, start_pos, def_bol_pos)
       end
 
-      # Check whether there is a comment (doc block or any comment line) immediately above the insertion point.
+      # Check whether there is a comment immediately above the method definition.
       #
-      # This is the “non-refresh” skip mechanism: if a comment is already there, we assume the user has docs.
+      # Notes:
+      # - This is intentionally simple: any line starting with `#` counts.
+      # - Docscribe does not try to parse YARD tags here; it simply avoids overwriting user comments
+      #   unless `rewrite` mode is enabled.
       #
       # @param buffer [Parser::Source::Buffer]
       # @param insert_pos [Integer] absolute offset where docs would be inserted (usually BOL of def)
