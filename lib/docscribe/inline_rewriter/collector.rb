@@ -28,6 +28,26 @@ module Docscribe
       #   @return [String] container name, e.g. "MyModule::MyClass"
       Insertion = Struct.new(:node, :scope, :visibility, :container)
 
+      # One attribute macro call that Docscribe intends to document.
+      #
+      # This corresponds to an `attr_reader`, `attr_writer`, or `attr_accessor` call in Ruby source.
+      # We record it separately from method insertions because these macros generate methods that
+      # do not appear as `def`/`defs` nodes in the AST.
+      #
+      # @!attribute node
+      #   @return [Parser::AST::Node] the `:send` node (e.g. `attr_reader :name`)
+      # @!attribute scope
+      #   @return [Symbol] :instance or :class (class when inside `class << self`)
+      # @!attribute visibility
+      #   @return [Symbol] :public, :protected, or :private (based on current visibility context)
+      # @!attribute container
+      #   @return [String] container name, e.g. "MyModule::MyClass"
+      # @!attribute access
+      #   @return [Symbol] :r, :w, or :rw (reader/writer/accessor)
+      # @!attribute names
+      #   @return [Array<Symbol>] attribute names (symbols) extracted from the macro arguments
+      AttrInsertion = Struct.new(:node, :scope, :visibility, :container, :access, :names)
+
       # Tracks Ruby visibility state while walking a class/module body.
       #
       # Ruby rules modeled:
@@ -71,7 +91,6 @@ module Docscribe
           @explicit_instance = {}
           @explicit_class = {}
           @inside_sclass = false
-
           @module_function_default = false
           @module_function_explicit = {} # { name_sym => true }
         end
@@ -99,11 +118,17 @@ module Docscribe
       # @return [Array<Insertion>]
       attr_reader :insertions
 
+      # List of computed attribute insertions (`attr_reader`, `attr_writer`, `attr_accessor`).
+      #
+      # @return [Array<AttrInsertion>]
+      attr_reader :attr_insertions
+
       # @param buffer [Parser::Source::Buffer]
       def initialize(buffer)
         super()
         @buffer = buffer
         @insertions = []
+        @attr_insertions = []
         @name_stack = []
       end
 
@@ -180,8 +205,9 @@ module Docscribe
           process_body(body, inner_ctx)
 
         when :send
-          # Handle module_function (if present), otherwise handle visibility keywords.
-          if process_module_function_send(node, ctx)
+          if process_attr_send(node, ctx)
+            # handled
+          elsif process_module_function_send(node, ctx)
             # handled
           else
             process_visibility_send(node, ctx)
@@ -190,6 +216,38 @@ module Docscribe
         else
           process(node)
         end
+      end
+
+      # Handle attr_reader/attr_writer/attr_accessor calls.
+      #
+      # @param node [Parser::AST::Node] :send node
+      # @param ctx [VisibilityCtx]
+      # @return [Boolean] true if handled
+      def process_attr_send(node, ctx)
+        recv, meth, *args = *node
+        return false unless recv.nil? && %i[attr_reader attr_writer attr_accessor].include?(meth)
+
+        names = args.map { |a| extract_name_sym(a) }.compact
+        return true if names.empty? # still "handled" (nothing to insert)
+
+        scope = ctx.inside_sclass ? :class : :instance
+
+        visibility =
+          if ctx.inside_sclass
+            ctx.default_class_vis
+          else
+            ctx.default_instance_vis
+          end
+
+        access =
+          case meth
+          when :attr_reader then :r
+          when :attr_writer then :w
+          else :rw
+          end
+
+        @attr_insertions << AttrInsertion.new(node, scope, visibility, current_container, access, names)
+        true
       end
 
       # Handle `private`, `protected`, `public` statements.

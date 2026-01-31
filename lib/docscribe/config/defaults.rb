@@ -10,7 +10,8 @@ module Docscribe
         'return_tag' => true,
         'visibility_tags' => true,
         'raise_tags' => true,
-        'rescue_conditional_returns' => true
+        'rescue_conditional_returns' => true,
+        'attributes' => false
       },
       'doc' => {
         'default_message' => 'Method documentation.'

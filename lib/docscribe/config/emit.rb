@@ -27,6 +27,11 @@ module Docscribe
       fetch_bool(%w[emit rescue_conditional_returns], true)
     end
 
+    # @return [Boolean]
+    def emit_attributes?
+      fetch_bool(%w[emit attributes], false)
+    end
+
     # Whether to emit the `@return` tag for a method, accounting for per-scope/per-visibility overrides.
     #
     # @param scope [Symbol] :instance or :class
