@@ -19,4 +19,3 @@ RSpec.describe Docscribe::CLI::Options do
     expect(opts[:exclude_file]).to eq([])
   end
 end
-
