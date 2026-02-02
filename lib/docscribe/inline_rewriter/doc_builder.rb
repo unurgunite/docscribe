@@ -38,13 +38,27 @@ module Docscribe
         rbs_sig = config.rbs_provider&.signature_for(container: container, scope: scope, name: name)
 
         # Params
-        params_lines = build_params_lines(node, indent, rbs_sig: rbs_sig) if config.emit_param_tags?
+        if config.emit_param_tags?
+          params_lines =
+            build_params_lines(
+              node,
+              indent,
+              rbs_sig: rbs_sig,
+              fallback_type: config.fallback_type,
+              treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+            )
+        end
 
         # Raises
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
 
         # Returns
-        returns_spec = Docscribe::Infer.returns_spec_from_node(node)
+        returns_spec = Docscribe::Infer.returns_spec_from_node(
+          node,
+          fallback_type: config.fallback_type,
+          nil_as_optional: config.nil_as_optional?
+        )
+
         normal_type = rbs_sig&.return_type || returns_spec[:normal]
         rescue_specs = returns_spec[:rescues]
 
@@ -93,7 +107,7 @@ module Docscribe
       # @param indent [String] indentation prefix (spaces)
       # @param rbs_sig [Docscribe::Types::RBSProvider::Signature, nil]
       # @return [Array<String>, nil] array of fully formatted `# @param ...` lines (without trailing "\n"), or nil
-      def build_params_lines(node, indent, rbs_sig:)
+      def build_params_lines(node, indent, rbs_sig:, fallback_type:, treat_options_keyword_as_hash:)
         args =
           case node.type
           when :def then node.children[1]
@@ -107,26 +121,40 @@ module Docscribe
           case a.type
           when :arg
             pname = a.children.first.to_s
-            ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type(pname, nil)
+            ty = rbs_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(pname, nil,
+                                        fallback_type: fallback_type,
+                                        treat_options_keyword_as_hash: treat_options_keyword_as_hash)
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :optarg
             pname, default = *a
             pname = pname.to_s
             default_src = default&.loc&.expression&.source
-            ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type(pname, default_src)
+            ty = rbs_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   pname, default_src,
+                   fallback_type: config.fallback_type,
+                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                 )
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :kwarg
             pname = a.children.first.to_s
-            ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type("#{pname}:", nil)
+            ty = rbs_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type("#{pname}:", nil,
+                                        fallback_type: fallback_type,
+                                        treat_options_keyword_as_hash: treat_options_keyword_as_hash)
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :kwoptarg
             pname, default = *a
             pname = pname.to_s
             default_src = default&.loc&.expression&.source
-            ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type("#{pname}:", default_src)
+            ty = rbs_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type("#{pname}:", default_src,
+                                        fallback_type: fallback_type,
+                                        treat_options_keyword_as_hash: treat_options_keyword_as_hash)
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :restarg
