@@ -422,9 +422,17 @@ filter:
 CLI overrides are available too:
 
 ```shell
+# Method filtering (matches method ids like A#foo / A.bar)
 docscribe --dry --exclude '*#initialize' lib
+docscribe --dry --include '/^MyModule::.*#(foo|bar)$/' lib
+
+# File filtering (matches paths relative to the project root)
 docscribe --dry --exclude-file 'spec' lib spec
+docscribe --dry --exclude-file '/^spec\//' lib
 ```
+
+> [!NOTE] `/regex/` passed to `--include`/`--exclude` is treated as a **method-id** pattern. Use `--include-file`
+> `--exclude-file` for file regex filters.
 
 ### Attribute macros (`attr_*`)
 

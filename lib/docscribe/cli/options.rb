@@ -109,6 +109,12 @@ module Docscribe
       # @param [Object] pat Param documentation.
       # @return [Object]
       def looks_like_file_pattern?(pat)
+        # Regex patterns are wrapped in slashes (e.g. "/^A#foo$/").
+        # Those are commonly used for method-id filtering with --include/--exclude.
+        #
+        # If you want regex filtering for files, use --include-file/--exclude-file.
+        return false if pat.start_with?('/') && pat.end_with?('/') && pat.length >= 2
+
         pat.include?('/') || pat.include?('**') || pat.end_with?('.rb')
       end
     end
