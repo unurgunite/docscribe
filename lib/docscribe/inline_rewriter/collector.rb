@@ -269,17 +269,39 @@ module Docscribe
           else
             ctx.default_instance_vis = meth
           end
-        else
-          args.each do |arg|
-            sym = extract_name_sym(arg)
-            next unless sym
+          return
+        end
 
-            if ctx.inside_sclass
-              ctx.explicit_class[sym] = meth
-            else
-              ctx.explicit_instance[sym] = meth
-            end
+        args.each do |arg|
+          sym = extract_name_sym(arg)
+          next unless sym
+
+          if ctx.inside_sclass
+            ctx.explicit_class[sym] = meth
+            retroactively_set_visibility(sym, meth, scope: :class)
+          else
+            ctx.explicit_instance[sym] = meth
+            retroactively_set_visibility(sym, meth, scope: :instance)
           end
+        end
+      end
+
+      def retroactively_set_visibility(name_sym, visibility, scope:)
+        @insertions.reverse_each do |ins|
+          next unless ins.container == current_container
+          next unless ins.scope == scope
+
+          n = ins.node
+          method_name =
+            case n.type
+            when :def  then n.children[0]
+            when :defs then n.children[1]
+            end
+
+          next unless method_name == name_sym
+
+          ins.visibility = visibility
+          break
         end
       end
 
