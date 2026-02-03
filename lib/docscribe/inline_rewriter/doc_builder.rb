@@ -27,19 +27,19 @@ module Docscribe
         name = SourceHelpers.node_name(node)
         return nil unless name
 
-        indent = ' ' * node.loc.expression.column
+        indent = SourceHelpers.line_indent(node)
 
         scope = insertion.scope
         visibility = insertion.visibility
         container = insertion.container
         method_symbol = scope == :instance ? '#' : '.'
 
-        # Best-effort RBS signature. If unavailable, returns nil and we fall back to inference.
+        # Best-effort RBS signature. If unavailable, returns nil, and we fall back to inference.
         rbs_sig = config.rbs_provider&.signature_for(container: container, scope: scope, name: name)
 
         # Params
-        if config.emit_param_tags?
-          params_lines =
+        params_lines =
+          if config.emit_param_tags?
             build_params_lines(
               node,
               indent,
@@ -47,7 +47,7 @@ module Docscribe
               fallback_type: config.fallback_type,
               treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
             )
-        end
+          end
 
         # Raises
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
@@ -72,11 +72,32 @@ module Docscribe
         lines << "#{indent}# #{config.default_message(scope, visibility)}"
         lines << "#{indent}#"
 
+        # Ruby visibility of the documented surface (the method we are attaching docs to)
         if config.emit_visibility_tags?
           case visibility
           when :private then lines << "#{indent}# @private"
           when :protected then lines << "#{indent}# @protected"
           end
+        end
+
+        # If the collector marked this insertion as coming from module_function, then we are
+        # documenting the module/singleton method (e.g. M.foo) but there is also an included
+        # instance method surface (e.g. C#foo when include M). Ruby can make that instance method
+        # private by default, or it can be overridden by `public def foo`, `public :foo`, etc.
+        #
+        # We do NOT use @private here, because @private would apply to the documented surface (M.foo)
+        # and can incorrectly hide it in YARD output.
+        if insertion.respond_to?(:module_function) && insertion.module_function
+          included_vis =
+            if insertion.respond_to?(:included_instance_visibility) && insertion.included_instance_visibility
+              insertion.included_instance_visibility
+            else
+              :private
+            end
+
+          lines << <<~DOC
+            #{indent}# @note module_function: when included, also defines ##{name} (instance visibility: #{included_vis})
+          DOC
         end
 
         lines.concat(params_lines) if params_lines
@@ -98,15 +119,12 @@ module Docscribe
 
       # Build only `@param` lines for a def/defs node.
       #
-      # This method understands Ruby parameter node types (`:arg`, `:optarg`, `:kwarg`, etc.)
-      # and chooses types from:
-      # - RBS signature, when available (`rbs_sig.param_types`)
-      # - otherwise Docscribe::Infer heuristics
-      #
       # @param node [Parser::AST::Node] `:def` or `:defs` node
-      # @param indent [String] indentation prefix (spaces)
+      # @param indent [String] indentation prefix (spaces/tabs)
       # @param rbs_sig [Docscribe::Types::RBSProvider::Signature, nil]
-      # @return [Array<String>, nil] array of fully formatted `# @param ...` lines (without trailing "\n"), or nil
+      # @param fallback_type [String]
+      # @param treat_options_keyword_as_hash [Boolean]
+      # @return [Array<String>, nil]
       def build_params_lines(node, indent, rbs_sig:, fallback_type:, treat_options_keyword_as_hash:)
         args =
           case node.type
@@ -122,9 +140,11 @@ module Docscribe
           when :arg
             pname = a.children.first.to_s
             ty = rbs_sig&.param_types&.[](pname) ||
-                 Infer.infer_param_type(pname, nil,
-                                        fallback_type: fallback_type,
-                                        treat_options_keyword_as_hash: treat_options_keyword_as_hash)
+                 Infer.infer_param_type(
+                   pname, nil,
+                   fallback_type: fallback_type,
+                   treat_options_keyword_as_hash: treat_options_keyword_as_hash
+                 )
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :optarg
@@ -134,17 +154,19 @@ module Docscribe
             ty = rbs_sig&.param_types&.[](pname) ||
                  Infer.infer_param_type(
                    pname, default_src,
-                   fallback_type: config.fallback_type,
-                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                   fallback_type: fallback_type,
+                   treat_options_keyword_as_hash: treat_options_keyword_as_hash
                  )
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :kwarg
             pname = a.children.first.to_s
             ty = rbs_sig&.param_types&.[](pname) ||
-                 Infer.infer_param_type("#{pname}:", nil,
-                                        fallback_type: fallback_type,
-                                        treat_options_keyword_as_hash: treat_options_keyword_as_hash)
+                 Infer.infer_param_type(
+                   "#{pname}:", nil,
+                   fallback_type: fallback_type,
+                   treat_options_keyword_as_hash: treat_options_keyword_as_hash
+                 )
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :kwoptarg
@@ -152,9 +174,11 @@ module Docscribe
             pname = pname.to_s
             default_src = default&.loc&.expression&.source
             ty = rbs_sig&.param_types&.[](pname) ||
-                 Infer.infer_param_type("#{pname}:", default_src,
-                                        fallback_type: fallback_type,
-                                        treat_options_keyword_as_hash: treat_options_keyword_as_hash)
+                 Infer.infer_param_type(
+                   "#{pname}:", default_src,
+                   fallback_type: fallback_type,
+                   treat_options_keyword_as_hash: treat_options_keyword_as_hash
+                 )
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :restarg
@@ -163,18 +187,33 @@ module Docscribe
               if rbs_sig&.rest_positional&.element_type
                 "Array<#{rbs_sig.rest_positional.element_type}>"
               else
-                Infer.infer_param_type("*#{pname}", nil)
+                Infer.infer_param_type(
+                  "*#{pname}", nil,
+                  fallback_type: fallback_type,
+                  treat_options_keyword_as_hash: treat_options_keyword_as_hash
+                )
               end
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :kwrestarg
             pname = (a.children.first || 'kwargs').to_s
-            ty = rbs_sig&.rest_keywords&.type || Infer.infer_param_type("**#{pname}", nil)
+            ty =
+              rbs_sig&.rest_keywords&.type ||
+              Infer.infer_param_type(
+                "**#{pname}", nil,
+                fallback_type: fallback_type,
+                treat_options_keyword_as_hash: treat_options_keyword_as_hash
+              )
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :blockarg
             pname = (a.children.first || 'block').to_s
-            ty = rbs_sig&.param_types&.[](pname) || Infer.infer_param_type("&#{pname}", nil)
+            ty = rbs_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   "&#{pname}", nil,
+                   fallback_type: fallback_type,
+                   treat_options_keyword_as_hash: treat_options_keyword_as_hash
+                 )
             params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
 
           when :forward_arg

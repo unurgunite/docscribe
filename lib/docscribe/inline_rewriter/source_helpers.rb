@@ -137,6 +137,16 @@ module Docscribe
 
         !!(lines[i] =~ /^\s*#/)
       end
+
+      def line_indent(node)
+        line = node.loc.expression.source_line
+        return '' unless line
+
+        # Preserve tabs/spaces exactly.
+        line[/\A[ \t]*/] || ''
+      rescue StandardError
+        ''
+      end
     end
   end
 end

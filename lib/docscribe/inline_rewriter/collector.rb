@@ -26,7 +26,7 @@ module Docscribe
       #   @return [Symbol] :public, :protected, or :private
       # @!attribute container
       #   @return [String] container name, e.g. "MyModule::MyClass"
-      Insertion = Struct.new(:node, :scope, :visibility, :container)
+      Insertion = Struct.new(:node, :scope, :visibility, :container, :module_function, :included_instance_visibility)
 
       # One attribute macro call that Docscribe intends to document.
       #
@@ -178,10 +178,26 @@ module Docscribe
           name, _args, _body = *node
 
           if module_function_applies?(ctx, name)
-            # Under module_function, document `def foo` as `Module.foo`.
+            # Document as module method (M.foo), but record included instance visibility separately.
             scope = :class
             vis = ctx.explicit_class[name] || ctx.default_class_vis
-          elsif ctx.inside_sclass
+
+            # module_function makes the included instance method private by default
+            # ctx.explicit_instance[name] is in case of
+            # @example
+            #   module M
+            #     module_function
+            #     public :foo
+            #     def foo; end
+            #   end
+            included_vis = ctx.explicit_instance[name] || :private
+
+            @insertions << Insertion.new(node, scope, vis, current_container, true, included_vis)
+            return
+          end
+
+          # existing behavior for non-module_function:
+          if ctx.inside_sclass
             vis = ctx.explicit_class[name] || ctx.default_class_vis
             scope = :class
           else
@@ -209,6 +225,8 @@ module Docscribe
             # handled
           elsif process_module_function_send(node, ctx)
             # handled
+          elsif process_class_method_visibility_send(node, ctx)
+            # handled
           else
             process_visibility_send(node, ctx)
           end
@@ -216,6 +234,48 @@ module Docscribe
         else
           process(node)
         end
+      end
+
+      # Handle `private_class_method`, `protected_class_method`, `public_class_method`.
+      #
+      # These affect singleton/class methods of the current container:
+      # - methods defined via `def self.foo`
+      # - methods defined inside `class << self`
+      #
+      # Supported forms:
+      # - `private_class_method :foo, :bar`
+      # - `self.private_class_method :foo` (receiver `self`)
+      #
+      # @param node [Parser::AST::Node] `:send` node
+      # @param ctx [VisibilityCtx]
+      # @return [Boolean] true if handled
+      def process_class_method_visibility_send(node, ctx)
+        recv, meth, *args = *node
+
+        return false unless %i[private_class_method protected_class_method public_class_method].include?(meth)
+        return false unless recv.nil? || self_node?(recv)
+
+        visibility =
+          case meth
+          when :private_class_method then :private
+          when :protected_class_method then :protected
+          else :public
+          end
+
+        # Ruby will raise if names are missing; for Docscribe we just treat it as handled/no-op.
+        args.each do |arg|
+          sym = extract_name_sym(arg)
+          next unless sym
+
+          # Persist visibility for future occurrences of the same class method name
+          # (matches how Ruby visibility tends to stick across redefinition).
+          ctx.explicit_class[sym] = visibility
+
+          # Retroactively update already-collected class method insertions.
+          retroactively_set_visibility(sym, visibility, scope: :class)
+        end
+
+        true
       end
 
       # Handle attr_reader/attr_writer/attr_accessor calls.
@@ -271,7 +331,34 @@ module Docscribe
           end
           return
         end
+        if args.length == 1 && args[0].is_a?(Parser::AST::Node) && %i[def defs].include?(args[0].type)
+          def_node = args[0]
 
+          case def_node.type
+          when :def
+            name, = *def_node
+
+            if module_function_applies?(ctx, name)
+              # module method (documented surface) visibility should come from class visibility context
+              mod_vis = ctx.explicit_class[name] || ctx.default_class_vis
+
+              # inline modifier overrides the included-instance method visibility
+              included_vis = meth
+
+              @insertions << Insertion.new(def_node, :class, mod_vis, current_container, true, included_vis)
+            elsif ctx.inside_sclass
+              @insertions << Insertion.new(def_node, :class, meth, current_container)
+            else
+              @insertions << Insertion.new(def_node, :instance, meth, current_container)
+            end
+
+            return
+          when :defs
+            @insertions << Insertion.new(def_node, :class, meth, current_container)
+          end
+
+          return
+        end
         args.each do |arg|
           sym = extract_name_sym(arg)
           next unless sym
@@ -282,7 +369,21 @@ module Docscribe
           else
             ctx.explicit_instance[sym] = meth
             retroactively_set_visibility(sym, meth, scope: :instance)
+
+            retroactively_set_included_instance_visibility_for_module_function(sym, meth)
           end
+        end
+      end
+
+      def retroactively_set_included_instance_visibility_for_module_function(name_sym, visibility)
+        @insertions.reverse_each do |ins|
+          next unless ins.container == current_container
+          next unless ins.module_function
+          next unless ins.node.type == :def
+          next unless ins.node.children[0] == name_sym
+
+          ins.included_instance_visibility = visibility
+          break
         end
       end
 
@@ -423,10 +524,14 @@ module Docscribe
           next unless ins.node.type == :def
           next unless ins.node.children[0] == name_sym
 
+          # Document the module/singleton surface.
           ins.scope = :class
-          # If `def foo` was previously treated as a private instance method (because it was under private),
-          # but we later promote it to a module/class-style doc (M.foo), then don't mark it @private—keep it user-facing
-          ins.visibility = :public if ins.visibility == :private
+          ins.visibility = :public
+
+          # Record dual-surface metadata for DocBuilder.
+          ins.module_function = true
+          ins.included_instance_visibility ||= :private
+          break
         end
       end
 

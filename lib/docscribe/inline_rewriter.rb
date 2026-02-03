@@ -209,7 +209,7 @@ module Docscribe
       # @param config [Docscribe::Config]
       # @return [String, nil]
       def build_attr_doc_for_node(ins, config:)
-        indent = ' ' * ins.node.loc.expression.column
+        indent = SourceHelpers.line_indent(ins.node)
         lines = []
 
         ins.names.each_with_index do |name_sym, idx|
