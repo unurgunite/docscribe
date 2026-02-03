@@ -17,6 +17,7 @@ emit:
   visibility_tags: true
   raise_tags: true
   rescue_conditional_returns: true
+  attributes: true
 
 doc:
   default_message: "Method documentation."

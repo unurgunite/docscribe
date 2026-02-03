@@ -19,6 +19,10 @@ module Docscribe
         conf = Docscribe::Config.load(options[:config])
         conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
 
+        if options[:rewrite] && options[:merge]
+          warn 'Docscribe: cannot combine --refresh and --merge. Choose one.'
+          return 1
+        end
         return run_stdin(options: options, conf: conf) if options[:stdin]
 
         if argv.empty?
@@ -51,7 +55,8 @@ module Docscribe
       # @return [Integer]
       def run_stdin(options:, conf:)
         code = $stdin.read
-        out = Docscribe::InlineRewriter.insert_comments(code, rewrite: options[:rewrite], config: conf)
+        out = Docscribe::InlineRewriter.insert_comments(code, rewrite: options[:rewrite], merge: options[:merge],
+                                                              config: conf, file: '(stdin)')
         puts out
         0
       rescue StandardError => e
@@ -117,7 +122,8 @@ module Docscribe
 
           out =
             begin
-              Docscribe::InlineRewriter.insert_comments(src, rewrite: options[:rewrite], config: conf)
+              Docscribe::InlineRewriter.insert_comments(src, rewrite: options[:rewrite],
+                                                             merge: options[:merge], config: conf, file: '(stdin)')
             rescue StandardError => e
               # This is primarily for syntax errors, but we intentionally keep going even on unexpected errors.
               had_errors = true

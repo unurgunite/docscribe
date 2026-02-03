@@ -97,9 +97,9 @@ module Docscribe
         when :case
           branches = node.children[1..].compact.flat_map do |child|
             if child.type == :when
-              last_expr_type(child.children.last)
+              last_expr_type(child.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
             else
-              last_expr_type(child)
+              last_expr_type(child, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
             end
           end.compact
 

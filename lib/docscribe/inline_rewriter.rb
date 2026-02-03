@@ -3,6 +3,7 @@
 require 'ast'
 require 'parser/deprecation'
 require 'parser/source/buffer'
+require 'parser/source/range'
 require 'parser/source/tree_rewriter'
 
 require 'docscribe/config'
@@ -37,12 +38,18 @@ module Docscribe
       # - rewrite: false (default): skip targets that already have a comment immediately above them
       # - rewrite: true  (CLI `--refresh`): remove the contiguous comment block above the target and re-insert
       #
+      # Merge mode:
+      # - merge: true: if a doc-like block exists above the target, append only missing tags
+      #   (non-destructive). If no doc-like block exists, insert a full doc block even if a normal
+      #   comment exists above.
+      #
       # @param code [String] Ruby source code
       # @param rewrite [Boolean] whether to regenerate docs even if a comment block exists above the target
+      # @param merge [Boolean] whether to merge missing tags into existing doc blocks
       # @param config [Docscribe::Config, nil] configuration (defaults to {Docscribe::Config.load})
       # @return [String] rewritten Ruby source
-      def insert_comments(code, rewrite: false, config: nil)
-        buffer = Parser::Source::Buffer.new('(inline)', source: code)
+      def insert_comments(code, rewrite: false, merge: false, config: nil, file: '(inline)')
+        buffer = Parser::Source::Buffer.new(file.to_s, source: code)
         ast = Docscribe::Parsing.parse_buffer(buffer)
         return code unless ast
 
@@ -59,6 +66,10 @@ module Docscribe
 
         rewriter = Parser::Source::TreeRewriter.new(buffer)
 
+        # end_pos => [[sort_key, additions_string], ...]
+        # We apply these at the end so we never schedule multiple inserts at the same range.
+        merge_inserts = Hash.new { |h, k| h[k] = [] }
+
         all.sort_by { |(_kind, ins)| ins.node.loc.expression.begin_pos }
            .reverse_each do |kind, ins|
           case kind
@@ -68,7 +79,9 @@ module Docscribe
               buffer: buffer,
               insertion: ins,
               config: config,
-              rewrite: rewrite
+              rewrite: rewrite,
+              merge: merge,
+              merge_inserts: merge_inserts
             )
           when :attr
             apply_attr_insertion!(
@@ -76,10 +89,14 @@ module Docscribe
               buffer: buffer,
               insertion: ins,
               config: config,
-              rewrite: rewrite
+              rewrite: rewrite,
+              merge: merge,
+              merge_inserts: merge_inserts
             )
           end
         end
+
+        apply_merge_inserts!(rewriter: rewriter, buffer: buffer, merge_inserts: merge_inserts)
 
         rewriter.process
       end
@@ -93,8 +110,10 @@ module Docscribe
       # @param insertion [Docscribe::InlineRewriter::Collector::Insertion]
       # @param config [Docscribe::Config]
       # @param rewrite [Boolean]
+      # @param merge [Boolean]
+      # @param merge_inserts [Hash{Integer=>Array<(Integer,String)>}]
       # @return [void]
-      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, rewrite:)
+      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, rewrite:, merge:, merge_inserts:)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
@@ -110,9 +129,40 @@ module Docscribe
           if (range = SourceHelpers.comment_block_removal_range(buffer, bol_range.begin_pos))
             rewriter.remove(range)
           end
-        elsif SourceHelpers.already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
+
+          doc = DocBuilder.build(insertion, config: config)
+          return if doc.nil? || doc.empty?
+
+          rewriter.insert_before(bol_range, doc)
           return
         end
+
+        if merge
+          info = SourceHelpers.doc_comment_block_info(buffer, bol_range.begin_pos)
+
+          if info
+            additions = DocBuilder.build_merge_additions(
+              insertion,
+              existing_lines: info[:lines],
+              config: config
+            )
+
+            if additions && !additions.empty?
+              merge_inserts[info[:end_pos]] << [insertion.node.loc.expression.begin_pos, additions]
+            end
+            return
+          end
+
+          # No doc-like block: insert a full doc block (non-destructive),
+          # even if there's a normal comment above.
+          doc = DocBuilder.build(insertion, config: config)
+          return if doc.nil? || doc.empty?
+
+          rewriter.insert_before(bol_range, doc)
+          return
+        end
+
+        return if SourceHelpers.already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
 
         doc = DocBuilder.build(insertion, config: config)
         return if doc.nil? || doc.empty?
@@ -129,8 +179,10 @@ module Docscribe
       # @param insertion [Docscribe::InlineRewriter::Collector::AttrInsertion]
       # @param config [Docscribe::Config]
       # @param rewrite [Boolean]
+      # @param merge [Boolean]
+      # @param merge_inserts [Hash{Integer=>Array<(Integer,String)>}]
       # @return [void]
-      def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, rewrite:)
+      def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, rewrite:, merge:, merge_inserts:)
         return unless config.respond_to?(:emit_attributes?) && config.emit_attributes?
 
         # Optionally respect method filters: only emit if at least one implied method is allowed.
@@ -142,14 +194,133 @@ module Docscribe
           if (range = SourceHelpers.comment_block_removal_range(buffer, bol_range.begin_pos))
             rewriter.remove(range)
           end
-        elsif SourceHelpers.already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
+
+          doc = build_attr_doc_for_node(insertion, config: config)
+          return if doc.nil? || doc.empty?
+
+          rewriter.insert_before(bol_range, doc)
           return
         end
+
+        if merge
+          info = SourceHelpers.doc_comment_block_info(buffer, bol_range.begin_pos)
+
+          if info
+            additions = build_attr_merge_additions(insertion, existing_lines: info[:lines], config: config)
+
+            if additions && !additions.empty?
+              merge_inserts[info[:end_pos]] << [insertion.node.loc.expression.begin_pos, additions]
+            end
+            return
+          end
+
+          # No doc-like block: insert full attr docs (non-destructive), even if a normal comment exists.
+          doc = build_attr_doc_for_node(insertion, config: config)
+          return if doc.nil? || doc.empty?
+
+          rewriter.insert_before(bol_range, doc)
+          return
+        end
+
+        return if SourceHelpers.already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
 
         doc = build_attr_doc_for_node(insertion, config: config)
         return if doc.nil? || doc.empty?
 
         rewriter.insert_before(bol_range, doc)
+      end
+
+      # Apply aggregated merge inserts (one insert per end_pos).
+      #
+      # We:
+      # - apply inserts bottom-to-top (reverse end_pos) to keep offsets stable
+      # - preserve content (do NOT de-dupe arbitrary lines)
+      # - avoid consecutive blank-comment separators when multiple chunks land at the same end_pos
+      #
+      # @param rewriter [Parser::Source::TreeRewriter]
+      # @param buffer [Parser::Source::Buffer]
+      # @param merge_inserts [Hash{Integer=>Array<(Integer,String)>}]
+      # @return [void]
+      def apply_merge_inserts!(rewriter:, buffer:, merge_inserts:)
+        sep_re = /^\s*#\s*\r?\n$/
+
+        merge_inserts.keys.sort.reverse_each do |end_pos|
+          chunks = merge_inserts[end_pos]
+          next if chunks.empty?
+
+          chunks = chunks.sort_by { |(sort_key, _s)| sort_key }
+
+          out_lines = []
+
+          chunks.each do |(_k, chunk)|
+            next if chunk.nil? || chunk.empty?
+
+            lines = chunk.lines
+
+            # Pull off any leading separator lines from this chunk
+            seps = []
+            seps << lines.shift while !lines.empty? && lines.first.match?(sep_re)
+
+            # Keep at most ONE separator between chunks, and never allow consecutive separators
+            sep = seps.first
+            out_lines << sep if sep && (out_lines.empty? || !out_lines.last.match?(sep_re))
+
+            out_lines.concat(lines)
+          end
+
+          text = out_lines.join
+          next if text.empty?
+
+          range = Parser::Source::Range.new(buffer, end_pos, end_pos)
+          rewriter.insert_before(range, text)
+        end
+      end
+
+      def build_attr_merge_additions(ins, existing_lines:, config:)
+        indent = SourceHelpers.line_indent(ins.node)
+        existing = existing_attr_names(existing_lines)
+
+        missing = ins.names.reject { |name_sym| existing[name_sym.to_s] }
+        return '' if missing.empty?
+
+        lines = []
+
+        # Separator if the existing block doesn't already end with a blank comment line
+        lines << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#'
+
+        missing.each_with_index do |name_sym, idx|
+          attr_name = name_sym.to_s
+          mode = ins.access.to_s
+          attr_type = attribute_type(ins, name_sym, config)
+
+          lines << "#{indent}# @!attribute [#{mode}] #{attr_name}"
+
+          if config.emit_visibility_tags?
+            lines << "#{indent}# @private" if ins.visibility == :private
+            lines << "#{indent}# @protected" if ins.visibility == :protected
+          end
+
+          lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
+          lines << "#{indent}#   @param value [#{attr_type}]" if %i[w rw].include?(ins.access)
+
+          # Separate multiple appended attrs with a blank comment line
+          lines << "#{indent}#" if idx < missing.length - 1
+        end
+
+        lines.map { |l| "#{l}\n" }.join
+      rescue StandardError
+        nil
+      end
+
+      def existing_attr_names(lines)
+        names = {}
+        Array(lines).each do |line|
+          # matches: "# @!attribute [r] name"
+          if (m = line.match(/^\s*#\s*@!attribute\b.*\]\s+(\S+)/))
+            names[m[1]] = true
+          end
+        end
+        names
       end
 
       # Decide whether an attribute macro should be documented, using method filters.
