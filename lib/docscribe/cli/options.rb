@@ -12,7 +12,7 @@ module Docscribe
         rewrite: false, # set by --refresh
         merge: false,
         config: nil,
-
+        verbose: false,
         include: [],
         exclude: [],
         include_file: [],
@@ -73,6 +73,9 @@ module Docscribe
 
           opts.on('--exclude-file PATTERN', 'Skip files matching PATTERN (glob or /regex/). Exclude wins.') do |v|
             options[:exclude_file] << v
+          end
+          opts.on('--verbose', 'Verbose output (print per-file actions)') do
+            options[:verbose] = true
           end
 
           opts.on('-v', '--version', 'Print version and exit') do

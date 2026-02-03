@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'pathname'
+
 require 'docscribe/cli/config_builder'
 require 'docscribe/inline_rewriter'
 
@@ -23,6 +25,7 @@ module Docscribe
           warn 'Docscribe: cannot combine --refresh and --merge. Choose one.'
           return 1
         end
+
         return run_stdin(options: options, conf: conf) if options[:stdin]
 
         if argv.empty?
@@ -43,20 +46,22 @@ module Docscribe
           return 1
         end
 
+        if options[:check] && options[:write]
+          warn 'Docscribe: both --dry/--check and --write were provided; running in --dry mode (no files will be modified).'
+        end
+
         run_files(options: options, conf: conf, paths: paths)
       end
 
-      # +Docscribe::CLI::Run#run_stdin+ -> Integer
-      #
-      # Method documentation.
-      #
-      # @param [Hash] options Param documentation.
-      # @param [Object] conf Param documentation.
-      # @return [Integer]
       def run_stdin(options:, conf:)
         code = $stdin.read
-        out = Docscribe::InlineRewriter.insert_comments(code, rewrite: options[:rewrite], merge: options[:merge],
-                                                              config: conf, file: '(stdin)')
+        out = Docscribe::InlineRewriter.insert_comments(
+          code,
+          rewrite: options[:rewrite],
+          merge: options[:merge],
+          config: conf,
+          file: '(stdin)'
+        )
         puts out
         0
       rescue StandardError => e
@@ -108,7 +113,11 @@ module Docscribe
         error_paths = []
         error_messages = {}
 
+        pwd = Pathname.pwd
+
         paths.each do |path|
+          display_path = display_path_for(path, pwd: pwd)
+
           src =
             begin
               File.read(path)
@@ -116,46 +125,51 @@ module Docscribe
               had_errors = true
               error_paths << path
               error_messages[path] = "#{e.class}: #{e.message}"
-              print 'E'
+              options[:verbose] ? warn("ERR #{display_path}: #{error_messages[path]}") : print('E')
               next
             end
 
           out =
             begin
-              Docscribe::InlineRewriter.insert_comments(src, rewrite: options[:rewrite],
-                                                             merge: options[:merge], config: conf, file: '(stdin)')
+              Docscribe::InlineRewriter.insert_comments(
+                src,
+                rewrite: options[:rewrite],
+                merge: options[:merge],
+                config: conf,
+                file: path
+              )
             rescue StandardError => e
-              # This is primarily for syntax errors, but we intentionally keep going even on unexpected errors.
               had_errors = true
               error_paths << path
               error_messages[path] = "#{e.class}: #{e.message}"
-              print 'E'
+              options[:verbose] ? warn("ERR #{display_path}: #{error_messages[path]}") : print('E')
               next
             end
 
           if options[:check]
             if out == src
-              print '.'
+              options[:verbose] ? puts("OK #{display_path}") : print('.')
               checked_ok += 1
             else
-              print 'F'
+              options[:verbose] ? puts("FAIL #{display_path}") : print('F')
               checked_fail += 1
               changed = true
               fail_paths << path
             end
+
           elsif options[:write]
             if out == src
-              print '.'
+              options[:verbose] ? puts("OK #{display_path}") : print('.')
             else
               begin
                 File.write(path, out)
-                print 'C'
+                options[:verbose] ? puts("CHANGED #{display_path}") : print('C')
                 corrected += 1
               rescue StandardError => e
                 had_errors = true
                 error_paths << path
                 error_messages[path] = "#{e.class}: #{e.message}"
-                print 'E'
+                options[:verbose] ? warn("ERR #{display_path}: #{error_messages[path]}") : print('E')
               end
             end
           end
@@ -198,6 +212,23 @@ module Docscribe
 
         options[:check] && changed ? 1 : 0
       end
+
+      # Prefer a nice relative path when the file is under the current working directory.
+      # If it is outside (or relative computation yields lots of ".."), use basename instead.
+      def display_path_for(path, pwd:)
+        abs = Pathname.new(path).expand_path
+
+        # If abs is under pwd, show clean relative path.
+        pwd_str = pwd.to_s
+        abs_str = abs.to_s
+        return abs.relative_path_from(pwd).to_s if abs_str.start_with?(pwd_str + File::SEPARATOR)
+
+        # Otherwise avoid ugly ../../../../ paths in output.
+        File.basename(abs_str)
+      rescue StandardError
+        File.basename(path.to_s)
+      end
+      private_class_method :display_path_for
     end
   end
 end
