@@ -10,8 +10,8 @@ module Docscribe
       #
       # @param node [Parser::AST::Node, nil]
       # @return [String]
-      def type_from_literal(node)
-        return FALLBACK_TYPE unless node
+      def type_from_literal(node, fallback_type: FALLBACK_TYPE)
+        return fallback_type unless node
 
         case node.type
         when :int then 'Integer'
@@ -32,11 +32,11 @@ module Docscribe
           if meth == :new && recv && recv.type == :const
             recv.children.last.to_s
           else
-            FALLBACK_TYPE
+            fallback_type
           end
 
         else
-          FALLBACK_TYPE
+          fallback_type
         end
       end
     end

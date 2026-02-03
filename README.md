@@ -178,6 +178,14 @@ end
 docscribe [options] [files...]
 ```
 
+Docscribe operates in one of three modes:
+
+- **STDIN mode** (`--stdin`): read Ruby source from STDIN and print rewritten source to STDOUT.
+- **Check mode** (`--dry` / `--check`): dry-run for files; exits `1` if any file would change (useful in CI).
+- **Write mode** (`--write`): rewrite files in place.
+
+If you pass no files (and don’t use `--stdin`), Docscribe exits with an error.
+
 Options:
 
 - `--stdin` Read source from STDIN and print with docs inserted.
@@ -196,9 +204,9 @@ Options:
 
 Examples:
 
-- Print to stdout for one file:
+- Preview output for a single file (via STDIN):
   ```shell
-  docscribe path/to/file.rb
+  cat path/to/file.rb | docscribe --stdin
   ```
 
 - Rewrite files in place (ensure a clean working tree):
@@ -211,7 +219,7 @@ Examples:
   docscribe --dry lib/**/*.rb
   ```
 
-- Refresh docs (regenerate headers/tags):
+- Refresh docs (regenerate headers/tags and replace existing doc blocks):
   ```shell
   docscribe --write --refresh lib/**/*.rb
   ```
@@ -221,7 +229,8 @@ Examples:
   docscribe --dry lib
   ```
 
-Tip: `--dry --refresh` is a "refresh dry-run" — it tells you whether regenerating docs would change anything.
+> [!TIP]
+> `--dry --refresh` is a "refresh dry-run" — it tells you whether regenerating docs would change anything.
 
 ## Inline behavior
 
@@ -413,9 +422,17 @@ filter:
 CLI overrides are available too:
 
 ```shell
+# Method filtering (matches method ids like A#foo / A.bar)
 docscribe --dry --exclude '*#initialize' lib
+docscribe --dry --include '/^MyModule::.*#(foo|bar)$/' lib
+
+# File filtering (matches paths relative to the project root)
 docscribe --dry --exclude-file 'spec' lib spec
+docscribe --dry --exclude-file '/^spec\//' lib
 ```
+
+> [!NOTE] `/regex/` passed to `--include`/`--exclude` is treated as a **method-id** pattern. Use `--include-file`
+> `--exclude-file` for file regex filters.
 
 ### Attribute macros (`attr_*`)
 

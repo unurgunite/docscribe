@@ -40,8 +40,12 @@ module Docscribe
       # @param name [String]
       # @param default_str [String, nil]
       # @return [String]
-      def infer_param_type(name, default_str)
-        Params.infer_param_type(name, default_str)
+      def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
+        Params.infer_param_type(
+          name, default_str,
+          fallback_type: fallback_type,
+          treat_options_keyword_as_hash: treat_options_keyword_as_hash
+        )
       end
 
       # Parse a Ruby expression from a string into an AST node.
@@ -72,8 +76,8 @@ module Docscribe
       #
       # @param node [Parser::AST::Node]
       # @return [Hash{Symbol=>Object}] `{ normal: String, rescues: Array<[Array<String>, String]> }`
-      def returns_spec_from_node(node)
-        Returns.returns_spec_from_node(node)
+      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
+        Returns.returns_spec_from_node(node, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
       end
 
       # Infer the type of the "last expression" of a Ruby AST node.

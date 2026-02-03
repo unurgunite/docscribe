@@ -41,4 +41,28 @@ RSpec.describe 'Inline rewriter @raise inference' do
     out = inline(code)
     expect(out).not_to match(/^\s*# @raise \[/)
   end
+
+  it 'adds @raise [Foo] for explicit raise Foo' do
+    code = <<~RUBY
+      class X
+        def a
+          raise Foo
+        end
+      end
+    RUBY
+    out = inline(code)
+    expect(out).to include('@raise [Foo]')
+  end
+
+  it 'adds @raise [StandardError] for bare raise' do
+    code = <<~RUBY
+      class X
+        def a
+          raise
+        end
+      end
+    RUBY
+    out = inline(code)
+    expect(out).to include('@raise [StandardError]')
+  end
 end
