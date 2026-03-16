@@ -19,8 +19,10 @@ module Docscribe
       # The returned string includes trailing newlines and is intended to be inserted
       # at the beginning-of-line directly above the method definition.
       #
+      # @note module_function: when included, also defines #build (instance visibility: private)
       # @param insertion [Docscribe::InlineRewriter::Collector::Insertion]
       # @param config [Docscribe::Config]
+      # @raise [StandardError]
       # @return [String, nil] doc block string, or nil on error
       def build(insertion, config:)
         node = insertion.node
@@ -103,9 +105,11 @@ module Docscribe
 
       # Build only missing lines to merge into an existing doc-like block.
       #
+      # @note module_function: when included, also defines #build_merge_additions (instance visibility: private)
       # @param insertion [Docscribe::InlineRewriter::Collector::Insertion]
       # @param existing_lines [Array<String>]
       # @param config [Docscribe::Config]
+      # @raise [StandardError]
       # @return [String, nil]
       def build_merge_additions(insertion, existing_lines:, config:)
         node = insertion.node
@@ -191,6 +195,13 @@ module Docscribe
         nil
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.parse_existing_doc_tags+ -> Hash
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #parse_existing_doc_tags (instance visibility: private)
+      # @param lines [Object] Param documentation.
+      # @return [Hash]
       def parse_existing_doc_tags(lines)
         param_names = {}
 
@@ -224,6 +235,15 @@ module Docscribe
         }
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.extract_raise_types_from_line+ -> Object
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_raise_types_from_line (instance visibility: private)
+      # @param line [Object] Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [Array] if StandardError
       def extract_raise_types_from_line(line)
         return [] unless line.match?(/^\s*#\s*@raise\b/)
 
@@ -244,17 +264,24 @@ module Docscribe
         []
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.parse_raise_bracket_list+ -> Object
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #parse_raise_bracket_list (instance visibility: private)
+      # @param s [Object] Param documentation.
+      # @return [Object]
       def parse_raise_bracket_list(s)
         s.to_s.split(',').map(&:strip).reject(&:empty?)
       end
 
       # Build only `@param` lines for a def/defs node.
       #
+      # @note module_function: when included, also defines #build_params_lines (instance visibility: private)
       # @param node [Parser::AST::Node] `:def` or `:defs` node
       # @param indent [String] indentation prefix (spaces/tabs)
       # @param rbs_sig [Docscribe::Types::RBSProvider::Signature, nil]
-      # @param fallback_type [String]
-      # @param treat_options_keyword_as_hash [Boolean]
+      # @param config [Object] Param documentation.
       # @return [Array<String>, nil]
       def build_params_lines(node, indent, rbs_sig:, config:)
         fallback_type = config.fallback_type
@@ -373,6 +400,13 @@ module Docscribe
         params.empty? ? nil : params
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.extract_param_name_from_param_line+ -> NilClass
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
+      # @param line [Object] Param documentation.
+      # @return [NilClass]
       def extract_param_name_from_param_line(line)
         return Regexp.last_match(1) if line =~ /@param\b\s+\[[^\]]+\]\s+(\S+)/
         return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
@@ -380,6 +414,16 @@ module Docscribe
         nil
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.debug_warn+ -> Object
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #debug_warn (instance visibility: private)
+      # @param e [Object] Param documentation.
+      # @param insertion [Object] Param documentation.
+      # @param name [Object] Param documentation.
+      # @param phase [Object] Param documentation.
+      # @return [Object]
       def debug_warn(e, insertion:, name:, phase:)
         return unless debug?
 
@@ -398,16 +442,36 @@ module Docscribe
         warn "Docscribe DEBUG: #{phase} failed at #{where}: #{e.class}: #{e.message}"
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.debug?+ -> Object
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #debug? (instance visibility: private)
+      # @return [Object]
       def debug?
         ENV['DOCSCRIBE_DEBUG'] == '1'
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.hash_option_pairs+ -> Object
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #hash_option_pairs (instance visibility: private)
+      # @param hash_node [Object] Param documentation.
+      # @return [Object]
       def hash_option_pairs(hash_node)
         return [] unless hash_node&.type == :hash
 
         hash_node.children.select { |child| child.type == :pair }
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.option_key_name+ -> Object
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #option_key_name (instance visibility: private)
+      # @param node [Object] Param documentation.
+      # @return [Object]
       def option_key_name(node)
         case node&.type
         when :sym, :str
@@ -417,6 +481,13 @@ module Docscribe
         end
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.node_default_literal+ -> Object
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #node_default_literal (instance visibility: private)
+      # @param node [Object] Param documentation.
+      # @return [Object]
       def node_default_literal(node)
         case node&.type
         when :int, :float then node.children.first.to_s
@@ -429,6 +500,17 @@ module Docscribe
         end
       end
 
+      # +Docscribe::InlineRewriter::DocBuilder.format_param_tag+ -> String
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #format_param_tag (instance visibility: private)
+      # @param indent [Object] Param documentation.
+      # @param pname [Object] Param documentation.
+      # @param ty [Object] Param documentation.
+      # @param description [Object] Param documentation.
+      # @param style [Object] Param documentation.
+      # @return [String]
       def format_param_tag(indent, pname, ty, description, style:)
         case style
         when 'type_name'

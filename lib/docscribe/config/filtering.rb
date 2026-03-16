@@ -12,6 +12,7 @@ module Docscribe
     # Exclude wins. If include is empty, everything is included.
     #
     # @param path [String]
+    # @raise [StandardError]
     # @return [Boolean]
     def process_file?(path)
       files = raw.dig('filter', 'files') || {}

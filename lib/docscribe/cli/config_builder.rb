@@ -9,6 +9,7 @@ module Docscribe
 
       # Build an effective Docscribe::Config from a base config and CLI options.
       #
+      # @note module_function: when included, also defines #build (instance visibility: private)
       # @param base [Docscribe::Config]
       # @param options [Hash]
       # @return [Docscribe::Config]

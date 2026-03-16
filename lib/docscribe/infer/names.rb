@@ -13,6 +13,7 @@ module Docscribe
       # - `A::B` => "A::B"
       # - `::Foo` => "::Foo"
       #
+      # @note module_function: when included, also defines #const_full_name (instance visibility: private)
       # @param n [Parser::AST::Node, nil]
       # @return [String, nil]
       def const_full_name(n)

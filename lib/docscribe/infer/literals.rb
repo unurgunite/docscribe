@@ -8,7 +8,9 @@ module Docscribe
 
       # Infer a type name from a literal node.
       #
+      # @note module_function: when included, also defines #type_from_literal (instance visibility: private)
       # @param node [Parser::AST::Node, nil]
+      # @param fallback_type [FALLBACK_TYPE] Param documentation.
       # @return [String]
       def type_from_literal(node, fallback_type: FALLBACK_TYPE)
         return fallback_type unless node

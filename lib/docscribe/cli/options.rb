@@ -28,6 +28,7 @@ module Docscribe
       #
       # Method documentation.
       #
+      # @note module_function: when included, also defines #parse! (instance visibility: private)
       # @param [Object] argv Param documentation.
       # @return [Object]
       def parse!(argv)
@@ -98,6 +99,7 @@ module Docscribe
       #
       # Method documentation.
       #
+      # @note module_function: when included, also defines #route_include_exclude (instance visibility: private)
       # @param [Object] options Param documentation.
       # @param [Object] kind Param documentation.
       # @param [Object] value Param documentation.
@@ -114,6 +116,7 @@ module Docscribe
       #
       # Method documentation.
       #
+      # @note module_function: when included, also defines #looks_like_file_pattern? (instance visibility: private)
       # @param [Object] pat Param documentation.
       # @return [Object]
       def looks_like_file_pattern?(pat)

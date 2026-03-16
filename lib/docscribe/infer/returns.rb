@@ -8,7 +8,9 @@ module Docscribe
 
       # Infer return type of method from its source text.
       #
+      # @note module_function: when included, also defines #infer_return_type (instance visibility: private)
       # @param method_source [String, nil]
+      # @raise [Parser::SyntaxError]
       # @return [String]
       def infer_return_type(method_source)
         return FALLBACK_TYPE if method_source.nil? || method_source.strip.empty?
@@ -26,6 +28,7 @@ module Docscribe
 
       # Infer return type from an already-parsed method node.
       #
+      # @note module_function: when included, also defines #infer_return_type_from_node (instance visibility: private)
       # @param node [Parser::AST::Node]
       # @return [String]
       def infer_return_type_from_node(node)
@@ -42,7 +45,10 @@ module Docscribe
 
       # Compute normal return type and rescue-conditional return types for a method.
       #
+      # @note module_function: when included, also defines #returns_spec_from_node (instance visibility: private)
       # @param node [Parser::AST::Node]
+      # @param fallback_type [FALLBACK_TYPE] Param documentation.
+      # @param nil_as_optional [Boolean] Param documentation.
       # @return [Hash{Symbol=>Object}] +{ normal: String, rescues: Array<[Array<String>, String]> }+
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         body =
@@ -79,7 +85,10 @@ module Docscribe
 
       # Infer the type of the "last expression" of a Ruby AST node.
       #
+      # @note module_function: when included, also defines #last_expr_type (instance visibility: private)
       # @param node [Parser::AST::Node, nil]
+      # @param fallback_type [Object] Param documentation.
+      # @param nil_as_optional [Object] Param documentation.
       # @return [String, nil]
       def last_expr_type(node, fallback_type:, nil_as_optional:)
         return nil unless node
@@ -120,8 +129,11 @@ module Docscribe
 
       # Unify two inferred types conservatively.
       #
+      # @note module_function: when included, also defines #unify_types (instance visibility: private)
       # @param a [String, nil]
       # @param b [String, nil]
+      # @param fallback_type [Object] Param documentation.
+      # @param nil_as_optional [Object] Param documentation.
       # @return [String]
       def unify_types(a, b, fallback_type:, nil_as_optional:)
         a ||= fallback_type

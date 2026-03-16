@@ -8,8 +8,11 @@ module Docscribe
 
       # Infer parameter type from name and default value string.
       #
+      # @note module_function: when included, also defines #infer_param_type (instance visibility: private)
       # @param name [String]
       # @param default_str [String, nil]
+      # @param fallback_type [FALLBACK_TYPE] Param documentation.
+      # @param treat_options_keyword_as_hash [Boolean] Param documentation.
       # @return [String]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
         return 'Array' if name.start_with?('*') && !name.start_with?('**')
@@ -32,7 +35,9 @@ module Docscribe
 
       # Parse a Ruby expression from a string into an AST node.
       #
+      # @note module_function: when included, also defines #parse_expr (instance visibility: private)
       # @param src [String, nil]
+      # @raise [Parser::SyntaxError]
       # @return [Parser::AST::Node, nil]
       def parse_expr(src)
         return nil if src.nil? || src.strip.empty?

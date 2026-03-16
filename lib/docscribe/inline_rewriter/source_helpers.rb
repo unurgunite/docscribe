@@ -16,6 +16,7 @@ module Docscribe
 
       # Extract the Ruby method name from a `def` or `defs` node.
       #
+      # @note module_function: when included, also defines #node_name (instance visibility: private)
       # @param node [Parser::AST::Node] a `:def` or `:defs` node
       # @return [Symbol, nil] method name symbol, or nil if node type is not supported
       def node_name(node)
@@ -29,6 +30,7 @@ module Docscribe
       #
       # Docscribe uses this as the insertion point so docs appear flush above the `def`.
       #
+      # @note module_function: when included, also defines #line_start_range (instance visibility: private)
       # @param buffer [Parser::Source::Buffer]
       # @param node [Parser::AST::Node]
       # @return [Parser::Source::Range] a zero-width range at the BOL
@@ -49,6 +51,7 @@ module Docscribe
       # - :lines   => comment lines in the block (including preserved directives)
       # - :end_pos => absolute offset where the comment block ends (start of next line)
       #
+      # @note module_function: when included, also defines #doc_comment_block_info (instance visibility: private)
       # @param buffer [Parser::Source::Buffer]
       # @param def_bol_pos [Integer]
       # @return [Hash, nil]
@@ -95,6 +98,7 @@ module Docscribe
       # - If the first non-blank line is not a comment (`#`), do nothing
       # - Otherwise walk upward to include the entire contiguous comment block
       #
+      # @note module_function: when included, also defines #comment_block_removal_range (instance visibility: private)
       # @param buffer [Parser::Source::Buffer]
       # @param def_bol_pos [Integer] absolute offset of the beginning of the `def` line
       # @return [Parser::Source::Range, nil] range to remove, or nil if nothing to remove
@@ -130,6 +134,13 @@ module Docscribe
         Parser::Source::Range.new(buffer, start_pos, def_bol_pos)
       end
 
+      # +Docscribe::InlineRewriter::SourceHelpers.preserved_comment_line?+ -> Boolean
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #preserved_comment_line? (instance visibility: private)
+      # @param line [Object] Param documentation.
+      # @return [Boolean]
       def preserved_comment_line?(line)
         # RuboCop directives
         return true if line =~ /^\s*#\s*rubocop:(disable|enable|todo)\b/
@@ -147,6 +158,13 @@ module Docscribe
         false
       end
 
+      # +Docscribe::InlineRewriter::SourceHelpers.doc_marker_line?+ -> Boolean
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #doc_marker_line? (instance visibility: private)
+      # @param line [Object] Param documentation.
+      # @return [Boolean]
       def doc_marker_line?(line)
         # Docscribe header line:
         #   # +A#foo+ -> Integer
@@ -172,6 +190,7 @@ module Docscribe
       # - Docscribe does not try to parse YARD tags here; it simply avoids overwriting user comments
       #   unless `rewrite` mode is enabled.
       #
+      # @note module_function: when included, also defines #already_has_doc_immediately_above? (instance visibility: private)
       # @param buffer [Parser::Source::Buffer]
       # @param insert_pos [Integer] absolute offset where docs would be inserted (usually BOL of def)
       # @return [Boolean]
@@ -186,6 +205,15 @@ module Docscribe
         !!(lines[i] =~ /^\s*#/)
       end
 
+      # +Docscribe::InlineRewriter::SourceHelpers.line_indent+ -> Object
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #line_indent (instance visibility: private)
+      # @param node [Object] Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [String] if StandardError
       def line_indent(node)
         line = node.loc.expression.source_line
         return '' unless line

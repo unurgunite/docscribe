@@ -53,40 +53,77 @@ module Docscribe
       # Tracks Ruby visibility + container state while walking a class/module body.
       class VisibilityCtx
         # @return [Symbol] default visibility for instance methods in current context
+        #
+        # @!attribute [rw] default_instance_vis
+        #   @return [Object]
+        #   @param value [Object]
         attr_accessor :default_instance_vis
 
         # @return [Symbol] default visibility for class methods in current context
+        #
+        # @!attribute [rw] default_class_vis
+        #   @return [Object]
+        #   @param value [Object]
         attr_accessor :default_class_vis
 
         # @return [Boolean] true when walking within a singleton class context (`class << ...`)
+        #
+        # @!attribute [rw] inside_sclass
+        #   @return [Object]
+        #   @param value [Object]
         attr_accessor :inside_sclass
 
         # @return [Boolean] true when `module_function` (no args) has been seen; affects subsequent defs
+        #
+        # @!attribute [rw] module_function_default
+        #   @return [Object]
+        #   @param value [Object]
         attr_accessor :module_function_default
 
         # When inside `class << Foo` (const receiver), document methods under Foo as container.
         # When nil, container is derived from lexical nesting (`@name_stack`).
         #
         # @return [String, nil]
+        #
+        # @!attribute [rw] container_override
+        #   @return [Object]
+        #   @param value [Object]
         attr_accessor :container_override
 
         # @return [Hash{Symbol=>Symbol}] explicit visibilities for named instance methods
+        #
+        # @!attribute [r] explicit_instance
+        #   @return [Object]
         attr_reader :explicit_instance
 
         # @return [Hash{Symbol=>Symbol}] explicit visibilities for named class methods
+        #
+        # @!attribute [r] explicit_class
+        #   @return [Object]
         attr_reader :explicit_class
 
         # @return [Hash{Symbol=>true}] methods marked as module functions via `module_function :name`
+        #
+        # @!attribute [r] module_function_explicit
+        #   @return [Object]
         attr_reader :module_function_explicit
 
         # True if the current lexical container is a module (vs class).
         #
         # @return [Boolean]
+        #
+        # @!attribute [rw] container_is_module
+        #   @return [Object]
+        #   @param value [Object]
         attr_accessor :container_is_module
 
         # True if `extend self` has been seen (or inherited) for this module container.
         #
         # @return [Boolean]
+        #
+        # @!attribute [rw] extend_self
+        #   @return [Object]
+        #   @param value [Object]
         attr_accessor :extend_self
 
         # Initialize a fresh visibility context with Ruby defaults (public).
@@ -130,14 +167,22 @@ module Docscribe
       # List of computed insertions for this file.
       #
       # @return [Array<Insertion>]
+      #
+      # @!attribute [r] insertions
+      #   @return [Object]
       attr_reader :insertions
 
       # List of computed attribute insertions (`attr_reader`, `attr_writer`, `attr_accessor`).
       #
       # @return [Array<AttrInsertion>]
+      #
+      # @!attribute [r] attr_insertions
+      #   @return [Object]
       attr_reader :attr_insertions
 
       # @param buffer [Parser::Source::Buffer]
+      #
+      # @return [Object]
       def initialize(buffer)
         super()
         @buffer = buffer

@@ -47,6 +47,7 @@ module Docscribe
       # @param rewrite [Boolean] whether to regenerate docs even if a comment block exists above the target
       # @param merge [Boolean] whether to merge missing tags into existing doc blocks
       # @param config [Docscribe::Config, nil] configuration (defaults to {Docscribe::Config.load})
+      # @param file [String] Param documentation.
       # @return [String] rewritten Ruby source
       def insert_comments(code, rewrite: false, merge: false, config: nil, file: '(inline)')
         buffer = Parser::Source::Buffer.new(file.to_s, source: code)
