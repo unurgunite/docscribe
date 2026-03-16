@@ -38,16 +38,7 @@ module Docscribe
         rbs_sig = config.rbs_provider&.signature_for(container: container, scope: scope, name: name)
 
         # Params
-        params_lines =
-          if config.emit_param_tags?
-            build_params_lines(
-              node,
-              indent,
-              rbs_sig: rbs_sig,
-              fallback_type: config.fallback_type,
-              treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
-            )
-          end
+        params_lines = build_params_lines(node, indent, rbs_sig: rbs_sig, config: config) if config.emit_param_tags?
 
         # Raises
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
@@ -103,7 +94,7 @@ module Docscribe
             lines << "#{indent}# @return [#{rtype}] if #{exceptions.join(', ')}"
           end
         end
-
+        # binding.irb
         lines.map { |l| "#{l}\n" }.join
       rescue StandardError => e
         debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build')
@@ -160,13 +151,7 @@ module Docscribe
 
         # Params: add only missing @param entries
         if config.emit_param_tags?
-          all_params = build_params_lines(
-            node,
-            indent,
-            rbs_sig: rbs_sig,
-            fallback_type: config.fallback_type,
-            treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
-          )
+          all_params = build_params_lines(node, indent, rbs_sig: rbs_sig, config: config)
 
           all_params&.each do |pl|
             pname = extract_param_name_from_param_line(pl)
@@ -217,8 +202,8 @@ module Docscribe
         raise_types = {}
 
         Array(lines).each do |line|
-          if (m = line.match(/^\s*#\s*@param\b.*\]\s+(\S+)/))
-            param_names[m[1]] = true
+          if (pname = extract_param_name_from_param_line(line))
+            param_names[pname] = true
           end
 
           has_return ||= line.match?(/^\s*#\s*@return\b/)
@@ -271,7 +256,12 @@ module Docscribe
       # @param fallback_type [String]
       # @param treat_options_keyword_as_hash [Boolean]
       # @return [Array<String>, nil]
-      def build_params_lines(node, indent, rbs_sig:, fallback_type:, treat_options_keyword_as_hash:)
+      def build_params_lines(node, indent, rbs_sig:, config:)
+        fallback_type = config.fallback_type
+        treat_options_keyword_as_hash = config.treat_options_keyword_as_hash?
+        param_tag_style = config.param_tag_style
+        param_documentation = config.param_documentation
+
         args =
           case node.type
           when :def then node.children[1]
@@ -291,7 +281,7 @@ module Docscribe
                    fallback_type: fallback_type,
                    treat_options_keyword_as_hash: treat_options_keyword_as_hash
                  )
-            params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+            params << format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
 
           when :optarg
             pname, default = *a
@@ -303,7 +293,20 @@ module Docscribe
                    fallback_type: fallback_type,
                    treat_options_keyword_as_hash: treat_options_keyword_as_hash
                  )
-            params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+
+            params << format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
+
+            hash_option_pairs(default).each do |pair|
+              key_node, value_node = pair.children
+              option_key = option_key_name(key_node)
+              option_type = Infer::Literals.type_from_literal(value_node, fallback_type: fallback_type)
+              option_default = node_default_literal(value_node)
+
+              line = "#{indent}# @option #{pname} [#{option_type}] :#{option_key}"
+              line += " (#{option_default})" if option_default
+              line += ' Option documentation.'
+              params << line
+            end
 
           when :kwarg
             pname = a.children.first.to_s
@@ -313,7 +316,7 @@ module Docscribe
                    fallback_type: fallback_type,
                    treat_options_keyword_as_hash: treat_options_keyword_as_hash
                  )
-            params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+            params << format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
 
           when :kwoptarg
             pname, default = *a
@@ -325,7 +328,7 @@ module Docscribe
                    fallback_type: fallback_type,
                    treat_options_keyword_as_hash: treat_options_keyword_as_hash
                  )
-            params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+            params << format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
 
           when :restarg
             pname = (a.children.first || 'args').to_s
@@ -339,7 +342,7 @@ module Docscribe
                   treat_options_keyword_as_hash: treat_options_keyword_as_hash
                 )
               end
-            params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+            params << format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
 
           when :kwrestarg
             pname = (a.children.first || 'kwargs').to_s
@@ -350,7 +353,7 @@ module Docscribe
                 fallback_type: fallback_type,
                 treat_options_keyword_as_hash: treat_options_keyword_as_hash
               )
-            params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+            params << format_param_tag(indent, pname, ty, config.param_documentation, style: param_tag_style)
 
           when :blockarg
             pname = (a.children.first || 'block').to_s
@@ -360,7 +363,7 @@ module Docscribe
                    fallback_type: fallback_type,
                    treat_options_keyword_as_hash: treat_options_keyword_as_hash
                  )
-            params << "#{indent}# @param [#{ty}] #{pname} Param documentation."
+            params << format_param_tag(indent, pname, ty, config.param_documentation, style: param_tag_style)
 
           when :forward_arg
             # Ruby 3 '...' forwarding; skip
@@ -371,8 +374,10 @@ module Docscribe
       end
 
       def extract_param_name_from_param_line(line)
-        m = line.match(/@param\b.*\]\s+(\S+)/)
-        m && m[1]
+        return Regexp.last_match(1) if line =~ /@param\b\s+\[[^\]]+\]\s+(\S+)/
+        return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
+
+        nil
       end
 
       def debug_warn(e, insertion:, name:, phase:)
@@ -395,6 +400,42 @@ module Docscribe
 
       def debug?
         ENV['DOCSCRIBE_DEBUG'] == '1'
+      end
+
+      def hash_option_pairs(hash_node)
+        return [] unless hash_node&.type == :hash
+
+        hash_node.children.select { |child| child.type == :pair }
+      end
+
+      def option_key_name(node)
+        case node&.type
+        when :sym, :str
+          node.children.first.to_s
+        else
+          node&.loc&.expression&.source.to_s
+        end
+      end
+
+      def node_default_literal(node)
+        case node&.type
+        when :int, :float then node.children.first.to_s
+        when :str then "'#{node.children.first}'"
+        when :sym then ":#{node.children.first}"
+        when :true then 'true' # rubocop:disable Lint/BooleanSymbol
+        when :false then 'false' # rubocop:disable Lint/BooleanSymbol
+        when :nil then 'nil'
+        else node&.loc&.expression&.source
+        end
+      end
+
+      def format_param_tag(indent, pname, ty, description, style:)
+        case style
+        when 'type_name'
+          "#{indent}# @param [#{ty}] #{pname} #{description}"
+        else
+          "#{indent}# @param #{pname} [#{ty}] #{description}"
+        end
       end
     end
   end

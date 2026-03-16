@@ -10,10 +10,11 @@ module Docscribe
     module Run
       module_function
 
-      # +Docscribe::CLI::Run#run+ -> Object
+      # +Docscribe::CLI::Run.run+ -> Object
       #
       # Method documentation.
       #
+      # @note module_function: when included, also defines #run (instance visibility: private)
       # @param [Hash] options Param documentation.
       # @param [Object] argv Param documentation.
       # @return [Object]
@@ -28,10 +29,7 @@ module Docscribe
 
         return run_stdin(options: options, conf: conf) if options[:stdin]
 
-        if argv.empty?
-          warn 'No input. Use --stdin or pass file paths. See --help.'
-          return 1
-        end
+        options[:check] = true if argv.empty?
 
         paths = expand_paths(argv)
         paths = paths.select { |p| conf.process_file?(p) }
@@ -53,6 +51,16 @@ module Docscribe
         run_files(options: options, conf: conf, paths: paths)
       end
 
+      # +Docscribe::CLI::Run.run_stdin+ -> Integer
+      #
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #run_stdin (instance visibility: private)
+      # @param [Hash] options Param documentation.
+      # @param [Object] conf Param documentation.
+      # @raise [StandardError]
+      # @return [Integer]
+      # @return [Integer] if StandardError
       def run_stdin(options:, conf:)
         code = $stdin.read
         out = Docscribe::InlineRewriter.insert_comments(
@@ -69,14 +77,17 @@ module Docscribe
         1
       end
 
-      # +Docscribe::CLI::Run#expand_paths+ -> Object
+      # +Docscribe::CLI::Run.expand_paths+ -> Object
       #
       # Method documentation.
       #
+      # @note module_function: when included, also defines #expand_paths (instance visibility: private)
       # @param [Object] args Param documentation.
       # @return [Object]
       def expand_paths(args)
         files = []
+        args = ['.'] if args.empty?
+
         args.each do |path|
           if File.directory?(path)
             files.concat(Dir.glob(File.join(path, '**', '*.rb')))
@@ -89,13 +100,15 @@ module Docscribe
         files.uniq.sort
       end
 
-      # +Docscribe::CLI::Run#run_files+ -> Integer
+      # +Docscribe::CLI::Run.run_files+ -> Integer
       #
       # Method documentation.
       #
+      # @note module_function: when included, also defines #run_files (instance visibility: private)
       # @param [Hash] options Param documentation.
       # @param [Object] conf Param documentation.
       # @param [Object] paths Param documentation.
+      # @raise [StandardError]
       # @return [Integer]
       def run_files(options:, conf:, paths:)
         $stdout.sync = true
@@ -228,6 +241,7 @@ module Docscribe
       rescue StandardError
         File.basename(path.to_s)
       end
+
       private_class_method :display_path_for
     end
   end

@@ -46,6 +46,8 @@ module Docscribe
         doc:
           # Default text inserted into each generated doc block.
           default_message: "Method documentation."
+          param_documentation: "Param documentation."
+          param_tag_style: "type_name"
 
         methods:
           # Per-scope/per-visibility overrides.

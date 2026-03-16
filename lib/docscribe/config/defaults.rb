@@ -14,7 +14,9 @@ module Docscribe
         'attributes' => false
       },
       'doc' => {
-        'default_message' => 'Method documentation.'
+        'default_message' => 'Method documentation.',
+        'param_tag_style' => 'type_name',
+        'param_documentation' => 'Param documentation.'
       },
       'methods' => {
         'instance' => {
