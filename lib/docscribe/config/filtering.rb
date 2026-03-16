@@ -81,9 +81,7 @@ module Docscribe
     end
 
     def file_match_pattern?(pattern, path)
-      if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
-        return Regexp.new(pattern[1..-2]).match?(path)
-      end
+      return Regexp.new(pattern[1..-2]).match?(path) if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
 
       patterns_to_try = [pattern]
       patterns_to_try << pattern.gsub('/**/', '/') if pattern.include?('/**/')

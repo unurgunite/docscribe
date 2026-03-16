@@ -175,9 +175,7 @@ module Docscribe
         end
 
         # Return: only add if there is no existing @return line at all
-        if config.emit_return_tag?(scope, visibility) && !info[:has_return]
-          lines << "#{indent}# @return [#{normal_type}]"
-        end
+        lines << "#{indent}# @return [#{normal_type}]" if config.emit_return_tag?(scope, visibility) && !info[:has_return]
 
         # Conditional rescue @return tags: only add if there is no existing @return line at all
         if config.emit_rescue_conditional_returns? && !info[:has_return]
