@@ -21,7 +21,7 @@ emit:
 
 doc:
   default_message: "Method documentation."
-  param_tag_style: 'name_type'
+  param_tag_style: 'type_name'
 
 methods:
   instance:

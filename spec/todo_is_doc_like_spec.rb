@@ -12,6 +12,6 @@ RSpec.describe '@todo blocks are doc-like' do
     out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
 
     expect(out).to include('# @todo docs')
-    expect(out).to include('# @param [Object] x')
+    expect(out).to include(param_tag('x', 'Object'))
   end
 end

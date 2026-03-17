@@ -14,6 +14,6 @@ RSpec.describe '--merge preserves rubocop directives' do
 
     expect(out).to include('# rubocop:disable Metrics/AbcSize')
     expect(out).to include('# @todo docs')
-    expect(out).to include('# @param [Object] x')
+    expect(out).to include(param_tag('x', 'Object'))
   end
 end

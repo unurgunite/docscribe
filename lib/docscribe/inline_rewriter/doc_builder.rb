@@ -513,8 +513,10 @@ module Docscribe
         case style
         when 'type_name'
           "#{indent}# @param [#{ty}] #{pname} #{description}"
-        else
+        when 'name_type'
           "#{indent}# @param #{pname} [#{ty}] #{description}"
+        else
+          raise StandardError, "Unknown style #{style}"
         end
       end
     end

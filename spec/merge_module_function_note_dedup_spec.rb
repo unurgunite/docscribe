@@ -15,6 +15,6 @@ RSpec.describe '--merge module_function note de-dup' do
     out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
 
     expect(out.scan(/@note module_function:/).size).to eq(1)
-    expect(out).to include('# @param [Object] x')
+    expect(out).to include(param_tag('x', 'Object'))
   end
 end

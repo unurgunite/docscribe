@@ -13,10 +13,10 @@ RSpec.describe '--merge params' do
     out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
 
     # Existing doc preserved verbatim
-    expect(out).to include('# @param [String] x already documented')
+    expect(out).to include(param_tag('x', 'String', description: 'already documented'))
 
     # New param added (y)
-    expect(out).to include('# @param [Object] y Param documentation.')
+    expect(out).to include(param_tag('y', 'Object', description: 'Param documentation.'))
 
     # Should NOT create a second @param for x
     expect(out.scan(/@param \[[^\]]+\] x\b/).size).to eq(1)

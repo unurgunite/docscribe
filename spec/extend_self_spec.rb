@@ -15,7 +15,7 @@ RSpec.describe 'extend self handling' do
     out = inline(code)
 
     expect(out).to include('# +M.foo+')
-    expect(out).to include('# @param [Object] x')
+    expect(out).to include(param_tag('x', 'Object'))
     expect(out).not_to include('# +M#foo+')
     expect(out).not_to include('@note module_function:')
   end

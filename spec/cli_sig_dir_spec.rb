@@ -46,7 +46,7 @@ RSpec.describe 'CLI --sig-dir' do
 
       expect(stdout).to include('# +D#x+ -> Integer')
       expect(stdout).to include('# @return [Integer]')
-      expect(stdout).to include('# @param [Boolean] verbose')
+      expect(stdout).to include(param_tag('verbose', 'Boolean'))
     end
   end
 end

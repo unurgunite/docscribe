@@ -22,7 +22,7 @@ RSpec.describe '--merge formatting' do
 
     # Merge added note + param
     expect(out).to include('# @note module_function:')
-    expect(out).to include('# @param [Object] x')
+    expect(out).to include(param_tag('x', 'Object'))
 
     # Ensure no empty line between @note and @param
     expect(out).to match(/@note module_function:.*\n\s*# @param/m)

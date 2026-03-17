@@ -11,10 +11,9 @@ RSpec.describe '--merge mode' do
     RUBY
 
     out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
-
     expect(out).to include('# Existing docs')
     expect(out).to include('# @return [String]')          # preserved
-    expect(out).to include('# @param [Object] x')         # added
+    expect(out).to include(param_tag('x', 'Object'))      # added
     expect(out).not_to include('# +A#foo+')               # we did not insert a whole new block
   end
 

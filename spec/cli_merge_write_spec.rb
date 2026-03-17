@@ -34,8 +34,8 @@ RSpec.describe 'CLI --merge --write' do
       out = File.read(path)
       expect(out).to include('# @todo docs (keep this line!)')
       expect(out).to include('# @return [String] already documented')
-      expect(out).to include('# @param [Object] x')
-      expect(out).to include('# @param [Integer] y')
+      expect(out).to include(param_tag('x', 'Object'))
+      expect(out).to include(param_tag('y', 'Integer'))
     end
   end
 end

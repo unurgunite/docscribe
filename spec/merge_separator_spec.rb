@@ -13,7 +13,7 @@ RSpec.describe '--merge separator behavior' do
     out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
 
     # Must merge @param
-    expect(out).to include('# @param [Object] x')
+    expect(out).to include(param_tag('x', 'Object'))
 
     # Should still have only one consecutive "#" separator line before additions
     expect(out).not_to match(/#\s*\n\s*#\s*\n\s*# @param/)

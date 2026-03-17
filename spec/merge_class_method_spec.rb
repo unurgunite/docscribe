@@ -11,7 +11,7 @@ RSpec.describe '--merge class methods' do
 
     out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
 
-    expect(out).to include('# @param [Object] x')
+    expect(out).to include(param_tag('x', 'Object'))
     expect(out).to include('# @return [Object]')
     expect(out).not_to include('# +A.foo+') # merge should not insert Docscribe header
   end

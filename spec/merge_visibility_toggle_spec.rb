@@ -14,7 +14,7 @@ RSpec.describe '--merge visibility tags toggle' do
 
     out = Docscribe::InlineRewriter.insert_comments(code, merge: true, config: conf)
 
-    expect(out).to include('# @param [Object] x')
+    expect(out).to include(param_tag('x', 'Object'))
     expect(out).not_to include('# @private')
   end
 end

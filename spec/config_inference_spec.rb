@@ -49,6 +49,6 @@ RSpec.describe 'Inference config' do
     RUBY
 
     out = Docscribe::InlineRewriter.insert_comments(code, config: conf)
-    expect(out).to include('# @param [Object] options')
+    expect(out).to include(param_tag('options', 'Object'))
   end
 end

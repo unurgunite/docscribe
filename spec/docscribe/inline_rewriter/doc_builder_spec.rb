@@ -11,6 +11,6 @@ RSpec.describe Docscribe::InlineRewriter::DocBuilder do
     RUBY
 
     out = inline(code)
-    expect(out).to include('# @param [Integer] x')
+    expect(out).to include(param_tag('x', 'Integer'))
   end
 end
