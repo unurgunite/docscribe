@@ -508,6 +508,7 @@ module Docscribe
       # @param ty [Object] Param documentation.
       # @param description [Object] Param documentation.
       # @param style [Object] Param documentation.
+      # @raise [StandardError]
       # @return [String]
       def format_param_tag(indent, pname, ty, description, style:)
         case style

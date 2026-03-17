@@ -6,6 +6,13 @@ require 'docscribe'
 Dir['./spec/support/*.rb'].sort.each { |file| require file }
 
 module InlineHelper
+  # +InlineHelper#inline+ -> Object
+  #
+  # Method documentation.
+  #
+  # @param [Object] code Param documentation.
+  # @param [Config] config Param documentation.
+  # @return [Object]
   def inline(code, config: Docscribe::Config.new({}))
     Docscribe::InlineRewriter.insert_comments(code, config: config)
   end
