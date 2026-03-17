@@ -29,8 +29,10 @@ module Docscribe
 
         return run_stdin(options: options, conf: conf) if options[:stdin]
 
-        # binding.irb
-        options[:check] = true if argv.empty? && !options[:write]
+        if argv.empty? && !options[:write]
+          options[:check] = true
+          options[:merge] = true
+        end
 
         paths = expand_paths(argv)
         paths = paths.select { |p| conf.process_file?(p) }

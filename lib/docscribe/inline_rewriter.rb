@@ -14,6 +14,8 @@ require 'docscribe/inline_rewriter/doc_builder'
 require 'docscribe/inline_rewriter/collector'
 
 module Docscribe
+  class ParseError < StandardError; end
+
   # Rewrites Ruby source to insert YARD-style documentation comments.
   #
   # Docscribe uses Parser::Source::TreeRewriter so that the original formatting is preserved
@@ -48,11 +50,12 @@ module Docscribe
       # @param merge [Boolean] whether to merge missing tags into existing doc blocks
       # @param config [Docscribe::Config, nil] configuration (defaults to {Docscribe::Config.load})
       # @param file [String] Param documentation.
-      # @return [String] rewritten Ruby source
+      # @raise [Docscribe::ParseError] if bad instructions are met.
+      # @return [String] rewritten Ruby source.
       def insert_comments(code, rewrite: false, merge: false, config: nil, file: '(inline)')
         buffer = Parser::Source::Buffer.new(file.to_s, source: code)
         ast = Docscribe::Parsing.parse_buffer(buffer)
-        return code unless ast
+        raise Docscribe::ParseError, "Failed to parse #{file}" unless ast
 
         config ||= Docscribe::Config.load
 
