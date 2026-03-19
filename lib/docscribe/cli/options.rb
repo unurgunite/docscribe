@@ -10,8 +10,9 @@ module Docscribe
         write: false,
         check: false,
         rewrite: false, # set by --refresh
+        merge: false,
         config: nil,
-
+        verbose: false,
         include: [],
         exclude: [],
         include_file: [],
@@ -27,6 +28,7 @@ module Docscribe
       #
       # Method documentation.
       #
+      # @note module_function: when included, also defines #parse! (instance visibility: private)
       # @param [Object] argv Param documentation.
       # @return [Object]
       def parse!(argv)
@@ -37,10 +39,14 @@ module Docscribe
 
           opts.on('-d', '-c', '--dry', '--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
           opts.on('-w', '--write', 'Rewrite files in place') { options[:write] = true }
-          opts.on('-r', '--refresh', 'Regenerate docs: replace existing doc blocks above methods') do
+          opts.on('-r', '--refresh',
+                  'Regenerate docs: replace existing doc blocks above methods (cannot be used with --merge)') do
             options[:rewrite] = true
           end
-
+          opts.on('-m', '--merge',
+                  'Merge missing tags into existing doc blocks (non-destructive; cannot be used with --refresh)') do
+            options[:merge] = true
+          end
           opts.on('--stdin', 'Read code from STDIN and print with docs inserted') { options[:stdin] = true }
           opts.on('-C', '--config PATH', 'Path to config YAML (default: docscribe.yml)') { |v| options[:config] = v }
 
@@ -69,6 +75,9 @@ module Docscribe
           opts.on('--exclude-file PATTERN', 'Skip files matching PATTERN (glob or /regex/). Exclude wins.') do |v|
             options[:exclude_file] << v
           end
+          opts.on('--verbose', 'Verbose output (print per-file actions)') do
+            options[:verbose] = true
+          end
 
           opts.on('-v', '--version', 'Print version and exit') do
             require 'docscribe/version'
@@ -90,6 +99,7 @@ module Docscribe
       #
       # Method documentation.
       #
+      # @note module_function: when included, also defines #route_include_exclude (instance visibility: private)
       # @param [Object] options Param documentation.
       # @param [Object] kind Param documentation.
       # @param [Object] value Param documentation.
@@ -106,9 +116,16 @@ module Docscribe
       #
       # Method documentation.
       #
+      # @note module_function: when included, also defines #looks_like_file_pattern? (instance visibility: private)
       # @param [Object] pat Param documentation.
       # @return [Object]
       def looks_like_file_pattern?(pat)
+        # Regex patterns are wrapped in slashes (e.g. "/^A#foo$/").
+        # Those are commonly used for method-id filtering with --include/--exclude.
+        #
+        # If you want regex filtering for files, use --include-file/--exclude-file.
+        return false if pat.start_with?('/') && pat.end_with?('/') && pat.length >= 2
+
         pat.include?('/') || pat.include?('**') || pat.end_with?('.rb')
       end
     end

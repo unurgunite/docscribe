@@ -55,7 +55,7 @@ RSpec.describe 'RBS collapse_generics option' do
     expect(out).not_to include('# @return [String]')
 
     # And generics should be preserved
-    expect(out).to include('# @param [Hash<Symbol, Object>] options')
+    expect(out).to include(param_tag('options', 'Hash<Symbol, Object>'))
   end
 
   it 'collapses generics when rbs.collapse_generics is true' do
@@ -66,7 +66,7 @@ RSpec.describe 'RBS collapse_generics option' do
     expect(out).not_to include('# @return [String]')
 
     # Generics collapsed
-    expect(out).to include('# @param [Hash] options')
-    expect(out).not_to include('# @param [Hash<Symbol, Object>] options')
+    expect(out).to include(param_tag('options', 'Hash'))
+    expect(out).not_to include(param_tag('options', 'Hash<Symbol, Object>'))
   end
 end

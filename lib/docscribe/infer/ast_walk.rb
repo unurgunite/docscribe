@@ -8,7 +8,9 @@ module Docscribe
 
       # Walk an AST and yield each node (preorder).
       #
+      # @note module_function: when included, also defines #walk (instance visibility: private)
       # @param node [Parser::AST::Node]
+      # @param block [Proc] Param documentation.
       # @yieldparam n [Parser::AST::Node]
       # @return [void]
       def walk(node, &block)

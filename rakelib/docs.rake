@@ -8,7 +8,7 @@ GEM_NAME = Bundler.load_gemspec(Dir.glob('*.gemspec').first).name
 DOCS_REPO_NAME = "#{GEM_NAME}_docs"
 DOCS_REPO_PATH = "../#{DOCS_REPO_NAME}"
 
-namespace :docs do # rubocop:disable Metrics/BlockLength
+namespace :docs do
   desc 'Generate new docs and push them to repo'
   task generate: :clean do
     puts 'Generating docs...'

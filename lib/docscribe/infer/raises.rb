@@ -8,6 +8,7 @@ module Docscribe
 
       # Infer exception class names that the method may raise.
       #
+      # @note module_function: when included, also defines #infer_raises_from_node (instance visibility: private)
       # @param node [Parser::AST::Node]
       # @return [Array<String>]
       def infer_raises_from_node(node)
@@ -37,6 +38,7 @@ module Docscribe
 
       # Convert a rescue exception list node into an array of exception class names.
       #
+      # @note module_function: when included, also defines #exception_names_from_rescue_list (instance visibility: private)
       # @param exc_list [Parser::AST::Node, nil]
       # @return [Array<String>]
       def exception_names_from_rescue_list(exc_list)

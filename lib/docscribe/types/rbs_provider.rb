@@ -47,6 +47,7 @@ module Docscribe
       #
       # @param sig_dirs [Array<String>] directories containing `.rbs` files (e.g. ["sig"])
       # @param collapse_generics [Boolean] when true, collapse generic args (`Hash<...>` -> `Hash`)
+      # @return [Object]
       def initialize(sig_dirs:, collapse_generics: false)
         require 'rbs'
 
@@ -62,7 +63,10 @@ module Docscribe
       #
       # @param container [String] constant name (e.g. "MyApp::User")
       # @param scope [Symbol] :instance or :class
-      # @param name [String, Symbol] method name
+      # @param name [String, Symbol] method name #
+      # @raise [RBS::ParsingError]
+      # @raise [RBS::DefinitionBuilder::UnknownTypeNameError]
+      # @raise [StandardError]
       # @return [Signature, nil]
       def signature_for(container:, scope:, name:)
         load_env!

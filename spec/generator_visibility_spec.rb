@@ -24,8 +24,7 @@ RSpec.describe 'Inline rewriter visibility' do
     expect(out).to include('# +Demo.bump+')
     expect(out).to include('# +Demo#priv+').or include('# +Demo#priv+ ')
     # def internal is a class method under class << self with private => @private
-    expect(out).to include('# +Demo.internal+')
-    expect(out).to include('@private')
+    expect(out).to match(/# \+Demo\.internal\+.*?\n.*?# @private/m)
   end
 
   it 'marks protected instance methods with @protected' do
@@ -44,6 +43,8 @@ RSpec.describe 'Inline rewriter visibility' do
     # The inline rewriter adds @protected on the protected methods
     expect(out).to include('# +P#prot+')
     expect(out).to include('# +P#prot2+')
+    expect(out).to match(/# \+P#prot\+.*?\n.*?# @protected/m)
+    expect(out).to match(/# \+P#prot2\+.*?\n.*?# @protected/m)
     expect(out.scan('@protected').size).to be >= 1
     expect(out).to include('# +P#pub+')
   end

@@ -48,11 +48,11 @@ RSpec.describe 'RBS integration' do
     expect(out).not_to include('# @return [String]')
 
     # Param types should also come from RBS when available.
-    expect(out).to include('# @param [Boolean] verbose')
+    expect(out).to include(param_tag('verbose', 'Boolean'))
 
     # Your formatter currently keeps generics, so Hash[Symbol, untyped] becomes Hash<Symbol, Object>.
     # If you later decide to "collapse generics", change this expectation accordingly.
-    expect(out).to include('# @param [Hash<Symbol, Object>] options')
+    expect(out).to include(param_tag('options', 'Hash<Symbol, Object>'))
   end
 
   it 'overrides required keyword-without-default type using RBS (Object by inference, Boolean by RBS)' do
@@ -73,8 +73,8 @@ RSpec.describe 'RBS integration' do
     out = inline_with_rbs(code: code, rbs: rbs)
 
     # Without RBS, "verbose:" (no default) is inferred as Object.
-    expect(out).to include('# @param [Boolean] verbose')
-    expect(out).not_to include('# @param [Object] verbose')
+    expect(out).to include(param_tag('verbose', 'Boolean'))
+    expect(out).not_to include(param_tag('verbose', 'Object'))
 
     # Without RBS, return would be String; with RBS it must be Integer.
     expect(out).to include('# @return [Integer]')

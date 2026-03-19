@@ -11,6 +11,7 @@ Gem::Specification.new do |spec|
   spec.summary = 'Autogenerate documentation for Ruby code with YARD syntax.'
   spec.homepage = 'https://github.com/unurgunite/docscribe'
   spec.required_ruby_version = '>= 2.7'
+  spec.license = 'MIT'
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = 'https://github.com/unurgunite/docscribe'

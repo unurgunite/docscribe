@@ -70,5 +70,15 @@ module Docscribe
     def treat_options_keyword_as_hash?
       fetch_bool(%w[inference treat_options_keyword_as_hash], true)
     end
+
+    # @return [String]
+    def param_tag_style
+      raw.dig('doc', 'param_tag_style') || DEFAULT.dig('doc', 'param_tag_style')
+    end
+
+    # @return [String]
+    def param_documentation
+      raw.dig('doc', 'param_documentation') || DEFAULT.dig('doc', 'param_documentation')
+    end
   end
 end

@@ -6,6 +6,8 @@ require 'psych'
 
 module Docscribe
   class Config
+    # @!attribute [r] raw
+    #   @return [Object]
     attr_reader :raw
 
     # Create a Docscribe configuration instance.
@@ -14,6 +16,8 @@ module Docscribe
     # from defaults.
     #
     # @param raw [Hash, nil]
+    #
+    # @return [Object]
     def initialize(raw = {})
       @raw = deep_merge(DEFAULT, raw || {})
     end

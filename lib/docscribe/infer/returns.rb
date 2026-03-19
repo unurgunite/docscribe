@@ -8,7 +8,9 @@ module Docscribe
 
       # Infer return type of method from its source text.
       #
+      # @note module_function: when included, also defines #infer_return_type (instance visibility: private)
       # @param method_source [String, nil]
+      # @raise [Parser::SyntaxError]
       # @return [String]
       def infer_return_type(method_source)
         return FALLBACK_TYPE if method_source.nil? || method_source.strip.empty?
@@ -26,6 +28,7 @@ module Docscribe
 
       # Infer return type from an already-parsed method node.
       #
+      # @note module_function: when included, also defines #infer_return_type_from_node (instance visibility: private)
       # @param node [Parser::AST::Node]
       # @return [String]
       def infer_return_type_from_node(node)
@@ -42,9 +45,12 @@ module Docscribe
 
       # Compute normal return type and rescue-conditional return types for a method.
       #
+      # @note module_function: when included, also defines #returns_spec_from_node (instance visibility: private)
       # @param node [Parser::AST::Node]
+      # @param fallback_type [FALLBACK_TYPE] Param documentation.
+      # @param nil_as_optional [Boolean] Param documentation.
       # @return [Hash{Symbol=>Object}] +{ normal: String, rescues: Array<[Array<String>, String]> }+
-      def returns_spec_from_node(node)
+      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         body =
           case node.type
           when :def then node.children[2]
@@ -56,18 +62,22 @@ module Docscribe
 
         if body.type == :rescue
           main_body = body.children[0]
-          spec[:normal] = last_expr_type(main_body) || FALLBACK_TYPE
+          spec[:normal] =
+            last_expr_type(main_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional) || FALLBACK_TYPE
 
           body.children.each do |ch|
             next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody
 
             exc_list, _asgn, rescue_body = *ch
             exc_names = Raises.exception_names_from_rescue_list(exc_list)
-            rtype = last_expr_type(rescue_body) || FALLBACK_TYPE
+            rtype =
+              last_expr_type(rescue_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional) ||
+              fallback_type
             spec[:rescues] << [exc_names, rtype]
           end
         else
-          spec[:normal] = last_expr_type(body) || FALLBACK_TYPE
+          spec[:normal] =
+            last_expr_type(body, fallback_type: fallback_type, nil_as_optional: nil_as_optional) || FALLBACK_TYPE
         end
 
         spec
@@ -75,51 +85,67 @@ module Docscribe
 
       # Infer the type of the "last expression" of a Ruby AST node.
       #
+      # @note module_function: when included, also defines #last_expr_type (instance visibility: private)
       # @param node [Parser::AST::Node, nil]
+      # @param fallback_type [Object] Param documentation.
+      # @param nil_as_optional [Object] Param documentation.
       # @return [String, nil]
-      def last_expr_type(node)
+      def last_expr_type(node, fallback_type:, nil_as_optional:)
+        return nil unless node
+
         return nil unless node
 
         case node.type
         when :begin
-          last_expr_type(node.children.last)
-
+          last_expr_type(node.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
         when :if
-          t = last_expr_type(node.children[1])
-          e = last_expr_type(node.children[2])
-          unify_types(t, e)
+          t = last_expr_type(node.children[1], fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+          e = last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+          unify_types(t, e, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
 
         when :case
           branches = node.children[1..].compact.flat_map do |child|
             if child.type == :when
-              last_expr_type(child.children.last)
+              last_expr_type(child.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
             else
-              last_expr_type(child)
+              last_expr_type(child, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
             end
           end.compact
 
-          branches.empty? ? FALLBACK_TYPE : branches.reduce { |a, b| unify_types(a, b) }
+          if branches.empty?
+            fallback_type
+          else
+            branches.reduce do |a, b|
+              unify_types(a, b, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+            end
+          end
 
         when :return
-          Literals.type_from_literal(node.children.first)
-
+          Literals.type_from_literal(node.children.first, fallback_type: fallback_type)
         else
-          Literals.type_from_literal(node)
+          Literals.type_from_literal(node, fallback_type: fallback_type)
         end
       end
 
       # Unify two inferred types conservatively.
       #
+      # @note module_function: when included, also defines #unify_types (instance visibility: private)
       # @param a [String, nil]
       # @param b [String, nil]
+      # @param fallback_type [Object] Param documentation.
+      # @param nil_as_optional [Object] Param documentation.
       # @return [String]
-      def unify_types(a, b)
-        a ||= FALLBACK_TYPE
-        b ||= FALLBACK_TYPE
+      def unify_types(a, b, fallback_type:, nil_as_optional:)
+        a ||= fallback_type
+        b ||= fallback_type
         return a if a == b
-        return "#{a == 'nil' ? b : a}?" if a == 'nil' || b == 'nil'
 
-        FALLBACK_TYPE
+        if a == 'nil' || b == 'nil'
+          non_nil = (a == 'nil' ? b : a)
+          return nil_as_optional ? "#{non_nil}?" : "#{non_nil}, nil"
+        end
+
+        fallback_type
       end
     end
   end

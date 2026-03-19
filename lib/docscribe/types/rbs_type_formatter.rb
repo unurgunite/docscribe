@@ -10,6 +10,7 @@ module Docscribe
 
       # Convert an RBS type into a YARD-compatible type string.
       #
+      # @note module_function: when included, also defines #to_yard (instance visibility: private)
       # @param type [Object] an RBS::Types::* object
       # @param collapse_generics [Boolean] if true, `Array<String>` -> `Array`, `Hash<Symbol, Object>` -> `Hash`
       # @return [String]
@@ -45,6 +46,7 @@ module Docscribe
 
       # Format union types like `String | Integer | nil`.
       #
+      # @note module_function: when included, also defines #format_union (instance visibility: private)
       # @param type [RBS::Types::Union]
       # @param collapse_generics [Boolean]
       # @return [String]
@@ -55,6 +57,7 @@ module Docscribe
 
       # Format named types (classes/interfaces/aliases), including generics.
       #
+      # @note module_function: when included, also defines #format_named (instance visibility: private)
       # @param type [Object]
       # @param collapse_generics [Boolean]
       # @return [String]
@@ -73,6 +76,7 @@ module Docscribe
 
       # Convert literal values in RBS (e.g., `1`, `"x"`, `:ok`) to a type name.
       #
+      # @note module_function: when included, also defines #literal_to_yard (instance visibility: private)
       # @param lit [Object]
       # @return [String]
       def literal_to_yard(lit)
@@ -90,6 +94,7 @@ module Docscribe
 
       # Best-effort fallback formatting for unknown/unsupported RBS nodes.
       #
+      # @note module_function: when included, also defines #fallback_string (instance visibility: private)
       # @param type [Object]
       # @return [String]
       def fallback_string(type)

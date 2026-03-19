@@ -4,6 +4,7 @@ module Docscribe
   class Config
     # Memoized RBS provider (nil if disabled or RBS is unavailable).
     #
+    # @raise [LoadError]
     # @return [Docscribe::Types::RBSProvider, nil]
     def rbs_provider
       return nil unless rbs_enabled?

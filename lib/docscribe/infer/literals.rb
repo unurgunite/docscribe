@@ -8,10 +8,12 @@ module Docscribe
 
       # Infer a type name from a literal node.
       #
+      # @note module_function: when included, also defines #type_from_literal (instance visibility: private)
       # @param node [Parser::AST::Node, nil]
+      # @param fallback_type [FALLBACK_TYPE] Param documentation.
       # @return [String]
-      def type_from_literal(node)
-        return FALLBACK_TYPE unless node
+      def type_from_literal(node, fallback_type: FALLBACK_TYPE)
+        return fallback_type unless node
 
         case node.type
         when :int then 'Integer'
@@ -32,11 +34,11 @@ module Docscribe
           if meth == :new && recv && recv.type == :const
             recv.children.last.to_s
           else
-            FALLBACK_TYPE
+            fallback_type
           end
 
         else
-          FALLBACK_TYPE
+          fallback_type
         end
       end
     end

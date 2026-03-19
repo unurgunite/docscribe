@@ -40,6 +40,7 @@ module Docscribe
     #
     # @param yaml [String]
     # @param filename [String, nil]
+    # @raise [ArgumentError]
     # @return [Object]
     def self.safe_load_compat(yaml, filename: nil)
       Psych.safe_load(
