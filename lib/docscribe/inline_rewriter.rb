@@ -12,6 +12,7 @@ require 'docscribe/parsing'
 require 'docscribe/inline_rewriter/source_helpers'
 require 'docscribe/inline_rewriter/doc_builder'
 require 'docscribe/inline_rewriter/collector'
+require 'docscribe/inline_rewriter/doc_block'
 
 module Docscribe
   class ParseError < StandardError; end
@@ -145,15 +146,27 @@ module Docscribe
           info = SourceHelpers.doc_comment_block_info(buffer, bol_range.begin_pos)
 
           if info
-            additions = DocBuilder.build_merge_additions(
+            missing_lines = DocBuilder.build_missing_merge_lines(
               insertion,
-              existing_lines: info[:lines],
+              existing_lines: info[:doc_lines],
               config: config
             )
 
-            if additions && !additions.empty?
-              merge_inserts[info[:end_pos]] << [insertion.node.loc.expression.begin_pos, additions]
+            merged_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
+              info[:doc_lines],
+              missing_lines: missing_lines,
+              sort_tags: config.sort_tags?,
+              tag_order: config.tag_order
+            )
+
+            new_block = (info[:preserved_lines] + merged_doc_lines).join
+            old_block = info[:lines].join
+
+            if new_block != old_block
+              range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
+              rewriter.replace(range, new_block)
             end
+
             return
           end
 

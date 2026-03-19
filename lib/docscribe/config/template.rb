@@ -48,6 +48,8 @@ module Docscribe
           default_message: "Method documentation."
           param_documentation: "Param documentation."
           param_tag_style: "type_name"
+          sort_tags: true
+          tag_order: ["note", "private", "protected", "param", "option", "raise", "return"]
 
         methods:
           # Per-scope/per-visibility overrides.

@@ -195,6 +195,78 @@ module Docscribe
         nil
       end
 
+      def build_missing_merge_lines(insertion, existing_lines:, config:)
+        node = insertion.node
+        name = SourceHelpers.node_name(node)
+        return [] unless name
+
+        indent = SourceHelpers.line_indent(node)
+
+        info = parse_existing_doc_tags(existing_lines)
+
+        scope = insertion.scope
+        visibility = insertion.visibility
+
+        rbs_sig = config.rbs_provider&.signature_for(container: insertion.container, scope: scope, name: name)
+
+        returns_spec = Docscribe::Infer.returns_spec_from_node(
+          node,
+          fallback_type: config.fallback_type,
+          nil_as_optional: config.nil_as_optional?
+        )
+        normal_type = rbs_sig&.return_type || returns_spec[:normal]
+        rescue_specs = returns_spec[:rescues]
+
+        lines = []
+
+        if config.emit_visibility_tags?
+          if visibility == :private && !info[:has_private]
+            lines << "#{indent}# @private\n"
+          elsif visibility == :protected && !info[:has_protected]
+            lines << "#{indent}# @protected\n"
+          end
+        end
+
+        if insertion.respond_to?(:module_function) && insertion.module_function && !info[:has_module_function_note]
+          included_vis = insertion.included_instance_visibility || :private
+          lines << "#{indent}# @note module_function: when included, also defines ##{name} (instance visibility: #{included_vis})\n"
+        end
+
+        if config.emit_param_tags?
+          all_params = build_params_lines(node, indent, rbs_sig: rbs_sig, config: config)
+
+          all_params&.each do |pl|
+            pname = extract_param_name_from_param_line(pl)
+            next if pname.nil? || info[:param_names].include?(pname)
+
+            lines << "#{pl}\n"
+          end
+        end
+
+        if config.emit_raise_tags?
+          inferred = Docscribe::Infer.infer_raises_from_node(node)
+          existing = info[:raise_types] || {}
+
+          missing = inferred.reject { |rt| existing[rt] }
+          missing.each { |rt| lines << "#{indent}# @raise [#{rt}]\n" }
+        end
+
+        if config.emit_return_tag?(scope, visibility) && !info[:has_return]
+          lines << "#{indent}# @return [#{normal_type}]\n"
+        end
+
+        if config.emit_rescue_conditional_returns? && !info[:has_return]
+          rescue_specs.each do |(exceptions, rtype)|
+            lines << "#{indent}# @return [#{rtype}] if #{exceptions.join(', ')}\n"
+          end
+        end
+
+        lines
+      rescue StandardError => e
+        debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build_missing_merge_lines')
+        []
+      end
+
       # +Docscribe::InlineRewriter::DocBuilder.parse_existing_doc_tags+ -> Hash
       #
       # Method documentation.

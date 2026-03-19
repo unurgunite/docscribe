@@ -81,11 +81,16 @@ module Docscribe
         remaining = lines[removable_start_idx..i]
         return nil unless remaining.any? { |line| doc_marker_line?(line) }
 
-        # end_pos = start of line after i
+        start_pos = start_idx.positive? ? lines[0...start_idx].join.length : 0
+        doc_start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
         end_pos = lines[0..i].join.length
 
         {
           lines: lines[start_idx..i],
+          preserved_lines: lines[start_idx...removable_start_idx],
+          doc_lines: lines[removable_start_idx..i],
+          start_pos: start_pos,
+          doc_start_pos: doc_start_pos,
           end_pos: end_pos
         }
       end

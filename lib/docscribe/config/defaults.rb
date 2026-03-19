@@ -16,7 +16,9 @@ module Docscribe
       'doc' => {
         'default_message' => 'Method documentation.',
         'param_tag_style' => 'type_name',
-        'param_documentation' => 'Param documentation.'
+        'param_documentation' => 'Param documentation.',
+        'sort_tags' => true,
+        'tag_order' => %w[todo note api private protected param option raise return]
       },
       'methods' => {
         'instance' => {
