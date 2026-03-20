@@ -2,17 +2,25 @@
 
 module Docscribe
   module Types
-    # Converts RBS type objects into YARD-ish type strings.
+    # Convert RBS type objects into YARD-ish type strings.
     #
-    # This is intentionally best-effort formatting. YARD types are not a full type system.
+    # This is intentionally best-effort formatting: YARD type syntax is simpler than RBS,
+    # so some information is collapsed or approximated.
     module RBSTypeFormatter
       module_function
 
-      # Convert an RBS type into a YARD-compatible type string.
+      # Convert one RBS type object into a YARD-ish type string.
+      #
+      # Supported categories include:
+      # - base types (`bool`, `nil`, `void`, `untyped`)
+      # - optional and union types
+      # - named types with optional generic arguments
+      # - literal types
+      # - Proc types
       #
       # @note module_function: when included, also defines #to_yard (instance visibility: private)
-      # @param type [Object] an RBS::Types::* object
-      # @param collapse_generics [Boolean] if true, `Array<String>` -> `Array`, `Hash<Symbol, Object>` -> `Hash`
+      # @param [Object] type RBS type object
+      # @param [Boolean] collapse_generics whether generic arguments should be omitted
       # @return [String]
       def to_yard(type, collapse_generics: false)
         return 'Object' unless type
@@ -44,22 +52,29 @@ module Docscribe
         end
       end
 
-      # Format union types like `String | Integer | nil`.
+      # Format an RBS union type as a comma-separated YARD union.
+      #
+      # Example:
+      # - `String | Integer | nil` => `"String, Integer, nil"`
       #
       # @note module_function: when included, also defines #format_union (instance visibility: private)
-      # @param type [RBS::Types::Union]
-      # @param collapse_generics [Boolean]
+      # @param [RBS::Types::Union] type
+      # @param [Boolean] collapse_generics
       # @return [String]
       def format_union(type, collapse_generics:)
-        # YARD union style: "String, Integer, nil"
         type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }.uniq.join(', ')
       end
 
-      # Format named types (classes/interfaces/aliases), including generics.
+      # Format a named RBS type, optionally preserving generic arguments.
+      #
+      # Examples:
+      # - `::String` => `"String"`
+      # - `::Hash[::Symbol, untyped]` => `"Hash<Symbol, Object>"`
+      # - with `collapse_generics: true` => `"Hash"`
       #
       # @note module_function: when included, also defines #format_named (instance visibility: private)
-      # @param type [Object]
-      # @param collapse_generics [Boolean]
+      # @param [Object] type named RBS type
+      # @param [Boolean] collapse_generics
       # @return [String]
       def format_named(type, collapse_generics:)
         name = type.name.to_s.delete_prefix('::')
@@ -74,10 +89,10 @@ module Docscribe
         end
       end
 
-      # Convert literal values in RBS (e.g., `1`, `"x"`, `:ok`) to a type name.
+      # Map a literal Ruby value from an RBS literal type into a YARD-ish type name.
       #
       # @note module_function: when included, also defines #literal_to_yard (instance visibility: private)
-      # @param lit [Object]
+      # @param [Object] lit literal value
       # @return [String]
       def literal_to_yard(lit)
         case lit
@@ -92,10 +107,15 @@ module Docscribe
         end
       end
 
-      # Best-effort fallback formatting for unknown/unsupported RBS nodes.
+      # Fallback string conversion for unsupported or unexpected RBS type objects.
+      #
+      # Performs a few normalizations for nicer YARD output:
+      # - strips leading `::`
+      # - converts `bool` to `Boolean`
+      # - converts `untyped` to `Object`
       #
       # @note module_function: when included, also defines #fallback_string (instance visibility: private)
-      # @param type [Object]
+      # @param [Object] type
       # @return [String]
       def fallback_string(type)
         type.to_s

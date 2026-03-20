@@ -7,47 +7,51 @@ module Docscribe
   module Types
     # Provides RBS-backed method signatures for Docscribe.
     #
-    # This class loads RBS signatures from one or more `sig` directories, resolves
-    # class/module definitions, and returns a simplified signature object that the
-    # doc generator can use to render `@param` and `@return`.
+    # This class loads RBS signatures from one or more signature directories,
+    # resolves class/module definitions, and returns a simplified signature object
+    # suitable for generating YARD-style `@param` and `@return` tags.
     #
     # Behavior notes:
-    # - If RBS cannot be loaded, signatures cannot be resolved, or no signature is found
-    #   for a method, this provider returns nil and Docscribe falls back to inference.
-    # - If a method has multiple overloads, Docscribe currently uses the *first* overload.
+    # - If RBS cannot be loaded, signatures cannot be resolved, or no matching method is found,
+    #   this provider returns nil and Docscribe falls back to inference.
+    # - If a method has multiple overloads, the first overload is currently used.
     #
     # Debugging:
     # - Set `DOCSCRIBE_RBS_DEBUG=1` to print a one-time warning when RBS integration fails.
     class RBSProvider
-      # A simplified view of a method signature for Docscribe.
+      # Simplified view of an RBS method signature for Docscribe.
       #
       # @!attribute return_type
-      #   @return [String] YARD-compatible return type (e.g. "Integer", "Hash<Symbol, Object>")
+      #   @return [String] formatted return type for YARD output
       # @!attribute param_types
-      #   @return [Hash{String=>String}] Mapping of parameter name to YARD type
+      #   @return [Hash{String=>String}] mapping of parameter name to formatted type
       # @!attribute rest_positional
-      #   @return [RestPositional, nil] Info about `*args`
+      #   @return [RestPositional, nil] info for `*args`
       # @!attribute rest_keywords
-      #   @return [RestKeywords, nil] Info about `**kwargs`
+      #   @return [RestKeywords, nil] info for `**kwargs`
       Signature = Struct.new(:return_type, :param_types, :rest_positional, :rest_keywords, keyword_init: true)
 
+      # Simplified representation of an RBS rest-positional parameter.
+      #
       # @!attribute name
-      #   @return [String, nil] Name of `*args` in RBS, if present
+      #   @return [String, nil] parameter name in RBS, if present
       # @!attribute element_type
-      #   @return [String] YARD type for element type (e.g. "String")
+      #   @return [String] formatted element type
       RestPositional = Struct.new(:name, :element_type, keyword_init: true)
 
+      # Simplified representation of an RBS rest-keyword parameter.
+      #
       # @!attribute name
-      #   @return [String, nil] Name of `**kwargs` in RBS, if present
+      #   @return [String, nil] parameter name in RBS, if present
       # @!attribute type
-      #   @return [String] YARD type for kwargs type (often a Hash-like type)
+      #   @return [String] formatted kwargs type
       RestKeywords = Struct.new(:name, :type, keyword_init: true)
 
-      # Create a provider.
+      # Initialize an RBS provider.
       #
-      # @param sig_dirs [Array<String>] directories containing `.rbs` files (e.g. ["sig"])
-      # @param collapse_generics [Boolean] when true, collapse generic args (`Hash<...>` -> `Hash`)
-      # @return [Object]
+      # @param [Array<String>] sig_dirs signature directories to load
+      # @param [Boolean] collapse_generics whether generic RBS types should be simplified
+      # @return [void]
       def initialize(sig_dirs:, collapse_generics: false)
         require 'rbs'
 
@@ -59,11 +63,13 @@ module Docscribe
         @warned = false
       end
 
-      # Return an RBS-backed signature for a method, or nil.
+      # Resolve a method signature for a container/scope/name triple.
       #
-      # @param container [String] constant name (e.g. "MyApp::User")
-      # @param scope [Symbol] :instance or :class
-      # @param name [String, Symbol] method name #
+      # Returns nil if no matching method is found or if RBS resolution fails.
+      #
+      # @param [String] container class or module name, e.g. `"MyApp::Service"`
+      # @param [Symbol] scope :instance or :class
+      # @param [String, Symbol] name method name
       # @raise [RBS::ParsingError]
       # @raise [RBS::DefinitionBuilder::UnknownTypeNameError]
       # @raise [StandardError]
@@ -90,8 +96,9 @@ module Docscribe
 
       private
 
-      # Lazily load and build the RBS environment.
+      # Lazily load and resolve the RBS environment and definition builder.
       #
+      # @private
       # @return [void]
       def load_env!
         return if @env && @builder
@@ -106,28 +113,31 @@ module Docscribe
         @builder = RBS::DefinitionBuilder.new(env: @env)
       end
 
-      # Build a definition object for a container and scope.
+      # Resolve the RBS definition object for a given container and scope.
       #
-      # @param container [String]
-      # @param scope [Symbol] :instance or :class
-      # @return [RBS::Definition]
+      # @private
+      # @param [String] container
+      # @param [Symbol] scope :instance or :class
+      # @return [Object]
       def definition_for(container:, scope:)
         type_name = RBS::TypeName.parse(absolute_const(container))
         scope == :class ? @builder.build_singleton(type_name) : @builder.build_instance(type_name)
       end
 
-      # Convert an RBS container name into an absolute constant string.
+      # Normalize a container name into an absolute RBS constant name.
       #
-      # @param container [String]
-      # @return [String] e.g. "::Foo::Bar"
+      # @private
+      # @param [String] container
+      # @return [String]
       def absolute_const(container)
         s = container.to_s
         s.start_with?('::') ? s : "::#{s}"
       end
 
-      # Build Docscribe's simplified signature from an RBS function type.
+      # Convert an RBS function type into a simplified Docscribe signature.
       #
-      # @param func [RBS::Types::Function]
+      # @private
+      # @param [RBS::Types::Function] func
       # @return [Signature]
       def build_signature(func)
         Signature.new(
@@ -138,9 +148,10 @@ module Docscribe
         )
       end
 
-      # Build param name => type map from an RBS function type.
+      # Build a name-to-type mapping for explicit positional and keyword parameters.
       #
-      # @param func [RBS::Types::Function]
+      # @private
+      # @param [RBS::Types::Function] func
       # @return [Hash{String=>String}]
       def build_param_types(func)
         param_types = {}
@@ -155,10 +166,13 @@ module Docscribe
         param_types
       end
 
-      # Add named positionals to the param_types map.
+      # Add named positional parameters into a param type map.
       #
-      # @param param_types [Hash{String=>String}]
-      # @param list [Array<#name,#type>]
+      # Anonymous positional parameters are ignored.
+      #
+      # @private
+      # @param [Hash{String=>String}] param_types
+      # @param [Array<Object>] list
       # @return [void]
       def add_positionals!(param_types, list)
         list.each do |p|
@@ -168,9 +182,10 @@ module Docscribe
         end
       end
 
-      # Build rest positional info for `*args`.
+      # Build simplified rest-positional info from an RBS function.
       #
-      # @param func [RBS::Types::Function]
+      # @private
+      # @param [RBS::Types::Function] func
       # @return [RestPositional, nil]
       def build_rest_positional(func)
         rp = func.rest_positionals
@@ -182,9 +197,10 @@ module Docscribe
         )
       end
 
-      # Build rest keywords info for `**kwargs`.
+      # Build simplified rest-keyword info from an RBS function.
       #
-      # @param func [RBS::Types::Function]
+      # @private
+      # @param [RBS::Types::Function] func
       # @return [RestKeywords, nil]
       def build_rest_keywords(func)
         rk = func.rest_keywords
@@ -198,17 +214,17 @@ module Docscribe
 
       # Format an RBS type into a YARD-ish string.
       #
-      # @param type [Object]
+      # @private
+      # @param [Object] type
       # @return [String]
       def format_type(type)
         RBSTypeFormatter.to_yard(type, collapse_generics: @collapse_generics)
       end
 
-      # Print a one-time warning when RBS is enabled but fails.
+      # Print one debug warning at most when RBS debugging is enabled.
       #
-      # Only prints when DOCSCRIBE_RBS_DEBUG=1.
-      #
-      # @param msg [String]
+      # @private
+      # @param [String] msg
       # @return [void]
       def warn_once(msg)
         return unless ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
