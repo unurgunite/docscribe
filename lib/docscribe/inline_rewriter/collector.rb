@@ -52,83 +52,56 @@ module Docscribe
 
       # Tracks Ruby visibility + container state while walking a class/module body.
       class VisibilityCtx
-        # @return [Symbol] default visibility for instance methods in current context
-        #
         # @!attribute [rw] default_instance_vis
         #   @return [Object]
         #   @param value [Object]
         attr_accessor :default_instance_vis
 
-        # @return [Symbol] default visibility for class methods in current context
-        #
         # @!attribute [rw] default_class_vis
         #   @return [Object]
         #   @param value [Object]
         attr_accessor :default_class_vis
 
-        # @return [Boolean] true when walking within a singleton class context (`class << ...`)
-        #
         # @!attribute [rw] inside_sclass
         #   @return [Object]
         #   @param value [Object]
         attr_accessor :inside_sclass
 
-        # @return [Boolean] true when `module_function` (no args) has been seen; affects subsequent defs
-        #
         # @!attribute [rw] module_function_default
         #   @return [Object]
         #   @param value [Object]
         attr_accessor :module_function_default
 
-        # When inside `class << Foo` (const receiver), document methods under Foo as container.
-        # When nil, container is derived from lexical nesting (`@name_stack`).
-        #
-        # @return [String, nil]
-        #
         # @!attribute [rw] container_override
         #   @return [Object]
         #   @param value [Object]
         attr_accessor :container_override
 
-        # @return [Hash{Symbol=>Symbol}] explicit visibilities for named instance methods
-        #
         # @!attribute [r] explicit_instance
         #   @return [Object]
         attr_reader :explicit_instance
 
-        # @return [Hash{Symbol=>Symbol}] explicit visibilities for named class methods
-        #
         # @!attribute [r] explicit_class
         #   @return [Object]
         attr_reader :explicit_class
 
-        # @return [Hash{Symbol=>true}] methods marked as module functions via `module_function :name`
-        #
         # @!attribute [r] module_function_explicit
         #   @return [Object]
         attr_reader :module_function_explicit
 
-        # True if the current lexical container is a module (vs class).
-        #
-        # @return [Boolean]
-        #
         # @!attribute [rw] container_is_module
         #   @return [Object]
         #   @param value [Object]
         attr_accessor :container_is_module
 
-        # True if `extend self` has been seen (or inherited) for this module container.
-        #
-        # @return [Boolean]
-        #
         # @!attribute [rw] extend_self
         #   @return [Object]
         #   @param value [Object]
         attr_accessor :extend_self
 
-        # Initialize a fresh visibility context with Ruby defaults (public).
+        # Method documentation.
         #
-        # @return [VisibilityCtx]
+        # @return [Object]
         def initialize
           @default_instance_vis = :public
           @default_class_vis = :public
@@ -142,9 +115,9 @@ module Docscribe
           @extend_self = false
         end
 
-        # Duplicate context for nested scopes (e.g., entering `class << ...`).
+        # Method documentation.
         #
-        # @return [VisibilityCtx]
+        # @return [Object]
         def dup
           c = VisibilityCtx.new
           c.default_instance_vis = default_instance_vis
@@ -164,24 +137,17 @@ module Docscribe
         end
       end
 
-      # List of computed insertions for this file.
-      #
-      # @return [Array<Insertion>]
-      #
       # @!attribute [r] insertions
       #   @return [Object]
       attr_reader :insertions
 
-      # List of computed attribute insertions (`attr_reader`, `attr_writer`, `attr_accessor`).
-      #
-      # @return [Array<AttrInsertion>]
-      #
       # @!attribute [r] attr_insertions
       #   @return [Object]
       attr_reader :attr_insertions
 
-      # @param buffer [Parser::Source::Buffer]
+      # Method documentation.
       #
+      # @param [Object] buffer Param documentation.
       # @return [Object]
       def initialize(buffer)
         super()
@@ -199,10 +165,10 @@ module Docscribe
         @module_states = {} # { "M" => { extend_self: true } }
       end
 
-      # Enter a class node and process its body with a fresh visibility context.
+      # Method documentation.
       #
-      # @param node [Parser::AST::Node] `:class` node
-      # @return [Parser::AST::Node]
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def on_class(node)
         cname_node, _super_node, body = *node
         @name_stack.push(const_name(cname_node))
@@ -216,12 +182,10 @@ module Docscribe
         node
       end
 
-      # Enter a module node and process its body with a fresh visibility context.
+      # Method documentation.
       #
-      # Also applies `extend self` post-pass promotion if `extend self` is active for this module.
-      #
-      # @param node [Parser::AST::Node] `:module` node
-      # @return [Parser::AST::Node]
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def on_module(node)
         cname_node, body = *node
         @name_stack.push(const_name(cname_node))
@@ -247,11 +211,12 @@ module Docscribe
 
       private
 
-      # Process one statement in a class/module body.
+      # Method documentation.
       #
-      # @param node [Parser::AST::Node, nil]
-      # @param ctx [VisibilityCtx]
-      # @return [void]
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def process_stmt(node, ctx)
         return unless node
 
@@ -342,11 +307,12 @@ module Docscribe
         end
       end
 
-      # Handle `extend self` (and `extend self, X, Y`) in a module.
+      # Method documentation.
       #
-      # @param node [Parser::AST::Node] :send node
-      # @param ctx [VisibilityCtx]
-      # @return [Boolean] true if handled
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Boolean]
       def process_extend_self_send(node, ctx)
         recv, meth, *args = *node
 
@@ -365,29 +331,32 @@ module Docscribe
         true
       end
 
-      # True if `extend self` semantics apply to subsequent defs in this context.
+      # Method documentation.
       #
-      # @param ctx [VisibilityCtx]
-      # @return [Boolean]
+      # @private
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def extend_self_applies?(ctx)
         ctx.container_is_module && ctx.extend_self && !ctx.inside_sclass
       end
 
-      # Return true if the receiver is a constant-ish receiver (`Foo`, `A::B`, `::Foo`).
+      # Method documentation.
       #
-      # @param node [Parser::AST::Node, nil]
-      # @return [Boolean]
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def const_receiver?(node)
         return false unless node.is_a?(Parser::AST::Node)
 
         %i[const cbase].include?(node.type)
       end
 
-      # Handle attr_reader/attr_writer/attr_accessor calls.
+      # Method documentation.
       #
-      # @param node [Parser::AST::Node]
-      # @param ctx [VisibilityCtx]
-      # @return [Boolean] true if handled
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Boolean]
       def process_attr_send(node, ctx)
         recv, meth, *args = *node
         return false unless recv.nil? && %i[attr_reader attr_writer attr_accessor].include?(meth)
@@ -415,11 +384,12 @@ module Docscribe
         true
       end
 
-      # Handle `private_class_method`, `protected_class_method`, `public_class_method`.
+      # Method documentation.
       #
-      # @param node [Parser::AST::Node]
-      # @param ctx [VisibilityCtx]
-      # @return [Boolean] true if handled
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Boolean]
       def process_class_method_visibility_send(node, ctx)
         recv, meth, *args = *node
 
@@ -446,16 +416,12 @@ module Docscribe
         true
       end
 
-      # Handle `private`, `protected`, `public` statements.
+      # Method documentation.
       #
-      # Supported forms:
-      # - `private` (no args)
-      # - `private :foo, :bar`
-      # - `private def foo; end`
-      #
-      # @param node [Parser::AST::Node]
-      # @param ctx [VisibilityCtx]
-      # @return [void]
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def process_visibility_send(node, ctx)
         recv, meth, *args = *node
         return unless recv.nil? && %i[private protected public].include?(meth)
@@ -512,12 +478,13 @@ module Docscribe
         end
       end
 
-      # Retroactively update the included-instance visibility note for module_function docs.
+      # Method documentation.
       #
-      # @param name_sym [Symbol]
-      # @param visibility [Symbol]
-      # @param container [String]
-      # @return [void]
+      # @private
+      # @param [Object] name_sym Param documentation.
+      # @param [Object] visibility Param documentation.
+      # @param [Object] container Param documentation.
+      # @return [Object]
       def retroactively_set_included_instance_visibility_for_module_function(name_sym, visibility, container:)
         @insertions.reverse_each do |ins|
           next unless ins.container == container
@@ -530,13 +497,14 @@ module Docscribe
         end
       end
 
-      # Retroactively set visibility for an already-collected insertion.
+      # Method documentation.
       #
-      # @param name_sym [Symbol]
-      # @param visibility [Symbol]
-      # @param scope [Symbol]
-      # @param container [String]
-      # @return [void]
+      # @private
+      # @param [Object] name_sym Param documentation.
+      # @param [Object] visibility Param documentation.
+      # @param [Object] scope Param documentation.
+      # @param [Object] container Param documentation.
+      # @return [Object]
       def retroactively_set_visibility(name_sym, visibility, scope:, container:)
         @insertions.reverse_each do |ins|
           next unless ins.container == container
@@ -556,22 +524,24 @@ module Docscribe
         end
       end
 
-      # True if `module_function` applies to this method name.
+      # Method documentation.
       #
-      # @param ctx [VisibilityCtx]
-      # @param name [Symbol]
-      # @return [Boolean]
+      # @private
+      # @param [Object] ctx Param documentation.
+      # @param [Object] name Param documentation.
+      # @return [Object]
       def module_function_applies?(ctx, name)
         return false if ctx.inside_sclass
 
         ctx.module_function_default || ctx.module_function_explicit[name]
       end
 
-      # Process `module_function` calls.
+      # Method documentation.
       #
-      # @param node [Parser::AST::Node]
-      # @param ctx [VisibilityCtx]
-      # @return [Boolean] true if handled
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Boolean]
       def process_module_function_send(node, ctx)
         recv, meth, *args = *node
         return false unless recv.nil? && meth == :module_function
@@ -591,19 +561,21 @@ module Docscribe
         true
       end
 
-      # Determine the effective container name in the current context.
+      # Method documentation.
       #
-      # @param ctx [VisibilityCtx]
-      # @return [String]
+      # @private
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def container_for(ctx)
         ctx.container_override || current_container
       end
 
-      # Retroactively promote an already-collected `def` to module/class scope under module_function.
+      # Method documentation.
       #
-      # @param name_sym [Symbol]
-      # @param container [String]
-      # @return [void]
+      # @private
+      # @param [Object] name_sym Param documentation.
+      # @param [Object] container Param documentation.
+      # @return [Object]
       def retroactively_promote_module_function(name_sym, container:)
         @insertions.reverse_each do |ins|
           next unless ins.container == container
@@ -618,22 +590,20 @@ module Docscribe
         end
       end
 
-      # True if the node is `self`.
+      # Method documentation.
       #
-      # @param node [Parser::AST::Node, nil]
-      # @return [Boolean]
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def self_node?(node)
         node && node.type == :self
       end
 
-      # Extract a method name symbol from an AST argument node.
+      # Method documentation.
       #
-      # Accepts:
-      # - `:sym` nodes (`:foo`)
-      # - `:str` nodes ("foo")
-      #
-      # @param arg [Parser::AST::Node]
-      # @return [Symbol, nil]
+      # @private
+      # @param [Object] arg Param documentation.
+      # @return [Object]
       def extract_name_sym(arg)
         case arg.type
         when :sym then arg.children.first
@@ -641,10 +611,11 @@ module Docscribe
         end
       end
 
-      # Convert a constant AST node into a string name.
+      # Method documentation.
       #
-      # @param node [Parser::AST::Node, nil]
-      # @return [String]
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def const_name(node)
         return 'Object' unless node
 
@@ -660,18 +631,20 @@ module Docscribe
         end
       end
 
-      # Current lexical container name.
+      # Method documentation.
       #
-      # @return [String]
+      # @private
+      # @return [Object]
       def current_container
         @name_stack.empty? ? 'Object' : @name_stack.join('::')
       end
 
-      # Process a class/module body node.
+      # Method documentation.
       #
-      # @param body [Parser::AST::Node, nil]
-      # @param ctx [VisibilityCtx]
-      # @return [void]
+      # @private
+      # @param [Object] body Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def process_body(body, ctx)
         return unless body
 
@@ -682,11 +655,11 @@ module Docscribe
         end
       end
 
-      # Promote all instance `def` insertions in a module container to module methods (`M.foo`)
-      # when `extend self` is active.
+      # Method documentation.
       #
-      # @param container [String]
-      # @return [void]
+      # @private
+      # @param [Object] container Param documentation.
+      # @return [Object]
       def promote_extend_self_container(container:)
         @insertions.each do |ins|
           next unless ins.container == container

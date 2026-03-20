@@ -2,22 +2,25 @@
 
 module Docscribe
   module InlineRewriter
+    # Older tag-sorting helper operating on comment-line segments.
+    #
+    # This module sorts contiguous runs of top-level tag entries and keeps related `@option`
+    # entries attached to their owning `@param`.
+    #
+    # If `DocBlock` fully supersedes this module in your codebase, consider removing it.
     module TagSorter
       module_function
 
+      # One sortable top-level tag entry plus its continuation lines.
       Entry = Struct.new(:tag, :lines, :param_name, :option_owner, :index, keyword_init: true)
 
-      # Reorder sortable tags inside contiguous tag runs.
+      # Sort contiguous top-level tag runs according to configured tag order.
       #
-      # Rules:
-      # - only top-level YARD tags are sortable
-      # - blank comment lines (`#`) split runs
-      # - non-tag comment text splits runs
-      # - multiline tag entries move as a unit
-      # - @option entries stay attached to their owning @param when possible
+      # Non-tag content is preserved as-is and acts as a sort boundary.
       #
-      # @param lines [Array<String>]
-      # @param tag_order [Array<String>]
+      # @note module_function: when included, also defines #sort (instance visibility: private)
+      # @param [Array<String>] lines comment block lines
+      # @param [Array<String>] tag_order configured tag order
       # @return [Array<String>]
       def sort(lines, tag_order:)
         priority = build_priority(tag_order)
@@ -25,12 +28,22 @@ module Docscribe
         segments.flat_map { |seg| sort_segment(seg, priority: priority) }
       end
 
+      # Build a tag priority map from configured tag order.
+      #
+      # @note module_function: when included, also defines #build_priority (instance visibility: private)
+      # @param [Array<String>] tag_order
+      # @return [Hash{String=>Integer}]
       def build_priority(tag_order)
         Array(tag_order).map { |t| t.to_s.sub(/\A@/, '') }
                         .each_with_index
                         .to_h
       end
 
+      # Parse lines into sortable tag-run segments and non-sortable segments.
+      #
+      # @note module_function: when included, also defines #parse_segments (instance visibility: private)
+      # @param [Array<String>] lines
+      # @return [Array<Hash>]
       def parse_segments(lines)
         segments = []
         i = 0
@@ -54,6 +67,12 @@ module Docscribe
         segments
       end
 
+      # Sort one parsed segment if it is a tag run.
+      #
+      # @note module_function: when included, also defines #sort_segment (instance visibility: private)
+      # @param [Hash] segment
+      # @param [Hash{String=>Integer}] priority
+      # @return [Array<String>]
       def sort_segment(segment, priority:)
         return segment[:lines] unless segment[:type] == :tag_run
 
@@ -66,11 +85,23 @@ module Docscribe
           .flat_map(&:lines)
       end
 
+      # Compute sort priority for a grouped tag entry.
+      #
+      # @note module_function: when included, also defines #group_priority (instance visibility: private)
+      # @param [Array<Entry>] group
+      # @param [Hash{String=>Integer}] priority
+      # @return [Integer]
       def group_priority(group, priority)
         first = group.first
         priority.fetch(first.tag, priority.length)
       end
 
+      # Consume one top-level tag entry and its continuation lines.
+      #
+      # @note module_function: when included, also defines #consume_entry (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Integer] start_idx
+      # @return [Array<(Entry, Integer)>]
       def consume_entry(lines, start_idx)
         first = lines[start_idx]
         tag = extract_tag_name(first)
@@ -82,8 +113,6 @@ module Docscribe
 
           break if top_level_tag_line?(line)
           break if blank_comment_line?(line)
-
-          # Any non-tag comment line immediately following a tag belongs to that tag entry.
           break unless comment_line?(line)
 
           entry_lines << line
@@ -101,6 +130,11 @@ module Docscribe
         [entry, i]
       end
 
+      # Group entries so `@option` tags remain attached to their owning `@param`.
+      #
+      # @note module_function: when included, also defines #group_entries (instance visibility: private)
+      # @param [Array<Entry>] entries
+      # @return [Array<Array<Entry>>]
       def group_entries(entries)
         groups = []
         i = 0
@@ -130,25 +164,47 @@ module Docscribe
         groups
       end
 
+      # Whether a line begins a top-level tag entry.
+      #
+      # @note module_function: when included, also defines #top_level_tag_line? (instance visibility: private)
+      # @param [String] line
+      # @return [Boolean]
       def top_level_tag_line?(line)
         !!(line =~ /^\s*#\s*@\w+/)
       end
 
+      # Whether a line is any comment line.
+      #
+      # @note module_function: when included, also defines #comment_line? (instance visibility: private)
+      # @param [String] line
+      # @return [Boolean]
       def comment_line?(line)
         !!(line =~ /^\s*#/)
       end
 
+      # Whether a line is a blank comment separator.
+      #
+      # @note module_function: when included, also defines #blank_comment_line? (instance visibility: private)
+      # @param [String] line
+      # @return [Boolean]
       def blank_comment_line?(line)
         !!(line =~ /^\s*#\s*$/)
       end
 
+      # Extract tag name from a top-level tag line without the leading `@`.
+      #
+      # @note module_function: when included, also defines #extract_tag_name (instance visibility: private)
+      # @param [String] line
+      # @return [String, nil]
       def extract_tag_name(line)
         line[/^\s*#\s*@(\w+)/, 1]
       end
 
-      # Supports:
-      #   # @param [Type] name desc
-      #   # @param name [Type] desc
+      # Extract parameter name from a `@param` line.
+      #
+      # @note module_function: when included, also defines #extract_param_name (instance visibility: private)
+      # @param [String] line
+      # @return [String, nil]
       def extract_param_name(line)
         return Regexp.last_match(1) if line =~ /^\s*#\s*@param\b\s+\[[^\]]+\]\s+(\S+)/
         return Regexp.last_match(1) if line =~ /^\s*#\s*@param\b\s+(\S+)\s+\[[^\]]+\]/
@@ -156,8 +212,11 @@ module Docscribe
         nil
       end
 
-      # Supports:
-      #   # @option opts [String] :foo desc
+      # Extract owning options-hash param name from an `@option` line.
+      #
+      # @note module_function: when included, also defines #extract_option_owner (instance visibility: private)
+      # @param [String] line
+      # @return [String, nil]
       def extract_option_owner(line)
         line[/^\s*#\s*@option\b\s+(\S+)/, 1]
       end
