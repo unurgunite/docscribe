@@ -102,7 +102,6 @@ module Docscribe
               insertion: ins,
               config: config,
               strategy: strategy,
-              merge_inserts: merge_inserts,
               changes: changes,
               file: file.to_s
             )
@@ -177,11 +176,10 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
       # @param [Docscribe::Config] config
       # @param [Symbol] strategy
-      # @param [Hash] merge_inserts aggregated attr merge inserts
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
       # @return [void]
-      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, strategy:, merge_inserts:, changes:, file:)
+      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, strategy:, changes:, file:)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
