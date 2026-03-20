@@ -10,14 +10,9 @@ module Docscribe
     module Run
       module_function
 
-      # +Docscribe::CLI::Run.run+ -> Object
-      #
-      # Method documentation.
-      #
-      # @note module_function: when included, also defines #run (instance visibility: private)
-      # @param [Hash] options Param documentation.
-      # @param [Object] argv Param documentation.
-      # @return [Object]
+      # @param options [Hash]
+      # @return [Integer]
+      # @param argv [Array<String>]
       def run(options:, argv:)
         conf = Docscribe::Config.load(options[:config])
         conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
@@ -29,7 +24,7 @@ module Docscribe
 
         return run_stdin(options: options, conf: conf) if options[:stdin]
 
-        if argv.empty? && !options[:write]
+        unless options[:write]
           options[:check] = true
           options[:merge] = true
         end
@@ -54,39 +49,28 @@ module Docscribe
         run_files(options: options, conf: conf, paths: paths)
       end
 
-      # +Docscribe::CLI::Run.run_stdin+ -> Integer
-      #
-      # Method documentation.
-      #
-      # @note module_function: when included, also defines #run_stdin (instance visibility: private)
-      # @param [Hash] options Param documentation.
-      # @param [Object] conf Param documentation.
-      # @raise [StandardError]
+      # @param options [Hash]
+      # @param conf [Docscribe::Config]
       # @return [Integer]
       # @return [Integer] if StandardError
       def run_stdin(options:, conf:)
         code = $stdin.read
-        out = Docscribe::InlineRewriter.insert_comments(
+        result = Docscribe::InlineRewriter.rewrite_with_report(
           code,
           rewrite: options[:rewrite],
           merge: options[:merge],
           config: conf,
           file: '(stdin)'
         )
-        puts out
+        puts result[:output]
         0
       rescue StandardError => e
         warn "Docscribe: Error processing stdin: #{e.class}: #{e.message}"
         1
       end
 
-      # +Docscribe::CLI::Run.expand_paths+ -> Object
-      #
-      # Method documentation.
-      #
-      # @note module_function: when included, also defines #expand_paths (instance visibility: private)
-      # @param [Object] args Param documentation.
-      # @return [Object]
+      # @param args [Array<String>]
+      # @return [Array<String>]
       def expand_paths(args)
         files = []
         args = ['.'] if args.empty?
@@ -103,15 +87,9 @@ module Docscribe
         files.uniq.sort
       end
 
-      # +Docscribe::CLI::Run.run_files+ -> Integer
-      #
-      # Method documentation.
-      #
-      # @note module_function: when included, also defines #run_files (instance visibility: private)
-      # @param [Hash] options Param documentation.
-      # @param [Object] conf Param documentation.
-      # @param [Object] paths Param documentation.
-      # @raise [StandardError]
+      # @param options [Hash]
+      # @param conf [Docscribe::Config]
+      # @param paths [Array<String>]
       # @return [Integer]
       def run_files(options:, conf:, paths:)
         $stdout.sync = true
@@ -145,9 +123,9 @@ module Docscribe
               next
             end
 
-          out =
+          result =
             begin
-              Docscribe::InlineRewriter.insert_comments(
+              Docscribe::InlineRewriter.rewrite_with_report(
                 src,
                 rewrite: options[:rewrite],
                 merge: options[:merge],
@@ -162,12 +140,23 @@ module Docscribe
               next
             end
 
+          out = result[:output]
+          file_changes = result[:changes] || []
+
           if options[:check]
             if out == src
               options[:verbose] ? puts("OK #{display_path}") : print('.')
               checked_ok += 1
             else
-              options[:verbose] ? puts("FAIL #{display_path}") : print('F')
+              if options[:verbose]
+                puts("FAIL #{display_path}")
+                file_changes.each do |change|
+                  puts("  - #{format_change_reason(change)}")
+                end
+              else
+                print('F')
+              end
+
               checked_fail += 1
               changed = true
               fail_paths << path
@@ -179,7 +168,14 @@ module Docscribe
             else
               begin
                 File.write(path, out)
-                options[:verbose] ? puts("CHANGED #{display_path}") : print('C')
+                if options[:verbose]
+                  puts("CHANGED #{display_path}")
+                  file_changes.each do |change|
+                    puts("  - #{format_change_reason(change)}")
+                  end
+                else
+                  print('C')
+                end
                 corrected += 1
               rescue StandardError => e
                 had_errors = true
@@ -200,8 +196,10 @@ module Docscribe
           if checked_fail.zero? && checked_error.zero?
             puts "Docscribe: OK (#{checked_ok} files checked)"
           else
-            puts "Docscribe: FAILED (#{checked_fail} failing, #{checked_error} errors, #{checked_ok} ok)"
-            fail_paths.each { |p| warn "Missing docs: #{p}" }
+            out = "Docscribe: FAILED (#{checked_fail} files need updates, #{checked_error} errors, #{checked_ok} ok)."
+            out += " Use `--verbose' for details." unless options[:verbose]
+            puts out
+            fail_paths.each { |p| warn "Would update docs: #{p}" }
             error_paths.each do |p|
               warn "Error processing: #{p}"
               warn "  #{error_messages[p]}" if error_messages[p]
@@ -229,8 +227,21 @@ module Docscribe
         options[:check] && changed ? 1 : 0
       end
 
-      # Prefer a nice relative path when the file is under the current working directory.
-      # If it is outside (or relative computation yields lots of ".."), use basename instead.
+      def format_change_reason(change)
+        line = change[:line] ? " at line #{change[:line]}" : ''
+        method = change[:method] ? " for #{change[:method]}" : ''
+
+        case change[:type]
+        when :unsorted_tags
+          "unsorted tags#{line}"
+        when :missing_param, :missing_return, :missing_raise, :missing_visibility, :missing_module_function_note,
+          :insert_full_doc_block
+          "#{change[:message]}#{method}#{line}"
+        else
+          "#{change[:message] || change[:type].to_s.tr('_', ' ')}#{method}#{line}"
+        end
+      end
+
       def display_path_for(path, pwd:)
         abs = Pathname.new(path).expand_path
 
@@ -245,7 +256,7 @@ module Docscribe
         File.basename(path.to_s)
       end
 
-      private_class_method :display_path_for
+      private_class_method :format_change_reason, :display_path_for
     end
   end
 end

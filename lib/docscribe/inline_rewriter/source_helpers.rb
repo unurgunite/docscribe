@@ -68,27 +68,28 @@ module Docscribe
         return nil unless i >= 0 && lines[i] =~ /^\s*#/
 
         # Walk upward to include the entire contiguous comment block
+        end_idx = i
         start_idx = i
         start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
         start_idx += 1
 
         # Preserve leading directive-style comments
         removable_start_idx = start_idx
-        removable_start_idx += 1 while removable_start_idx <= i && preserved_comment_line?(lines[removable_start_idx])
+        removable_start_idx += 1 while removable_start_idx <= end_idx && preserved_comment_line?(lines[removable_start_idx])
 
-        return nil if removable_start_idx > i
+        return nil if removable_start_idx > end_idx
 
-        remaining = lines[removable_start_idx..i]
+        remaining = lines[removable_start_idx..end_idx]
         return nil unless remaining.any? { |line| doc_marker_line?(line) }
 
         start_pos = start_idx.positive? ? lines[0...start_idx].join.length : 0
         doc_start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
-        end_pos = lines[0..i].join.length
+        end_pos = lines[0..end_idx].join.length
 
         {
-          lines: lines[start_idx..i],
+          lines: lines[start_idx..end_idx],
           preserved_lines: lines[start_idx...removable_start_idx],
-          doc_lines: lines[removable_start_idx..i],
+          doc_lines: lines[removable_start_idx..end_idx],
           start_pos: start_pos,
           doc_start_pos: doc_start_pos,
           end_pos: end_pos

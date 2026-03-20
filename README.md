@@ -431,7 +431,8 @@ docscribe --dry --exclude-file 'spec' lib spec
 docscribe --dry --exclude-file '/^spec\//' lib
 ```
 
-> [!NOTE] `/regex/` passed to `--include`/`--exclude` is treated as a **method-id** pattern. Use `--include-file`
+> [!NOTE]
+> `/regex/` passed to `--include`/`--exclude` is treated as a **method-id** pattern. Use `--include-file`
 > `--exclude-file` for file regex filters.
 
 ### Attribute macros (`attr_*`)

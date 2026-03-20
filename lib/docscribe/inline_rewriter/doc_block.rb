@@ -26,8 +26,8 @@ module Docscribe
       # @param tag_order [Array<String>]
       # @return [Array<String>]
       def merge(existing_lines, missing_lines:, sort_tags:, tag_order:)
-        existing_entries = parse(existing_lines)
-        missing_entries = parse_generated(missing_lines)
+        existing_entries = parse(existing_lines, tag_order: tag_order)
+        missing_entries = parse_generated(missing_lines, tag_order: tag_order)
 
         entries = existing_entries + missing_entries
         entries = sort(entries, tag_order: tag_order) if sort_tags
@@ -38,9 +38,10 @@ module Docscribe
       # Parse generated missing tag lines as generated entries.
       #
       # @param lines [Array<String>]
+      # @param tag_order [Array<String>]
       # @return [Array<Entry>]
-      def parse_generated(lines)
-        parse(lines).map do |entry|
+      def parse_generated(lines, tag_order:)
+        parse(lines, tag_order: tag_order).map do |entry|
           entry.generated = true if entry.kind == :tag
           entry
         end
@@ -48,9 +49,14 @@ module Docscribe
 
       # Parse comment block lines into entries.
       #
+      # Only tags listed in tag_order are sortable tags.
+      # Other top-level @tags are treated as boundaries / plain entries.
+      #
       # @param lines [Array<String>]
+      # @param tag_order [Array<String>]
       # @return [Array<Entry>]
-      def parse(lines)
+      def parse(lines, tag_order:)
+        sortable_tags = normalized_tag_order(tag_order)
         entries = []
         i = 0
         index = 0
@@ -58,8 +64,8 @@ module Docscribe
         while i < lines.length
           line = lines[i]
 
-          if top_level_tag_line?(line)
-            entry, i = consume_tag_entry(lines, i, index: index)
+          if sortable_top_level_tag_line?(line, sortable_tags)
+            entry, i = consume_tag_entry(lines, i, index: index, sortable_tags: sortable_tags)
             entries << entry
           else
             entries << Entry.new(
@@ -167,12 +173,14 @@ module Docscribe
       end
 
       def build_priority(tag_order)
-        Array(tag_order).map { |t| t.to_s.sub(/\A@/, '') }
-                        .each_with_index
-                        .to_h
+        normalized_tag_order(tag_order).each_with_index.to_h
       end
 
-      def consume_tag_entry(lines, start_idx, index:)
+      def normalized_tag_order(tag_order)
+        Array(tag_order).map { |t| t.to_s.sub(/\A@/, '') }
+      end
+
+      def consume_tag_entry(lines, start_idx, index:, sortable_tags:)
         first = lines[start_idx]
         tag = extract_tag(first)
 
@@ -181,7 +189,7 @@ module Docscribe
 
         while i < lines.length
           line = lines[i]
-          break if top_level_tag_line?(line)
+          break if sortable_top_level_tag_line?(line, sortable_tags)
           break if blank_comment_line?(line)
           break unless continuation_comment_line?(line)
 
@@ -223,6 +231,12 @@ module Docscribe
       #   # @option opts [String] :foo desc
       def extract_option_owner(line)
         line[/^\s*#\s*@option\b\s+(\S+)/, 1]
+      end
+
+      def sortable_top_level_tag_line?(line, sortable_tags)
+        return false unless top_level_tag_line?(line)
+
+        sortable_tags.include?(extract_tag(line))
       end
 
       def extract_tag(line)

@@ -29,31 +29,33 @@ module Docscribe
     class << self
       # Insert documentation comments into Ruby source.
       #
-      # Behavior:
-      # - Parses Ruby source into a parser-gem compatible AST via {Docscribe::Parsing}
-      #   (Prism translation is used automatically on Ruby 3.4+ unless overridden).
-      # - Walks the AST via {Docscribe::InlineRewriter::Collector} to collect:
-      #   - method insertions (def/defs)
-      #   - attribute insertions (attr_*) when supported by collector
-      # - Applies insertions bottom-up (reverse by source location) so offsets remain stable.
-      #
-      # Skipping vs refresh:
-      # - rewrite: false (default): skip targets that already have a comment immediately above them
-      # - rewrite: true  (CLI `--refresh`): remove the contiguous comment block above the target and re-insert
-      #
-      # Merge mode:
-      # - merge: true: if a doc-like block exists above the target, append only missing tags
-      #   (non-destructive). If no doc-like block exists, insert a full doc block even if a normal
-      #   comment exists above.
-      #
       # @param code [String] Ruby source code
       # @param rewrite [Boolean] whether to regenerate docs even if a comment block exists above the target
       # @param merge [Boolean] whether to merge missing tags into existing doc blocks
       # @param config [Docscribe::Config, nil] configuration (defaults to {Docscribe::Config.load})
-      # @param file [String] Param documentation.
-      # @raise [Docscribe::ParseError] if bad instructions are met.
-      # @return [String] rewritten Ruby source.
+      # @param file [String]
+      # @raise [Docscribe::ParseError] if parsing fails
+      # @return [String] rewritten Ruby source
       def insert_comments(code, rewrite: false, merge: false, config: nil, file: '(inline)')
+        rewrite_with_report(
+          code,
+          rewrite: rewrite,
+          merge: merge,
+          config: config,
+          file: file
+        )[:output]
+      end
+
+      # Rewrite source and return both output and structured change reasons.
+      #
+      # @param code [String]
+      # @param rewrite [Boolean]
+      # @param merge [Boolean]
+      # @param config [Docscribe::Config, nil]
+      # @param file [String]
+      # @raise [Docscribe::ParseError]
+      # @return [Hash]
+      def rewrite_with_report(code, rewrite: false, merge: false, config: nil, file: '(inline)')
         buffer = Parser::Source::Buffer.new(file.to_s, source: code)
         ast = Docscribe::Parsing.parse_buffer(buffer)
         raise Docscribe::ParseError, "Failed to parse #{file}" unless ast
@@ -66,14 +68,11 @@ module Docscribe
         method_insertions = collector.insertions
         attr_insertions = collector.respond_to?(:attr_insertions) ? collector.attr_insertions : []
 
-        # Combine insertions so methods and attrs are processed together in correct source order.
         all = method_insertions.map { |i| [:method, i] } + attr_insertions.map { |i| [:attr, i] }
 
         rewriter = Parser::Source::TreeRewriter.new(buffer)
-
-        # end_pos => [[sort_key, additions_string], ...]
-        # We apply these at the end so we never schedule multiple inserts at the same range.
         merge_inserts = Hash.new { |h, k| h[k] = [] }
+        changes = []
 
         all.sort_by { |(_kind, ins)| ins.node.loc.expression.begin_pos }
            .reverse_each do |kind, ins|
@@ -86,7 +85,9 @@ module Docscribe
               config: config,
               rewrite: rewrite,
               merge: merge,
-              merge_inserts: merge_inserts
+              merge_inserts: merge_inserts,
+              changes: changes,
+              file: file.to_s
             )
           when :attr
             apply_attr_insertion!(
@@ -103,10 +104,28 @@ module Docscribe
 
         apply_merge_inserts!(rewriter: rewriter, buffer: buffer, merge_inserts: merge_inserts)
 
-        rewriter.process
+        {
+          output: rewriter.process,
+          changes: changes
+        }
       end
 
       private
+
+      def method_id_for(insertion)
+        name = SourceHelpers.node_name(insertion.node)
+        "#{insertion.container}#{insertion.scope == :instance ? '#' : '.'}#{name}"
+      end
+
+      def add_change(changes, type:, insertion:, file:, message:, line: nil, extra: {})
+        changes << {
+          type: type,
+          file: file,
+          line: line || insertion.node.loc.expression.line,
+          method: method_id_for(insertion),
+          message: message
+        }.merge(extra)
+      end
 
       # Apply one method insertion (def/defs).
       #
@@ -117,8 +136,10 @@ module Docscribe
       # @param rewrite [Boolean]
       # @param merge [Boolean]
       # @param merge_inserts [Hash{Integer=>Array<(Integer,String)>}]
+      # @param changes [Array<Hash>]
+      # @param file [String]
       # @return [void]
-      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, rewrite:, merge:, merge_inserts:)
+      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, rewrite:, merge:, merge_inserts:, changes:, file:)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
@@ -139,6 +160,13 @@ module Docscribe
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(bol_range, doc)
+          add_change(
+            changes,
+            type: :insert_full_doc_block,
+            insertion: insertion,
+            file: file,
+            message: 'missing docs'
+          )
           return
         end
 
@@ -146,10 +174,20 @@ module Docscribe
           info = SourceHelpers.doc_comment_block_info(buffer, bol_range.begin_pos)
 
           if info
-            missing_lines = DocBuilder.build_missing_merge_lines(
+            merge_result = DocBuilder.build_missing_merge_result(
               insertion,
               existing_lines: info[:doc_lines],
               config: config
+            )
+
+            missing_lines = merge_result[:lines]
+            reason_specs = merge_result[:reasons]
+
+            sorted_existing_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
+              info[:doc_lines],
+              missing_lines: [],
+              sort_tags: config.sort_tags?,
+              tag_order: config.tag_order
             )
 
             merged_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
@@ -159,12 +197,34 @@ module Docscribe
               tag_order: config.tag_order
             )
 
+            existing_order_changed = sorted_existing_doc_lines != info[:doc_lines]
             new_block = (info[:preserved_lines] + merged_doc_lines).join
             old_block = info[:lines].join
 
             if new_block != old_block
               range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
               rewriter.replace(range, new_block)
+
+              reason_specs.each do |reason|
+                add_change(
+                  changes,
+                  type: reason[:type],
+                  insertion: insertion,
+                  file: file,
+                  message: reason[:message],
+                  extra: reason[:extra] || {}
+                )
+              end
+
+              if existing_order_changed
+                add_change(
+                  changes,
+                  type: :unsorted_tags,
+                  insertion: insertion,
+                  file: file,
+                  message: 'unsorted tags'
+                )
+              end
             end
 
             return
@@ -176,6 +236,13 @@ module Docscribe
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(bol_range, doc)
+          add_change(
+            changes,
+            type: :insert_full_doc_block,
+            insertion: insertion,
+            file: file,
+            message: 'missing docs'
+          )
           return
         end
 
@@ -185,6 +252,13 @@ module Docscribe
         return if doc.nil? || doc.empty?
 
         rewriter.insert_before(bol_range, doc)
+        add_change(
+          changes,
+          type: :insert_full_doc_block,
+          insertion: insertion,
+          file: file,
+          message: 'missing docs'
+        )
       end
 
       # Apply one attribute insertion (attr_reader/attr_writer/attr_accessor).
@@ -202,7 +276,6 @@ module Docscribe
       def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, rewrite:, merge:, merge_inserts:)
         return unless config.respond_to?(:emit_attributes?) && config.emit_attributes?
 
-        # Optionally respect method filters: only emit if at least one implied method is allowed.
         return unless attribute_allowed?(config, insertion)
 
         bol_range = SourceHelpers.line_start_range(buffer, insertion.node)
@@ -231,7 +304,6 @@ module Docscribe
             return
           end
 
-          # No doc-like block: insert full attr docs (non-destructive), even if a normal comment exists.
           doc = build_attr_doc_for_node(insertion, config: config)
           return if doc.nil? || doc.empty?
 
@@ -248,11 +320,6 @@ module Docscribe
       end
 
       # Apply aggregated merge inserts (one insert per end_pos).
-      #
-      # We:
-      # - apply inserts bottom-to-top (reverse end_pos) to keep offsets stable
-      # - preserve content (do NOT de-dupe arbitrary lines)
-      # - avoid consecutive blank-comment separators when multiple chunks land at the same end_pos
       #
       # @param rewriter [Parser::Source::TreeRewriter]
       # @param buffer [Parser::Source::Buffer]
@@ -274,11 +341,9 @@ module Docscribe
 
             lines = chunk.lines
 
-            # Pull off any leading separator lines from this chunk
             seps = []
             seps << lines.shift while !lines.empty? && lines.first.match?(sep_re)
 
-            # Keep at most ONE separator between chunks, and never allow consecutive separators
             sep = seps.first
             out_lines << sep if sep && (out_lines.empty? || !out_lines.last.match?(sep_re))
 
@@ -302,7 +367,6 @@ module Docscribe
 
         lines = []
 
-        # Separator if the existing block doesn't already end with a blank comment line
         lines << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#'
 
         missing.each_with_index do |name_sym, idx|
@@ -320,7 +384,6 @@ module Docscribe
           lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
           lines << "#{indent}#   @param value [#{attr_type}]" if %i[w rw].include?(ins.access)
 
-          # Separate multiple appended attrs with a blank comment line
           lines << "#{indent}#" if idx < missing.length - 1
         end
 
@@ -332,7 +395,6 @@ module Docscribe
       def existing_attr_names(lines)
         names = {}
         Array(lines).each do |line|
-          # matches: "# @!attribute [r] name"
           if (m = line.match(/^\s*#\s*@!attribute\b.*\]\s+(\S+)/))
             names[m[1]] = true
           end
@@ -340,17 +402,6 @@ module Docscribe
         names
       end
 
-      # Decide whether an attribute macro should be documented, using method filters.
-      #
-      # For each attribute name, we translate it into implied method names:
-      # - reader: `name`
-      # - writer: `name=`
-      #
-      # If at least one implied method is allowed by config.process_method?, we generate docs.
-      #
-      # @param config [Docscribe::Config]
-      # @param ins [Docscribe::InlineRewriter::Collector::AttrInsertion]
-      # @return [Boolean]
       def attribute_allowed?(config, ins)
         ins.names.any? do |name_sym|
           ok = false
@@ -377,32 +428,13 @@ module Docscribe
         end
       end
 
-      # Build YARD `@!attribute` documentation for an attr_* insertion.
-      #
-      # Output format (example):
-      #
-      #   # @!attribute [r] name
-      #   #   @return [String]
-      #   attr_reader :name
-      #
-      # For writers/accessors we also emit:
-      #
-      #   #   @param value [String]
-      #
-      # Typing:
-      # - Prefer RBS return type of the reader method when available.
-      # - Otherwise use config.fallback_type.
-      #
-      # @param ins [Docscribe::InlineRewriter::Collector::AttrInsertion]
-      # @param config [Docscribe::Config]
-      # @return [String, nil]
       def build_attr_doc_for_node(ins, config:)
         indent = SourceHelpers.line_indent(ins.node)
         lines = []
 
         ins.names.each_with_index do |name_sym, idx|
           attr_name = name_sym.to_s
-          mode = ins.access.to_s # "r", "w", "rw"
+          mode = ins.access.to_s
 
           attr_type = attribute_type(ins, name_sym, config)
 
@@ -416,7 +448,6 @@ module Docscribe
           lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
           lines << "#{indent}#   @param value [#{attr_type}]" if %i[w rw].include?(ins.access)
 
-          # Separate multiple attrs in one macro call by a blank comment line
           lines << "#{indent}#" if idx < ins.names.length - 1
         end
 
@@ -425,22 +456,12 @@ module Docscribe
         nil
       end
 
-      # Determine an attribute type for a given attribute name.
-      #
-      # We use the reader signature when possible (it is the most natural source of truth),
-      # and fall back to config.fallback_type otherwise.
-      #
-      # @param ins [Docscribe::InlineRewriter::Collector::AttrInsertion]
-      # @param name_sym [Symbol]
-      # @param config [Docscribe::Config]
-      # @return [String]
       def attribute_type(ins, name_sym, config)
         ty = config.fallback_type
 
         provider = config.rbs_provider
         return ty unless provider
 
-        # Use reader signature if present
         reader_sig = provider.signature_for(container: ins.container, scope: ins.scope, name: name_sym)
         reader_sig&.return_type || ty
       rescue StandardError

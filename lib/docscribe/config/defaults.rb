@@ -18,7 +18,7 @@ module Docscribe
         'param_tag_style' => 'type_name',
         'param_documentation' => 'Param documentation.',
         'sort_tags' => true,
-        'tag_order' => %w[todo note api private protected param option raise return]
+        'tag_order' => %w[todo note api private protected param option yieldparam raise return]
       },
       'methods' => {
         'instance' => {
