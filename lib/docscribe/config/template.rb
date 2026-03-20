@@ -2,7 +2,10 @@
 
 module Docscribe
   class Config
-    # Default configuration template used by `docscribe init`.
+    # Return the default YAML template used by `docscribe init`.
+    #
+    # The template documents the most common CLI workflows and all supported
+    # configuration sections with comments.
     #
     # @return [String]
     def self.default_yaml

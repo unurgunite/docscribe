@@ -2,7 +2,14 @@
 
 module Docscribe
   class Config
-    # Default configuration values used when no docscribe.yml is present or keys are missing.
+    # Default configuration values used when no docscribe.yml is present or when keys are missing.
+    #
+    # These defaults define:
+    # - which documentation tags are emitted
+    # - default generated text
+    # - type inference behavior
+    # - method/file filtering
+    # - optional RBS integration
     DEFAULT = {
       'emit' => {
         'header' => true,
