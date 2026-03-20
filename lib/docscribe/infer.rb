@@ -21,26 +21,27 @@ module Docscribe
   # Best-effort inference utilities used to generate YARD tags.
   #
   # This module is intentionally heuristic:
-  # - It aims to be correct for common Ruby patterns and safe for unknown cases.
-  # - When inference is uncertain, it returns "Object".
+  # - it aims to be useful for common Ruby patterns
+  # - it prefers safe fallback behavior when uncertain
+  # - when inference cannot be specific, it falls back to `Object`
   #
-  # RBS-based typing (when enabled) is applied in the doc builder, not here.
+  # RBS-based typing, when enabled, is applied later in the doc builder rather than here.
   module Infer
     class << self
-      # Infer exception class names that the method may raise.
+      # Infer exception classes raised or rescued within an AST node.
       #
-      # @param node [Parser::AST::Node] a method node (`:def` or `:defs`)
-      # @return [Array<String>] unique exception class names
+      # @param [Parser::AST::Node] node
+      # @return [Array<String>]
       def infer_raises_from_node(node)
         Raises.infer_raises_from_node(node)
       end
 
-      # Infer parameter type from name and default value string.
+      # Infer a parameter type from its internal name form and optional default expression.
       #
-      # @param name [String]
-      # @param default_str [String, nil]
-      # @param fallback_type [FALLBACK_TYPE] Param documentation.
-      # @param treat_options_keyword_as_hash [Boolean] Param documentation.
+      # @param [String] name internal parameter name representation
+      # @param [String, nil] default_str source for the default expression
+      # @param [String] fallback_type
+      # @param [Boolean] treat_options_keyword_as_hash
       # @return [String]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
         Params.infer_param_type(
@@ -50,71 +51,76 @@ module Docscribe
         )
       end
 
-      # Parse a Ruby expression from a string into an AST node.
+      # Parse a standalone expression source string for inference helpers.
       #
-      # @param src [String, nil]
+      # @param [String, nil] src
       # @return [Parser::AST::Node, nil]
       def parse_expr(src)
         Params.parse_expr(src)
       end
 
-      # Infer return type of method from its source text.
+      # Infer a return type from full method source.
       #
-      # @param method_source [String, nil]
+      # @param [String, nil] method_source
       # @return [String]
       def infer_return_type(method_source)
         Returns.infer_return_type(method_source)
       end
 
-      # Infer return type from an already-parsed method node.
+      # Infer a return type from an already parsed `:def` / `:defs` node.
       #
-      # @param node [Parser::AST::Node] `:def` or `:defs`
+      # @param [Parser::AST::Node] node
       # @return [String]
       def infer_return_type_from_node(node)
         Returns.infer_return_type_from_node(node)
       end
 
-      # Compute normal return type and rescue-conditional return types for a method.
+      # Return structured normal/rescue return information for a method node.
       #
-      # @param node [Parser::AST::Node]
-      # @param fallback_type [FALLBACK_TYPE] Param documentation.
-      # @param nil_as_optional [Boolean] Param documentation.
-      # @return [Hash{Symbol=>Object}] `{ normal: String, rescues: Array<[Array<String>, String]> }`
+      # @param [Parser::AST::Node] node
+      # @param [String] fallback_type
+      # @param [Boolean] nil_as_optional
+      # @return [Hash]
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         Returns.returns_spec_from_node(node, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
       end
 
-      # Infer the type of the "last expression" of a Ruby AST node.
+      # Infer the type of the last expression in an AST node.
       #
-      # @param node [Parser::AST::Node, nil]
+      # @param [Parser::AST::Node, nil] node
+      # @param [String] fallback_type
+      # @param [Boolean] nil_as_optional
       # @return [String, nil]
-      def last_expr_type(node)
-        Returns.last_expr_type(node)
+      def last_expr_type(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
+        Returns.last_expr_type(node, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
       end
 
-      # Convert a constant-like AST node into a fully qualified name.
+      # Convert a constant AST node into its fully qualified name.
       #
-      # @param n [Parser::AST::Node, nil]
+      # @param [Parser::AST::Node, nil] n
       # @return [String, nil]
       def const_full_name(n)
         Names.const_full_name(n)
       end
 
-      # Infer a type name from a literal node.
+      # Infer a YARD-ish type string from a literal AST node.
       #
-      # @param node [Parser::AST::Node, nil]
+      # @param [Parser::AST::Node, nil] node
+      # @param [String] fallback_type
       # @return [String]
-      def type_from_literal(node)
-        Literals.type_from_literal(node)
+      def type_from_literal(node, fallback_type: FALLBACK_TYPE)
+        Literals.type_from_literal(node, fallback_type: fallback_type)
       end
 
-      # Unify two inferred types conservatively.
+      # Unify two inferred type strings conservatively.
       #
-      # @param a [String, nil]
-      # @param b [String, nil]
+      # @param [String, nil] a
+      # @param [String, nil] b
+      # @param [String] fallback_type
+      # @param [Boolean] nil_as_optional
       # @return [String]
-      def unify_types(a, b)
-        Returns.unify_types(a, b)
+      def unify_types(a, b, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
+        Returns.unify_types(a, b, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
       end
     end
   end

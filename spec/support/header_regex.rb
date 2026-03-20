@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 module HeaderRegex
-  # +HeaderRegex#header_regex+ -> Regexp
-  #
   # Method documentation.
   #
   # @param [Object] klass Param documentation.

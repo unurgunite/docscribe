@@ -6,18 +6,20 @@ require 'psych'
 
 module Docscribe
   class Config
+    # Raw config hash after deep-merging user config with defaults.
+    #
+    # @return [Hash]
+    #
     # @!attribute [r] raw
     #   @return [Object]
     attr_reader :raw
 
-    # Create a Docscribe configuration instance.
+    # Create a configuration object from a raw config hash.
     #
-    # The provided hash is deep-merged into DEFAULT, so any missing keys are filled
-    # from defaults.
+    # Missing keys are filled from {DEFAULT} via deep merge.
     #
-    # @param raw [Hash, nil]
-    #
-    # @return [Object]
+    # @param [Hash, nil] raw user-provided config hash
+    # @return [void]
     def initialize(raw = {})
       @raw = deep_merge(DEFAULT, raw || {})
     end

@@ -15,22 +15,35 @@ require 'docscribe/inline_rewriter/collector'
 require 'docscribe/inline_rewriter/doc_block'
 
 module Docscribe
+  # Raised when source cannot be parsed before rewriting.
   class ParseError < StandardError; end
 
-  # Rewrites Ruby source to insert YARD-style documentation comments.
+  # Rewrite Ruby source to insert or update inline YARD-style documentation.
   #
-  # Strategies:
-  # - :safe       => insert missing docs, merge existing doc-like blocks, normalize sortable tags
-  # - :aggressive => replace existing doc blocks with regenerated docs
+  # Supported strategies:
+  # - `:safe`
+  #   - insert missing docs
+  #   - merge into existing doc-like blocks
+  #   - normalize configured sortable tags
+  #   - preserve existing prose and directives where possible
+  # - `:aggressive`
+  #   - replace existing doc blocks with freshly generated docs
+  #
+  # Compatibility note:
+  # - `merge: true` maps to `strategy: :safe`
+  # - `rewrite: true` maps to `strategy: :aggressive`
   module InlineRewriter
     class << self
-      # Insert documentation comments into Ruby source.
+      # Rewrite source and return only the rewritten output string.
       #
-      # @param code [String]
-      # @param strategy [Symbol] :safe or :aggressive
-      # @param config [Docscribe::Config, nil]
-      # @param file [String]
-      # @raise [Docscribe::ParseError]
+      # This is the main convenience entry point for library usage.
+      #
+      # @param [String] code Ruby source
+      # @param [Symbol, nil] strategy :safe or :aggressive
+      # @param [Boolean, nil] rewrite compatibility alias for aggressive strategy
+      # @param [Boolean, nil] merge compatibility alias for safe strategy
+      # @param [Docscribe::Config, nil] config config object (defaults to loaded config)
+      # @param [String] file source name used for parser locations/debugging
       # @return [String]
       def insert_comments(code, strategy: nil, rewrite: nil, merge: nil, config: nil, file: '(inline)')
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
@@ -43,12 +56,18 @@ module Docscribe
         )[:output]
       end
 
-      # Rewrite source and return both output and structured change reasons.
+      # Rewrite source and return both output and structured change information.
       #
-      # @param code [String]
-      # @param strategy [Symbol] :safe or :aggressive
-      # @param config [Docscribe::Config, nil]
-      # @param file [String]
+      # The result hash includes:
+      # - `:output`  => rewritten source
+      # - `:changes` => structured change records used by CLI explanation output
+      #
+      # @param [String] code Ruby source
+      # @param [Symbol, nil] strategy :safe or :aggressive
+      # @param [Boolean, nil] rewrite compatibility alias for aggressive strategy
+      # @param [Boolean, nil] merge compatibility alias for safe strategy
+      # @param [Docscribe::Config, nil] config config object (defaults to loaded config)
+      # @param [String] file source name used for parser locations/debugging
       # @raise [Docscribe::ParseError]
       # @return [Hash]
       def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: nil, file: '(inline)')
@@ -109,39 +128,58 @@ module Docscribe
 
       private
 
+      # Normalize strategy inputs, including compatibility booleans.
+      #
+      # Precedence:
+      # - explicit `strategy`
+      # - `rewrite: true` => `:aggressive`
+      # - `merge: true` => `:safe`
+      # - default => `:safe`
+      #
+      # @private
+      # @param [Symbol, nil] strategy
+      # @param [Boolean, nil] rewrite
+      # @param [Boolean, nil] merge
+      # @return [Symbol]
       def normalize_strategy(strategy:, rewrite:, merge:)
         return strategy if strategy
-
         return :aggressive if rewrite
         return :safe if merge
 
         :safe
       end
 
+      # Validate a normalized rewrite strategy.
+      #
+      # @private
+      # @param [Symbol] strategy
+      # @raise [ArgumentError]
+      # @return [void]
       def validate_strategy!(strategy)
         return if %i[safe aggressive].include?(strategy)
 
         raise ArgumentError, "Unknown strategy: #{strategy.inspect}"
       end
 
-      # Apply one method insertion.
+      # Apply one method insertion according to the selected strategy.
       #
-      # :safe
-      # - merge into existing doc-like block if present
+      # Safe strategy:
+      # - merge into existing doc-like blocks when present
       # - otherwise insert a full doc block non-destructively
       #
-      # :aggressive
-      # - replace existing doc block if present
-      # - regenerate docs
+      # Aggressive strategy:
+      # - remove the existing doc block (if any)
+      # - insert a fresh regenerated block
       #
-      # @param rewriter [Parser::Source::TreeRewriter]
-      # @param buffer [Parser::Source::Buffer]
-      # @param insertion [Docscribe::InlineRewriter::Collector::Insertion]
-      # @param config [Docscribe::Config]
-      # @param strategy [Symbol]
-      # @param merge_inserts [Hash]
-      # @param changes [Array<Hash>]
-      # @param file [String]
+      # @private
+      # @param [Parser::Source::TreeRewriter] rewriter
+      # @param [Parser::Source::Buffer] buffer
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [Docscribe::Config] config
+      # @param [Symbol] strategy
+      # @param [Hash] merge_inserts aggregated attr merge inserts
+      # @param [Array<Hash>] changes structured change records
+      # @param [String] file
       # @return [void]
       def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, strategy:, merge_inserts:, changes:, file:)
         name = SourceHelpers.node_name(insertion.node)
@@ -247,6 +285,17 @@ module Docscribe
         end
       end
 
+      # Append a structured change record.
+      #
+      # @private
+      # @param [Array<Hash>] changes
+      # @param [Symbol] type
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [String] file
+      # @param [String] message
+      # @param [Integer, nil] line
+      # @param [Hash] extra
+      # @return [void]
       def add_change(changes, type:, insertion:, file:, message:, line: nil, extra: {})
         changes << {
           type: type,
@@ -257,19 +306,25 @@ module Docscribe
         }.merge(extra)
       end
 
+      # Build a printable method identifier from a collected insertion.
+      #
+      # @private
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @return [String]
       def method_id_for(insertion)
         name = SourceHelpers.node_name(insertion.node)
         "#{insertion.container}#{insertion.scope == :instance ? '#' : '.'}#{name}"
       end
 
-      # Apply one attribute insertion.
+      # Apply one attribute insertion according to the selected strategy.
       #
-      # @param rewriter [Parser::Source::TreeRewriter]
-      # @param buffer [Parser::Source::Buffer]
-      # @param insertion [Docscribe::InlineRewriter::Collector::AttrInsertion]
-      # @param config [Docscribe::Config]
-      # @param strategy [Symbol]
-      # @param merge_inserts [Hash]
+      # @private
+      # @param [Parser::Source::TreeRewriter] rewriter
+      # @param [Parser::Source::Buffer] buffer
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] insertion
+      # @param [Docscribe::Config] config
+      # @param [Symbol] strategy
+      # @param [Hash] merge_inserts
       # @return [void]
       def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, strategy:, merge_inserts:)
         return unless config.respond_to?(:emit_attributes?) && config.emit_attributes?
@@ -307,11 +362,14 @@ module Docscribe
         end
       end
 
-      # Apply aggregated merge inserts (one insert per end_pos).
+      # Apply aggregated merge inserts at shared end positions.
       #
-      # @param rewriter [Parser::Source::TreeRewriter]
-      # @param buffer [Parser::Source::Buffer]
-      # @param merge_inserts [Hash{Integer=>Array<(Integer,String)>}]
+      # Used primarily for attribute merge behavior where multiple additions may target the same block end.
+      #
+      # @private
+      # @param [Parser::Source::TreeRewriter] rewriter
+      # @param [Parser::Source::Buffer] buffer
+      # @param [Hash{Integer=>Array<(Integer,String)>}] merge_inserts
       # @return [void]
       def apply_merge_inserts!(rewriter:, buffer:, merge_inserts:)
         sep_re = /^\s*#\s*\r?\n$/
@@ -346,6 +404,14 @@ module Docscribe
         end
       end
 
+      # Build plain-text merge additions for an attribute doc block.
+      #
+      # @private
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
+      # @param [Array<String>] existing_lines
+      # @param [Docscribe::Config] config
+      # @raise [StandardError]
+      # @return [String, nil]
       def build_attr_merge_additions(ins, existing_lines:, config:)
         indent = SourceHelpers.line_indent(ins.node)
         existing = existing_attr_names(existing_lines)
@@ -380,6 +446,11 @@ module Docscribe
         nil
       end
 
+      # Extract already documented attribute names from existing `@!attribute` lines.
+      #
+      # @private
+      # @param [Array<String>] lines
+      # @return [Hash{String=>Boolean}]
       def existing_attr_names(lines)
         names = {}
         Array(lines).each do |line|
@@ -390,6 +461,12 @@ module Docscribe
         names
       end
 
+      # Decide whether an attribute macro should be emitted according to method filters.
+      #
+      # @private
+      # @param [Docscribe::Config] config
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
+      # @return [Boolean]
       def attribute_allowed?(config, ins)
         ins.names.any? do |name_sym|
           ok = false
@@ -416,6 +493,13 @@ module Docscribe
         end
       end
 
+      # Build a full `@!attribute` documentation block for one attribute insertion.
+      #
+      # @private
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
+      # @param [Docscribe::Config] config
+      # @raise [StandardError]
+      # @return [String, nil]
       def build_attr_doc_for_node(ins, config:)
         indent = SourceHelpers.line_indent(ins.node)
         lines = []
@@ -444,6 +528,16 @@ module Docscribe
         nil
       end
 
+      # Determine the attribute type for one attr name.
+      #
+      # Prefers the RBS reader signature when available; otherwise falls back to the config fallback type.
+      #
+      # @private
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
+      # @param [Symbol] name_sym
+      # @param [Docscribe::Config] config
+      # @raise [StandardError]
+      # @return [String]
       def attribute_type(ins, name_sym, config)
         ty = config.fallback_type
 

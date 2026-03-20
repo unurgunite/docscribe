@@ -9,8 +9,12 @@ module Docscribe
     class << self
       # Main CLI entry point.
       #
-      # @param argv [Array<String>]
-      # @return [Integer] exit code
+      # Dispatches:
+      # - `docscribe init ...` to the config-template generator
+      # - all other commands to the main option parser and runner
+      #
+      # @param [Array<String>] argv raw command-line arguments
+      # @return [Integer] process exit code
       def run(argv)
         argv = argv.dup
 
