@@ -96,7 +96,7 @@ module Docscribe
         }
       end
 
-      # Compute the range to remove when refreshing docs (`--refresh` / rewrite: true).
+      # Compute the range to remove when refreshing docs (+:aggressive+ strategy behavior).
       #
       # The algorithm:
       # - Identify the line index of the method definition (based on `def_bol_pos`)

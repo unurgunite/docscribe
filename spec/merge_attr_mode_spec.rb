@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge mode (attrs)' do
+RSpec.describe 'safe strategy (attrs)' do
   it 'appends missing @!attribute blocks for undocumented attr names' do
     conf = Docscribe::Config.new('emit' => { 'attributes' => true })
 
@@ -12,7 +12,7 @@ RSpec.describe '--merge mode (attrs)' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true, config: conf)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
 
     expect(out).to include('# @!attribute [r] a')
     expect(out).to include('# @!attribute [r] b') # added
@@ -28,7 +28,7 @@ RSpec.describe '--merge mode (attrs)' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true, config: conf)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
 
     expect(out).to include('# NOTE: keep this')
     expect(out).to include('# @!attribute [r] name')
@@ -44,7 +44,7 @@ RSpec.describe '--merge mode (attrs)' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true, config: conf)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
     expect(out).to include('# @todo Document this properly')
     expect(out).to include('# @!attribute [r] name')
   end

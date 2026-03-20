@@ -9,31 +9,32 @@
 Generate inline, YARD-style documentation comments for Ruby methods by analyzing your code's AST.
 
 Docscribe inserts doc headers before method definitions, infers parameter and return types (including rescue-aware
-returns),
-and respects Ruby visibility semantics — without using YARD to parse.
+returns), and respects Ruby visibility semantics — without using YARD to parse.
 
 - No AST reprinting. Your original code, formatting, and constructs (like `class << self`, `heredocs`, `%i[]`) are
   preserved.
 - Inline-first. Comments are inserted at the start of each `def`/`defs` line.
 - Heuristic type inference for params and return values, including conditional returns in rescue branches.
-- Optional refresh mode (`--refresh`) for regenerating existing method docs.
+- Safe and aggressive update modes:
+    - safe mode inserts missing docs, merges existing doc-like blocks, and normalizes sortable tags
+    - aggressive mode rebuilds existing doc blocks
 - Ruby 3.4+ syntax supported using Prism translation (see "Parser backend" below).
 - Optional RBS integration (`--rbs`, `--sig-dir`) for more accurate `@param`/`@return` types.
 - Optional `attr_reader`/`attr_writer`/`attr_accessor` documentation via YARD `@!attribute` (see Configuration).
 
 Common workflows:
 
-- Generate docs (write changes):
-  `docscribe --write lib`
+- Inspect what safe doc updates would be applied:
+  `docscribe lib`
 
-- Check in CI (no changes, fails if docs would change):
-  `docscribe --dry lib`
+- Apply safe doc updates:
+  `docscribe -a lib`
 
-- Refresh/rebaseline docs (regenerate existing doc blocks):
-  `docscribe --write --refresh lib`
+- Apply aggressive doc updates:
+  `docscribe -A lib`
 
 - Use RBS signatures when available:
-  `docscribe --rbs --sig-dir sig --write lib`
+  `docscribe -a --rbs --sig-dir sig lib`
 
 ## Contents
 
@@ -42,9 +43,12 @@ Common workflows:
     * [Installation](#installation)
     * [Quick start](#quick-start)
     * [CLI](#cli)
-    * [Inline behavior](#inline-behavior)
-        * [Refresh mode](#refresh-mode)
-        * [Output markers in CI](#output-markers-in-ci)
+        * [Options](#options)
+        * [Examples](#examples)
+    * [Update strategies](#update-strategies)
+        * [Safe strategy](#safe-strategy)
+        * [Aggressive strategy](#aggressive-strategy)
+        * [Output markers](#output-markers)
     * [Parser backend (Parser gem vs Prism)](#parser-backend-parser-gem-vs-prism)
     * [RBS integration (optional)](#rbs-integration-optional)
     * [Type inference](#type-inference)
@@ -53,6 +57,7 @@ Common workflows:
     * [API (library) usage](#api-library-usage)
     * [Configuration](#configuration)
         * [Filtering](#filtering)
+        * [Attribute macros (`attr_*`)](#attribute-macros-attr_)
         * [Create a starter config](#create-a-starter-config)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
@@ -88,6 +93,7 @@ Requires Ruby 2.7+.
 Given code:
 
 ```ruby
+
 class Demo
   def foo(a, options: {})
     42
@@ -168,9 +174,9 @@ end
 ```
 
 > [!NOTE]
-> - The tool inserts doc headers at the start of def/defs lines and preserves everything else.
+> - The tool inserts doc headers at the start of `def`/`defs` lines and preserves everything else.
 > - Class methods show with a dot (`+Demo.bump+`, `+Demo.internal+`).
-> - Methods inside `class << self` under private are marked `@private`.
+> - Methods inside `class << self` under `private` are marked `@private`.
 
 ## CLI
 
@@ -178,93 +184,152 @@ end
 docscribe [options] [files...]
 ```
 
-Docscribe operates in one of three modes:
+Docscribe has three main ways to run:
 
-- **STDIN mode** (`--stdin`): read Ruby source from STDIN and print rewritten source to STDOUT.
-- **Check mode** (`--dry` / `--check`): dry-run for files; exits `1` if any file would change (useful in CI).
-- **Write mode** (`--write`): rewrite files in place.
+- **Inspect mode** (default): checks what safe doc updates would be applied and exits non-zero if files need changes.
+- **Safe autocorrect** (`-a`, `--autocorrect`): writes safe, non-destructive updates in place.
+- **Aggressive autocorrect** (`-A`, `--autocorrect-all`): rewrites existing doc blocks more aggressively.
+- **STDIN mode** (`--stdin`): reads Ruby source from STDIN and prints rewritten source to STDOUT.
 
-If you pass no files (and don’t use `--stdin`), Docscribe exits with an error.
+If you pass no files and don’t use `--stdin`, Docscribe processes the current directory recursively.
 
-Options:
+### Options
 
-- `--stdin` Read source from STDIN and print with docs inserted.
-- `--write` Rewrite files in place.
-- `--check`, `--dry` Dry-run: exit 1 if any file would change (useful in CI).
-- `--refresh` Regenerate docs: replace existing doc blocks above methods.
-- `--rbs` Use RBS signatures for `@param`/`@return` when available (falls back to inference).
-- `--sig-dir DIR` Add an RBS signature directory (repeatable). Implies `--rbs`.
-- `--include PATTERN` Include PATTERN (method id or file path; glob or /regex/).
-- `--exclude PATTERN` Exclude PATTERN (method id or file path; glob or /regex/). Exclude wins.
-- `--include-file PATTERN` Only process files matching PATTERN (glob or /regex/).
-- `--exclude-file PATTERN` Skip files matching PATTERN (glob or /regex/). Exclude wins.
-- `--config PATH` Path to config YAML (default: `docscribe.yml`).
-- `--version` Print version and exit.
-- `-h`, `--help` Show help.
+- `-a`, `--autocorrect`  
+  Apply safe doc updates in place.
 
-Examples:
+- `-A`, `--autocorrect-all`  
+  Apply aggressive doc updates in place.
 
-- Preview output for a single file (via STDIN):
+- `--stdin`  
+  Read source from STDIN and print rewritten output.
+
+- `--verbose`  
+  Print per-file actions.
+
+- `--explain`  
+  Show detailed reasons for each file that would change.
+
+- `--rbs`  
+  Use RBS signatures for `@param`/`@return` when available (falls back to inference).
+
+- `--sig-dir DIR`  
+  Add an RBS signature directory (repeatable). Implies `--rbs`.
+
+- `--include PATTERN`  
+  Include PATTERN (method id or file path; glob or `/regex/`).
+
+- `--exclude PATTERN`  
+  Exclude PATTERN (method id or file path; glob or `/regex/`). Exclude wins.
+
+- `--include-file PATTERN`  
+  Only process files matching PATTERN (glob or `/regex/`).
+
+- `--exclude-file PATTERN`  
+  Skip files matching PATTERN (glob or `/regex/`). Exclude wins.
+
+- `-C`, `--config PATH`  
+  Path to config YAML (default: `docscribe.yml`).
+
+- `-v`, `--version`  
+  Print version and exit.
+
+- `-h`, `--help`  
+  Show help.
+
+### Examples
+
+- Inspect a directory:
+  ```shell
+  docscribe lib
+  ```
+
+- Apply safe updates:
+  ```shell
+  docscribe -a lib/**/*.rb
+  ```
+
+- Apply aggressive updates:
+  ```shell
+  docscribe -A lib/**/*.rb
+  ```
+
+- Preview output for a single file via STDIN:
   ```shell
   cat path/to/file.rb | docscribe --stdin
   ```
 
-- Rewrite files in place (ensure a clean working tree):
+- Use RBS signatures:
   ```shell
-  docscribe --write lib/**/*.rb
+  docscribe -a --rbs --sig-dir sig lib
   ```
 
-- CI check (fail if docs are missing/stale):
+- Show detailed reasons for files that would change:
   ```shell
-  docscribe --dry lib/**/*.rb
+  docscribe --verbose --explain lib
   ```
 
-- Refresh docs (regenerate headers/tags and replace existing doc blocks):
-  ```shell
-  docscribe --write --refresh lib/**/*.rb
-  ```
+## Update strategies
 
-- Check a directory (Docscribe expands directories to `**/*.rb`):
-  ```shell
-  docscribe --dry lib
-  ```
+Docscribe supports two update strategies: **safe** and **aggressive**.
 
-> [!TIP]
-> `--dry --refresh` is a "refresh dry-run" — it tells you whether regenerating docs would change anything.
+### Safe strategy
 
-## Inline behavior
+Used by:
 
-- Inserts comment blocks immediately above def/defs nodes.
-- Skips methods that already have a comment directly above them (does not merge into existing comments) unless you pass
-  `--refresh`.
-- Maintains original formatting and constructs; only adds comments.
+- default inspect mode: `docscribe lib`
+- safe write mode: `docscribe -a lib`
 
-### Refresh mode
+Safe strategy:
 
-With `--refresh`, Docscribe removes the contiguous comment block immediately above a method (plus intervening blank
-lines)
-and replaces it with a fresh generated block.
+- inserts docs for undocumented methods
+- merges missing tags into existing **doc-like** blocks
+- normalizes configurable tag order inside sortable tag runs
+- preserves existing prose and comments where possible
 
-Use with caution (prefer a clean working tree and review diffs).
+This is the recommended day-to-day mode.
 
-### Output markers in CI
+### Aggressive strategy
 
-When using `--dry`, Docscribe prints one character per file:
+Used by:
 
-- `.` = file is up-to-date
-- `F` = file would change (missing/stale docs)
+- aggressive write mode: `docscribe -A lib`
 
-When using `--write`:
+Aggressive strategy:
+
+- rebuilds existing doc blocks
+- replaces existing generated documentation more fully
+- is more invasive than safe mode
+
+Use it when you want to rebaseline or regenerate docs wholesale.
+
+### Output markers
+
+In inspect mode, Docscribe prints one character per file:
+
+- `.` = file is up to date
+- `F` = file would change
+- `E` = file had an error
+
+In write modes:
 
 - `.` = file already OK
-- `C` = file was corrected and rewritten
+- `C` = file was updated
+- `E` = file had an error
 
-Docscribe prints a summary at the end and exits non-zero in `--dry` mode if any file would change.
+With `--verbose`, Docscribe prints per-file statuses instead.
+
+With `--explain`, Docscribe also prints detailed reasons, such as:
+
+- missing `@param`
+- missing `@return`
+- missing module_function note
+- unsorted tags
 
 ## Parser backend (Parser gem vs Prism)
 
-Docscribe internally works with `parser`-gem-compatible AST nodes and `Parser::Source::*` objects
-(so it can use `Parser::Source::TreeRewriter` without changing formatting).
+Docscribe internally works with `parser`-gem-compatible AST nodes and `Parser::Source::*` objects (so it can use
+`Parser::Source::TreeRewriter` without changing formatting).
 
 - On Ruby **<= 3.3**, Docscribe parses using the `parser` gem.
 - On Ruby **>= 3.4**, Docscribe parses using **Prism** and translates the tree into the `parser` gem's AST.
@@ -272,8 +337,8 @@ Docscribe internally works with `parser`-gem-compatible AST nodes and `Parser::S
 You can force a backend with an environment variable:
 
 ```shell
-DOCSCRIBE_PARSER_BACKEND=parser bundle exec docscribe --dry lib
-DOCSCRIBE_PARSER_BACKEND=prism  bundle exec docscribe --dry lib
+DOCSCRIBE_PARSER_BACKEND=parser bundle exec docscribe lib
+DOCSCRIBE_PARSER_BACKEND=prism  bundle exec docscribe lib
 ```
 
 ## RBS integration (optional)
@@ -283,7 +348,7 @@ Docscribe can use RBS signatures to improve `@param` and `@return` types.
 CLI:
 
 ```shell
-docscribe --rbs --sig-dir sig --write lib
+docscribe -a --rbs --sig-dir sig lib
 ```
 
 Config:
@@ -315,17 +380,17 @@ Parameters:
 - `**kwargs` -> `Hash`
 - `&block` -> `Proc`
 - keyword args:
-    - verbose: `true` -> `Boolean`
-    - options: `{}` -> `Hash`
-    - kw: (no default) -> `Object`
+    - `verbose: true` -> `Boolean`
+    - `options: {}` -> `Hash`
+    - `kw:` (no default) -> `Object`
 - positional defaults:
     - `42` -> `Integer`, `1.0` -> `Float`, `'x'` -> `String`, `:ok` -> `Symbol`
     - `[]` -> `Array`, `{}` -> `Hash`, `/x/` -> `Regexp`, `true`/`false` -> `Boolean`, `nil` -> `nil`
 
 Return values:
 
-- For simple bodies, Docscribe looks at the last expression or explicit return.
-- Unions with nil become optional types (e.g., `String` or `nil` -> `String?`).
+- For simple bodies, Docscribe looks at the last expression or explicit `return`.
+- Unions with `nil` become optional types (e.g. `String` or `nil` -> `String?`).
 - For control flow (`if`/`case`), it unifies branches conservatively.
 
 ## Rescue-aware returns and @raise
@@ -335,10 +400,10 @@ Docscribe detects exceptions and rescue branches:
 - Rescue exceptions become `@raise` tags:
     - `rescue Foo, Bar` -> `@raise [Foo]` and `@raise [Bar]`
     - bare rescue -> `@raise [StandardError]`
-    - explicit raise/fail also adds a tag (`raise Foo` -> `@raise [Foo]`, `raise` -> `@raise [StandardError]`)
+    - explicit `raise`/`fail` also adds a tag (`raise Foo` -> `@raise [Foo]`, `raise` -> `@raise [StandardError]`)
 
 - Conditional return types for rescue branches:
-    - Docscribe adds `@return [Type] if ExceptionA, ExceptionB` for each rescue clause.
+    - Docscribe adds `@return [Type] if ExceptionA, ExceptionB` for each rescue clause
 
 ## Visibility semantics
 
@@ -356,8 +421,8 @@ Inline tags:
 
 > [!IMPORTANT]
 > `module_function`: Docscribe documents methods affected by `module_function` as module methods (`M.foo`) rather than
-> instance methods (`M#foo`), because that is usually the callable/public API. If a method was previously private as
-> an instance method, Docscribe will avoid marking the generated docs as `@private` after it is promoted to a module
+> instance methods (`M#foo`), because that is usually the callable/public API. If a method was previously private as an
+> instance method, Docscribe will avoid marking the generated docs as `@private` after it is promoted to a module
 > method.
 
 ```ruby
@@ -382,12 +447,15 @@ code = <<~RUBY
   end
 RUBY
 
-# Insert docs (skip methods that already have a comment above)
+# Basic insertion behavior
 out = Docscribe::InlineRewriter.insert_comments(code)
 puts out
 
-# Replace existing comment blocks above methods (equivalent to CLI --refresh)
-out2 = Docscribe::InlineRewriter.insert_comments(code, rewrite: true)
+# Safe merge / normalization of existing doc-like blocks
+out2 = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
+
+# Aggressive rebuild of existing doc blocks (similar to CLI -A)
+out3 = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
 ```
 
 ## Configuration
@@ -423,17 +491,17 @@ CLI overrides are available too:
 
 ```shell
 # Method filtering (matches method ids like A#foo / A.bar)
-docscribe --dry --exclude '*#initialize' lib
-docscribe --dry --include '/^MyModule::.*#(foo|bar)$/' lib
+docscribe --exclude '*#initialize' lib
+docscribe --include '/^MyModule::.*#(foo|bar)$/' lib
 
 # File filtering (matches paths relative to the project root)
-docscribe --dry --exclude-file 'spec' lib spec
-docscribe --dry --exclude-file '/^spec\//' lib
+docscribe --exclude-file 'spec' lib spec
+docscribe --exclude-file '/^spec\//' lib
 ```
 
 > [!NOTE]
-> `/regex/` passed to `--include`/`--exclude` is treated as a **method-id** pattern. Use `--include-file`
-> `--exclude-file` for file regex filters.
+> `/regex/` passed to `--include`/`--exclude` is treated as a **method-id** pattern. Use `--include-file` /
+`--exclude-file` for file regex filters.
 
 ### Attribute macros (`attr_*`)
 
@@ -477,7 +545,7 @@ end
 ```
 
 > [!NOTE]
-> - Attribute docs are inserted above the attr_* call, not above generated methods (since they don’t exist as def
+> - Attribute docs are inserted above the `attr_*` call, not above generated methods (since they don’t exist as `def`
     nodes).
 > - If RBS is enabled, Docscribe will try to use the RBS return type of the reader method as the attribute type.
 
@@ -509,25 +577,25 @@ docscribe init --stdout
 
 ## CI integration
 
-Fail the build if files would change:
+Fail the build if files would need safe updates:
 
 ```yaml
 - name: Check inline docs
-  run: docscribe --dry lib/**/*.rb
+  run: docscribe lib/**/*.rb
 ```
 
-Auto-fix before test stage:
+Apply safe fixes before the test stage:
 
 ```yaml
-- name: Insert inline docs
-  run: docscribe --write lib/**/*.rb
+- name: Apply safe inline docs
+  run: docscribe -a lib/**/*.rb
 ```
 
-Refresh mode (regenerate existing method docs):
+Aggressively rebuild docs:
 
 ```yaml
-- name: Refresh inline docs
-  run: docscribe --write --refresh lib/**/*.rb
+- name: Rebuild inline docs
+  run: docscribe -A lib/**/*.rb
 ```
 
 ## Comparison to YARD's parser
@@ -541,23 +609,24 @@ Recommended workflow:
 
 - Use Docscribe to seed and maintain inline docs with inferred tags/types.
 - Optionally use YARD (dev-only) to render HTML from those comments:
-  ```shell
-  yard doc -o docs
-  ```
+
+```shell
+yard doc -o docs
+```
 
 ## Limitations
 
-- **Does not** merge into existing comments; in normal mode, a method with a comment directly above it is skipped. Use
-  `--refresh` to regenerate.
+- Safe mode only merges into existing **doc-like** comment blocks. Ordinary comments that are not recognized as
+  documentation are preserved and treated conservatively.
 - Type inference is heuristic. Complex flows and meta-programming will fall back to `Object` or best-effort types.
-- Inline rewrite is textual; ensure a clean working tree before using `--write` or `--refresh`.
+- Aggressive mode (`-A`) replaces existing doc blocks and should be reviewed carefully.
 
 ## Roadmap
 
-- Merge tags into existing docstrings (opt-in).
-- Recognize common APIs for return inference (`Time.now`, `File.read`, `JSON.parse`).
-- Configurable rules and per-project exclusions.
+- Recognize more common APIs for return inference (`Time.now`, `File.read`, `JSON.parse`).
+- More configurable generation and formatting rules.
 - Editor integration for on-save inline docs.
+- Internal strategy API cleanup.
 
 ## Contributing
 

@@ -4,10 +4,10 @@ require 'open3'
 require 'tmpdir'
 require 'rbconfig'
 
-RSpec.describe 'CLI --merge --write' do
+RSpec.describe 'CLI -a' do
   let(:exe) { File.expand_path('../exe/docscribe', __dir__) }
 
-  it 'merges missing tags into an existing doc-like block' do
+  it 'applies safe doc updates in place' do
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'abc.rb')
 
@@ -23,8 +23,7 @@ RSpec.describe 'CLI --merge --write' do
 
       _stdout, stderr, status = Open3.capture3(
         RbConfig.ruby, exe,
-        '--write',
-        '--merge',
+        '-a',
         'abc.rb',
         chdir: dir
       )

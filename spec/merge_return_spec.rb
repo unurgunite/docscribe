@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge return' do
+RSpec.describe 'safe strategy return' do
   it 'adds @return when missing' do
     code = <<~RUBY
       class A
@@ -9,7 +9,7 @@ RSpec.describe '--merge return' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out).to include('# @todo docs')
     expect(out).to include('# @return [Integer]')
@@ -25,7 +25,7 @@ RSpec.describe '--merge return' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out).to include('# @return [String] already documented')
     expect(out.scan(/^\s*#\s*@return\b/).size).to eq(1)

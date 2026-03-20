@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge partial @raise' do
+RSpec.describe 'safe strategy partial @raise' do
   it 'keeps existing @raise and appends missing inferred @raise types' do
     code = <<~RUBY
       class A
@@ -14,7 +14,7 @@ RSpec.describe '--merge partial @raise' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     # Existing preserved
     expect(out).to include('# @raise [MyError] already documented')
@@ -40,7 +40,7 @@ RSpec.describe '--merge partial @raise' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     # Should not create a second FooError line
     expect(out.scan(/@raise \[FooError\]/).size).to eq(1)

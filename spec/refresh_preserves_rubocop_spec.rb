@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--refresh preserves rubocop directives' do
+RSpec.describe 'aggressive strategy preserves rubocop directives' do
   it 'preserves leading rubocop directives but replaces doc blocks' do
     code = <<~RUBY
       class A
@@ -13,7 +13,7 @@ RSpec.describe '--refresh preserves rubocop directives' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, rewrite: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
 
     expect(out).to include('# rubocop:disable Metrics/AbcSize')
     expect(out).to include('# +A#foo+ -> Integer')

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge mode' do
+RSpec.describe 'safe strategy merge behavior mode' do
   it 'appends missing @param lines into an existing doc-like block without replacing it' do
     code = <<~RUBY
       class A
@@ -10,7 +10,7 @@ RSpec.describe '--merge mode' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
     expect(out).to include('# Existing docs')
     expect(out).to include('# @return [String]')          # preserved
     expect(out).to include(param_tag('x', 'Object'))      # added
@@ -25,7 +25,7 @@ RSpec.describe '--merge mode' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out).to include('# NOTE: keep this')
     expect(out).to include('# +A#foo+ -> Integer')

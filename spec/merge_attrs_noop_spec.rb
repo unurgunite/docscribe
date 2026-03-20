@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge attrs no-op' do
+RSpec.describe 'safe strategy attrs no-op' do
   it 'does nothing when all @!attribute blocks already exist' do
     conf = Docscribe::Config.new('emit' => { 'attributes' => true })
 
@@ -15,7 +15,7 @@ RSpec.describe '--merge attrs no-op' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true, config: conf)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
     expect(out).to eq(code)
   end
 end

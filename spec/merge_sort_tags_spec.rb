@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge tag sorting' do
+RSpec.describe 'safe strategy tag sorting' do
   it 'sorts merged tags inside a contiguous tag run' do
     code = <<~RUBY
       class A
@@ -10,7 +10,7 @@ RSpec.describe '--merge tag sorting' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out).to match(
       /# Existing docs\n\s*#{Regexp.escape(param_tag('x', 'Object'))}\n\s*# @return \[Integer\]/
@@ -26,7 +26,7 @@ RSpec.describe '--merge tag sorting' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out).to match(
       /# @return \[Integer\]\n\s*#\n\s*#{Regexp.escape(param_tag('x', 'Object'))}/
@@ -42,7 +42,7 @@ RSpec.describe '--merge tag sorting' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out).to match(
       /# @param \[Object\] x blah-blah\n\s*# @return \[Integer\]/

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge preserves rubocop directives' do
+RSpec.describe 'safe strategy preserves rubocop directives' do
   it 'keeps rubocop:disable lines and merges tags into the same doc block' do
     code = <<~RUBY
       class A
@@ -10,7 +10,7 @@ RSpec.describe '--merge preserves rubocop directives' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out).to include('# rubocop:disable Metrics/AbcSize')
     expect(out).to include('# @todo docs')

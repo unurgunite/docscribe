@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge raise' do
+RSpec.describe 'safe strategy raise' do
   it 'adds @raise when none exists and inference finds raises' do
     code = <<~RUBY
       class A
@@ -13,7 +13,7 @@ RSpec.describe '--merge raise' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out).to include('# @todo docs')
     expect(out).to include('# @raise [FooError]')
@@ -32,7 +32,7 @@ RSpec.describe '--merge raise' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     # Still exactly one @raise line
     expect(out.scan(/^\s*#\s*@raise\b/).size).to eq(1)

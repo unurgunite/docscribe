@@ -7,17 +7,17 @@ module Docscribe
     # @return [String]
     def self.default_yaml
       <<~YAML
-        # Docscribe configuration file (docscribe.yml)
+        ---
+        # Docscribe configuration file
         #
-        # Common workflows:
-        #   # CI check (fails if any file would change):
-        #   bundle exec docscribe --dry lib
+        # Inspect what safe doc updates would be applied:
+        #   bundle exec docscribe lib
         #
-        #   # Auto-fix (rewrites files):
-        #   bundle exec docscribe --write lib
+        # Apply safe doc updates:
+        #   bundle exec docscribe -a lib
         #
-        #   # Refresh/rebaseline (replaces existing doc blocks):
-        #   bundle exec docscribe --write --refresh lib
+        # Apply aggressive doc updates (rebuild existing doc blocks):
+        #   bundle exec docscribe -A lib
         #
 
         emit:
@@ -116,7 +116,7 @@ module Docscribe
           # Optional: use RBS signatures to improve @param/@return types.
           #
           # CLI equivalent:
-          #   bundle exec docscribe --rbs --sig-dir sig --write lib
+          #   bundle exec docscribe -a --rbs --sig-dir sig lib
           #
           # Note: under Bundler, you may need `gem "rbs"` in your Gemfile (or a Gemfile that includes it),
           # otherwise `require "rbs"` may fail and Docscribe will fall back to inference.

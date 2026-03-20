@@ -13,8 +13,8 @@ module InlineHelper
   # @param [Object] code Param documentation.
   # @param [Config] config Param documentation.
   # @return [Object]
-  def inline(code, config: Docscribe::Config.new({}))
-    Docscribe::InlineRewriter.insert_comments(code, config: config)
+  def inline(code, config: Docscribe::Config.new({}), strategy: :safe)
+    Docscribe::InlineRewriter.insert_comments(code, strategy: strategy, config: config)
   end
 end
 

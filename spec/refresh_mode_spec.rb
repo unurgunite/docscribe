@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--refresh / rewrite mode' do
+RSpec.describe 'aggressive strategy behavior' do
   it 'replaces an existing contiguous comment block above a method' do
     code = <<~RUBY
       class A
@@ -12,7 +12,7 @@ RSpec.describe '--refresh / rewrite mode' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, rewrite: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
 
     expect(out).to include('# +A#foo+ -> Integer')
     expect(out).to include('# @return [Integer]')
@@ -20,7 +20,7 @@ RSpec.describe '--refresh / rewrite mode' do
     expect(out).not_to include('# @return [String]')
   end
 
-  it 'does NOT change anything when rewrite is false and any comment exists immediately above' do
+  it 'safe strategy inserts docs non-destructively when only a normal comment exists above' do
     code = <<~RUBY
       class A
         # just a normal comment
@@ -28,7 +28,10 @@ RSpec.describe '--refresh / rewrite mode' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, rewrite: false)
-    expect(out).to eq(code)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
+
+    expect(out).to include('# just a normal comment')
+    expect(out).to include('# +A#foo+ -> Integer')
+    expect(out).to include('# @return [Integer]')
   end
 end

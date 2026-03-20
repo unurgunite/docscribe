@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
 RSpec.describe Docscribe::InlineRewriter::DocBlock do
+  let(:tag_order) { %w[note private protected param option raise return] }
+
   describe '.sort' do
     it 'sorts contiguous tags by configured order' do
       entries = described_class.parse([
                                         "# @return [Object]\n",
                                         "# @param [Object] foo\n"
-                                      ])
+                                      ], tag_order: tag_order)
 
       out = described_class.render(
         described_class.sort(entries, tag_order: %w[param return])
@@ -25,7 +27,7 @@ RSpec.describe Docscribe::InlineRewriter::DocBlock do
         "# @param [Object] foo\n"
       ]
 
-      entries = described_class.parse(lines)
+      entries = described_class.parse(lines, tag_order: tag_order)
       out = described_class.render(
         described_class.sort(entries, tag_order: %w[param return])
       )
@@ -40,7 +42,7 @@ RSpec.describe Docscribe::InlineRewriter::DocBlock do
         "# @param [Object] foo\n"
       ]
 
-      entries = described_class.parse(lines)
+      entries = described_class.parse(lines, tag_order: tag_order)
       out = described_class.render(
         described_class.sort(entries, tag_order: %w[param return])
       )
@@ -53,7 +55,7 @@ RSpec.describe Docscribe::InlineRewriter::DocBlock do
                                         "# @return [Object]\n",
                                         "# @param [Object] foo Some param with very long string\n",
                                         "#                                          which we split in two lines\n"
-                                      ])
+                                      ], tag_order: tag_order)
 
       out = described_class.render(
         described_class.sort(entries, tag_order: %w[param return])
@@ -73,7 +75,7 @@ RSpec.describe Docscribe::InlineRewriter::DocBlock do
                                         "# @option opts [String] :subject The subject\n",
                                         "# @option opts [String] :from ('nobody') From address\n",
                                         "# @param [String] name the name\n"
-                                      ])
+                                      ], tag_order: tag_order)
 
       out = described_class.render(
         described_class.sort(entries, tag_order: %w[param option return])
@@ -92,7 +94,7 @@ RSpec.describe Docscribe::InlineRewriter::DocBlock do
       entries = described_class.parse([
                                         "# @return [Object]\n",
                                         "# @param foo [Object] Param documentation.\n"
-                                      ])
+                                      ], tag_order: tag_order)
 
       out = described_class.render(
         described_class.sort(entries, tag_order: %w[param return])

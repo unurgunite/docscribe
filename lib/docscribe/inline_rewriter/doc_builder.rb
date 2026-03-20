@@ -190,7 +190,7 @@ module Docscribe
         nil
       end
 
-      # Build missing lines and structured reasons for merge mode.
+      # Build missing lines and structured reasons for safe strategy mode.
       #
       # @param insertion [Docscribe::InlineRewriter::Collector::Insertion]
       # @param existing_lines [Array<String>]
