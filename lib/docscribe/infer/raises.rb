@@ -2,14 +2,22 @@
 
 module Docscribe
   module Infer
-    # Exception inference from AST (`raise`/`fail` and `rescue` clauses).
+    # Exception inference from AST (`raise`/`fail` calls and `rescue` clauses).
     module Raises
       module_function
 
-      # Infer exception class names that the method may raise.
+      # Infer exception class names raised or rescued within a node.
+      #
+      # Sources considered:
+      # - `rescue Foo, Bar`
+      # - bare `rescue` (=> StandardError)
+      # - `raise Foo`
+      # - bare `raise` / `fail` (=> StandardError)
+      #
+      # Returns unique exception names in discovery order.
       #
       # @note module_function: when included, also defines #infer_raises_from_node (instance visibility: private)
-      # @param node [Parser::AST::Node]
+      # @param [Parser::AST::Node] node method or expression node to inspect
       # @return [Array<String>]
       def infer_raises_from_node(node)
         raises = []
@@ -36,10 +44,15 @@ module Docscribe
         raises.uniq
       end
 
-      # Convert a rescue exception list node into an array of exception class names.
+      # Extract exception class names from a rescue exception list.
+      #
+      # Examples:
+      # - nil => `[StandardError]`
+      # - `Foo` => `["Foo"]`
+      # - `[Foo, Bar]` => `["Foo", "Bar"]`
       #
       # @note module_function: when included, also defines #exception_names_from_rescue_list (instance visibility: private)
-      # @param exc_list [Parser::AST::Node, nil]
+      # @param [Parser::AST::Node, nil] exc_list rescue exception list node
       # @return [Array<String>]
       def exception_names_from_rescue_list(exc_list)
         if exc_list.nil?

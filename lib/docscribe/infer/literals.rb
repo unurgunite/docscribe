@@ -6,11 +6,20 @@ module Docscribe
     module Literals
       module_function
 
-      # Infer a type name from a literal node.
+      # Infer a type name from a literal-like AST node.
+      #
+      # Supports common literal/value node types such as:
+      # - integers, floats, strings, symbols
+      # - booleans and nil
+      # - arrays, hashes, regexps
+      # - constants
+      # - `Foo.new` constructor calls
+      #
+      # If the node does not match a supported pattern, the fallback type is returned.
       #
       # @note module_function: when included, also defines #type_from_literal (instance visibility: private)
-      # @param node [Parser::AST::Node, nil]
-      # @param fallback_type [FALLBACK_TYPE] Param documentation.
+      # @param [Parser::AST::Node, nil] node literal/value node
+      # @param [String] fallback_type type returned when inference is uncertain
       # @return [String]
       def type_from_literal(node, fallback_type: FALLBACK_TYPE)
         return fallback_type unless node
