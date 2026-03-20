@@ -22,16 +22,19 @@ module Docscribe
 
       module_function
 
-      # Parse CLI options.
+      # Parse CLI arguments into Docscribe runtime options.
       #
-      # Modes:
-      # - default => inspect/check safe changes
-      # - -a      => write safe changes
-      # - -A      => write aggressive changes
-      # - --stdin => read from stdin and print rewritten output
+      # CLI behavior model:
+      # - default: inspect mode using the safe strategy
+      # - -a / --autocorrect: write mode using the safe strategy
+      # - -A / --autocorrect-all: write mode using the aggressive strategy
+      # - --stdin: stdin mode using the selected strategy (safe by default)
       #
-      # @param argv [Array<String>]
-      # @return [Hash]
+      # Filtering, config, verbosity, and RBS options are applied orthogonally.
+      #
+      # @note module_function: when included, also defines #parse! (instance visibility: private)
+      # @param [Array<String>] argv raw CLI arguments
+      # @return [Hash] normalized runtime options
       def parse!(argv)
         options = Marshal.load(Marshal.dump(DEFAULT))
 
@@ -67,7 +70,7 @@ module Docscribe
 
             Output:
                     --verbose                  Print per-file actions
-                    --explain                  Show detailed reasons for changes
+                -e, --explain                  Show detailed reasons for changes
 
             Other:
                 -v, --version                  Print version and exit
@@ -122,7 +125,7 @@ module Docscribe
             options[:verbose] = true
           end
 
-          opts.on('--explain', 'Show detailed reasons for changes') do
+          opts.on('-e', '--explain', 'Show detailed reasons for changes') do
             options[:explain] = true
           end
 
@@ -154,11 +157,15 @@ module Docscribe
         options
       end
 
-      # Route include/exclude patterns into file filters or method filters.
+      # Route an include/exclude pattern into method filters or file filters.
       #
-      # @param options [Hash]
-      # @param kind [Symbol]
-      # @param value [String]
+      # Regex-looking patterns (`/…/`) are treated as method-id filters.
+      # File-like patterns are routed into `*_file`.
+      #
+      # @note module_function: when included, also defines #route_include_exclude (instance visibility: private)
+      # @param [Hash] options mutable parsed options hash
+      # @param [Symbol] kind either :include or :exclude
+      # @param [String] value raw pattern from the CLI
       # @return [void]
       def route_include_exclude(options, kind, value)
         if looks_like_file_pattern?(value)
@@ -168,7 +175,12 @@ module Docscribe
         end
       end
 
-      # @param pat [String]
+      # Heuristically decide whether a pattern looks like a file path/glob.
+      #
+      # Regex syntax (`/…/`) is intentionally treated as a method-id pattern, not a file pattern.
+      #
+      # @note module_function: when included, also defines #looks_like_file_pattern? (instance visibility: private)
+      # @param [String] pat pattern passed via CLI
       # @return [Boolean]
       def looks_like_file_pattern?(pat)
         return false if pat.start_with?('/') && pat.end_with?('/') && pat.length >= 2

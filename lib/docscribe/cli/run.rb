@@ -10,10 +10,21 @@ module Docscribe
     module Run
       module_function
 
+      # Run Docscribe for files or STDIN using the selected mode and strategy.
+      #
+      # Modes:
+      # - :check => inspect what the selected strategy would change
+      # - :write => apply the selected strategy in place
+      # - :stdin => rewrite STDIN and print to STDOUT
+      #
+      # Strategies:
+      # - :safe       => merge/add/normalize non-destructively
+      # - :aggressive => rebuild existing doc blocks
+      #
       # @note module_function: when included, also defines #run (instance visibility: private)
-      # @param options [Hash]
-      # @param argv [Array<String>]
-      # @return [Integer]
+      # @param [Hash] options parsed CLI options
+      # @param [Array<String>] argv remaining path arguments
+      # @return [Integer] process exit code
       def run(options:, argv:)
         conf = Docscribe::Config.load(options[:config])
         conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
@@ -31,11 +42,13 @@ module Docscribe
         run_files(options: options, conf: conf, paths: paths)
       end
 
+      # Rewrite code from STDIN using the selected strategy and print the result.
+      #
       # @note module_function: when included, also defines #run_stdin (instance visibility: private)
-      # @param options [Hash]
-      # @param conf [Docscribe::Config]
+      # @param [Hash] options parsed CLI options
+      # @param [Docscribe::Config] conf effective config
       # @raise [StandardError]
-      # @return [Integer]
+      # @return [Integer] process exit code
       def run_stdin(options:, conf:)
         code = $stdin.read
         result = Docscribe::InlineRewriter.rewrite_with_report(
@@ -51,9 +64,14 @@ module Docscribe
         1
       end
 
+      # Expand CLI path arguments into a sorted list of Ruby files.
+      #
+      # Directories are expanded recursively to `**/*.rb`.
+      # If no arguments are provided, the current directory is used.
+      #
       # @note module_function: when included, also defines #expand_paths (instance visibility: private)
-      # @param args [Array<String>]
-      # @return [Array<String>]
+      # @param [Array<String>] args file and/or directory arguments
+      # @return [Array<String>] unique sorted Ruby file paths
       def expand_paths(args)
         files = []
         args = ['.'] if args.empty?
@@ -71,12 +89,22 @@ module Docscribe
         files.uniq.sort
       end
 
+      # Process file paths in inspect or write mode.
+      #
+      # In inspect mode:
+      # - prints progress/status
+      # - exits non-zero if any file would change or if any errors occurred
+      #
+      # In write mode:
+      # - rewrites changed files in place
+      # - exits non-zero only if errors occurred
+      #
       # @note module_function: when included, also defines #run_files (instance visibility: private)
-      # @param options [Hash]
-      # @param conf [Docscribe::Config]
-      # @param paths [Array<String>]
+      # @param [Hash] options parsed CLI options
+      # @param [Docscribe::Config] conf effective config
+      # @param [Array<String>] paths Ruby file paths to process
       # @raise [StandardError]
-      # @return [Integer]
+      # @return [Integer] process exit code
       def run_files(options:, conf:, paths:)
         $stdout.sync = true
 
@@ -220,6 +248,12 @@ module Docscribe
         0
       end
 
+      # Format a structured change record into human-readable CLI output.
+      #
+      # @note module_function: when included, also defines #format_change_reason (instance visibility: private)
+      # @private
+      # @param [Hash] change structured change produced by the inline rewriter
+      # @return [String] human-readable explanation line
       def format_change_reason(change)
         line = change[:line] ? " at line #{change[:line]}" : ''
         method = change[:method] ? " for #{change[:method]}" : ''
@@ -235,6 +269,17 @@ module Docscribe
         end
       end
 
+      # Prefer a relative display path when the file is under the current working directory.
+      #
+      # Falls back to basename for files outside the project root or when relative path
+      # computation fails.
+      #
+      # @note module_function: when included, also defines #display_path_for (instance visibility: private)
+      # @private
+      # @param [String] path file path to display
+      # @param [Pathname] pwd current working directory
+      # @raise [StandardError]
+      # @return [String] path shown in CLI output
       def display_path_for(path, pwd:)
         abs = Pathname.new(path).expand_path
 
