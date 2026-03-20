@@ -25,7 +25,7 @@ RSpec.describe 'safe strategy merge behavior mode' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: Docscribe::Config.new)
 
     expect(out).to include('# NOTE: keep this')
     expect(out).to include('# +A#foo+ -> Integer')

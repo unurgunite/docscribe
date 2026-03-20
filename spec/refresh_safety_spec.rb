@@ -9,7 +9,7 @@ RSpec.describe 'aggressive strategy safety' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive, config: Docscribe::Config.new)
 
     expect(out).to include('# NOTE: keep this comment')
     expect(out).to include('# +A#foo+ -> Integer')
@@ -27,7 +27,7 @@ RSpec.describe 'aggressive strategy safety' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive, config: Docscribe::Config.new)
 
     expect(out).to include('# :nocov:')
     expect(out).to include('# +A#foo+ -> Integer')
@@ -49,7 +49,7 @@ RSpec.describe 'aggressive strategy safety' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive, config: Docscribe::Config.new)
 
     expect(out).to include('# :stopdoc:')
     expect(out).to include('# +A#foo+ -> Integer')

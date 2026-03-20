@@ -13,7 +13,7 @@ RSpec.describe 'aggressive strategy preserves rubocop directives' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive, config: Docscribe::Config.new)
 
     expect(out).to include('# rubocop:disable Metrics/AbcSize')
     expect(out).to include('# +A#foo+ -> Integer')

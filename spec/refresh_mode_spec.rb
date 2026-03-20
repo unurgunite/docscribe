@@ -12,7 +12,7 @@ RSpec.describe 'aggressive strategy behavior' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive, config: Docscribe::Config.new)
 
     expect(out).to include('# +A#foo+ -> Integer')
     expect(out).to include('# @return [Integer]')
@@ -28,7 +28,7 @@ RSpec.describe 'aggressive strategy behavior' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: Docscribe::Config.new)
 
     expect(out).to include('# just a normal comment')
     expect(out).to include('# +A#foo+ -> Integer')
