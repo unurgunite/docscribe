@@ -34,8 +34,8 @@ module Docscribe
           nil
         rescue StandardError => e
           warn_once(
-            "Docscribe: RBS integration failed (falling back to inference): " \
-              "#{e.class}: #{e.message}\nFeel free to open an issue on github."
+            'Docscribe: RBS integration failed (falling back to inference): ' \
+            "#{e.class}: #{e.message}\nFeel free to open an issue on github."
           )
           nil
         end

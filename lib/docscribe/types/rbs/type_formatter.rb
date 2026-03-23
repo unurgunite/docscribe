@@ -10,7 +10,7 @@ module Docscribe
       module TypeFormatter
         module_function
 
-        # Convert one RBS type object into a YARD-ish type string.
+        # Convert one RBS type object into a YARD-ish string.
         #
         # Supported categories include:
         # - base types (`bool`, `nil`, `void`, `untyped`)
@@ -28,26 +28,27 @@ module Docscribe
 
           # RBS is loaded lazily by the provider; constants below exist only when rbs is available.
           case type
-          when RBS::Types::Bases::Any then 'Object'
-          when RBS::Types::Bases::Bool then 'Boolean'
-          when RBS::Types::Bases::Void then 'void'
-          when RBS::Types::Bases::Nil then 'nil'
-
-          when RBS::Types::Optional
+          when ::RBS::Types::Bases::Any
+            'Object'
+          when ::RBS::Types::Bases::Bool
+            'Boolean'
+          when ::RBS::Types::Bases::Void
+            'void'
+          when ::RBS::Types::Bases::Nil
+            'nil'
+          when ::RBS::Types::Optional
             "#{to_yard(type.type, collapse_generics: collapse_generics)}?"
-
-          when RBS::Types::Union
+          when ::RBS::Types::Union
             format_union(type, collapse_generics: collapse_generics)
-
-          when RBS::Types::ClassInstance, RBS::Types::ClassSingleton, RBS::Types::Interface, RBS::Types::Alias
+          when ::RBS::Types::ClassInstance,
+            ::RBS::Types::ClassSingleton,
+            ::RBS::Types::Interface,
+            ::RBS::Types::Alias
             format_named(type, collapse_generics: collapse_generics)
-
-          when RBS::Types::Literal
+          when ::RBS::Types::Literal
             literal_to_yard(type.literal)
-
-          when RBS::Types::Proc
+          when ::RBS::Types::Proc
             'Proc'
-
           else
             fallback_string(type)
           end
@@ -58,12 +59,13 @@ module Docscribe
         # Example:
         # - `String | Integer | nil` => `"String, Integer, nil"`
         #
-        # @note module_function: when included, also defines #format_union (instance visibility: private)
-        # @param [RBS::Types::Union] type
+        # @param [::RBS::Types::Union] type
         # @param [Boolean] collapse_generics
         # @return [String]
         def format_union(type, collapse_generics:)
-          type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }.uniq.join(', ')
+          type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }
+              .uniq
+              .join(', ')
         end
 
         # Format a named RBS type, optionally preserving generic arguments.
@@ -103,8 +105,7 @@ module Docscribe
           when Symbol  then 'Symbol'
           when TrueClass, FalseClass then 'Boolean'
           when NilClass then 'nil'
-          else
-            'Object'
+          else 'Object'
           end
         end
 

@@ -4,16 +4,6 @@ require 'tmpdir'
 require 'fileutils'
 
 RSpec.describe 'Sorbet RBI integration' do
-  def skip_unless_sorbet_bridge_available!
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
-    end
-
-    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
-  end
-
   def inline_with_signature_files(code:, rbi:, rbs: nil, rbi_dir_name: 'sorbet/rbi', sig_dir_name: 'sig')
     skip_unless_sorbet_bridge_available!
 
@@ -43,6 +33,16 @@ RSpec.describe 'Sorbet RBI integration' do
       conf = Docscribe::Config.new(raw)
       Docscribe::InlineRewriter.insert_comments(code, config: conf)
     end
+  end
+
+  def skip_unless_sorbet_bridge_available!
+    begin
+      require 'rbs'
+    rescue LoadError
+      skip 'RBS not available'
+    end
+
+    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
   end
 
   it 'uses RBI signatures for params and return types' do

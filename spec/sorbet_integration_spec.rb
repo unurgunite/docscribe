@@ -1,16 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Sorbet inline signature integration' do
-  def skip_unless_sorbet_bridge_available!
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
-    end
-
-    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
-  end
-
   def inline_with_sorbet(code, config_overrides = {})
     skip_unless_sorbet_bridge_available!
 
@@ -26,6 +16,16 @@ RSpec.describe 'Sorbet inline signature integration' do
       code,
       config: Docscribe::Config.new(raw)
     )
+  end
+
+  def skip_unless_sorbet_bridge_available!
+    begin
+      require 'rbs'
+    rescue LoadError
+      skip 'RBS not available'
+    end
+
+    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
   end
 
   it 'uses inline single-line sigs for params and return types' do

@@ -7,6 +7,18 @@ module Docscribe
     module ConfigBuilder
       module_function
 
+      # Build an effective config by applying CLI overrides on top of a base config.
+      #
+      # CLI overrides currently affect:
+      # - method/file include and exclude filters
+      # - RBS enablement and additional signature directories
+      # - Sorbet enablement and RBI directories
+      #
+      # If no relevant CLI override is present, the original config is returned unchanged.
+      #
+      # @param [Docscribe::Config] base base config loaded from YAML/defaults
+      # @param [Hash] options parsed CLI options
+      # @return [Docscribe::Config] merged effective config
       def build(base, options)
         needs_override =
           options[:include].any? ||

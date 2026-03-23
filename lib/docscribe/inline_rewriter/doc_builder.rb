@@ -19,8 +19,11 @@ module Docscribe
         container = insertion.container
         method_symbol = scope == :instance ? '#' : '.'
 
-        provider = signature_provider || config.rbs_provider
-        external_sig = provider&.signature_for(container: container, scope: scope, name: name)
+        external_sig = signature_provider&.signature_for(
+          container: container,
+          scope: scope,
+          name: name
+        )
 
         params_lines = build_params_lines(node, indent, external_sig: external_sig, config: config) if config.emit_param_tags?
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
@@ -62,7 +65,7 @@ module Docscribe
             end
 
           lines << "#{indent}# @note module_function: when included, also defines ##{name} " \
-            "(instance visibility: #{included_vis})"
+                   "(instance visibility: #{included_vis})"
         end
 
         lines.concat(params_lines) if params_lines
@@ -91,8 +94,11 @@ module Docscribe
         scope = insertion.scope
         visibility = insertion.visibility
 
-        provider = signature_provider || config.rbs_provider
-        external_sig = provider&.signature_for(container: insertion.container, scope: scope, name: name)
+        external_sig = signature_provider&.signature_for(
+          container: insertion.container,
+          scope: scope,
+          name: name
+        )
 
         returns_spec = Docscribe::Infer.returns_spec_from_node(
           node,
@@ -117,7 +123,7 @@ module Docscribe
         if insertion.respond_to?(:module_function) && insertion.module_function && !info[:has_module_function_note]
           included_vis = insertion.included_instance_visibility || :private
           lines << "#{indent}# @note module_function: when included, also defines ##{name} " \
-            "(instance visibility: #{included_vis})"
+                   "(instance visibility: #{included_vis})"
         end
 
         if config.emit_param_tags?
@@ -166,8 +172,11 @@ module Docscribe
         scope = insertion.scope
         visibility = insertion.visibility
 
-        provider = signature_provider || config.rbs_provider
-        external_sig = provider&.signature_for(container: insertion.container, scope: scope, name: name)
+        external_sig = signature_provider&.signature_for(
+          container: insertion.container,
+          scope: scope,
+          name: name
+        )
 
         returns_spec = Docscribe::Infer.returns_spec_from_node(
           node,
@@ -194,7 +203,7 @@ module Docscribe
         if insertion.respond_to?(:module_function) && insertion.module_function && !info[:has_module_function_note]
           included_vis = insertion.included_instance_visibility || :private
           lines << "#{indent}# @note module_function: when included, also defines ##{name} " \
-            "(instance visibility: #{included_vis})\n"
+                   "(instance visibility: #{included_vis})\n"
           reasons << { type: :missing_module_function_note, message: 'missing module_function note' }
         end
 
@@ -418,12 +427,12 @@ module Docscribe
         doc = documentation.to_s.strip
         type = type.to_s
 
-        case style.to_s
-        when 'name_first'
-          line = "#{indent}# @param #{name} [#{type}]"
-        else
-          line = "#{indent}# @param [#{type}] #{name}"
-        end
+        line = case style.to_s
+               when 'name_first'
+                 "#{indent}# @param #{name} [#{type}]"
+               else
+                 "#{indent}# @param [#{type}] #{name}"
+               end
 
         doc.empty? ? line : "#{line} #{doc}"
       end

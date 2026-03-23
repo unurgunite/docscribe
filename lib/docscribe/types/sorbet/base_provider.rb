@@ -28,7 +28,7 @@ module Docscribe
           index_decls(parser.decls)
         rescue LoadError
           nil
-        rescue ::RBS::BaseError, StandardError => e
+        rescue ::RBS::BaseError, SyntaxError, StandardError => e
           warn_once("Docscribe: Sorbet signature load failed for #{label}: #{e.class}: #{e.message}")
           nil
         end
@@ -43,12 +43,7 @@ module Docscribe
             decl.members.each do |member|
               next unless method_definition_member?(member)
 
-              scope =
-                case member.kind
-                when :singleton then :class
-                else :instance
-                end
-
+              scope = member.kind == :singleton ? :class : :instance
               overload = member.overloads&.first
               next unless overload
 
@@ -74,18 +69,12 @@ module Docscribe
 
         def build_param_types(func)
           param_types = {}
-
           add_positionals!(param_types, func.required_positionals)
           add_positionals!(param_types, func.optional_positionals)
           add_positionals!(param_types, func.trailing_positionals)
 
-          func.required_keywords.each do |kw, p|
-            param_types[kw.to_s] = format_type(p.type)
-          end
-
-          func.optional_keywords.each do |kw, p|
-            param_types[kw.to_s] = format_type(p.type)
-          end
+          func.required_keywords.each { |kw, p| param_types[kw.to_s] = format_type(p.type) }
+          func.optional_keywords.each { |kw, p| param_types[kw.to_s] = format_type(p.type) }
 
           param_types
         end

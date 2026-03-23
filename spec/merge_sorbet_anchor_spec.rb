@@ -1,16 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Sorbet-aware doc anchoring' do
-  def skip_unless_sorbet_bridge_available!
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
-    end
-
-    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
-  end
-
   def inline_with_sorbet(code, strategy: :safe)
     skip_unless_sorbet_bridge_available!
 
@@ -25,6 +15,16 @@ RSpec.describe 'Sorbet-aware doc anchoring' do
       strategy: strategy,
       config: conf
     )
+  end
+
+  def skip_unless_sorbet_bridge_available!
+    begin
+      require 'rbs'
+    rescue LoadError
+      skip 'RBS not available'
+    end
+
+    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
   end
 
   it 'merges into an existing doc block above sig instead of inserting a second block' do

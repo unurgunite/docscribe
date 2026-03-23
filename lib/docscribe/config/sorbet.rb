@@ -33,14 +33,14 @@ module Docscribe
       return nil unless sorbet_enabled?
 
       @sorbet_rbi_provider ||= begin
-                                 require 'docscribe/types/sorbet/rbi_provider'
-                                 Docscribe::Types::Sorbet::RBIProvider.new(
-                                   rbi_dirs: sorbet_rbi_dirs,
-                                   collapse_generics: sorbet_collapse_generics?
-                                 )
-                               rescue LoadError
-                                 nil
-                               end
+        require 'docscribe/types/sorbet/rbi_provider'
+        Docscribe::Types::Sorbet::RBIProvider.new(
+          rbi_dirs: sorbet_rbi_dirs,
+          collapse_generics: sorbet_collapse_generics?
+        )
+      rescue LoadError
+        nil
+      end
     end
 
     def sorbet_enabled?

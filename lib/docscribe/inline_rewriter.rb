@@ -189,7 +189,7 @@ module Docscribe
           name: name
         )
 
-        anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
+        anchor_bol_range, = method_bol_ranges(buffer, insertion)
 
         case strategy
         when :aggressive
@@ -577,10 +577,6 @@ module Docscribe
           config: config,
           signature_provider: signature_provider
         )
-      rescue ArgumentError => e
-        raise unless e.message.include?('signature_provider')
-
-        DocBuilder.build(insertion, config: config)
       end
 
       def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:)
@@ -590,22 +586,6 @@ module Docscribe
           config: config,
           signature_provider: signature_provider
         )
-      rescue ArgumentError => e
-        raise unless e.message.include?('signature_provider')
-
-        DocBuilder.build_missing_merge_result(
-          insertion,
-          existing_lines: existing_lines,
-          config: config
-        )
-      end
-
-      def method_bol_ranges(buffer, insertion)
-        anchor_node = anchor_node_for(insertion)
-        [
-          SourceHelpers.line_start_range(buffer, anchor_node),
-          SourceHelpers.line_start_range(buffer, insertion.node)
-        ]
       end
 
       def method_doc_comment_info(buffer, insertion)
@@ -622,18 +602,26 @@ module Docscribe
           SourceHelpers.comment_block_removal_range(buffer, def_bol_range.begin_pos)
       end
 
-      def anchor_node_for(insertion)
-        if insertion.respond_to?(:anchor_node) && insertion.anchor_node
-          insertion.anchor_node
-        else
-          insertion.node
-        end
+      def method_bol_ranges(buffer, insertion)
+        anchor_node = anchor_node_for(insertion)
+        [
+          SourceHelpers.line_start_range(buffer, anchor_node),
+          SourceHelpers.line_start_range(buffer, insertion.node)
+        ]
       end
 
       def method_line_for(insertion)
         anchor_node_for(insertion).loc.expression.line
       rescue StandardError
         insertion.node.loc.expression.line
+      end
+
+      def anchor_node_for(insertion)
+        if insertion.respond_to?(:anchor_node) && insertion.anchor_node
+          insertion.anchor_node
+        else
+          insertion.node
+        end
       end
     end
   end
