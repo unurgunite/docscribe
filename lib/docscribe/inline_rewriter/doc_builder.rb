@@ -8,6 +8,15 @@ module Docscribe
     module DocBuilder
       module_function
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build (instance visibility: private)
+      # @param [Object] insertion Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [nil] signature_provider Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [nil] if StandardError
       def build(insertion, config:, signature_provider: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
@@ -84,6 +93,16 @@ module Docscribe
         nil
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_merge_additions (instance visibility: private)
+      # @param [Object] insertion Param documentation.
+      # @param [Object] existing_lines Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [nil] signature_provider Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [nil] if StandardError
       def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
@@ -162,6 +181,16 @@ module Docscribe
         nil
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_missing_merge_result (instance visibility: private)
+      # @param [Object] insertion Param documentation.
+      # @param [Object] existing_lines Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [nil] signature_provider Param documentation.
+      # @raise [StandardError]
+      # @return [Hash]
+      # @return [Hash] if StandardError
       def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
@@ -251,6 +280,11 @@ module Docscribe
         { lines: [], reasons: [] }
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #parse_existing_doc_tags (instance visibility: private)
+      # @param [Object] lines Param documentation.
+      # @return [Hash]
       def parse_existing_doc_tags(lines)
         param_names = {}
         has_return = false
@@ -282,6 +316,13 @@ module Docscribe
         }
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_raise_types_from_line (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [Array] if StandardError
       def extract_raise_types_from_line(line)
         return [] unless line.match?(/^\s*#\s*@raise\b/)
 
@@ -296,10 +337,23 @@ module Docscribe
         []
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #parse_raise_bracket_list (instance visibility: private)
+      # @param [Object] s Param documentation.
+      # @return [Object]
       def parse_raise_bracket_list(s)
         s.to_s.split(',').map(&:strip).reject(&:empty?)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_params_lines (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] config Param documentation.
+      # @return [Object?]
       def build_params_lines(node, indent, external_sig:, config:)
         fallback_type = config.fallback_type
         treat_options_keyword_as_hash = config.treat_options_keyword_as_hash?
@@ -423,6 +477,15 @@ module Docscribe
         params.empty? ? nil : params
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #format_param_tag (instance visibility: private)
+      # @param [Object] indent Param documentation.
+      # @param [Object] name Param documentation.
+      # @param [Object] type Param documentation.
+      # @param [Object] documentation Param documentation.
+      # @param [Object] style Param documentation.
+      # @return [Object]
       def format_param_tag(indent, name, type, documentation, style:)
         doc = documentation.to_s.strip
         type = type.to_s
@@ -437,12 +500,22 @@ module Docscribe
         doc.empty? ? line : "#{line} #{doc}"
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #hash_option_pairs (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def hash_option_pairs(node)
         return [] unless node&.type == :hash
 
         node.children.select { |child| child.is_a?(Parser::AST::Node) && child.type == :pair }
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #option_key_name (instance visibility: private)
+      # @param [Object] key_node Param documentation.
+      # @return [Object]
       def option_key_name(key_node)
         case key_node&.type
         when :sym, :str
@@ -452,10 +525,20 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #node_default_literal (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def node_default_literal(node)
         node&.loc&.expression&.source
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @return [nil]
       def extract_param_name_from_param_line(line)
         return Regexp.last_match(1) if line =~ /@param\b\s+\[[^\]]+\]\s+(\S+)/
         return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
@@ -463,6 +546,14 @@ module Docscribe
         nil
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #debug_warn (instance visibility: private)
+      # @param [Object] e Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @param [Object] name Param documentation.
+      # @param [Object] phase Param documentation.
+      # @return [Object]
       def debug_warn(e, insertion:, name:, phase:)
         return unless debug?
 
@@ -480,6 +571,10 @@ module Docscribe
         warn "Docscribe DEBUG: #{phase} failed at #{where}: #{e.class}: #{e.message}"
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #debug? (instance visibility: private)
+      # @return [Object]
       def debug?
         ENV['DOCSCRIBE_DEBUG'] == '1'
       end

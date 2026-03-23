@@ -7,6 +7,11 @@ module Docscribe
   module Types
     module Sorbet
       class RBIProvider < BaseProvider
+        # Method documentation.
+        #
+        # @param [Object] rbi_dirs Param documentation.
+        # @param [Boolean] collapse_generics Param documentation.
+        # @return [Object]
         def initialize(rbi_dirs:, collapse_generics: false)
           super(collapse_generics: collapse_generics)
           Array(rbi_dirs).each do |dir|

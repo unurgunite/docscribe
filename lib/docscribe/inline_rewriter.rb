@@ -178,6 +178,7 @@ module Docscribe
       # @param [Symbol] strategy
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
+      # @param [Object] signature_provider Param documentation.
       # @return [void]
       def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, changes:, file:)
         name = SourceHelpers.node_name(insertion.node)
@@ -326,6 +327,7 @@ module Docscribe
       # @param [Docscribe::Config] config
       # @param [Symbol] strategy
       # @param [Hash] merge_inserts
+      # @param [Object] signature_provider Param documentation.
       # @return [void]
       def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, merge_inserts:)
         return unless config.respond_to?(:emit_attributes?) && config.emit_attributes?
@@ -423,6 +425,7 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
+      # @param [Object] signature_provider Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
       def build_attr_merge_additions(ins, existing_lines:, config:, signature_provider:)
@@ -510,6 +513,7 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Docscribe::Config] config
+      # @param [Object] signature_provider Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
       def build_attr_doc_for_node(ins, config:, signature_provider:)
@@ -547,6 +551,7 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Symbol] name_sym
       # @param [Docscribe::Config] config
+      # @param [Object] signature_provider Param documentation.
       # @raise [StandardError]
       # @return [String]
       def attribute_type(ins, name_sym, config, signature_provider:)
@@ -559,6 +564,15 @@ module Docscribe
         config.fallback_type
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] config Param documentation.
+      # @param [Object] code Param documentation.
+      # @param [Object] file Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [Object?] if StandardError
       def build_signature_provider(config, code, file)
         if config.respond_to?(:signature_provider_for)
           config.signature_provider_for(source: code, file: file)
@@ -571,6 +585,13 @@ module Docscribe
         config.respond_to?(:rbs_provider) ? config.rbs_provider : nil
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @return [Object]
       def build_method_doc(insertion, config:, signature_provider:)
         DocBuilder.build(
           insertion,
@@ -579,6 +600,14 @@ module Docscribe
         )
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @param [Object] existing_lines Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @return [Object]
       def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:)
         DocBuilder.build_missing_merge_result(
           insertion,
@@ -588,6 +617,12 @@ module Docscribe
         )
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] buffer Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @return [Object]
       def method_doc_comment_info(buffer, insertion)
         anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
 
@@ -595,6 +630,12 @@ module Docscribe
           SourceHelpers.doc_comment_block_info(buffer, def_bol_range.begin_pos)
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] buffer Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @return [Object]
       def method_comment_block_removal_range(buffer, insertion)
         anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
 
@@ -602,6 +643,12 @@ module Docscribe
           SourceHelpers.comment_block_removal_range(buffer, def_bol_range.begin_pos)
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] buffer Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @return [Array]
       def method_bol_ranges(buffer, insertion)
         anchor_node = anchor_node_for(insertion)
         [
@@ -610,12 +657,24 @@ module Docscribe
         ]
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [Object] if StandardError
       def method_line_for(insertion)
         anchor_node_for(insertion).loc.expression.line
       rescue StandardError
         insertion.node.loc.expression.line
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @return [Object]
       def anchor_node_for(insertion)
         if insertion.respond_to?(:anchor_node) && insertion.anchor_node
           insertion.anchor_node

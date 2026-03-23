@@ -59,6 +59,7 @@ module Docscribe
         # Example:
         # - `String | Integer | nil` => `"String, Integer, nil"`
         #
+        # @note module_function: when included, also defines #format_union (instance visibility: private)
         # @param [::RBS::Types::Union] type
         # @param [Boolean] collapse_generics
         # @return [String]

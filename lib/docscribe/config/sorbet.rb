@@ -2,6 +2,12 @@
 
 module Docscribe
   class Config
+    # Method documentation.
+    #
+    # @param [Object] source Param documentation.
+    # @param [Object] file Param documentation.
+    # @raise [LoadError]
+    # @return [ProviderChain]
     def signature_provider_for(source:, file:)
       providers = []
 
@@ -29,6 +35,10 @@ module Docscribe
       Docscribe::Types::ProviderChain.new(*providers)
     end
 
+    # Method documentation.
+    #
+    # @raise [LoadError]
+    # @return [Object]
     def sorbet_rbi_provider
       return nil unless sorbet_enabled?
 
@@ -43,14 +53,23 @@ module Docscribe
       end
     end
 
+    # Method documentation.
+    #
+    # @return [Object]
     def sorbet_enabled?
       fetch_bool(%w[sorbet enabled], false)
     end
 
+    # Method documentation.
+    #
+    # @return [Object]
     def sorbet_rbi_dirs
       Array(raw.dig('sorbet', 'rbi_dirs') || DEFAULT.dig('sorbet', 'rbi_dirs')).map(&:to_s)
     end
 
+    # Method documentation.
+    #
+    # @return [Object]
     def sorbet_collapse_generics?
       fetch_bool(%w[sorbet collapse_generics], rbs_collapse_generics?)
     end

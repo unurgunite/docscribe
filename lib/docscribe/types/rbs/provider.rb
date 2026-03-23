@@ -8,6 +8,11 @@ module Docscribe
   module Types
     module RBS
       class Provider
+        # Method documentation.
+        #
+        # @param [Object] sig_dirs Param documentation.
+        # @param [Boolean] collapse_generics Param documentation.
+        # @return [Object]
         def initialize(sig_dirs:, collapse_generics: false)
           require 'rbs'
           @sig_dirs = Array(sig_dirs).map(&:to_s)
@@ -17,6 +22,16 @@ module Docscribe
           @warned = false
         end
 
+        # Method documentation.
+        #
+        # @param [Object] container Param documentation.
+        # @param [Object] scope Param documentation.
+        # @param [Object] name Param documentation.
+        # @raise [::RBS::BaseError]
+        # @raise [StandardError]
+        # @return [Object]
+        # @return [nil] if ::RBS::BaseError
+        # @return [nil] if StandardError
         def signature_for(container:, scope:, name:)
           load_env!
 
@@ -42,6 +57,10 @@ module Docscribe
 
         private
 
+        # Method documentation.
+        #
+        # @private
+        # @return [Object]
         def load_env!
           return if @env && @builder
 
@@ -56,16 +75,32 @@ module Docscribe
           @builder = ::RBS::DefinitionBuilder.new(env: @env)
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] container Param documentation.
+        # @param [Object] scope Param documentation.
+        # @return [Object]
         def definition_for(container:, scope:)
           type_name = ::RBS::TypeName.parse(absolute_const(container))
           scope == :class ? @builder.build_singleton(type_name) : @builder.build_instance(type_name)
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] container Param documentation.
+        # @return [Object]
         def absolute_const(container)
           s = container.to_s
           s.start_with?('::') ? s : "::#{s}"
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] func Param documentation.
+        # @return [MethodSignature]
         def build_signature(func)
           MethodSignature.new(
             return_type: format_type(func.return_type),
@@ -75,6 +110,11 @@ module Docscribe
           )
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] func Param documentation.
+        # @return [Object]
         def build_param_types(func)
           param_types = {}
 
@@ -93,6 +133,12 @@ module Docscribe
           param_types
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] param_types Param documentation.
+        # @param [Object] list Param documentation.
+        # @return [Object]
         def add_positionals!(param_types, list)
           list.each do |p|
             next unless p.name
@@ -101,6 +147,11 @@ module Docscribe
           end
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] func Param documentation.
+        # @return [RestPositional]
         def build_rest_positional(func)
           rp = func.rest_positionals
           return nil unless rp
@@ -111,6 +162,11 @@ module Docscribe
           )
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] func Param documentation.
+        # @return [RestKeywords]
         def build_rest_keywords(func)
           rk = func.rest_keywords
           return nil unless rk
@@ -121,6 +177,11 @@ module Docscribe
           )
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] type Param documentation.
+        # @return [Object]
         def format_type(type)
           Docscribe::Types::RBS::TypeFormatter.to_yard(
             type,
@@ -128,6 +189,11 @@ module Docscribe
           )
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] msg Param documentation.
+        # @return [Object]
         def warn_once(msg)
           return unless ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
           return if @warned

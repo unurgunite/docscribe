@@ -16,6 +16,7 @@ module Docscribe
       #
       # If no relevant CLI override is present, the original config is returned unchanged.
       #
+      # @note module_function: when included, also defines #build (instance visibility: private)
       # @param [Docscribe::Config] base base config loaded from YAML/defaults
       # @param [Hash] options parsed CLI options
       # @return [Docscribe::Config] merged effective config

@@ -217,6 +217,7 @@ module Docscribe
       # @private
       # @param [Object] node Param documentation.
       # @param [Object] ctx Param documentation.
+      # @param [nil] pending_sig_anchor Param documentation.
       # @return [Object]
       def process_stmt(node, ctx, pending_sig_anchor: nil)
         return unless node
@@ -420,6 +421,7 @@ module Docscribe
       # @private
       # @param [Object] node Param documentation.
       # @param [Object] ctx Param documentation.
+      # @param [nil] pending_sig_anchor Param documentation.
       # @return [Object]
       def process_visibility_send(node, ctx, pending_sig_anchor: nil)
         recv, meth, *args = *node
@@ -663,6 +665,11 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def sorbet_sig_node?(node)
         return false unless node.is_a?(Parser::AST::Node)
 
