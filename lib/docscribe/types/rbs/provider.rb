@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'pathname'
 require 'docscribe/types/signature'
 require 'docscribe/types/rbs/type_formatter'
+require 'docscribe/types/provider_chain'
 
 module Docscribe
   module Types
@@ -20,7 +20,7 @@ module Docscribe
       #
       # Debugging:
       # - Set `DOCSCRIBE_RBS_DEBUG=1` to print a one-time warning when RBS integration fails.
-      class Provider
+      class Provider < ::Docscribe::Types::ProviderChain
         # Initialize an RBS provider.
         #
         # @param [Array<String>] sig_dirs signature directories to load
@@ -158,7 +158,7 @@ module Docscribe
         # @param [Object] type
         # @return [String]
         def format_type(type)
-          TypeFormatter.to_yard(type, collapse_generics: @collapse_generics)
+          Docscribe::Types::RBS::TypeFormatter.to_yard(type, collapse_generics: @collapse_generics)
         end
 
         # Print one debug warning at most when RBS debugging is enabled.

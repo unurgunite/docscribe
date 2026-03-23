@@ -53,4 +53,18 @@ RSpec.describe Docscribe::CLI::Options do
     expect(opts[:mode]).to eq(:stdin)
     expect(opts[:strategy]).to eq(:aggressive)
   end
+
+  it 'enables Sorbet with --sorbet' do
+    opts = described_class.parse!(%w[--sorbet lib])
+
+    expect(opts[:sorbet]).to eq(true)
+    expect(opts[:rbi_dirs]).to eq([])
+  end
+
+  it 'adds RBI dirs and implies Sorbet with --rbi-dir' do
+    opts = described_class.parse!(%w[--rbi-dir sorbet/rbi --rbi-dir rbi lib])
+
+    expect(opts[:sorbet]).to eq(true)
+    expect(opts[:rbi_dirs]).to eq(%w[sorbet/rbi rbi])
+  end
 end

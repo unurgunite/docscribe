@@ -7,7 +7,7 @@ module Docscribe
 
       if sorbet_enabled?
         begin
-          require 'docscribe/types/sorbet_source_provider'
+          require 'docscribe/types/sorbet/source_provider'
           providers << Docscribe::Types::SourceProvider.new(
             source: source,
             file: file,
@@ -32,7 +32,7 @@ module Docscribe
       return nil unless sorbet_enabled?
 
       @sorbet_rbi_provider ||= begin
-        require 'docscribe/types/sorbet_rbi_provider'
+        require 'docscribe/types/sorbet/rbi_provider'
         Docscribe::Types::RBIProvider.new(
           rbi_dirs: sorbet_rbi_dirs,
           collapse_generics: sorbet_collapse_generics?

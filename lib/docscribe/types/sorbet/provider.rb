@@ -2,11 +2,12 @@
 
 require 'docscribe/types/signature'
 require 'docscribe/types/rbs/type_formatter'
+require 'docscribe/types/provider_chain'
 
 module Docscribe
   module Types
     module Sorbet
-      class PrototypeProvider
+      class Provider < ProviderChain
         def initialize(collapse_generics: false)
           require 'rbs'
           @collapse_generics = !!collapse_generics
@@ -107,7 +108,7 @@ module Docscribe
         end
 
         def format_type(type)
-          TypeFormatter.to_yard(type, collapse_generics: @collapse_generics)
+          Docscribe::Types::RBS::TypeFormatter.to_yard(type, collapse_generics: @collapse_generics)
         end
 
         def normalize_container(name)

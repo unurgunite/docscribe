@@ -12,8 +12,8 @@ module Docscribe
       return nil unless rbs_enabled?
 
       @rbs_provider ||= begin
-        require 'docscribe/types/rbs_provider'
-        Docscribe::Types::Provider.new(
+        require 'docscribe/types/rbs/provider'
+        Docscribe::Types::RBS::Provider.new(
           sig_dirs: rbs_sig_dirs,
           collapse_generics: rbs_collapse_generics?
         )
