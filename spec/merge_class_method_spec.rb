@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge class methods' do
+RSpec.describe 'safe strategy class methods' do
   it 'merges missing tags for def self.foo' do
     code = <<~RUBY
       class A
@@ -9,7 +9,7 @@ RSpec.describe '--merge class methods' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out).to include(param_tag('x', 'Object'))
     expect(out).to include('# @return [Object]')

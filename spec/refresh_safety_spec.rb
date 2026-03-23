@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--refresh safety' do
+RSpec.describe 'aggressive strategy safety' do
   it 'does not delete non-doc comment blocks (no YARD tags / header)' do
     code = <<~RUBY
       class A
@@ -9,7 +9,7 @@ RSpec.describe '--refresh safety' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, rewrite: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive, config: Docscribe::Config.new)
 
     expect(out).to include('# NOTE: keep this comment')
     expect(out).to include('# +A#foo+ -> Integer')
@@ -27,7 +27,7 @@ RSpec.describe '--refresh safety' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, rewrite: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive, config: Docscribe::Config.new)
 
     expect(out).to include('# :nocov:')
     expect(out).to include('# +A#foo+ -> Integer')
@@ -49,7 +49,7 @@ RSpec.describe '--refresh safety' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, rewrite: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive, config: Docscribe::Config.new)
 
     expect(out).to include('# :stopdoc:')
     expect(out).to include('# +A#foo+ -> Integer')

@@ -7,8 +7,16 @@ module Docscribe
   module CLI
     module Init
       class << self
-        # @param argv [Array<String>]
-        # @return [Integer]
+        # Create or print a starter Docscribe configuration file.
+        #
+        # Supported behaviors:
+        # - write `docscribe.yml` (default)
+        # - write to a custom path via `--config`
+        # - overwrite an existing file via `--force`
+        # - print the template to STDOUT via `--stdout`
+        #
+        # @param [Array<String>] argv command-line arguments for `docscribe init`
+        # @return [Integer] process exit code
         def run(argv)
           opts = {
             config: 'docscribe.yml',

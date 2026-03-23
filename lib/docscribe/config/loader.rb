@@ -2,13 +2,14 @@
 
 module Docscribe
   class Config
-    # Load configuration from YAML.
+    # Load Docscribe configuration from YAML.
     #
-    # If `path` is provided and exists, it is used. Otherwise, `docscribe.yml`
-    # in the current working directory is used if present. If no file is found,
-    # defaults are used.
+    # Resolution order:
+    # - explicit `path`, if it exists
+    # - `docscribe.yml` in the current directory, if present
+    # - otherwise defaults only
     #
-    # @param path [String, nil]
+    # @param [String, nil] path optional config path
     # @return [Docscribe::Config]
     def self.load(path = nil)
       raw = {}
@@ -22,10 +23,10 @@ module Docscribe
 
     # Safely load YAML from a file across Ruby/Psych versions.
     #
-    # Ruby 2.7 Psych does not implement `safe_load_file`, so we fall back to reading
-    # the file and calling `safe_load`.
+    # Uses `YAML.safe_load_file` when available, otherwise falls back to reading the file
+    # and calling {safe_load_compat}.
     #
-    # @param path [String]
+    # @param [String] path file path
     # @return [Hash]
     def self.safe_load_file_compat(path)
       if YAML.respond_to?(:safe_load_file)
@@ -38,10 +39,10 @@ module Docscribe
 
     # Safely load YAML from a string across Psych API versions.
     #
-    # @param yaml [String]
-    # @param filename [String, nil]
+    # @param [String] yaml YAML document
+    # @param [String, nil] filename optional filename for diagnostics
     # @raise [ArgumentError]
-    # @return [Object]
+    # @return [Hash]
     def self.safe_load_compat(yaml, filename: nil)
       Psych.safe_load(
         yaml,

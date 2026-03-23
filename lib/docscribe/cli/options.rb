@@ -7,48 +7,93 @@ module Docscribe
     module Options
       DEFAULT = {
         stdin: false,
-        write: false,
-        check: false,
-        rewrite: false, # set by --refresh
-        merge: false,
-        config: nil,
+        mode: :check,       # :check, :write, :stdin
+        strategy: :safe,    # :safe, :aggressive
         verbose: false,
+        explain: false,
+        config: nil,
         include: [],
         exclude: [],
         include_file: [],
         exclude_file: [],
-
         rbs: false,
         sig_dirs: []
       }.freeze
 
       module_function
 
-      # +Docscribe::CLI::Options#parse!+ -> Object
+      # Parse CLI arguments into Docscribe runtime options.
       #
-      # Method documentation.
+      # CLI behavior model:
+      # - default: inspect mode using the safe strategy
+      # - -a / --autocorrect: write mode using the safe strategy
+      # - -A / --autocorrect-all: write mode using the aggressive strategy
+      # - --stdin: stdin mode using the selected strategy (safe by default)
+      #
+      # Filtering, config, verbosity, and RBS options are applied orthogonally.
       #
       # @note module_function: when included, also defines #parse! (instance visibility: private)
-      # @param [Object] argv Param documentation.
-      # @return [Object]
+      # @param [Array<String>] argv raw CLI arguments
+      # @return [Hash] normalized runtime options
       def parse!(argv)
         options = Marshal.load(Marshal.dump(DEFAULT))
 
-        parser = OptionParser.new do |opts|
-          opts.banner = 'Usage: docscribe [options] [files...]'
+        autocorrect_mode = nil
 
-          opts.on('-d', '-c', '--dry', '--check', 'Dry-run: exit 1 if any file would change') { options[:check] = true }
-          opts.on('-w', '--write', 'Rewrite files in place') { options[:write] = true }
-          opts.on('-r', '--refresh',
-                  'Regenerate docs: replace existing doc blocks above methods (cannot be used with --merge)') do
-            options[:rewrite] = true
+        parser = OptionParser.new do |opts|
+          opts.banner = <<~TEXT
+            Usage: docscribe [options] [files...]
+
+            Default behavior:
+                Inspect files and report what safe doc updates would be applied.
+
+            Autocorrect:
+                -a, --autocorrect              Apply safe doc updates in place
+                                               (insert missing docs, merge existing doc-like blocks,
+                                               normalize tag order)
+                -A, --autocorrect-all          Apply aggressive doc updates in place
+                                               (rebuild existing doc blocks)
+
+            Input / config:
+                    --stdin                    Read code from STDIN and print rewritten output
+                -C, --config PATH              Path to config YAML (default: docscribe.yml)
+
+            Type information:
+                    --rbs                      Use RBS signatures for @param/@return when available
+                    --sig-dir DIR              Add an RBS signature directory (repeatable)
+
+            Filtering:
+                    --include PATTERN          Include PATTERN (method id or file path; glob or /regex/)
+                    --exclude PATTERN          Exclude PATTERN (method id or file path; glob or /regex/)
+                    --include-file PATTERN     Only process files matching PATTERN (glob or /regex/)
+                    --exclude-file PATTERN     Skip files matching PATTERN (glob or /regex/)
+
+            Output:
+                    --verbose                  Print per-file actions
+                -e, --explain                  Show detailed reasons for changes
+
+            Other:
+                -v, --version                  Print version and exit
+                -h, --help                     Show this help
+          TEXT
+
+          opts.on('-a', '--autocorrect',
+                  'Apply safe doc updates in place') do
+            autocorrect_mode = :safe
           end
-          opts.on('-m', '--merge',
-                  'Merge missing tags into existing doc blocks (non-destructive; cannot be used with --refresh)') do
-            options[:merge] = true
+
+          opts.on('-A', '--autocorrect-all',
+                  'Apply aggressive doc updates in place') do
+            autocorrect_mode = :aggressive
           end
-          opts.on('--stdin', 'Read code from STDIN and print with docs inserted') { options[:stdin] = true }
-          opts.on('-C', '--config PATH', 'Path to config YAML (default: docscribe.yml)') { |v| options[:config] = v }
+
+          opts.on('--stdin', 'Read code from STDIN and print rewritten output') do
+            options[:stdin] = true
+          end
+
+          opts.on('-C', '--config PATH', 'Path to config YAML (default: docscribe.yml)') do |v|
+            options[:config] = v
+          end
 
           opts.on('--rbs', 'Use RBS signatures for @param/@return when available (falls back to inference)') do
             options[:rbs] = true
@@ -75,8 +120,13 @@ module Docscribe
           opts.on('--exclude-file PATTERN', 'Skip files matching PATTERN (glob or /regex/). Exclude wins.') do |v|
             options[:exclude_file] << v
           end
-          opts.on('--verbose', 'Verbose output (print per-file actions)') do
+
+          opts.on('--verbose', 'Print per-file actions') do
             options[:verbose] = true
+          end
+
+          opts.on('-e', '--explain', 'Show detailed reasons for changes') do
+            options[:explain] = true
           end
 
           opts.on('-v', '--version', 'Print version and exit') do
@@ -92,18 +142,31 @@ module Docscribe
         end
 
         parser.parse!(argv)
+
+        if options[:stdin]
+          options[:mode] = :stdin
+          options[:strategy] = autocorrect_mode || :safe
+        elsif autocorrect_mode
+          options[:mode] = :write
+          options[:strategy] = autocorrect_mode
+        else
+          options[:mode] = :check
+          options[:strategy] = :safe
+        end
+
         options
       end
 
-      # +Docscribe::CLI::Options#route_include_exclude+ -> Object
+      # Route an include/exclude pattern into method filters or file filters.
       #
-      # Method documentation.
+      # Regex-looking patterns (`/…/`) are treated as method-id filters.
+      # File-like patterns are routed into `*_file`.
       #
       # @note module_function: when included, also defines #route_include_exclude (instance visibility: private)
-      # @param [Object] options Param documentation.
-      # @param [Object] kind Param documentation.
-      # @param [Object] value Param documentation.
-      # @return [Object]
+      # @param [Hash] options mutable parsed options hash
+      # @param [Symbol] kind either :include or :exclude
+      # @param [String] value raw pattern from the CLI
+      # @return [void]
       def route_include_exclude(options, kind, value)
         if looks_like_file_pattern?(value)
           options[:"#{kind}_file"] << value
@@ -112,18 +175,14 @@ module Docscribe
         end
       end
 
-      # +Docscribe::CLI::Options#looks_like_file_pattern?+ -> Object
+      # Heuristically decide whether a pattern looks like a file path/glob.
       #
-      # Method documentation.
+      # Regex syntax (`/…/`) is intentionally treated as a method-id pattern, not a file pattern.
       #
       # @note module_function: when included, also defines #looks_like_file_pattern? (instance visibility: private)
-      # @param [Object] pat Param documentation.
-      # @return [Object]
+      # @param [String] pat pattern passed via CLI
+      # @return [Boolean]
       def looks_like_file_pattern?(pat)
-        # Regex patterns are wrapped in slashes (e.g. "/^A#foo$/").
-        # Those are commonly used for method-id filtering with --include/--exclude.
-        #
-        # If you want regex filtering for files, use --include-file/--exclude-file.
         return false if pat.start_with?('/') && pat.end_with?('/') && pat.length >= 2
 
         pat.include?('/') || pat.include?('**') || pat.end_with?('.rb')

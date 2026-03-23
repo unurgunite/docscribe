@@ -2,7 +2,14 @@
 
 module Docscribe
   class Config
-    # Default configuration values used when no docscribe.yml is present or keys are missing.
+    # Default configuration values used when no docscribe.yml is present or when keys are missing.
+    #
+    # These defaults define:
+    # - which documentation tags are emitted
+    # - default generated text
+    # - type inference behavior
+    # - method/file filtering
+    # - optional RBS integration
     DEFAULT = {
       'emit' => {
         'header' => true,
@@ -16,7 +23,9 @@ module Docscribe
       'doc' => {
         'default_message' => 'Method documentation.',
         'param_tag_style' => 'type_name',
-        'param_documentation' => 'Param documentation.'
+        'param_documentation' => 'Param documentation.',
+        'sort_tags' => true,
+        'tag_order' => %w[todo note api private protected param option yieldparam raise return]
       },
       'methods' => {
         'instance' => {

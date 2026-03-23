@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge attrs' do
+RSpec.describe 'safe strategy attrs' do
   it 'appends missing @!attribute blocks into an existing doc-like block' do
     conf = Docscribe::Config.new('emit' => { 'attributes' => true })
 
@@ -13,7 +13,7 @@ RSpec.describe '--merge attrs' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true, config: conf)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
 
     expect(out).to include('# @todo docs')
     expect(out).to include('# @!attribute [r] a')
@@ -31,7 +31,7 @@ RSpec.describe '--merge attrs' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true, config: conf)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
 
     expect(out).to include('# NOTE: keep this')
     expect(out).to include('# @!attribute [r] name')

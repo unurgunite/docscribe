@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge formatting' do
+RSpec.describe 'safe strategy formatting' do
   it 'merges into an existing doc-like block without introducing extra blank lines' do
     code = <<~RUBY
       module M
@@ -14,7 +14,7 @@ RSpec.describe '--merge formatting' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     # Existing lines preserved
     expect(out).to include('# @todo keep this')

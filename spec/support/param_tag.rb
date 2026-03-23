@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 module ParamTag
-  # +ParamTag#param_tag+ -> String
-  #
   # Method documentation.
   #
   # @param [Object] name Param documentation.

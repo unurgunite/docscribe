@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge module_function note de-dup' do
+RSpec.describe 'safe strategy module_function note de-dup' do
   it 'does not add a second module_function @note if one already exists' do
     code = <<~RUBY
       module M
@@ -12,7 +12,7 @@ RSpec.describe '--merge module_function note de-dup' do
       end
     RUBY
 
-    out = Docscribe::InlineRewriter.insert_comments(code, merge: true)
+    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 
     expect(out.scan(/@note module_function:/).size).to eq(1)
     expect(out).to include(param_tag('x', 'Object'))

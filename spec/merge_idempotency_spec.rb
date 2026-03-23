@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '--merge idempotency' do
+RSpec.describe 'safe strategy idempotency' do
   it 'is idempotent' do
     code = <<~RUBY
       class A
@@ -9,8 +9,8 @@ RSpec.describe '--merge idempotency' do
       end
     RUBY
 
-    out1 = Docscribe::InlineRewriter.insert_comments(code, merge: true)
-    out2 = Docscribe::InlineRewriter.insert_comments(out1, merge: true)
+    out1 = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
+    out2 = Docscribe::InlineRewriter.insert_comments(out1, strategy: :safe)
 
     expect(out2).to eq(out1)
   end

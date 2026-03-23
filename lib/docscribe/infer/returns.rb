@@ -2,14 +2,17 @@
 
 module Docscribe
   module Infer
-    # Return type inference and rescue-conditional returns.
+    # Return type inference and rescue-conditional return extraction.
     module Returns
       module_function
 
-      # Infer return type of method from its source text.
+      # Infer a return type from a full method definition source string.
+      #
+      # The source must parse to a `:def` or `:defs` node. If parsing fails or inference
+      # is uncertain, the fallback type is returned.
       #
       # @note module_function: when included, also defines #infer_return_type (instance visibility: private)
-      # @param method_source [String, nil]
+      # @param [String, nil] method_source full method definition source
       # @raise [Parser::SyntaxError]
       # @return [String]
       def infer_return_type(method_source)
@@ -21,15 +24,15 @@ module Docscribe
         return FALLBACK_TYPE unless root && %i[def defs].include?(root.type)
 
         body = root.children.last
-        last_expr_type(body) || FALLBACK_TYPE
+        last_expr_type(body, fallback_type: FALLBACK_TYPE, nil_as_optional: true) || FALLBACK_TYPE
       rescue Parser::SyntaxError
         FALLBACK_TYPE
       end
 
-      # Infer return type from an already-parsed method node.
+      # Infer a method's normal return type from an already parsed def/defs node.
       #
       # @note module_function: when included, also defines #infer_return_type_from_node (instance visibility: private)
-      # @param node [Parser::AST::Node]
+      # @param [Parser::AST::Node] node `:def` or `:defs` node
       # @return [String]
       def infer_return_type_from_node(node)
         body =
@@ -40,16 +43,20 @@ module Docscribe
 
         return FALLBACK_TYPE unless body
 
-        last_expr_type(body) || FALLBACK_TYPE
+        last_expr_type(body, fallback_type: FALLBACK_TYPE, nil_as_optional: true) || FALLBACK_TYPE
       end
 
-      # Compute normal return type and rescue-conditional return types for a method.
+      # Return a structured return-type spec for a method node.
+      #
+      # The result includes:
+      # - `:normal`  => normal/happy-path return type
+      # - `:rescues` => array of `[exception_names, return_type]` pairs for rescue branches
       #
       # @note module_function: when included, also defines #returns_spec_from_node (instance visibility: private)
-      # @param node [Parser::AST::Node]
-      # @param fallback_type [FALLBACK_TYPE] Param documentation.
-      # @param nil_as_optional [Boolean] Param documentation.
-      # @return [Hash{Symbol=>Object}] +{ normal: String, rescues: Array<[Array<String>, String]> }+
+      # @param [Parser::AST::Node] node `:def` or `:defs` node
+      # @param [String] fallback_type type used when inference is uncertain
+      # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
+      # @return [Hash]
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         body =
           case node.type
@@ -83,21 +90,27 @@ module Docscribe
         spec
       end
 
-      # Infer the type of the "last expression" of a Ruby AST node.
+      # Infer the type of the last expression in a node.
+      #
+      # Supports:
+      # - `begin` groups
+      # - `if` branches
+      # - `case` expressions
+      # - explicit `return`
+      # - literal-like expressions via {Literals.type_from_literal}
       #
       # @note module_function: when included, also defines #last_expr_type (instance visibility: private)
-      # @param node [Parser::AST::Node, nil]
-      # @param fallback_type [Object] Param documentation.
-      # @param nil_as_optional [Object] Param documentation.
+      # @param [Parser::AST::Node, nil] node expression node
+      # @param [String] fallback_type type used when inference is uncertain
+      # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
       # @return [String, nil]
       def last_expr_type(node, fallback_type:, nil_as_optional:)
-        return nil unless node
-
         return nil unless node
 
         case node.type
         when :begin
           last_expr_type(node.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+
         when :if
           t = last_expr_type(node.children[1], fallback_type: fallback_type, nil_as_optional: nil_as_optional)
           e = last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional)
@@ -122,19 +135,25 @@ module Docscribe
 
         when :return
           Literals.type_from_literal(node.children.first, fallback_type: fallback_type)
+
         else
           Literals.type_from_literal(node, fallback_type: fallback_type)
         end
       end
 
-      # Unify two inferred types conservatively.
+      # Unify two inferred types into a single type string.
+      #
+      # Rules:
+      # - identical types remain unchanged
+      # - `nil` unions may become optional types if enabled
+      # - otherwise falls back conservatively to `fallback_type`
       #
       # @note module_function: when included, also defines #unify_types (instance visibility: private)
-      # @param a [String, nil]
-      # @param b [String, nil]
-      # @param fallback_type [Object] Param documentation.
-      # @param nil_as_optional [Object] Param documentation.
-      # @return [String]
+      # @param [String, nil] a
+      # @param [String, nil] b
+      # @param [String] fallback_type
+      # @param [Boolean] nil_as_optional
+      # @return [String, nil]
       def unify_types(a, b, fallback_type:, nil_as_optional:)
         a ||= fallback_type
         b ||= fallback_type

@@ -2,19 +2,21 @@
 
 module Docscribe
   module Infer
-    # Name helpers: turning constant AST into strings.
+    # Constant-name helpers for turning AST nodes into fully qualified names.
     module Names
       module_function
 
-      # Convert a constant-like AST node into a fully qualified name.
+      # Convert a `:const` / `:cbase` AST node into a fully qualified constant name.
       #
       # Examples:
-      # - `Foo` => "Foo"
-      # - `A::B` => "A::B"
-      # - `::Foo` => "::Foo"
+      # - `Foo` => `"Foo"`
+      # - `Foo::Bar` => `"Foo::Bar"`
+      # - `::Foo::Bar` => `"::Foo::Bar"`
+      #
+      # Returns nil for unsupported nodes.
       #
       # @note module_function: when included, also defines #const_full_name (instance visibility: private)
-      # @param n [Parser::AST::Node, nil]
+      # @param [Parser::AST::Node, nil] n constant-like AST node
       # @return [String, nil]
       def const_full_name(n)
         return nil unless n.is_a?(Parser::AST::Node)

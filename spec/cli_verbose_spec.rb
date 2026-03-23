@@ -7,12 +7,13 @@ require 'rbconfig'
 RSpec.describe 'CLI --verbose' do
   let(:exe) { File.expand_path('../exe/docscribe', __dir__) }
 
-  it 'prints per-file actions in --dry mode' do
+  it 'prints per-file actions in inspect mode' do
     Dir.mktmpdir do |dir|
       File.write(File.join(dir, 'a_ok.rb'), <<~RUBY)
         class A
-          # already documented
-          def x; 1; end
+          # @param [Object] x Param documentation.
+          # @return [Integer]
+          def x(x); 1; end
         end
       RUBY
 
@@ -23,7 +24,7 @@ RSpec.describe 'CLI --verbose' do
       RUBY
 
       stdout, _stderr, status = Open3.capture3(
-        RbConfig.ruby, exe, '--dry', '--verbose', dir,
+        RbConfig.ruby, exe, '--verbose', dir,
         chdir: dir
       )
 

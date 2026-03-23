@@ -6,13 +6,19 @@ module Docscribe
     module Params
       module_function
 
-      # Infer parameter type from name and default value string.
+      # Infer a parameter type from a parameter name and optional default expression.
+      #
+      # Handles:
+      # - positional/rest/block parameter prefixes (`*`, `**`, `&`)
+      # - keyword params with and without defaults
+      # - special-casing `options:` as `Hash` when enabled
+      # - literal defaults via AST parsing
       #
       # @note module_function: when included, also defines #infer_param_type (instance visibility: private)
-      # @param name [String]
-      # @param default_str [String, nil]
-      # @param fallback_type [FALLBACK_TYPE] Param documentation.
-      # @param treat_options_keyword_as_hash [Boolean] Param documentation.
+      # @param [String] name parameter name as used internally (may include `*`, `**`, `&`, or trailing `:`)
+      # @param [String, nil] default_str source for the default value expression
+      # @param [String] fallback_type type returned when inference is uncertain
+      # @param [Boolean] treat_options_keyword_as_hash whether `options:` should be treated specially as Hash
       # @return [String]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
         return 'Array' if name.start_with?('*') && !name.start_with?('**')
@@ -33,10 +39,12 @@ module Docscribe
         ty
       end
 
-      # Parse a Ruby expression from a string into an AST node.
+      # Parse a standalone expression for parameter-default inference.
+      #
+      # Returns nil if the expression is empty or cannot be parsed.
       #
       # @note module_function: when included, also defines #parse_expr (instance visibility: private)
-      # @param src [String, nil]
+      # @param [String, nil] src expression source
       # @raise [Parser::SyntaxError]
       # @return [Parser::AST::Node, nil]
       def parse_expr(src)

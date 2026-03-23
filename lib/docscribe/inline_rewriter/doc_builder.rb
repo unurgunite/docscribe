@@ -5,25 +5,26 @@ require 'docscribe/inline_rewriter/source_helpers'
 
 module Docscribe
   module InlineRewriter
-    # Builds a full docstring block for a single method insertion.
+    # Build method doc blocks and merge-time missing-tag payloads.
     #
     # Responsibilities:
-    # - Combine config decisions (emit header/params/return/raise/visibility tags)
-    # - Use RBS types (when enabled and available) for `@param` and `@return`
-    # - Fall back to AST heuristics from {Docscribe::Infer} when RBS is not available
+    # - combine config-driven emission rules
+    # - use RBS types when available
+    # - fall back to AST inference
+    # - generate full doc blocks
+    # - compute only missing tags for safe merge strategy
     module DocBuilder
       module_function
 
-      # Build a doc block for a method insertion.
+      # Build a full documentation block for one collected method insertion.
       #
-      # The returned string includes trailing newlines and is intended to be inserted
-      # at the beginning-of-line directly above the method definition.
+      # The returned string is ready to be inserted directly above the method definition.
       #
       # @note module_function: when included, also defines #build (instance visibility: private)
-      # @param insertion [Docscribe::InlineRewriter::Collector::Insertion]
-      # @param config [Docscribe::Config]
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [Docscribe::Config] config
       # @raise [StandardError]
-      # @return [String, nil] doc block string, or nil on error
+      # @return [String, nil]
       def build(insertion, config:)
         node = insertion.node
         name = SourceHelpers.node_name(node)
@@ -36,16 +37,11 @@ module Docscribe
         container = insertion.container
         method_symbol = scope == :instance ? '#' : '.'
 
-        # Best-effort RBS signature. If unavailable, returns nil, and we fall back to inference.
         rbs_sig = config.rbs_provider&.signature_for(container: container, scope: scope, name: name)
 
-        # Params
         params_lines = build_params_lines(node, indent, rbs_sig: rbs_sig, config: config) if config.emit_param_tags?
-
-        # Raises
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
 
-        # Returns
         returns_spec = Docscribe::Infer.returns_spec_from_node(
           node,
           fallback_type: config.fallback_type,
@@ -65,7 +61,6 @@ module Docscribe
         lines << "#{indent}# #{config.default_message(scope, visibility)}"
         lines << "#{indent}#"
 
-        # Ruby visibility of the documented surface (the method we are attaching docs to)
         if config.emit_visibility_tags?
           case visibility
           when :private then lines << "#{indent}# @private"
@@ -73,7 +68,6 @@ module Docscribe
           end
         end
 
-        # module_function dual-surface note (single line; no heredoc/newline surprises)
         if insertion.respond_to?(:module_function) && insertion.module_function
           included_vis =
             if insertion.respond_to?(:included_instance_visibility) && insertion.included_instance_visibility
@@ -86,9 +80,7 @@ module Docscribe
         end
 
         lines.concat(params_lines) if params_lines
-
         raise_types.each { |rt| lines << "#{indent}# @raise [#{rt}]" } if config.emit_raise_tags?
-
         lines << "#{indent}# @return [#{normal_type}]" if config.emit_return_tag?(scope, visibility)
 
         if config.emit_rescue_conditional_returns?
@@ -96,19 +88,21 @@ module Docscribe
             lines << "#{indent}# @return [#{rtype}] if #{exceptions.join(', ')}"
           end
         end
-        # binding.irb
+
         lines.map { |l| "#{l}\n" }.join
       rescue StandardError => e
         debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build')
         nil
       end
 
-      # Build only missing lines to merge into an existing doc-like block.
+      # Build only missing lines to append/merge into an existing doc-like block.
+      #
+      # This older helper returns plain text additions and is still used by some attr/migration paths.
       #
       # @note module_function: when included, also defines #build_merge_additions (instance visibility: private)
-      # @param insertion [Docscribe::InlineRewriter::Collector::Insertion]
-      # @param existing_lines [Array<String>]
-      # @param config [Docscribe::Config]
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [Array<String>] existing_lines
+      # @param [Docscribe::Config] config
       # @raise [StandardError]
       # @return [String, nil]
       def build_merge_additions(insertion, existing_lines:, config:)
@@ -135,10 +129,8 @@ module Docscribe
 
         lines = []
 
-        # Separator if the existing block doesn't already end with a blank comment line
         lines << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#'
 
-        # Visibility tags for the documented surface
         if config.emit_visibility_tags?
           if visibility == :private && !info[:has_private]
             lines << "#{indent}# @private"
@@ -147,13 +139,11 @@ module Docscribe
           end
         end
 
-        # module_function dual-surface note
         if insertion.respond_to?(:module_function) && insertion.module_function && !info[:has_module_function_note]
           included_vis = insertion.included_instance_visibility || :private
           lines << "#{indent}# @note module_function: when included, also defines ##{name} (instance visibility: #{included_vis})"
         end
 
-        # Params: add only missing @param entries
         if config.emit_param_tags?
           all_params = build_params_lines(node, indent, rbs_sig: rbs_sig, config: config)
 
@@ -165,7 +155,6 @@ module Docscribe
           end
         end
 
-        # Raises: only add if there are no existing @raise lines
         if config.emit_raise_tags?
           inferred = Docscribe::Infer.infer_raises_from_node(node)
           existing = info[:raise_types] || {}
@@ -174,12 +163,10 @@ module Docscribe
           missing.each { |rt| lines << "#{indent}# @raise [#{rt}]" }
         end
 
-        # Return: only add if there is no existing @return line at all
         if config.emit_return_tag?(scope, visibility) && !info[:has_return]
           lines << "#{indent}# @return [#{normal_type}]"
         end
 
-        # Conditional rescue @return tags: only add if there is no existing @return line at all
         if config.emit_rescue_conditional_returns? && !info[:has_return]
           rescue_specs.each do |(exceptions, rtype)|
             lines << "#{indent}# @return [#{rtype}] if #{exceptions.join(', ')}"
@@ -195,12 +182,129 @@ module Docscribe
         nil
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.parse_existing_doc_tags+ -> Hash
+      # Build missing merge lines plus structured change reasons for safe strategy.
       #
-      # Method documentation.
+      # Returns:
+      # - `:lines`   => generated missing tag lines
+      # - `:reasons` => structured reason records used by CLI explanation output
+      #
+      # @note module_function: when included, also defines #build_missing_merge_result (instance visibility: private)
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [Array<String>] existing_lines
+      # @param [Docscribe::Config] config
+      # @raise [StandardError]
+      # @return [Hash]
+      def build_missing_merge_result(insertion, existing_lines:, config:)
+        node = insertion.node
+        name = SourceHelpers.node_name(node)
+        return { lines: [], reasons: [] } unless name
+
+        indent = SourceHelpers.line_indent(node)
+        info = parse_existing_doc_tags(existing_lines)
+
+        scope = insertion.scope
+        visibility = insertion.visibility
+
+        rbs_sig = config.rbs_provider&.signature_for(container: insertion.container, scope: scope, name: name)
+
+        returns_spec = Docscribe::Infer.returns_spec_from_node(
+          node,
+          fallback_type: config.fallback_type,
+          nil_as_optional: config.nil_as_optional?
+        )
+        normal_type = rbs_sig&.return_type || returns_spec[:normal]
+        rescue_specs = returns_spec[:rescues]
+
+        lines = []
+        reasons = []
+
+        if config.emit_visibility_tags?
+          if visibility == :private && !info[:has_private]
+            lines << "#{indent}# @private\n"
+            reasons << { type: :missing_visibility, message: 'missing @private' }
+          elsif visibility == :protected && !info[:has_protected]
+            lines << "#{indent}# @protected\n"
+            reasons << { type: :missing_visibility, message: 'missing @protected' }
+          end
+        end
+
+        if insertion.respond_to?(:module_function) && insertion.module_function && !info[:has_module_function_note]
+          included_vis = insertion.included_instance_visibility || :private
+          lines << "#{indent}# @note module_function: when included, also defines ##{name} (instance visibility: #{included_vis})\n"
+          reasons << { type: :missing_module_function_note, message: 'missing module_function note' }
+        end
+
+        if config.emit_param_tags?
+          all_params = build_params_lines(
+            node,
+            indent,
+            rbs_sig: rbs_sig,
+            config: config
+          )
+
+          all_params&.each do |pl|
+            pname = extract_param_name_from_param_line(pl)
+            next if pname.nil? || info[:param_names].include?(pname)
+
+            lines << "#{pl}\n"
+            reasons << {
+              type: :missing_param,
+              message: "missing @param #{pname}",
+              extra: { param: pname }
+            }
+          end
+        end
+
+        if config.emit_raise_tags?
+          inferred = Docscribe::Infer.infer_raises_from_node(node)
+          existing = info[:raise_types] || {}
+
+          missing = inferred.reject { |rt| existing[rt] }
+          missing.each do |rt|
+            lines << "#{indent}# @raise [#{rt}]\n"
+            reasons << {
+              type: :missing_raise,
+              message: "missing @raise [#{rt}]",
+              extra: { raise_type: rt }
+            }
+          end
+        end
+
+        if config.emit_return_tag?(scope, visibility) && !info[:has_return]
+          lines << "#{indent}# @return [#{normal_type}]\n"
+          reasons << {
+            type: :missing_return,
+            message: 'missing @return'
+          }
+        end
+
+        if config.emit_rescue_conditional_returns? && !info[:has_return]
+          rescue_specs.each do |(exceptions, rtype)|
+            lines << "#{indent}# @return [#{rtype}] if #{exceptions.join(', ')}\n"
+            reasons << {
+              type: :missing_return,
+              message: "missing conditional @return for #{exceptions.join(', ')}"
+            }
+          end
+        end
+
+        { lines: lines, reasons: reasons }
+      rescue StandardError => e
+        debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build_missing_merge_result')
+        { lines: [], reasons: [] }
+      end
+
+      # Parse an existing doc-like block into the tag-presence information needed for safe merge.
+      #
+      # Tracks:
+      # - param names
+      # - whether a return tag exists
+      # - documented raise types
+      # - visibility tags
+      # - module_function note presence
       #
       # @note module_function: when included, also defines #parse_existing_doc_tags (instance visibility: private)
-      # @param lines [Object] Param documentation.
+      # @param [Array<String>] lines
       # @return [Hash]
       def parse_existing_doc_tags(lines)
         param_names = {}
@@ -235,24 +339,20 @@ module Docscribe
         }
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.extract_raise_types_from_line+ -> Object
+      # Extract documented raise types from one `@raise` line.
       #
-      # Method documentation.
+      # Supports:
+      # - `@raise [Foo]`
+      # - `@raise [Foo, Bar]`
+      # - `@raise Foo`
       #
       # @note module_function: when included, also defines #extract_raise_types_from_line (instance visibility: private)
-      # @param line [Object] Param documentation.
+      # @param [String] line
       # @raise [StandardError]
-      # @return [Object]
-      # @return [Array] if StandardError
+      # @return [Array<String>]
       def extract_raise_types_from_line(line)
         return [] unless line.match?(/^\s*#\s*@raise\b/)
 
-        # Common YARD forms:
-        #   # @raise [Foo]
-        #   # @raise [Foo, Bar]
-        # Less common but seen:
-        #   # @raise Foo
-        #   # @raise FooError if ...
         if (m = line.match(/^\s*#\s*@raise\s*\[([^\]]+)\]/))
           parse_raise_bracket_list(m[1])
         elsif (m = line.match(/^\s*#\s*@raise\s+([A-Z]\w*(?:::[A-Z]\w*)*)/))
@@ -264,24 +364,24 @@ module Docscribe
         []
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.parse_raise_bracket_list+ -> Object
-      #
-      # Method documentation.
+      # Parse a comma-separated raise type list from bracket syntax.
       #
       # @note module_function: when included, also defines #parse_raise_bracket_list (instance visibility: private)
-      # @param s [Object] Param documentation.
-      # @return [Object]
+      # @param [String] s
+      # @return [Array<String>]
       def parse_raise_bracket_list(s)
         s.to_s.split(',').map(&:strip).reject(&:empty?)
       end
 
-      # Build only `@param` lines for a def/defs node.
+      # Build `@param`/`@option` lines for one method definition node.
+      #
+      # Uses RBS first when available, then falls back to AST/literal inference.
       #
       # @note module_function: when included, also defines #build_params_lines (instance visibility: private)
-      # @param node [Parser::AST::Node] `:def` or `:defs` node
-      # @param indent [String] indentation prefix (spaces/tabs)
-      # @param rbs_sig [Docscribe::Types::RBSProvider::Signature, nil]
-      # @param config [Object] Param documentation.
+      # @param [Parser::AST::Node] node `:def` or `:defs`
+      # @param [String] indent line indentation prefix
+      # @param [Object, nil] rbs_sig best-effort RBS signature wrapper
+      # @param [Docscribe::Config] config
       # @return [Array<String>, nil]
       def build_params_lines(node, indent, rbs_sig:, config:)
         fallback_type = config.fallback_type
@@ -380,7 +480,7 @@ module Docscribe
                 fallback_type: fallback_type,
                 treat_options_keyword_as_hash: treat_options_keyword_as_hash
               )
-            params << format_param_tag(indent, pname, ty, config.param_documentation, style: param_tag_style)
+            params << format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
 
           when :blockarg
             pname = (a.children.first || 'block').to_s
@@ -390,7 +490,7 @@ module Docscribe
                    fallback_type: fallback_type,
                    treat_options_keyword_as_hash: treat_options_keyword_as_hash
                  )
-            params << format_param_tag(indent, pname, ty, config.param_documentation, style: param_tag_style)
+            params << format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
 
           when :forward_arg
             # Ruby 3 '...' forwarding; skip
@@ -400,13 +500,15 @@ module Docscribe
         params.empty? ? nil : params
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.extract_param_name_from_param_line+ -> NilClass
+      # Extract the parameter name from a generated or existing `@param` line.
       #
-      # Method documentation.
+      # Supports both:
+      # - `@param [Type] name`
+      # - `@param name [Type]`
       #
       # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
-      # @param line [Object] Param documentation.
-      # @return [NilClass]
+      # @param [String] line
+      # @return [String, nil]
       def extract_param_name_from_param_line(line)
         return Regexp.last_match(1) if line =~ /@param\b\s+\[[^\]]+\]\s+(\S+)/
         return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
@@ -414,16 +516,14 @@ module Docscribe
         nil
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.debug_warn+ -> Object
-      #
-      # Method documentation.
+      # Emit a debug warning for builder failures when DOCSCRIBE_DEBUG=1.
       #
       # @note module_function: when included, also defines #debug_warn (instance visibility: private)
-      # @param e [Object] Param documentation.
-      # @param insertion [Object] Param documentation.
-      # @param name [Object] Param documentation.
-      # @param phase [Object] Param documentation.
-      # @return [Object]
+      # @param [StandardError] e
+      # @param [Object] insertion
+      # @param [String] name
+      # @param [String] phase
+      # @return [void]
       def debug_warn(e, insertion:, name:, phase:)
         return unless debug?
 
@@ -442,36 +542,30 @@ module Docscribe
         warn "Docscribe DEBUG: #{phase} failed at #{where}: #{e.class}: #{e.message}"
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.debug?+ -> Object
-      #
-      # Method documentation.
+      # Whether builder debug warnings are enabled.
       #
       # @note module_function: when included, also defines #debug? (instance visibility: private)
-      # @return [Object]
+      # @return [Boolean]
       def debug?
         ENV['DOCSCRIBE_DEBUG'] == '1'
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.hash_option_pairs+ -> Object
-      #
-      # Method documentation.
+      # Extract `:pair` nodes from a hash literal used as an options-hash default.
       #
       # @note module_function: when included, also defines #hash_option_pairs (instance visibility: private)
-      # @param hash_node [Object] Param documentation.
-      # @return [Object]
+      # @param [Parser::AST::Node, nil] hash_node
+      # @return [Array<Parser::AST::Node>]
       def hash_option_pairs(hash_node)
         return [] unless hash_node&.type == :hash
 
         hash_node.children.select { |child| child.type == :pair }
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.option_key_name+ -> Object
-      #
-      # Method documentation.
+      # Extract the option key name from a hash pair key node.
       #
       # @note module_function: when included, also defines #option_key_name (instance visibility: private)
-      # @param node [Object] Param documentation.
-      # @return [Object]
+      # @param [Parser::AST::Node] node
+      # @return [String]
       def option_key_name(node)
         case node&.type
         when :sym, :str
@@ -481,13 +575,11 @@ module Docscribe
         end
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.node_default_literal+ -> Object
-      #
-      # Method documentation.
+      # Render a literal node into a doc-friendly default-value string.
       #
       # @note module_function: when included, also defines #node_default_literal (instance visibility: private)
-      # @param node [Object] Param documentation.
-      # @return [Object]
+      # @param [Parser::AST::Node] node
+      # @return [String, nil]
       def node_default_literal(node)
         case node&.type
         when :int, :float then node.children.first.to_s
@@ -500,16 +592,18 @@ module Docscribe
         end
       end
 
-      # +Docscribe::InlineRewriter::DocBuilder.format_param_tag+ -> String
+      # Format a `@param` line according to the configured param tag style.
       #
-      # Method documentation.
+      # Supported styles:
+      # - `type_name` => `@param [Type] name`
+      # - `name_type` => `@param name [Type]`
       #
       # @note module_function: when included, also defines #format_param_tag (instance visibility: private)
-      # @param indent [Object] Param documentation.
-      # @param pname [Object] Param documentation.
-      # @param ty [Object] Param documentation.
-      # @param description [Object] Param documentation.
-      # @param style [Object] Param documentation.
+      # @param [String] indent
+      # @param [String] pname
+      # @param [String] ty
+      # @param [String] description
+      # @param [String] style
       # @raise [StandardError]
       # @return [String]
       def format_param_tag(indent, pname, ty, description, style:)

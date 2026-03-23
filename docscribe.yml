@@ -1,17 +1,17 @@
 # Docscribe configuration file
 #
 # CI check (fails if any file would change):
-#   bundle exec docscribe --dry lib
+#   bundle exec docscribe lib
 #
 # Auto-fix (rewrites files):
-#   bundle exec docscribe --write lib
+#   bundle exec docscribe -a lib
 #
 # Regenerate docs even if a comment block already exists:
-#   bundle exec docscribe --refresh --write lib
+#   bundle exec docscribe -A lib
 #
 
 emit:
-  header: true
+  header: false
   param_tags: true
   return_tag: true
   visibility_tags: true
@@ -53,7 +53,7 @@ inference:
 # - exclude always wins
 # - if include is empty => include everything (subject to allow-lists)
 filter:
-  visibilities: ["public"]
+  visibilities: ["public", "private"]
   scopes: ["instance", "class"]
   include: []
   exclude: []
