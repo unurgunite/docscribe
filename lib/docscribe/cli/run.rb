@@ -156,7 +156,8 @@ module Docscribe
           src = read_source_for_path(path, display_path: display_path, options: options, state: state)
           return unless src
 
-          result = rewrite_result_for_path(path, src: src, conf: conf, display_path: display_path, options: options, state: state)
+          result = rewrite_result_for_path(path, src: src, conf: conf, display_path: display_path, options: options,
+                                                 state: state)
           return unless result
 
           out = result[:output]

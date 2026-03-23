@@ -73,6 +73,7 @@ module Docscribe
       # @raise [RBS::ParsingError]
       # @raise [RBS::DefinitionBuilder::UnknownTypeNameError]
       # @raise [StandardError]
+      # @raise [RBS::BaseError]
       # @return [Signature, nil]
       def signature_for(container:, scope:, name:)
         load_env!
@@ -86,11 +87,12 @@ module Docscribe
 
         func = method_type.type # RBS::Types::Function
         build_signature(func)
-      rescue RBS::ParsingError, RBS::DefinitionBuilder::UnknownTypeNameError => e
+      rescue RBS::BaseError => e
         warn_once("Docscribe: RBS error: #{e.class}: #{e.message}")
         nil
       rescue StandardError => e
-        warn_once("Docscribe: RBS integration failed (falling back to inference): #{e.class}: #{e.message}")
+        warn_once("Docscribe: RBS integration failed (falling back to inference): #{e.class}: #{e.message}" \
+                  "\nFeel free to open an issue on github.")
         nil
       end
 
