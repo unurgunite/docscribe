@@ -7,13 +7,13 @@ module Docscribe
     # If RBS cannot be loaded, this returns nil and Docscribe falls back to inference.
     #
     # @raise [LoadError]
-    # @return [Docscribe::Types::RBSProvider, nil]
+    # @return [Docscribe::Types::Provider, nil]
     def rbs_provider
       return nil unless rbs_enabled?
 
       @rbs_provider ||= begin
         require 'docscribe/types/rbs_provider'
-        Docscribe::Types::RBSProvider.new(
+        Docscribe::Types::Provider.new(
           sig_dirs: rbs_sig_dirs,
           collapse_generics: rbs_collapse_generics?
         )

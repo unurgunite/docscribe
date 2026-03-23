@@ -4,7 +4,7 @@ require 'parser/ast/processor'
 
 module Docscribe
   module InlineRewriter
-    # AST walker that collects "doc insertion targets" for methods.
+    # AST walker that collects documentation insertion targets.
     #
     # This is where Docscribe models Ruby scoping/visibility semantics, so the doc generator can:
     # - know whether a method is an instance method or class/module method (`#` vs `.`)
@@ -30,7 +30,8 @@ module Docscribe
       #   @return [Boolean, nil] true if documented under module_function semantics
       # @!attribute included_instance_visibility
       #   @return [Symbol, nil] visibility of included instance method surface under module_function
-      Insertion = Struct.new(:node, :scope, :visibility, :container, :module_function, :included_instance_visibility)
+      Insertion = Struct.new(:node, :scope, :visibility, :container, :module_function, :included_instance_visibility,
+                             :anchor_mode)
 
       # One attribute macro call that Docscribe intends to document.
       #
@@ -217,12 +218,13 @@ module Docscribe
       # @param [Object] node Param documentation.
       # @param [Object] ctx Param documentation.
       # @return [Object]
-      def process_stmt(node, ctx)
+      def process_stmt(node, ctx, pending_sig_anchor: nil)
         return unless node
 
         case node.type
         when :def
           name, _args, _body = *node
+          anchor_node = pending_sig_anchor || node
 
           if module_function_applies?(ctx, name)
             scope = :class
@@ -231,7 +233,8 @@ module Docscribe
             # module_function makes included instance method private by default,
             # but explicit named visibility can override it (e.g. `public :foo`).
             included_vis = ctx.explicit_instance[name] || :private
-            @insertions << Insertion.new(node, scope, vis, container_for(ctx), true, included_vis)
+
+            @insertions << Insertion.new(node, scope, vis, container_for(ctx), true, included_vis, anchor_node)
             return
           end
 
@@ -239,7 +242,8 @@ module Docscribe
             # Under `extend self` in a module, instance methods are callable as module methods (M.foo).
             scope = :class
             vis = ctx.explicit_instance[name] || ctx.default_instance_vis
-            @insertions << Insertion.new(node, scope, vis, container_for(ctx))
+
+            @insertions << Insertion.new(node, scope, vis, container_for(ctx), nil, nil, anchor_node)
             return
           end
 
@@ -252,7 +256,7 @@ module Docscribe
             scope = :instance
           end
 
-          @insertions << Insertion.new(node, scope, vis, container_for(ctx))
+          @insertions << Insertion.new(node, scope, vis, container_for(ctx), nil, nil, anchor_node)
 
         when :defs
           recv, name, _args, _body = *node
@@ -265,7 +269,7 @@ module Docscribe
               container_for(ctx)
             end
 
-          @insertions << Insertion.new(node, :class, vis, container)
+          @insertions << Insertion.new(node, :class, vis, container, nil, nil, pending_sig_anchor || node)
 
         when :sclass
           # `class << self` — affects default visibility for singleton methods and changes scope.
@@ -299,7 +303,7 @@ module Docscribe
           elsif process_class_method_visibility_send(node, ctx)
             # handled
           else
-            process_visibility_send(node, ctx)
+            process_visibility_send(node, ctx, pending_sig_anchor: pending_sig_anchor)
           end
 
         else
@@ -365,13 +369,7 @@ module Docscribe
         return true if names.empty?
 
         scope = ctx.inside_sclass ? :class : :instance
-
-        visibility =
-          if ctx.inside_sclass
-            ctx.default_class_vis
-          else
-            ctx.default_instance_vis
-          end
+        visibility = ctx.inside_sclass ? ctx.default_class_vis : ctx.default_instance_vis
 
         access =
           case meth
@@ -381,6 +379,7 @@ module Docscribe
           end
 
         @attr_insertions << AttrInsertion.new(node, scope, visibility, container_for(ctx), access, names)
+
         true
       end
 
@@ -422,7 +421,7 @@ module Docscribe
       # @param [Object] node Param documentation.
       # @param [Object] ctx Param documentation.
       # @return [Object]
-      def process_visibility_send(node, ctx)
+      def process_visibility_send(node, ctx, pending_sig_anchor: nil)
         recv, meth, *args = *node
         return unless recv.nil? && %i[private protected public].include?(meth)
 
@@ -440,6 +439,7 @@ module Docscribe
         # Inline modifier: private def foo / private def self.foo
         if args.length == 1 && args[0].is_a?(Parser::AST::Node) && %i[def defs].include?(args[0].type)
           def_node = args[0]
+          anchor_node = pending_sig_anchor || def_node
 
           case def_node.type
           when :def
@@ -448,16 +448,17 @@ module Docscribe
             if module_function_applies?(ctx, name)
               mod_vis = ctx.explicit_class[name] || ctx.default_class_vis
               included_vis = meth
-              @insertions << Insertion.new(def_node, :class, mod_vis, container, true, included_vis)
+              @insertions << Insertion.new(def_node, :class, mod_vis, container, true, included_vis, anchor_node)
             elsif ctx.inside_sclass
-              @insertions << Insertion.new(def_node, :class, meth, container)
+              @insertions << Insertion.new(def_node, :class, meth, container, nil, nil, anchor_node)
             else
-              @insertions << Insertion.new(def_node, :instance, meth, container)
+              @insertions << Insertion.new(def_node, :instance, meth, container, nil, nil, anchor_node)
             end
 
             return
+
           when :defs
-            @insertions << Insertion.new(def_node, :class, meth, container)
+            @insertions << Insertion.new(def_node, :class, meth, container, nil, nil, anchor_node)
             return
           end
         end
@@ -648,10 +649,35 @@ module Docscribe
       def process_body(body, ctx)
         return unless body
 
-        if body.type == :begin
-          body.children.each { |child| process_stmt(child, ctx) }
+        nodes = body.type == :begin ? body.children : [body]
+        pending_sig_nodes = []
+
+        nodes.each do |child|
+          if sorbet_sig_node?(child)
+            pending_sig_nodes << child
+            next
+          end
+
+          process_stmt(child, ctx, pending_sig_anchor: pending_sig_nodes.first)
+          pending_sig_nodes.clear
+        end
+      end
+
+      def sorbet_sig_node?(node)
+        return false unless node.is_a?(Parser::AST::Node)
+
+        case node.type
+        when :send
+          recv, meth, *_args = *node
+          recv.nil? && meth == :sig
+        when :block
+          send_node, *_rest = *node
+          return false unless send_node&.type == :send
+
+          recv, meth, *_args = *send_node
+          recv.nil? && meth == :sig
         else
-          process_stmt(body, ctx)
+          false
         end
       end
 

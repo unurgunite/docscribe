@@ -132,6 +132,11 @@ module Docscribe
           #   Hash<Symbol, Object> => Hash
           #   Array<String>        => Array
           collapse_generics: false
+
+        sorbet:
+          enabled: false
+          rbi_dirs: ['sorbet/rbi', 'rbi']
+          collapse_generics: false
       YAML
     end
   end
