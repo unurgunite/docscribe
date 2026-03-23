@@ -2,12 +2,11 @@
 
 require 'docscribe/types/signature'
 require 'docscribe/types/rbs/type_formatter'
-require 'docscribe/types/provider_chain'
 
 module Docscribe
   module Types
     module Sorbet
-      class Provider < ProviderChain
+      class BaseProvider
         def initialize(collapse_generics: false)
           require 'rbs'
           @collapse_generics = !!collapse_generics
@@ -24,39 +23,44 @@ module Docscribe
         def load_from_string(source, label:)
           return unless defined?(RubyVM::AbstractSyntaxTree)
 
-          parser = RBS::Prototype::RBI.new
+          parser = ::RBS::Prototype::RBI.new
           parser.parse(source)
           index_decls(parser.decls)
         rescue LoadError
           nil
-        rescue RBS::BaseError, StandardError => e
+        rescue ::RBS::BaseError, StandardError => e
           warn_once("Docscribe: Sorbet signature load failed for #{label}: #{e.class}: #{e.message}")
           nil
         end
 
         def index_decls(decls)
-          decls.each do |decl|
-            next unless decl.respond_to?(:members)
+          Array(decls).each do |decl|
             next unless decl.respond_to?(:name)
+            next unless decl.respond_to?(:members)
 
             container = normalize_container(decl.name.to_s)
 
             decl.members.each do |member|
               next unless method_definition_member?(member)
 
-              scope = member.kind == :singleton ? :class : :instance
+              scope =
+                case member.kind
+                when :singleton then :class
+                else :instance
+                end
+
               overload = member.overloads&.first
               next unless overload
 
               func = overload.method_type.type
-              @index[[container, scope, member.name.to_sym]] = build_signature(func)
+              @index[[container, scope, member.name.to_s.to_sym]] = build_signature(func)
             end
           end
         end
 
         def method_definition_member?(member)
-          defined?(RBS::AST::Members::MethodDefinition) &&
-            member.is_a?(RBS::AST::Members::MethodDefinition)
+          defined?(::RBS::AST::Members::MethodDefinition) &&
+            member.is_a?(::RBS::AST::Members::MethodDefinition)
         end
 
         def build_signature(func)
@@ -70,11 +74,19 @@ module Docscribe
 
         def build_param_types(func)
           param_types = {}
+
           add_positionals!(param_types, func.required_positionals)
           add_positionals!(param_types, func.optional_positionals)
           add_positionals!(param_types, func.trailing_positionals)
-          func.required_keywords.each { |kw, p| param_types[kw.to_s] = format_type(p.type) }
-          func.optional_keywords.each { |kw, p| param_types[kw.to_s] = format_type(p.type) }
+
+          func.required_keywords.each do |kw, p|
+            param_types[kw.to_s] = format_type(p.type)
+          end
+
+          func.optional_keywords.each do |kw, p|
+            param_types[kw.to_s] = format_type(p.type)
+          end
+
           param_types
         end
 
@@ -101,6 +113,7 @@ module Docscribe
           return nil unless rk
 
           value_type = format_type(rk.type)
+
           RestKeywords.new(
             name: rk.name&.to_s,
             type: "Hash<Symbol, #{value_type}>"
@@ -108,7 +121,10 @@ module Docscribe
         end
 
         def format_type(type)
-          Docscribe::Types::RBS::TypeFormatter.to_yard(type, collapse_generics: @collapse_generics)
+          Docscribe::Types::RBS::TypeFormatter.to_yard(
+            type,
+            collapse_generics: @collapse_generics
+          )
         end
 
         def normalize_container(name)

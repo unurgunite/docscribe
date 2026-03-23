@@ -8,7 +8,7 @@ module Docscribe
       if sorbet_enabled?
         begin
           require 'docscribe/types/sorbet/source_provider'
-          providers << Docscribe::Types::SourceProvider.new(
+          providers << Docscribe::Types::Sorbet::SourceProvider.new(
             source: source,
             file: file,
             collapse_generics: sorbet_collapse_generics?
@@ -22,7 +22,8 @@ module Docscribe
 
       providers << rbs_provider if rbs_enabled?
 
-      return nil if providers.compact.empty?
+      providers = providers.compact
+      return nil if providers.empty?
 
       require 'docscribe/types/provider_chain'
       Docscribe::Types::ProviderChain.new(*providers)
@@ -32,14 +33,14 @@ module Docscribe
       return nil unless sorbet_enabled?
 
       @sorbet_rbi_provider ||= begin
-        require 'docscribe/types/sorbet/rbi_provider'
-        Docscribe::Types::RBIProvider.new(
-          rbi_dirs: sorbet_rbi_dirs,
-          collapse_generics: sorbet_collapse_generics?
-        )
-      rescue LoadError
-        nil
-      end
+                                 require 'docscribe/types/sorbet/rbi_provider'
+                                 Docscribe::Types::Sorbet::RBIProvider.new(
+                                   rbi_dirs: sorbet_rbi_dirs,
+                                   collapse_generics: sorbet_collapse_generics?
+                                 )
+                               rescue LoadError
+                                 nil
+                               end
     end
 
     def sorbet_enabled?

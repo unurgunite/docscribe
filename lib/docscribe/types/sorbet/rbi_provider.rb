@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require 'pathname'
-require 'docscribe/types/sorbet/provider'
+require 'docscribe/types/sorbet/base_provider'
 
 module Docscribe
   module Types
     module Sorbet
-      class RBIProvider < Provider
+      class RBIProvider < BaseProvider
         def initialize(rbi_dirs:, collapse_generics: false)
           super(collapse_generics: collapse_generics)
           Array(rbi_dirs).each do |dir|

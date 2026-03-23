@@ -31,7 +31,7 @@ module Docscribe
       # @!attribute included_instance_visibility
       #   @return [Symbol, nil] visibility of included instance method surface under module_function
       Insertion = Struct.new(:node, :scope, :visibility, :container, :module_function, :included_instance_visibility,
-                             :anchor_mode)
+                             :anchor_node)
 
       # One attribute macro call that Docscribe intends to document.
       #
