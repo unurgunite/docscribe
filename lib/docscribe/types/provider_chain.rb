@@ -2,21 +2,28 @@
 
 module Docscribe
   module Types
+    # Resolve method signatures by querying a list of providers in order.
+    #
+    # The first provider that returns a non-nil signature wins.
+    #
+    # This lets Docscribe combine multiple external type sources behind one
+    # interface, for example:
+    # - inline Sorbet signatures in the current file
+    # - Sorbet RBI files
+    # - RBS files
     class ProviderChain
-      # Method documentation.
-      #
-      # @param [Array] providers Param documentation.
+      # @param [Array<#signature_for>] providers ordered signature providers
       # @return [Object]
       def initialize(*providers)
         @providers = providers.compact
       end
 
-      # Method documentation.
+      # Resolve a method signature from the first provider that can supply it.
       #
-      # @param [Object] container Param documentation.
-      # @param [Object] scope Param documentation.
-      # @param [Object] name Param documentation.
-      # @return [nil]
+      # @param [String] container e.g. "MyModule::MyClass"
+      # @param [Symbol] scope :instance or :class
+      # @param [Symbol, String] name method name
+      # @return [Docscribe::Types::MethodSignature, nil]
       def signature_for(container:, scope:, name:)
         @providers.each do |provider|
           sig = provider.signature_for(container: container, scope: scope, name: name)

@@ -6,7 +6,8 @@ module Docscribe
     module Params
       module_function
 
-      # Infer a parameter type from a parameter name and optional default expression.
+      # Infer a parameter type from an internal parameter name representation and
+      # an optional default expression.
       #
       # Handles:
       # - positional/rest/block parameter prefixes (`*`, `**`, `&`)
@@ -18,7 +19,8 @@ module Docscribe
       # @param [String] name parameter name as used internally (may include `*`, `**`, `&`, or trailing `:`)
       # @param [String, nil] default_str source for the default value expression
       # @param [String] fallback_type type returned when inference is uncertain
-      # @param [Boolean] treat_options_keyword_as_hash whether `options:` should be treated specially as Hash
+      # @param [Boolean] treat_options_keyword_as_hash whether `options:` should
+      #   be treated specially as Hash
       # @return [String]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
         return 'Array' if name.start_with?('*') && !name.start_with?('**')
@@ -26,7 +28,6 @@ module Docscribe
         return 'Proc'  if name.start_with?('&')
 
         is_kw = name.end_with?(':')
-
         node = parse_expr(default_str)
         ty = Literals.type_from_literal(node, fallback_type: fallback_type)
 

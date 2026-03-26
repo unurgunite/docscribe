@@ -13,13 +13,16 @@ returns), and respects Ruby visibility semantics — without using YARD to parse
 
 - No AST reprinting. Your original code, formatting, and constructs (like `class << self`, `heredocs`, `%i[]`) are
   preserved.
-- Inline-first. Comments are inserted at the start of each `def`/`defs` line.
+- Inline-first. Comments are inserted before method headers without reprinting the AST. For methods with a leading
+  Sorbet `sig`, new docs are inserted above the first `sig`.
 - Heuristic type inference for params and return values, including conditional returns in rescue branches.
 - Safe and aggressive update modes:
     - safe mode inserts missing docs, merges existing doc-like blocks, and normalizes sortable tags
     - aggressive mode rebuilds existing doc blocks
 - Ruby 3.4+ syntax supported using Prism translation (see "Parser backend" below).
-- Optional RBS integration (`--rbs`, `--sig-dir`) for more accurate `@param`/`@return` types.
+- Optional external type integrations:
+    - RBS via `--rbs` / `--sig-dir`
+    - Sorbet via inline `sig` declarations and RBI files with `--sorbet` / `--rbi-dir`
 - Optional `attr_reader`/`attr_writer`/`attr_accessor` documentation via YARD `@!attribute` (see Configuration).
 
 Common workflows:
@@ -35,6 +38,8 @@ Common workflows:
 
 - Use RBS signatures when available:
   `docscribe -a --rbs --sig-dir sig lib`
+
+- Use Sorbet signatures when available: `docscribe -a --sorbet --rbi-dir sorbet/rbi lib`
 
 ## Contents
 
@@ -181,7 +186,8 @@ end
 ```
 
 > [!NOTE]
-> - The tool inserts doc headers at the start of `def`/`defs` lines and preserves everything else.
+> - The tool inserts doc headers before method headers and preserves everything else.
+> - For methods with a leading Sorbet `sig`, docs are inserted above the first `sig`.
 > - Class methods show with a dot (`+Demo.bump+`, `+Demo.internal+`).
 > - Methods inside `class << self` under `private` are marked `@private`.
 

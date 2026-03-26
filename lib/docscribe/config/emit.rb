@@ -46,29 +46,35 @@ module Docscribe
       fetch_bool(%w[emit attributes], false)
     end
 
-    # Whether to emit the `@return` tag for a method, taking per-scope/per-visibility
-    # overrides into account.
+    # Whether to emit the `@return` tag for a method, taking per-scope and
+    # per-visibility overrides into account.
     #
     # @param [Symbol] scope :instance or :class
     # @param [Symbol] visibility :public, :protected, or :private
     # @return [Boolean]
     def emit_return_tag?(scope, visibility)
       method_override_bool(
-        scope, visibility, 'return_tag',
+        scope,
+        visibility,
+        'return_tag',
         default: fetch_bool(%w[emit return_tag], true)
       )
     end
 
-    # Default text inserted into generated doc blocks, taking per-scope/per-visibility
-    # overrides into account.
+    # Default text inserted into generated doc blocks, taking per-scope and
+    # per-visibility overrides into account.
     #
-    # @param [Symbol] scope
-    # @param [Symbol] visibility
+    # @param [Symbol] scope :instance or :class
+    # @param [Symbol] visibility :public, :protected, or :private
     # @return [String]
     def default_message(scope, visibility)
       method_override_str(
-        scope, visibility, 'default_message',
-        default: raw.dig('doc', 'default_message') || DEFAULT.dig('doc', 'default_message') || 'Method documentation.'
+        scope,
+        visibility,
+        'default_message',
+        default: raw.dig('doc', 'default_message') ||
+                 DEFAULT.dig('doc', 'default_message') ||
+                 'Method documentation.'
       )
     end
 
@@ -76,19 +82,23 @@ module Docscribe
     #
     # @return [String]
     def fallback_type
-      raw.dig('inference', 'fallback_type') || DEFAULT.dig('inference', 'fallback_type') || 'Object'
+      raw.dig('inference', 'fallback_type') ||
+        DEFAULT.dig('inference', 'fallback_type') ||
+        'Object'
     end
 
     # Whether unions involving nil should be rendered as optional types.
     #
-    # For example, `String, nil` may become `String?` depending on formatter behavior.
+    # For example, `String, nil` may become `String?` depending on formatter
+    # behavior.
     #
     # @return [Boolean]
     def nil_as_optional?
       fetch_bool(%w[inference nil_as_optional], true)
     end
 
-    # Whether keyword arguments named `options`/`options:` should be treated specially as Hash.
+    # Whether keyword arguments named `options` / `options:` should be treated
+    # specially as Hash values during inference.
     #
     # @return [Boolean]
     def treat_options_keyword_as_hash?
@@ -99,7 +109,7 @@ module Docscribe
     #
     # Supported values:
     # - `"type_name"` => `@param [String] name`
-    # - `"name_type"` => `@param name [String]`
+    # - `"name_first"` => `@param name [String]`
     #
     # @return [String]
     def param_tag_style

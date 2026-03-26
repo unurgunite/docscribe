@@ -2,12 +2,19 @@
 
 module Docscribe
   class Config
-    # Method documentation.
+    # Build the effective external signature provider chain for a given source.
     #
-    # @param [Object] source Param documentation.
-    # @param [Object] file Param documentation.
+    # Provider precedence is:
+    # 1. inline Sorbet signatures from the current source
+    # 2. Sorbet RBI files
+    # 3. RBS files
+    #
+    # Returns nil when no external type provider is enabled or available.
+    #
+    # @param [String] source Ruby source being rewritten
+    # @param [String] file source name for diagnostics
     # @raise [LoadError]
-    # @return [ProviderChain]
+    # @return [Docscribe::Types::ProviderChain, nil]
     def signature_provider_for(source:, file:)
       providers = []
 
@@ -20,7 +27,7 @@ module Docscribe
             collapse_generics: sorbet_collapse_generics?
           )
         rescue LoadError
-          # ignore
+          # Sorbet support is optional; fall back quietly.
         end
 
         providers << sorbet_rbi_provider
@@ -35,10 +42,10 @@ module Docscribe
       Docscribe::Types::ProviderChain.new(*providers)
     end
 
-    # Method documentation.
+    # Return a memoized Sorbet RBI provider if Sorbet integration is enabled.
     #
     # @raise [LoadError]
-    # @return [Object]
+    # @return [Docscribe::Types::Sorbet::RBIProvider, nil]
     def sorbet_rbi_provider
       return nil unless sorbet_enabled?
 
@@ -53,23 +60,26 @@ module Docscribe
       end
     end
 
-    # Method documentation.
+    # Whether Sorbet support is enabled in config.
     #
-    # @return [Object]
+    # @return [Boolean]
     def sorbet_enabled?
       fetch_bool(%w[sorbet enabled], false)
     end
 
-    # Method documentation.
+    # RBI directories searched by the Sorbet provider.
     #
-    # @return [Object]
+    # @return [Array<String>]
     def sorbet_rbi_dirs
       Array(raw.dig('sorbet', 'rbi_dirs') || DEFAULT.dig('sorbet', 'rbi_dirs')).map(&:to_s)
     end
 
-    # Method documentation.
+    # Whether generic Sorbet/RBI container types should be simplified.
     #
-    # @return [Object]
+    # Falls back to the RBS `collapse_generics` setting when Sorbet-specific
+    # config is not present.
+    #
+    # @return [Boolean]
     def sorbet_collapse_generics?
       fetch_bool(%w[sorbet collapse_generics], rbs_collapse_generics?)
     end

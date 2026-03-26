@@ -175,10 +175,10 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
       # @param [Docscribe::Config] config
+      # @param [Object, nil] signature_provider
       # @param [Symbol] strategy
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
-      # @param [Object] signature_provider Param documentation.
       # @return [void]
       def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, changes:, file:)
         name = SourceHelpers.node_name(insertion.node)
@@ -325,9 +325,9 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] insertion
       # @param [Docscribe::Config] config
+      # @param [Object, nil] signature_provider
       # @param [Symbol] strategy
       # @param [Hash] merge_inserts
-      # @param [Object] signature_provider Param documentation.
       # @return [void]
       def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, merge_inserts:)
         return unless config.respond_to?(:emit_attributes?) && config.emit_attributes?

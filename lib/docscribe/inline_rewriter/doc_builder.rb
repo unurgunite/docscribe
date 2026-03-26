@@ -5,18 +5,30 @@ require 'docscribe/inline_rewriter/source_helpers'
 
 module Docscribe
   module InlineRewriter
+    # Build generated YARD-style doc lines for methods and attribute helpers.
+    #
+    # DocBuilder combines:
+    # - Ruby visibility/container metadata from Collector
+    # - optional external signatures from Sorbet/RBS providers
+    # - fallback AST inference from Docscribe::Infer
+    #
+    # It is responsible for producing complete doc blocks for aggressive mode
+    # and "missing lines only" payloads for safe merge mode.
     module DocBuilder
       module_function
 
-      # Method documentation.
+      # Build a complete doc block for one collected method insertion.
+      #
+      # External signatures, when available, override inferred param and return
+      # types.
       #
       # @note module_function: when included, also defines #build (instance visibility: private)
-      # @param [Object] insertion Param documentation.
-      # @param [Object] config Param documentation.
-      # @param [nil] signature_provider Param documentation.
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [Docscribe::Config] config
+      # @param [Object, nil] signature_provider provider responding to
+      #   `signature_for(container:, scope:, name:)`
       # @raise [StandardError]
-      # @return [Object]
-      # @return [nil] if StandardError
+      # @return [String, nil]
       def build(insertion, config:, signature_provider: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
@@ -93,16 +105,18 @@ module Docscribe
         nil
       end
 
-      # Method documentation.
+      # Build only the missing doc lines that should be merged into an existing
+      # doc-like block.
+      #
+      # This is used by safe mode for non-destructive updates.
       #
       # @note module_function: when included, also defines #build_merge_additions (instance visibility: private)
-      # @param [Object] insertion Param documentation.
-      # @param [Object] existing_lines Param documentation.
-      # @param [Object] config Param documentation.
-      # @param [nil] signature_provider Param documentation.
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [Array<String>] existing_lines
+      # @param [Docscribe::Config] config
+      # @param [Object, nil] signature_provider
       # @raise [StandardError]
-      # @return [Object]
-      # @return [nil] if StandardError
+      # @return [String, nil]
       def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
@@ -181,16 +195,19 @@ module Docscribe
         nil
       end
 
-      # Method documentation.
+      # Build structured missing-line information for safe merge mode.
+      #
+      # Returns both:
+      # - generated missing lines
+      # - structured reasons used by `--explain`
       #
       # @note module_function: when included, also defines #build_missing_merge_result (instance visibility: private)
-      # @param [Object] insertion Param documentation.
-      # @param [Object] existing_lines Param documentation.
-      # @param [Object] config Param documentation.
-      # @param [nil] signature_provider Param documentation.
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [Array<String>] existing_lines
+      # @param [Docscribe::Config] config
+      # @param [Object, nil] signature_provider
       # @raise [StandardError]
       # @return [Hash]
-      # @return [Hash] if StandardError
       def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
@@ -346,14 +363,16 @@ module Docscribe
         s.to_s.split(',').map(&:strip).reject(&:empty?)
       end
 
-      # Method documentation.
+      # Build generated `@param` / `@option` lines for a method node.
+      #
+      # External signatures take precedence over inferred parameter types.
       #
       # @note module_function: when included, also defines #build_params_lines (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @param [Object] indent Param documentation.
-      # @param [Object] external_sig Param documentation.
-      # @param [Object] config Param documentation.
-      # @return [Object?]
+      # @param [Parser::AST::Node] node
+      # @param [String] indent
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig
+      # @param [Docscribe::Config] config
+      # @return [Array<String>, nil]
       def build_params_lines(node, indent, external_sig:, config:)
         fallback_type = config.fallback_type
         treat_options_keyword_as_hash = config.treat_options_keyword_as_hash?

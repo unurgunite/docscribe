@@ -25,7 +25,8 @@ module Docscribe
   # - it prefers safe fallback behavior when uncertain
   # - when inference cannot be specific, it falls back to `Object`
   #
-  # RBS-based typing, when enabled, is applied later in the doc builder rather than here.
+  # External signature sources such as RBS and Sorbet are applied later in the
+  # doc builder and can override these inferred types.
   module Infer
     class << self
       # Infer exception classes raised or rescued within an AST node.
@@ -36,7 +37,14 @@ module Docscribe
         Raises.infer_raises_from_node(node)
       end
 
-      # Infer a parameter type from its internal name form and optional default expression.
+      # Infer a parameter type from its internal name form and optional default
+      # expression.
+      #
+      # The internal parameter name may include:
+      # - `*` for rest args
+      # - `**` for keyword rest args
+      # - `&` for block args
+      # - trailing `:` for keyword args
       #
       # @param [String] name internal parameter name representation
       # @param [String, nil] default_str source for the default expression
@@ -45,7 +53,8 @@ module Docscribe
       # @return [String]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
         Params.infer_param_type(
-          name, default_str,
+          name,
+          default_str,
           fallback_type: fallback_type,
           treat_options_keyword_as_hash: treat_options_keyword_as_hash
         )
@@ -77,12 +86,20 @@ module Docscribe
 
       # Return structured normal/rescue return information for a method node.
       #
+      # Result shape:
+      # - `:normal` => the normal return type
+      # - `:rescues` => rescue-branch conditional return info
+      #
       # @param [Parser::AST::Node] node
       # @param [String] fallback_type
       # @param [Boolean] nil_as_optional
       # @return [Hash]
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
-        Returns.returns_spec_from_node(node, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+        Returns.returns_spec_from_node(
+          node,
+          fallback_type: fallback_type,
+          nil_as_optional: nil_as_optional
+        )
       end
 
       # Infer the type of the last expression in an AST node.
@@ -92,7 +109,11 @@ module Docscribe
       # @param [Boolean] nil_as_optional
       # @return [String, nil]
       def last_expr_type(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
-        Returns.last_expr_type(node, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+        Returns.last_expr_type(
+          node,
+          fallback_type: fallback_type,
+          nil_as_optional: nil_as_optional
+        )
       end
 
       # Convert a constant AST node into its fully qualified name.
@@ -120,7 +141,12 @@ module Docscribe
       # @param [Boolean] nil_as_optional
       # @return [String]
       def unify_types(a, b, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
-        Returns.unify_types(a, b, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+        Returns.unify_types(
+          a,
+          b,
+          fallback_type: fallback_type,
+          nil_as_optional: nil_as_optional
+        )
       end
     end
   end

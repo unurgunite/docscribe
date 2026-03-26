@@ -4,10 +4,11 @@ module Docscribe
   class Config
     # Return a memoized RBS provider if RBS integration is enabled and available.
     #
-    # If RBS cannot be loaded, this returns nil and Docscribe falls back to inference.
+    # If RBS cannot be loaded, this returns nil and Docscribe falls back to
+    # inference.
     #
     # @raise [LoadError]
-    # @return [Docscribe::Types::BaseProvider, nil]
+    # @return [Docscribe::Types::RBS::Provider, nil]
     def rbs_provider
       return nil unless rbs_enabled?
 
@@ -39,8 +40,8 @@ module Docscribe
     # Whether generic RBS types should be collapsed to simpler container names.
     #
     # Examples:
-    # - `Hash<Symbol, Object>` => `Hash`
-    # - `Array<String>` => `Array`
+    # - `Hash<Symbol, String>` => `Hash`
+    # - `Array<Integer>`       => `Array`
     #
     # @return [Boolean]
     def rbs_collapse_generics?
