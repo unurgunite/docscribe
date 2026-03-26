@@ -6,6 +6,7 @@ module Docscribe
     #
     # The template documents the most common CLI workflows and all supported
     # configuration sections with comments.
+    # @see Docscribe::Config::DEFAULT
     #
     # @return [String]
     def self.default_yaml
@@ -25,7 +26,8 @@ module Docscribe
 
         emit:
           # Emit the header line:
-          #   # +MyClass#my_method+ -> ReturnType
+          #
+          #   +MyClass#my_method+ -> ReturnType
           header: true
 
           # Emit @param tags.
@@ -41,32 +43,45 @@ module Docscribe
           raise_tags: true
 
           # Emit conditional rescue return tags:
-          #   # @return [String] if FooError, BarError
+          #
+          #   @return [String] if FooError, BarError
           rescue_conditional_returns: true
 
-          # Generate @!attribute docs for attr_reader/attr_writer/attr_accessor
+          # Generate @!attribute docs for attr_reader/attr_writer/attr_accessor.
           attributes: false
+
         doc:
           # Default text inserted into each generated doc block.
           default_message: "Method documentation."
+
+          # Default text appended to generated @param tags.
           param_documentation: "Param documentation."
+
+          # Style for generated @param tags:
+          # - type_name => @param [Type] name
+          # - name_first => @param name [Type]
           param_tag_style: "type_name"
+
+          # Sort generated / merged tags in safe mode when possible.
           sort_tags: true
-          tag_order: ["note", "private", "protected", "param", "option", "raise", "return"]
+
+          # Tag order used when sorting contiguous tag runs.
+          tag_order: ["todo", "note", "api", "private", "protected", "param", "option", "yieldparam", "raise", "return"]
 
         methods:
-          # Per-scope/per-visibility overrides.
+          # Per-scope / per-visibility overrides.
           #
           # Example:
-          #   methods:
-          #     instance:
-          #       public:
-          #         default_message: "Public API."
-          #         return_tag: true
+          # methods:
+          #   instance:
+          #     public:
+          #       default_message: "Public API."
+          #       return_tag: true
           instance:
             public: {}
             protected: {}
             private: {}
+
           class:
             public: {}
             protected: {}
@@ -76,7 +91,7 @@ module Docscribe
           # Type used when inference is uncertain.
           fallback_type: "Object"
 
-          # Whether nil unions become Optional types (e.g. String + nil => String?).
+          # Whether nil unions become optional types (for example String | nil => String?).
           nil_as_optional: true
 
           # Special-case: treat keyword arg named options/options: as a Hash.
@@ -94,43 +109,66 @@ module Docscribe
           # - regex: "/^MyApp::.*#(foo|bar)$/"
           #
           # Semantics:
-          # - scopes/visibilities act as allow-lists
+          # - scopes / visibilities act as allow-lists
           # - exclude wins
           # - if include is empty => include everything (subject to allow-lists)
-
           visibilities: ["public", "protected", "private"]
           scopes: ["instance", "class"]
           include: []
           exclude: []
 
           files:
-            # Filter which files Docscribe processes (paths are matched relative to the project root).
+            # Filter which files Docscribe processes (paths are matched relative
+            # to the project root).
             #
             # Tips:
             # - Use directory shorthand to exclude a whole directory:
             #     exclude: ["spec"]
-            #
             # - Or use globs:
             #     exclude: ["spec/**/*.rb", "vendor/**/*.rb"]
             include: []
             exclude: ["spec"]
 
         rbs:
-          # Optional: use RBS signatures to improve @param/@return types.
+          # Optional: use RBS signatures to improve @param / @return types.
           #
           # CLI equivalent:
-          #   bundle exec docscribe -a --rbs --sig-dir sig lib
+          # bundle exec docscribe -a --rbs --sig-dir sig lib
           #
-          # Note: under Bundler, you may need `gem "rbs"` in your Gemfile (or a Gemfile that includes it),
-          # otherwise `require "rbs"` may fail and Docscribe will fall back to inference.
+          # Under Bundler, you may need `gem "rbs"` in your Gemfile (or a
+          # Gemfile that includes it), otherwise `require "rbs"` may fail and
+          # Docscribe will fall back to inference.
           enabled: false
 
           # Signature directories (repeatable via --sig-dir).
           sig_dirs: ["sig"]
 
           # If true, simplify generic types:
-          #   Hash<Symbol, Object> => Hash
-          #   Array<String>        => Array
+          # - Hash<Symbol, String> => Hash
+          # - Array<Integer>       => Array
+          collapse_generics: false
+
+        sorbet:
+          # Optional: use Sorbet signatures from inline `sig` declarations and
+          # RBI files to improve @param / @return types.
+          #
+          # CLI equivalent:
+          # bundle exec docscribe -a --sorbet --rbi-dir sorbet/rbi lib
+          #
+          # Sorbet resolution order is:
+          # 1. inline `sig` in the current source file
+          # 2. RBI files
+          # 3. RBS
+          # 4. AST inference
+          enabled: false
+
+          # RBI directories scanned recursively for `.rbi` files
+          # (repeatable via --rbi-dir).
+          rbi_dirs: ["sorbet/rbi", "rbi"]
+
+          # If true, simplify generic types:
+          # - Hash<Symbol, String> => Hash
+          # - Array<Integer>       => Array
           collapse_generics: false
       YAML
     end

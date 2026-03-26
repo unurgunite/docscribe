@@ -65,6 +65,24 @@ module Docscribe
         parser.parse_with_comments(buffer)
       end
 
+      private
+
+      # Build the backend-specific parser object.
+      #
+      # @private
+      # @param [Symbol] backend
+      # @return [Object]
+      def parser_for(backend: :auto)
+        case backend(backend)
+        when :parser
+          require 'parser/current'
+          Parser::CurrentRuby.new
+        when :prism
+          require 'prism'
+          Prism::Translation::ParserCurrent.new
+        end
+      end
+
       # Resolve the effective parser backend.
       #
       # Resolution order:
@@ -72,11 +90,12 @@ module Docscribe
       # - explicit `backend:` argument
       # - auto choice based on Ruby version
       #
+      # @private
       # @param [Symbol] backend requested backend
       # @raise [ArgumentError]
       # @return [Symbol] :parser or :prism
       def backend(backend = :auto)
-        env = ENV.fetch('DOCSCRIBE_PARSER_BACKEND', nil)
+        env = ENV.fetch('DOCSCRIBE_PARSER_BACKEND') { nil }
         backend = env.to_sym if env && !env.empty?
 
         case backend
@@ -86,24 +105,6 @@ module Docscribe
           backend
         else
           raise ArgumentError, "Unknown backend: #{backend.inspect}"
-        end
-      end
-
-      private
-
-      # Build the backend-specific parser object.
-      #
-      # @private
-      # @param [Symbol] backend
-      # @return [Object]
-      def parser_for(backend: :auto)
-        case self.backend(backend)
-        when :parser
-          require 'parser/current'
-          Parser::CurrentRuby.new
-        when :prism
-          require 'prism'
-          Prism::Translation::ParserCurrent.new
         end
       end
 

@@ -7,6 +7,14 @@ require 'docscribe/inline_rewriter'
 
 module Docscribe
   module CLI
+    # Execute Docscribe from parsed CLI options.
+    #
+    # This module handles:
+    # - config loading and CLI overrides
+    # - stdin mode
+    # - file expansion / filtering
+    # - inspect vs write behavior
+    # - process exit status
     module Run
       class << self
         # Run Docscribe for files or STDIN using the selected mode and strategy.
@@ -40,7 +48,8 @@ module Docscribe
           run_files(options: options, conf: conf, paths: paths)
         end
 
-        # Rewrite code from STDIN using the selected strategy and print the result.
+        # Rewrite code from STDIN using the selected strategy and print the
+        # result.
         #
         # @param [Hash] options parsed CLI options
         # @param [Docscribe::Config] conf effective config
@@ -156,7 +165,8 @@ module Docscribe
           src = read_source_for_path(path, display_path: display_path, options: options, state: state)
           return unless src
 
-          result = rewrite_result_for_path(path, src: src, conf: conf, display_path: display_path, options: options, state: state)
+          result = rewrite_result_for_path(path, src: src, conf: conf, display_path: display_path, options: options,
+                                                 state: state)
           return unless result
 
           out = result[:output]

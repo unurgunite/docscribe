@@ -79,6 +79,7 @@ module Docscribe
         raise Docscribe::ParseError, "Failed to parse #{file}" unless ast
 
         config ||= Docscribe::Config.load
+        signature_provider = build_signature_provider(config, code, file.to_s)
 
         collector = Docscribe::InlineRewriter::Collector.new(buffer)
         collector.process(ast)
@@ -101,6 +102,7 @@ module Docscribe
               buffer: buffer,
               insertion: ins,
               config: config,
+              signature_provider: signature_provider,
               strategy: strategy,
               changes: changes,
               file: file.to_s
@@ -111,6 +113,7 @@ module Docscribe
               buffer: buffer,
               insertion: ins,
               config: config,
+              signature_provider: signature_provider,
               strategy: strategy,
               merge_inserts: merge_inserts
             )
@@ -119,10 +122,7 @@ module Docscribe
 
         apply_merge_inserts!(rewriter: rewriter, buffer: buffer, merge_inserts: merge_inserts)
 
-        {
-          output: rewriter.process,
-          changes: changes
-        }
+        { output: rewriter.process, changes: changes }
       end
 
       private
@@ -175,11 +175,12 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
       # @param [Docscribe::Config] config
+      # @param [Object, nil] signature_provider
       # @param [Symbol] strategy
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
       # @return [void]
-      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, strategy:, changes:, file:)
+      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, changes:, file:)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
@@ -189,18 +190,19 @@ module Docscribe
           name: name
         )
 
-        bol_range = SourceHelpers.line_start_range(buffer, insertion.node)
+        anchor_bol_range, = method_bol_ranges(buffer, insertion)
 
         case strategy
         when :aggressive
-          if (range = SourceHelpers.comment_block_removal_range(buffer, bol_range.begin_pos))
+          if (range = method_comment_block_removal_range(buffer, insertion))
             rewriter.remove(range)
           end
 
-          doc = DocBuilder.build(insertion, config: config)
+          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider)
           return if doc.nil? || doc.empty?
 
-          rewriter.insert_before(bol_range, doc)
+          rewriter.insert_before(anchor_bol_range, doc)
+
           add_change(
             changes,
             type: :insert_full_doc_block,
@@ -210,17 +212,18 @@ module Docscribe
           )
 
         when :safe
-          info = SourceHelpers.doc_comment_block_info(buffer, bol_range.begin_pos)
+          info = method_doc_comment_info(buffer, insertion)
 
           if info
-            merge_result = DocBuilder.build_missing_merge_result(
+            merge_result = build_missing_method_merge_result(
               insertion,
               existing_lines: info[:doc_lines],
-              config: config
+              config: config,
+              signature_provider: signature_provider
             )
 
             missing_lines = merge_result[:lines]
-            reason_specs = merge_result[:reasons]
+            reason_specs = merge_result[:reasons] || []
 
             sorted_existing_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
               info[:doc_lines],
@@ -269,10 +272,11 @@ module Docscribe
             return
           end
 
-          doc = DocBuilder.build(insertion, config: config)
+          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider)
           return if doc.nil? || doc.empty?
 
-          rewriter.insert_before(bol_range, doc)
+          rewriter.insert_before(anchor_bol_range, doc)
+
           add_change(
             changes,
             type: :insert_full_doc_block,
@@ -298,7 +302,7 @@ module Docscribe
         changes << {
           type: type,
           file: file,
-          line: line || insertion.node.loc.expression.line,
+          line: line || method_line_for(insertion),
           method: method_id_for(insertion),
           message: message
         }.merge(extra)
@@ -321,10 +325,11 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] insertion
       # @param [Docscribe::Config] config
+      # @param [Object, nil] signature_provider
       # @param [Symbol] strategy
       # @param [Hash] merge_inserts
       # @return [void]
-      def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, strategy:, merge_inserts:)
+      def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, merge_inserts:)
         return unless config.respond_to?(:emit_attributes?) && config.emit_attributes?
         return unless attribute_allowed?(config, insertion)
 
@@ -336,7 +341,11 @@ module Docscribe
             rewriter.remove(range)
           end
 
-          doc = build_attr_doc_for_node(insertion, config: config)
+          doc = build_attr_doc_for_node(
+            insertion,
+            config: config,
+            signature_provider: signature_provider
+          )
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(bol_range, doc)
@@ -345,15 +354,25 @@ module Docscribe
           info = SourceHelpers.doc_comment_block_info(buffer, bol_range.begin_pos)
 
           if info
-            additions = build_attr_merge_additions(insertion, existing_lines: info[:lines], config: config)
+            additions = build_attr_merge_additions(
+              insertion,
+              existing_lines: info[:lines],
+              config: config,
+              signature_provider: signature_provider
+            )
 
             if additions && !additions.empty?
               merge_inserts[info[:end_pos]] << [insertion.node.loc.expression.begin_pos, additions]
             end
+
             return
           end
 
-          doc = build_attr_doc_for_node(insertion, config: config)
+          doc = build_attr_doc_for_node(
+            insertion,
+            config: config,
+            signature_provider: signature_provider
+          )
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(bol_range, doc)
@@ -384,13 +403,11 @@ module Docscribe
             next if chunk.nil? || chunk.empty?
 
             lines = chunk.lines
-
             seps = []
             seps << lines.shift while !lines.empty? && lines.first.match?(sep_re)
 
             sep = seps.first
             out_lines << sep if sep && (out_lines.empty? || !out_lines.last.match?(sep_re))
-
             out_lines.concat(lines)
           end
 
@@ -408,23 +425,22 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
+      # @param [Object] signature_provider Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build_attr_merge_additions(ins, existing_lines:, config:)
+      def build_attr_merge_additions(ins, existing_lines:, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
         existing = existing_attr_names(existing_lines)
-
         missing = ins.names.reject { |name_sym| existing[name_sym.to_s] }
         return '' if missing.empty?
 
         lines = []
-
         lines << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#'
 
         missing.each_with_index do |name_sym, idx|
           attr_name = name_sym.to_s
           mode = ins.access.to_s
-          attr_type = attribute_type(ins, name_sym, config)
+          attr_type = attribute_type(ins, name_sym, config, signature_provider: signature_provider)
 
           lines << "#{indent}# @!attribute [#{mode}] #{attr_name}"
 
@@ -435,7 +451,6 @@ module Docscribe
 
           lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
           lines << "#{indent}#   @param value [#{attr_type}]" if %i[w rw].include?(ins.access)
-
           lines << "#{indent}#" if idx < missing.length - 1
         end
 
@@ -451,11 +466,13 @@ module Docscribe
       # @return [Hash{String=>Boolean}]
       def existing_attr_names(lines)
         names = {}
+
         Array(lines).each do |line|
           if (m = line.match(/^\s*#\s*@!attribute\b.*\]\s+(\S+)/))
             names[m[1]] = true
           end
         end
+
         names
       end
 
@@ -496,17 +513,17 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Docscribe::Config] config
+      # @param [Object] signature_provider Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build_attr_doc_for_node(ins, config:)
+      def build_attr_doc_for_node(ins, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
         lines = []
 
         ins.names.each_with_index do |name_sym, idx|
           attr_name = name_sym.to_s
           mode = ins.access.to_s
-
-          attr_type = attribute_type(ins, name_sym, config)
+          attr_type = attribute_type(ins, name_sym, config, signature_provider: signature_provider)
 
           lines << "#{indent}# @!attribute [#{mode}] #{attr_name}"
 
@@ -534,18 +551,136 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Symbol] name_sym
       # @param [Docscribe::Config] config
+      # @param [Object] signature_provider Param documentation.
       # @raise [StandardError]
       # @return [String]
-      def attribute_type(ins, name_sym, config)
+      def attribute_type(ins, name_sym, config, signature_provider:)
         ty = config.fallback_type
+        return ty unless signature_provider
 
-        provider = config.rbs_provider
-        return ty unless provider
-
-        reader_sig = provider.signature_for(container: ins.container, scope: ins.scope, name: name_sym)
+        reader_sig = signature_provider.signature_for(container: ins.container, scope: ins.scope, name: name_sym)
         reader_sig&.return_type || ty
       rescue StandardError
         config.fallback_type
+      end
+
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] config Param documentation.
+      # @param [Object] code Param documentation.
+      # @param [Object] file Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [Object?] if StandardError
+      def build_signature_provider(config, code, file)
+        if config.respond_to?(:signature_provider_for)
+          config.signature_provider_for(source: code, file: file)
+        elsif config.respond_to?(:signature_provider)
+          config.signature_provider
+        elsif config.respond_to?(:rbs_provider)
+          config.rbs_provider
+        end
+      rescue StandardError
+        config.respond_to?(:rbs_provider) ? config.rbs_provider : nil
+      end
+
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @return [Object]
+      def build_method_doc(insertion, config:, signature_provider:)
+        DocBuilder.build(
+          insertion,
+          config: config,
+          signature_provider: signature_provider
+        )
+      end
+
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @param [Object] existing_lines Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @return [Object]
+      def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:)
+        DocBuilder.build_missing_merge_result(
+          insertion,
+          existing_lines: existing_lines,
+          config: config,
+          signature_provider: signature_provider
+        )
+      end
+
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] buffer Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @return [Object]
+      def method_doc_comment_info(buffer, insertion)
+        anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
+
+        SourceHelpers.doc_comment_block_info(buffer, anchor_bol_range.begin_pos) ||
+          SourceHelpers.doc_comment_block_info(buffer, def_bol_range.begin_pos)
+      end
+
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] buffer Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @return [Object]
+      def method_comment_block_removal_range(buffer, insertion)
+        anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
+
+        SourceHelpers.comment_block_removal_range(buffer, anchor_bol_range.begin_pos) ||
+          SourceHelpers.comment_block_removal_range(buffer, def_bol_range.begin_pos)
+      end
+
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] buffer Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @return [Array]
+      def method_bol_ranges(buffer, insertion)
+        anchor_node = anchor_node_for(insertion)
+        [
+          SourceHelpers.line_start_range(buffer, anchor_node),
+          SourceHelpers.line_start_range(buffer, insertion.node)
+        ]
+      end
+
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [Object] if StandardError
+      def method_line_for(insertion)
+        anchor_node_for(insertion).loc.expression.line
+      rescue StandardError
+        insertion.node.loc.expression.line
+      end
+
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @return [Object]
+      def anchor_node_for(insertion)
+        if insertion.respond_to?(:anchor_node) && insertion.anchor_node
+          insertion.anchor_node
+        else
+          insertion.node
+        end
       end
     end
   end

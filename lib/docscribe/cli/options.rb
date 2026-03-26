@@ -17,27 +17,29 @@ module Docscribe
         include_file: [],
         exclude_file: [],
         rbs: false,
-        sig_dirs: []
+        sig_dirs: [],
+        sorbet: false,
+        rbi_dirs: []
       }.freeze
 
       module_function
 
-      # Parse CLI arguments into Docscribe runtime options.
+      # Parse CLI arguments into normalized Docscribe runtime options.
       #
       # CLI behavior model:
       # - default: inspect mode using the safe strategy
-      # - -a / --autocorrect: write mode using the safe strategy
-      # - -A / --autocorrect-all: write mode using the aggressive strategy
-      # - --stdin: stdin mode using the selected strategy (safe by default)
+      # - `-a` / `--autocorrect`: write mode using the safe strategy
+      # - `-A` / `--autocorrect-all`: write mode using the aggressive strategy
+      # - `--stdin`: stdin mode using the selected strategy (safe by default)
       #
-      # Filtering, config, verbosity, and RBS options are applied orthogonally.
+      # Filtering, config, verbosity, and external type options are applied
+      # orthogonally.
       #
       # @note module_function: when included, also defines #parse! (instance visibility: private)
       # @param [Array<String>] argv raw CLI arguments
       # @return [Hash] normalized runtime options
       def parse!(argv)
         options = Marshal.load(Marshal.dump(DEFAULT))
-
         autocorrect_mode = nil
 
         parser = OptionParser.new do |opts|
@@ -45,7 +47,7 @@ module Docscribe
             Usage: docscribe [options] [files...]
 
             Default behavior:
-                Inspect files and report what safe doc updates would be applied.
+              Inspect files and report what safe doc updates would be applied.
 
             Autocorrect:
                 -a, --autocorrect              Apply safe doc updates in place
@@ -60,7 +62,9 @@ module Docscribe
 
             Type information:
                     --rbs                      Use RBS signatures for @param/@return when available
-                    --sig-dir DIR              Add an RBS signature directory (repeatable)
+                    --sig-dir DIR              Add an RBS signature directory (repeatable). Implies `--rbs`.
+                    --sorbet                   Use Sorbet signatures from inline sigs / RBI files when available
+                    --rbi-dir DIR              Add a Sorbet RBI directory (repeatable). Implies --sorbet.
 
             Filtering:
                     --include PATTERN          Include PATTERN (method id or file path; glob or /regex/)
@@ -77,13 +81,11 @@ module Docscribe
                 -h, --help                     Show this help
           TEXT
 
-          opts.on('-a', '--autocorrect',
-                  'Apply safe doc updates in place') do
+          opts.on('-a', '--autocorrect', 'Apply safe doc updates in place') do
             autocorrect_mode = :safe
           end
 
-          opts.on('-A', '--autocorrect-all',
-                  'Apply aggressive doc updates in place') do
+          opts.on('-A', '--autocorrect-all', 'Apply aggressive doc updates in place') do
             autocorrect_mode = :aggressive
           end
 
@@ -102,6 +104,15 @@ module Docscribe
           opts.on('--sig-dir DIR', 'Add an RBS signature directory (repeatable). Implies --rbs.') do |v|
             options[:rbs] = true
             options[:sig_dirs] << v
+          end
+
+          opts.on('--sorbet', 'Use Sorbet signatures from inline sigs / RBI files when available') do
+            options[:sorbet] = true
+          end
+
+          opts.on('--rbi-dir DIR', 'Add a Sorbet RBI directory (repeatable). Implies --sorbet.') do |v|
+            options[:sorbet] = true
+            options[:rbi_dirs] << v
           end
 
           opts.on('--include PATTERN', 'Include PATTERN (method id or file path; glob or /regex/)') do |v|
@@ -175,9 +186,10 @@ module Docscribe
         end
       end
 
-      # Heuristically decide whether a pattern looks like a file path/glob.
+      # Heuristically decide whether a pattern looks like a file path or file glob.
       #
-      # Regex syntax (`/…/`) is intentionally treated as a method-id pattern, not a file pattern.
+      # Regex syntax (`/.../`) is intentionally treated as a method-id pattern,
+      # not a file pattern.
       #
       # @note module_function: when included, also defines #looks_like_file_pattern? (instance visibility: private)
       # @param [String] pat pattern passed via CLI

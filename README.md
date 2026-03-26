@@ -13,13 +13,16 @@ returns), and respects Ruby visibility semantics — without using YARD to parse
 
 - No AST reprinting. Your original code, formatting, and constructs (like `class << self`, `heredocs`, `%i[]`) are
   preserved.
-- Inline-first. Comments are inserted at the start of each `def`/`defs` line.
+- Inline-first. Comments are inserted before method headers without reprinting the AST. For methods with a leading
+  Sorbet `sig`, new docs are inserted above the first `sig`.
 - Heuristic type inference for params and return values, including conditional returns in rescue branches.
 - Safe and aggressive update modes:
     - safe mode inserts missing docs, merges existing doc-like blocks, and normalizes sortable tags
     - aggressive mode rebuilds existing doc blocks
 - Ruby 3.4+ syntax supported using Prism translation (see "Parser backend" below).
-- Optional RBS integration (`--rbs`, `--sig-dir`) for more accurate `@param`/`@return` types.
+- Optional external type integrations:
+    - RBS via `--rbs` / `--sig-dir`
+    - Sorbet via inline `sig` declarations and RBI files with `--sorbet` / `--rbi-dir`
 - Optional `attr_reader`/`attr_writer`/`attr_accessor` documentation via YARD `@!attribute` (see Configuration).
 
 Common workflows:
@@ -36,6 +39,8 @@ Common workflows:
 - Use RBS signatures when available:
   `docscribe -a --rbs --sig-dir sig lib`
 
+- Use Sorbet signatures when available: `docscribe -a --sorbet --rbi-dir sorbet/rbi lib`
+
 ## Contents
 
 * [Docscribe](#docscribe)
@@ -50,7 +55,14 @@ Common workflows:
         * [Aggressive strategy](#aggressive-strategy)
         * [Output markers](#output-markers)
     * [Parser backend (Parser gem vs Prism)](#parser-backend-parser-gem-vs-prism)
-    * [RBS integration (optional)](#rbs-integration-optional)
+    * [External type integrations (optional)](#external-type-integrations-optional)
+        * [RBS](#rbs)
+        * [Sorbet](#sorbet)
+        * [Inline Sorbet example](#inline-sorbet-example)
+        * [Sorbet RBI example](#sorbet-rbi-example)
+        * [Sorbet comment placement](#sorbet-comment-placement)
+        * [Generic type formatting](#generic-type-formatting)
+        * [Notes and fallback behavior](#notes-and-fallback-behavior)
     * [Type inference](#type-inference)
     * [Rescue-aware returns and @raise](#rescue-aware-returns-and-raise)
     * [Visibility semantics](#visibility-semantics)
@@ -174,7 +186,8 @@ end
 ```
 
 > [!NOTE]
-> - The tool inserts doc headers at the start of `def`/`defs` lines and preserves everything else.
+> - The tool inserts doc headers before method headers and preserves everything else.
+> - For methods with a leading Sorbet `sig`, docs are inserted above the first `sig`.
 > - Class methods show with a dot (`+Demo.bump+`, `+Demo.internal+`).
 > - Methods inside `class << self` under `private` are marked `@private`.
 
@@ -341,9 +354,24 @@ DOCSCRIBE_PARSER_BACKEND=parser bundle exec docscribe lib
 DOCSCRIBE_PARSER_BACKEND=prism  bundle exec docscribe lib
 ```
 
-## RBS integration (optional)
+## External type integrations (optional)
 
-Docscribe can use RBS signatures to improve `@param` and `@return` types.
+Docscribe can improve generated `@param` and `@return` types by reading external signatures instead of relying only on
+AST inference.
+
+> [!IMPORTANT]
+> When external type information is available, Docscribe resolves signatures in this order:
+> - inline Sorbet `sig` declarations in the current Ruby source;
+> - Sorbet RBI files;
+> - RBS files;
+> - AST inference fallback.
+>
+> If an external signature cannot be loaded or parsed, Docscribe falls back to normal inference instead of failing.
+
+### RBS
+
+Docscribe can read method signatures from `.rbs` files and use them to generate more accurate parameter and return
+types.
 
 CLI:
 
@@ -351,24 +379,242 @@ CLI:
 docscribe -a --rbs --sig-dir sig lib
 ```
 
+You can pass `--sig-dir` multiple times:
+
+```shell
+docscribe -a --rbs --sig-dir sig --sig-dir vendor/sigs lib
+```
+
 Config:
 
 ```yaml
 rbs:
   enabled: true
-  sig_dirs: [ "sig" ]
+  sig_dirs:
+    - sig
   collapse_generics: false
 ```
 
-> [!NOTE]
-> If `collapse_generics` is set to `true`, Docscribe will simplify generic types from RBS:
-> - `Hash<Symbol, Object>` -> `Hash`
-> - `Array<String>` -> `Array`
+Example:
 
-> [!IMPORTANT]
-> If you run Docscribe via Bundler (`bundle exec docscribe`), you may need to add `gem "rbs"` to your project's
-> Gemfile (or use a Gemfile that includes it) so `require "rbs"` works reliably. If RBS can't be loaded, Docscribe falls
-> back to inference.
+```ruby
+# Ruby source
+class Demo
+  def foo(verbose:, count:)
+    "body says String"
+  end
+end
+```
+
+```ruby.rbs
+# sig/demo.rbs
+class Demo
+    def foo: (verbose: bool, count: Integer) -> Integer
+end
+```
+
+Generated docs will prefer the RBS signature over inferred Ruby types:
+
+```ruby
+
+class Demo
+  # +Demo#foo+ -> Integer
+  #
+  # Method documentation.
+  #
+  # @param [Boolean] verbose Param documentation.
+  # @param [Integer] count Param documentation.
+  # @return [Integer]
+  def foo(verbose:, count:)
+    'body says String'
+  end
+end
+```
+
+### Sorbet
+
+Docscribe can also read Sorbet signatures from:
+
+- inline `sig` declarations in Ruby source
+- RBI files
+
+CLI:
+
+```shell
+docscribe -a --sorbet lib
+```
+
+With RBI directories:
+
+```shell
+docscribe -a --sorbet --rbi-dir sorbet/rbi lib
+```
+
+You can pass `--rbi-dir` multiple times:
+
+```shell
+docscribe -a --sorbet --rbi-dir sorbet/rbi --rbi-dir rbi lib
+```
+
+Config:
+
+```yaml
+sorbet:
+  enabled: true
+  rbi_dirs:
+    - sorbet/rbi
+    - rbi
+  collapse_generics: false
+```
+
+### Inline Sorbet example
+
+```ruby
+
+class Demo
+  extend T::Sig
+
+  sig { params(verbose: T::Boolean, count: Integer).returns(Integer) }
+  def foo(verbose:, count:)
+    'body says String'
+  end
+end
+```
+
+Docscribe will use the Sorbet signature instead of the inferred body type:
+
+```ruby
+
+class Demo
+  extend T::Sig
+
+  # +Demo#foo+ -> Integer
+  #
+  # Method documentation.
+  #
+  # @param [Boolean] verbose Param documentation.
+  # @param [Integer] count Param documentation.
+  # @return [Integer]
+  sig { params(verbose: T::Boolean, count: Integer).returns(Integer) }
+  def foo(verbose:, count:)
+    'body says String'
+  end
+end
+```
+
+### Sorbet RBI example
+
+```ruby
+# Ruby source
+class Demo
+  def foo(verbose:, count:)
+    'body says String'
+  end
+end
+```
+
+```ruby
+# sorbet/rbi/demo.rbi
+class Demo
+  extend T::Sig
+
+  sig { params(verbose: T::Boolean, count: Integer).returns(Integer) }
+  def foo(verbose:, count:); end
+end
+```
+
+With:
+
+```shell
+docscribe -a --sorbet --rbi-dir sorbet/rbi lib
+```
+
+Docscribe will use the RBI signature for generated docs.
+
+### Sorbet comment placement
+
+For methods with a leading Sorbet `sig`, Docscribe treats the signature as part of the method header.
+
+That means:
+
+- new docs are inserted **above the first `sig`**
+- existing docs **above the `sig`** are recognized and merged
+- existing legacy docs **between `sig` and `def`** are also recognized
+
+Example input:
+
+```ruby
+# demo.rb
+class Demo
+  extend T::Sig
+
+  sig { returns(Integer) }
+  def foo
+    1
+  end
+end
+```
+
+Example output:
+
+```ruby
+# demo.rb
+class Demo
+  extend T::Sig
+
+  # +Demo#foo+ -> Integer
+  #
+  # Method documentation.
+  #
+  # @return [Integer]
+  sig { returns(Integer) }
+  def foo
+    1
+  end
+end
+```
+
+### Generic type formatting
+
+Both RBS and Sorbet integrations support `collapse_generics`.
+
+When disabled:
+
+```yaml
+rbs:
+  collapse_generics: false
+
+sorbet:
+  collapse_generics: false
+```
+
+Docscribe preserves generic container details where possible, for example:
+
+- `Array<String>`
+- `Hash<Symbol, Integer>`
+
+When enabled:
+
+```yaml
+rbs:
+  collapse_generics: true
+
+sorbet:
+  collapse_generics: true
+```
+
+Docscribe simplifies container types to their outer names, for example:
+
+- `Array`
+- `Hash`
+
+### Notes and fallback behavior
+
+- External signature support is the **best effort**.
+- If a signature source cannot be loaded or parsed, Docscribe falls back to AST inference.
+- RBS and Sorbet integrations are used only to improve generated types; Docscribe still rewrites Ruby source directly.
+- Sorbet support does not require changing your documentation style — it only improves generated `@param` and `@return`
+  tags when signatures are available.
 
 ## Type inference
 
