@@ -14,8 +14,6 @@ module Docscribe
     #   @return [RestKeywords, nil] info for `**kwargs`
     MethodSignature = Struct.new(:return_type, :param_types, :rest_positional, :rest_keywords, keyword_init: true)
 
-    Signature = MethodSignature
-
     # Simplified representation of an RBS rest-positional parameter.
     #
     # @!attribute name
