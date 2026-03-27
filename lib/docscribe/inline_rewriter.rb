@@ -472,7 +472,7 @@ module Docscribe
         names = {}
 
         Array(lines).each do |line|
-          if (m = line.match(/^\s*#\s*@!attribute\b.*\]\s+(\S+)/))
+          if (m = line.match(/^\s*#\s*@!attribute\b(?:\s+\[[^\]]+\])?\s+(\S+)/))
             names[m[1]] = true
           end
         end

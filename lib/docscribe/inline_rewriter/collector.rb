@@ -35,34 +35,6 @@ module Docscribe
       #   @return [Symbol, nil] included instance visibility under module_function
       # @!attribute anchor_node
       #   @return [Parser::AST::Node] first leading Sorbet `sig` if present, else the method node
-      #
-      # @!attribute [rw] node
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] scope
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] visibility
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] container
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] module_function
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] included_instance_visibility
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] anchor_node
-      #   @return [Object]
-      #   @param [Object] value
       Insertion = Struct.new(:node, :scope, :visibility, :container, :module_function, :included_instance_visibility,
                              :anchor_node)
 
@@ -82,30 +54,6 @@ module Docscribe
       #   @return [Symbol] :r, :w, or :rw (reader/writer/accessor)
       # @!attribute names
       #   @return [Array<Symbol>] attribute names
-      #
-      # @!attribute [rw] node
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] scope
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] visibility
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] container
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] access
-      #   @return [Object]
-      #   @param [Object] value
-      #
-      # @!attribute [rw] names
-      #   @return [Object]
-      #   @param [Object] value
       AttrInsertion = Struct.new(:node, :scope, :visibility, :container, :access, :names)
 
       # Tracks visibility and container state while walking a class/module body.
