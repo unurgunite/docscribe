@@ -562,7 +562,7 @@ module Docscribe
         type = type.to_s
 
         case style.to_s
-        when 'name_first'
+        when 'name_type'
           "#{indent}#   @param #{name} [#{type}]"
         else
           "#{indent}#   @param [#{type}] #{name}"
