@@ -5,8 +5,6 @@ require 'tmpdir'
 require 'rbconfig'
 
 RSpec.describe 'docscribe init' do
-  let(:exe) { File.expand_path('../exe/docscribe', __dir__) }
-
   it 'creates docscribe.yml by default' do
     Dir.mktmpdir do |dir|
       _out, _err, status = Open3.capture3(RbConfig.ruby, exe, 'init', chdir: dir)

@@ -19,8 +19,6 @@ RSpec.describe 'CLI Sorbet support' do
   it 'loads Sorbet RBI signatures from --rbi-dir and uses them for @param/@return' do
     skip_unless_sorbet_bridge_available!
 
-    exe = File.expand_path('../exe/docscribe', __dir__)
-
     Dir.mktmpdir do |dir|
       FileUtils.mkdir_p(File.join(dir, 'sorbet/rbi'))
 
@@ -63,8 +61,6 @@ RSpec.describe 'CLI Sorbet support' do
 
   it 'uses inline sigs from stdin when --sorbet is enabled' do
     skip_unless_sorbet_bridge_available!
-
-    exe = File.expand_path('../exe/docscribe', __dir__)
 
     code = <<~RUBY
       class Demo

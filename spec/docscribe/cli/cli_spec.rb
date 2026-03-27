@@ -4,7 +4,6 @@ require 'open3'
 
 RSpec.describe 'CLI docscribe' do
   it 'reads from --stdin and outputs docs' do
-    exe = File.expand_path('../exe/docscribe', __dir__)
     code = <<~RUBY
       class D; def x; 1; end; end
     RUBY
