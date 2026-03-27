@@ -17,13 +17,15 @@ returns), and respects Ruby visibility semantics — without using YARD to parse
   Sorbet `sig`, new docs are inserted above the first `sig`.
 - Heuristic type inference for params and return values, including conditional returns in rescue branches.
 - Safe and aggressive update modes:
-    - safe mode inserts missing docs, merges existing doc-like blocks, and normalizes sortable tags
-    - aggressive mode rebuilds existing doc blocks
+    - safe mode inserts missing docs, merges existing doc-like blocks, and normalizes sortable tags;
+    - aggressive mode rebuilds existing doc blocks.
 - Ruby 3.4+ syntax supported using Prism translation (see "Parser backend" below).
 - Optional external type integrations:
-    - RBS via `--rbs` / `--sig-dir`
-    - Sorbet via inline `sig` declarations and RBI files with `--sorbet` / `--rbi-dir`
-- Optional `attr_reader`/`attr_writer`/`attr_accessor` documentation via YARD `@!attribute` (see Configuration).
+    - RBS via `--rbs` / `--sig-dir`;
+    - Sorbet via inline `sig` declarations and RBI files with `--sorbet` / `--rbi-dir`.
+- Optional `@!attribute` generation for:
+    - `attr_reader` / `attr_writer` / `attr_accessor`;
+    - `Struct.new` declarations in both constant-assigned and class-based styles.
 
 Common workflows:
 
@@ -69,7 +71,12 @@ Common workflows:
     * [API (library) usage](#api-library-usage)
     * [Configuration](#configuration)
         * [Filtering](#filtering)
-        * [Attribute macros (`attr_*`)](#attribute-macros-attr_)
+        * [`attr_*` example](#attr_-example)
+        * [`Struct.new` examples](#structnew-examples)
+            * [Constant-assigned struct](#constant-assigned-struct)
+            * [Class-based struct](#class-based-struct)
+        * [Merge behavior](#merge-behavior)
+        * [Param tag style](#param-tag-style)
         * [Create a starter config](#create-a-starter-config)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
@@ -470,7 +477,6 @@ sorbet:
 ### Inline Sorbet example
 
 ```ruby
-
 class Demo
   extend T::Sig
 
@@ -484,7 +490,6 @@ end
 Docscribe will use the Sorbet signature instead of the inferred body type:
 
 ```ruby
-
 class Demo
   extend T::Sig
 
@@ -749,51 +754,129 @@ docscribe --exclude-file '/^spec\//' lib
 > `/regex/` passed to `--include`/`--exclude` is treated as a **method-id** pattern. Use `--include-file` /
 `--exclude-file` for file regex filters.
 
-### Attribute macros (`attr_*`)
-
-Docscribe can generate YARD `@!attribute` directives above `attr_reader`, `attr_writer`, and `attr_accessor`.
-
-Enable it:
+Enable attribute-style documentation generation with:
 
 ```yaml
 emit:
   attributes: true
 ```
 
-Example:
+When enabled, Docscribe can generate YARD `@!attribute` docs for:
 
-```ruby
-class User
-  attr_reader :name
+- `attr_reader`
+- `attr_writer`
+- `attr_accessor`
+- `Struct.new` declarations
 
-  private
-
-  attr_accessor :token
-end
-```
-
-Becomes:
-
-```ruby
-class User
-  # @!attribute [r] name
-  #   @return [Object]
-  attr_reader :name
-
-  private
-
-  # @!attribute [rw] token
-  # @private
-  #   @return [Object]
-  #   @param value [Object]
-  attr_accessor :token
-end
-```
+### `attr_*` example
 
 > [!NOTE]
 > - Attribute docs are inserted above the `attr_*` call, not above generated methods (since they don’t exist as `def`
     nodes).
 > - If RBS is enabled, Docscribe will try to use the RBS return type of the reader method as the attribute type.
+
+```ruby
+class User
+  attr_accessor :name
+end
+```
+
+Generated docs:
+
+```ruby
+class User
+  # @!attribute [rw] name
+  #   @return [Object]
+  #   @param [Object] value
+  attr_accessor :name
+end
+```
+
+### `Struct.new` examples
+
+Docscribe supports both common `Struct.new` declaration styles.
+
+#### Constant-assigned struct
+
+```ruby
+User = Struct.new(:name, :email, keyword_init: true)
+```
+
+Generated docs:
+
+```ruby
+# @!attribute [rw] name
+#   @return [Object]
+#   @param [Object] value
+#
+# @!attribute [rw] email
+#   @return [Object]
+#   @param [Object] value
+User = Struct.new(:name, :email, keyword_init: true)
+```
+
+#### Class-based struct
+
+```ruby
+class User < Struct.new(:name, :email, keyword_init: true)
+end
+```
+
+Generated docs:
+
+```ruby
+# @!attribute [rw] name
+#   @return [Object]
+#   @param [Object] value
+#
+# @!attribute [rw] email
+#   @return [Object]
+#   @param [Object] value
+class User < Struct.new(:name, :email, keyword_init: true)
+end
+```
+
+Docscribe preserves the original declaration style and does not rewrite one form into the other.
+
+### Merge behavior
+
+Struct member docs use the same attribute documentation pipeline as `attr_*` macros, which means they participate in the
+normal safe/aggressive rewrite flow.
+
+In safe mode, Docscribe can:
+
+- insert full `@!attribute` docs when no doc-like block exists
+- append missing struct member docs into an existing doc-like block
+
+### Param tag style
+
+Generated writer-style attribute docs respect `doc.param_tag_style`.
+
+For example, with:
+
+```yaml
+doc:
+  param_tag_style: "type_name"
+```
+
+writer params are emitted as:
+
+```ruby
+#   @param [Object] value
+```
+
+With:
+
+```yaml
+doc:
+  param_tag_style: "name_first"
+```
+
+they are emitted as:
+
+```ruby
+#   @param value [Object]
+```
 
 ### Create a starter config
 
