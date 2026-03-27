@@ -180,7 +180,8 @@ module Docscribe
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
       # @return [void]
-      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, changes:, file:)
+      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, changes:,
+                                  file:)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
@@ -430,6 +431,7 @@ module Docscribe
       # @return [String, nil]
       def build_attr_merge_additions(ins, existing_lines:, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
+        param_tag_style = config.param_tag_style
         existing = existing_attr_names(existing_lines)
         missing = ins.names.reject { |name_sym| existing[name_sym.to_s] }
         return '' if missing.empty?
@@ -450,7 +452,9 @@ module Docscribe
           end
 
           lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
-          lines << "#{indent}#   @param value [#{attr_type}]" if %i[w rw].include?(ins.access)
+          if %i[w rw].include?(ins.access)
+            lines << format_attribute_param_tag(indent, 'value', attr_type, style: param_tag_style)
+          end
           lines << "#{indent}#" if idx < missing.length - 1
         end
 
@@ -468,7 +472,7 @@ module Docscribe
         names = {}
 
         Array(lines).each do |line|
-          if (m = line.match(/^\s*#\s*@!attribute\b.*\]\s+(\S+)/))
+          if (m = line.match(/^\s*#\s*@!attribute\b(?:\s+\[[^\]]+\])?\s+(\S+)/))
             names[m[1]] = true
           end
         end
@@ -518,6 +522,7 @@ module Docscribe
       # @return [String, nil]
       def build_attr_doc_for_node(ins, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
+        param_tag_style = config.param_tag_style
         lines = []
 
         ins.names.each_with_index do |name_sym, idx|
@@ -533,7 +538,9 @@ module Docscribe
           end
 
           lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
-          lines << "#{indent}#   @param value [#{attr_type}]" if %i[w rw].include?(ins.access)
+          if %i[w rw].include?(ins.access)
+            lines << format_attribute_param_tag(indent, 'value', attr_type, style: param_tag_style)
+          end
 
           lines << "#{indent}#" if idx < ins.names.length - 1
         end
@@ -541,6 +548,25 @@ module Docscribe
         lines.map { |l| "#{l}\n" }.join
       rescue StandardError
         nil
+      end
+
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] indent Param documentation.
+      # @param [Object] name Param documentation.
+      # @param [Object] type Param documentation.
+      # @param [Object] style Param documentation.
+      # @return [String]
+      def format_attribute_param_tag(indent, name, type, style:)
+        type = type.to_s
+
+        case style.to_s
+        when 'name_first'
+          "#{indent}#   @param #{name} [#{type}]"
+        else
+          "#{indent}#   @param [#{type}] #{name}"
+        end
       end
 
       # Determine the attribute type for one attr name.

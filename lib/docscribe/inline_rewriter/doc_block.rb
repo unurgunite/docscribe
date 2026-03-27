@@ -17,6 +17,33 @@ module Docscribe
       # `kind` is:
       # - `:tag` for a sortable top-level tag entry
       # - `:other` for prose/separators/non-sortable content
+      # @!attribute [rw] kind
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] tag
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] lines
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] subject
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] option_owner
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] generated
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] index
+      #   @return [Object]
+      #   @param [Object] value
       Entry = Struct.new(
         :kind,
         :tag,

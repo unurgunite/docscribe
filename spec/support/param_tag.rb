@@ -7,15 +7,19 @@ module ParamTag
   # @param [Object] type Param documentation.
   # @param [Config] config Param documentation.
   # @param [String] description Param documentation.
+  # @param [Integer] space_size Param documentation.
+  # @param [Boolean] struct Param documentation.
   # @return [String]
-  def param_tag(name, type, config: Docscribe::Config.new, description: 'Param documentation.')
+  def param_tag(name, type, config: Docscribe::Config.new, description: 'Param documentation.', space_size: 1,
+                struct: false)
     style = config.raw.dig('doc', 'param_tag_style') || 'type_name'
 
+    desc = struct ? '' : " #{description}"
     case style
     when 'name_type'
-      "# @param #{name} [#{type}] #{description}"
+      "##{' ' * space_size}@param #{name} [#{type}]#{desc}"
     when 'type_name'
-      "# @param [#{type}] #{name} #{description}"
+      "##{' ' * space_size}@param [#{type}] #{name}#{desc}"
     end
   end
 end

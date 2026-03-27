@@ -109,7 +109,7 @@ module Docscribe
     #
     # Supported values:
     # - `"type_name"` => `@param [String] name`
-    # - `"name_first"` => `@param name [String]`
+    # - `"name_type"` => `@param name [String]`
     #
     # @return [String]
     def param_tag_style

@@ -12,6 +12,25 @@ module Docscribe
       module_function
 
       # One sortable top-level tag entry plus its continuation lines.
+      # @!attribute [rw] tag
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] lines
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] param_name
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] option_owner
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] index
+      #   @return [Object]
+      #   @param [Object] value
       Entry = Struct.new(:tag, :lines, :param_name, :option_owner, :index, keyword_init: true)
 
       # Sort contiguous top-level tag runs according to configured tag order.

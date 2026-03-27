@@ -8,10 +8,8 @@ module Docscribe
   class Config
     # Raw config hash after deep-merging user config with defaults.
     #
-    # @return [Hash]
-    #
     # @!attribute [r] raw
-    #   @return [Object]
+    #   @return [Hash]
     attr_reader :raw
 
     # Create a configuration object from a raw config hash.
