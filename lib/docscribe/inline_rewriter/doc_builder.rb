@@ -46,7 +46,10 @@ module Docscribe
           name: name
         )
 
-        params_lines = build_params_lines(node, indent, external_sig: external_sig, config: config) if config.emit_param_tags?
+        if config.emit_param_tags?
+          params_lines = build_params_lines(node, indent, external_sig: external_sig,
+                                                          config: config)
+        end
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
 
         returns_spec = Docscribe::Infer.returns_spec_from_node(

@@ -180,7 +180,8 @@ module Docscribe
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
       # @return [void]
-      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, changes:, file:)
+      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, changes:,
+                                  file:)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
@@ -451,7 +452,9 @@ module Docscribe
           end
 
           lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
-          lines << format_attribute_param_tag(indent, 'value', attr_type, style: param_tag_style) if %i[w rw].include?(ins.access)
+          if %i[w rw].include?(ins.access)
+            lines << format_attribute_param_tag(indent, 'value', attr_type, style: param_tag_style)
+          end
           lines << "#{indent}#" if idx < missing.length - 1
         end
 
@@ -535,7 +538,9 @@ module Docscribe
           end
 
           lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
-          lines << format_attribute_param_tag(indent, 'value', attr_type, style: param_tag_style) if %i[w rw].include?(ins.access)
+          if %i[w rw].include?(ins.access)
+            lines << format_attribute_param_tag(indent, 'value', attr_type, style: param_tag_style)
+          end
 
           lines << "#{indent}#" if idx < ins.names.length - 1
         end

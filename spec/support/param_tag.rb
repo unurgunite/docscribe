@@ -8,7 +8,8 @@ module ParamTag
   # @param [Config] config Param documentation.
   # @param [String] description Param documentation.
   # @return [String]
-  def param_tag(name, type, config: Docscribe::Config.new, description: 'Param documentation.', space_size: 1, struct: false)
+  def param_tag(name, type, config: Docscribe::Config.new, description: 'Param documentation.', space_size: 1,
+                struct: false)
     style = config.raw.dig('doc', 'param_tag_style') || 'type_name'
 
     desc = struct ? '' : " #{description}"
