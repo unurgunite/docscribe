@@ -550,6 +550,14 @@ module Docscribe
         nil
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] indent Param documentation.
+      # @param [Object] name Param documentation.
+      # @param [Object] type Param documentation.
+      # @param [Object] style Param documentation.
+      # @return [String]
       def format_attribute_param_tag(indent, name, type, style:)
         type = type.to_s
 

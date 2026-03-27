@@ -35,6 +35,34 @@ module Docscribe
       #   @return [Symbol, nil] included instance visibility under module_function
       # @!attribute anchor_node
       #   @return [Parser::AST::Node] first leading Sorbet `sig` if present, else the method node
+      #
+      # @!attribute [rw] node
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] scope
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] visibility
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] container
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] module_function
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] included_instance_visibility
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] anchor_node
+      #   @return [Object]
+      #   @param [Object] value
       Insertion = Struct.new(:node, :scope, :visibility, :container, :module_function, :included_instance_visibility,
                              :anchor_node)
 
@@ -54,6 +82,30 @@ module Docscribe
       #   @return [Symbol] :r, :w, or :rw (reader/writer/accessor)
       # @!attribute names
       #   @return [Array<Symbol>] attribute names
+      #
+      # @!attribute [rw] node
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] scope
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] visibility
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] container
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] access
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] names
+      #   @return [Object]
+      #   @param [Object] value
       AttrInsertion = Struct.new(:node, :scope, :visibility, :container, :access, :names)
 
       # Tracks visibility and container state while walking a class/module body.
@@ -226,6 +278,10 @@ module Docscribe
         node
       end
 
+      # Method documentation.
+      #
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def on_casgn(node)
         return node if process_struct_casgn(node)
 
@@ -345,6 +401,12 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] super_node Param documentation.
+      # @return [Object]
       def process_struct_class(node, super_node)
         return unless struct_new_node?(super_node)
 
@@ -361,6 +423,11 @@ module Docscribe
         )
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Boolean]
       def process_struct_casgn(node)
         _scope, _name, value = *node
         return false unless struct_new_node?(value)
@@ -380,6 +447,11 @@ module Docscribe
         true
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def struct_new_node?(node)
         return false unless node.is_a?(Parser::AST::Node)
         return false unless node.type == :send
@@ -392,6 +464,11 @@ module Docscribe
         %w[Struct ::Struct].include?(recv_name)
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] struct_new_node Param documentation.
+      # @return [Object]
       def extract_struct_member_names(struct_new_node)
         _recv, _meth, *args = *struct_new_node
 
@@ -404,6 +481,11 @@ module Docscribe
         args.map { |arg| extract_name_sym(arg) }.compact
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def struct_container_name(node)
         scope, name, _value = *node
 

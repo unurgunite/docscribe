@@ -7,6 +7,8 @@ module ParamTag
   # @param [Object] type Param documentation.
   # @param [Config] config Param documentation.
   # @param [String] description Param documentation.
+  # @param [Integer] space_size Param documentation.
+  # @param [Boolean] struct Param documentation.
   # @return [String]
   def param_tag(name, type, config: Docscribe::Config.new, description: 'Param documentation.', space_size: 1,
                 struct: false)
