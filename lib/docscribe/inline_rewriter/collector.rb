@@ -183,12 +183,13 @@ module Docscribe
       # @param [Parser::AST::Node] node
       # @return [Parser::AST::Node]
       def on_class(node)
-        cname_node, _super_node, body = *node
+        cname_node, super_node, body = *node
         @name_stack.push(const_name(cname_node))
 
         ctx = VisibilityCtx.new
         ctx.container_is_module = false
 
+        process_struct_class(node, super_node)
         process_body(body, ctx)
 
         @name_stack.pop
@@ -222,6 +223,16 @@ module Docscribe
         end
 
         @name_stack.pop
+        node
+      end
+
+      def on_casgn(node)
+        return node if process_struct_casgn(node)
+
+        node.children.each do |child|
+          process(child) if child.is_a?(Parser::AST::Node)
+        end
+
         node
       end
 
@@ -309,6 +320,13 @@ module Docscribe
           # NOTE: we intentionally do NOT reset default_class_vis here; we inherit via ctx.dup.
           process_body(body, inner_ctx)
 
+        when :casgn
+          if process_struct_casgn(node)
+            # handled
+          else
+            process(node)
+          end
+
         when :send
           if process_attr_send(node, ctx)
             # handled
@@ -325,6 +343,80 @@ module Docscribe
         else
           process(node)
         end
+      end
+
+      def process_struct_class(node, super_node)
+        return unless struct_new_node?(super_node)
+
+        names = extract_struct_member_names(super_node)
+        return if names.empty?
+
+        @attr_insertions << AttrInsertion.new(
+          node,          # insert above the class declaration
+          :instance,     # struct members are instance readers/writers
+          :public,       # Struct fields are public by default
+          current_container,
+          :rw,
+          names
+        )
+      end
+
+      def process_struct_casgn(node)
+        _scope, _name, value = *node
+        return false unless struct_new_node?(value)
+
+        names = extract_struct_member_names(value)
+        return true if names.empty?
+
+        @attr_insertions << AttrInsertion.new(
+          node, # insert above the constant assignment
+          :instance,
+          :public,
+          struct_container_name(node),
+          :rw,
+          names
+        )
+
+        true
+      end
+
+      def struct_new_node?(node)
+        return false unless node.is_a?(Parser::AST::Node)
+        return false unless node.type == :send
+
+        recv, meth, *_args = *node
+        return false unless meth == :new
+        return false unless recv&.type == :const
+
+        recv_name = const_name(recv)
+        %w[Struct ::Struct].include?(recv_name)
+      end
+
+      def extract_struct_member_names(struct_new_node)
+        _recv, _meth, *args = *struct_new_node
+
+        # Drop trailing keyword/options hash, e.g. keyword_init: true
+        args = args.reject { |arg| arg.is_a?(Parser::AST::Node) && arg.type == :hash }
+
+        # Support Struct.new("Foo", :a, :b)
+        args = args.drop(1) if args.length >= 2 && args.first.is_a?(Parser::AST::Node) && args.first.type == :str
+
+        args.map { |arg| extract_name_sym(arg) }.compact
+      end
+
+      def struct_container_name(node)
+        scope, name, _value = *node
+
+        prefix =
+          if scope
+            const_name(scope)
+          elsif current_container == 'Object'
+            nil
+          else
+            current_container
+          end
+
+        [prefix, name.to_s].compact.reject(&:empty?).join('::')
       end
 
       # Method documentation.

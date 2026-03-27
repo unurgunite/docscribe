@@ -430,6 +430,7 @@ module Docscribe
       # @return [String, nil]
       def build_attr_merge_additions(ins, existing_lines:, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
+        param_tag_style = config.param_tag_style
         existing = existing_attr_names(existing_lines)
         missing = ins.names.reject { |name_sym| existing[name_sym.to_s] }
         return '' if missing.empty?
@@ -450,7 +451,7 @@ module Docscribe
           end
 
           lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
-          lines << "#{indent}#   @param value [#{attr_type}]" if %i[w rw].include?(ins.access)
+          lines << format_attribute_param_tag(indent, 'value', attr_type, style: param_tag_style) if %i[w rw].include?(ins.access)
           lines << "#{indent}#" if idx < missing.length - 1
         end
 
@@ -518,6 +519,7 @@ module Docscribe
       # @return [String, nil]
       def build_attr_doc_for_node(ins, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
+        param_tag_style = config.param_tag_style
         lines = []
 
         ins.names.each_with_index do |name_sym, idx|
@@ -533,7 +535,7 @@ module Docscribe
           end
 
           lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
-          lines << "#{indent}#   @param value [#{attr_type}]" if %i[w rw].include?(ins.access)
+          lines << format_attribute_param_tag(indent, 'value', attr_type, style: param_tag_style) if %i[w rw].include?(ins.access)
 
           lines << "#{indent}#" if idx < ins.names.length - 1
         end
@@ -541,6 +543,17 @@ module Docscribe
         lines.map { |l| "#{l}\n" }.join
       rescue StandardError
         nil
+      end
+
+      def format_attribute_param_tag(indent, name, type, style:)
+        type = type.to_s
+
+        case style.to_s
+        when 'name_first'
+          "#{indent}#   @param #{name} [#{type}]"
+        else
+          "#{indent}#   @param [#{type}] #{name}"
+        end
       end
 
       # Determine the attribute type for one attr name.

@@ -33,7 +33,7 @@ RSpec.describe 'attr_* documentation' do
 
     expect(out).to include('# @!attribute [rw] name')
     expect(out).to include('#   @return [Object]')
-    expect(out).to include('#   @param value [Object]')
+    expect(out).to include(param_tag('value', 'Object', space_size: 3, struct: true).to_s)
   end
 
   it 'adds @private for private attr_reader when emit.visibility_tags is enabled' do

@@ -33,7 +33,7 @@ module Docscribe
       def line_start_range(buffer, node)
         start_pos = node.loc.expression.begin_pos
         src = buffer.source
-        bol = src.rindex("\n", start_pos - 1) || -1
+        bol = start_pos <= 0 ? -1 : src.rindex("\n", start_pos - 1) || -1
         Parser::Source::Range.new(buffer, bol + 1, bol + 1)
       end
 

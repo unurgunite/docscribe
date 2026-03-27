@@ -59,7 +59,7 @@ module Docscribe
 
           # Style for generated @param tags:
           # - type_name => @param [Type] name
-          # - name_first => @param name [Type]
+          # - name_type => @param name [Type]
           param_tag_style: "type_name"
 
           # Sort generated / merged tags in safe mode when possible.
