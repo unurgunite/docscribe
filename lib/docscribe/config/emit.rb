@@ -122,5 +122,21 @@ module Docscribe
     def param_documentation
       raw.dig('doc', 'param_documentation') || DEFAULT.dig('doc', 'param_documentation')
     end
+
+    # Whether to include the default placeholder line:
+    #   # Method documentation.
+    #
+    # @return [Boolean]
+    def include_default_message?
+      fetch_bool(%w[emit include_default_message], true)
+    end
+
+    # Whether to append placeholder text to generated @param tags:
+    #   # @param [String] name Param documentation.
+    #
+    # @return [Boolean]
+    def include_param_documentation?
+      fetch_bool(%w[emit include_param_documentation], true)
+    end
   end
 end

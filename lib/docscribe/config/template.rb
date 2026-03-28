@@ -28,7 +28,15 @@ module Docscribe
           # Emit the header line:
           #
           #   +MyClass#my_method+ -> ReturnType
-          header: true
+          header: false
+
+          # Whether to include the default placeholder line:
+          #   # Method documentation.
+          include_default_message: true
+
+          # Whether to append placeholder text to generated @param tags:
+          #   # @param [String] name Param documentation.
+          include_param_documentation: true
 
           # Emit @param tags.
           param_tags: true
