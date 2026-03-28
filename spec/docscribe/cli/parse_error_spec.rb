@@ -6,8 +6,6 @@ require 'fileutils'
 require 'rbconfig'
 
 RSpec.describe 'CLI parse error handling' do
-  let(:exe) { File.expand_path('../exe/docscribe', __dir__) }
-
   it 'continues when one file has a syntax error and exits non-zero' do
     Dir.mktmpdir do |dir|
       File.write(File.join(dir, 'a_bad.rb'), <<~RUBY)

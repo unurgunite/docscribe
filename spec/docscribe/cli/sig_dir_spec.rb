@@ -13,8 +13,6 @@ RSpec.describe 'CLI --sig-dir' do
       skip 'RBS not available'
     end
 
-    exe = File.expand_path('../exe/docscribe', __dir__)
-
     Dir.mktmpdir do |dir|
       FileUtils.mkdir_p(File.join(dir, 'sig'))
 

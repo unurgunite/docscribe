@@ -29,18 +29,10 @@ returns), and respects Ruby visibility semantics — without using YARD to parse
 
 Common workflows:
 
-- Inspect what safe doc updates would be applied:
-  `docscribe lib`
-
-- Apply safe doc updates:
-  `docscribe -a lib`
-
-- Apply aggressive doc updates:
-  `docscribe -A lib`
-
-- Use RBS signatures when available:
-  `docscribe -a --rbs --sig-dir sig lib`
-
+- Inspect what safe doc updates would be applied: `docscribe lib`
+- Apply safe doc updates: `docscribe -a lib`
+- Apply aggressive doc updates: `docscribe -A lib`
+- Use RBS signatures when available: `docscribe -a --rbs --sig-dir sig lib`
 - Use Sorbet signatures when available: `docscribe -a --sorbet --rbi-dir sorbet/rbi lib`
 
 ## Contents
@@ -266,12 +258,12 @@ If you pass no files and don’t use `--stdin`, Docscribe processes the current 
 
 - Apply safe updates:
   ```shell
-  docscribe -a lib/**/*.rb
+  docscribe -a lib
   ```
 
 - Apply aggressive updates:
   ```shell
-  docscribe -A lib/**/*.rb
+  docscribe -A lib
   ```
 
 - Preview output for a single file via STDIN:
@@ -869,7 +861,7 @@ With:
 
 ```yaml
 doc:
-  param_tag_style: "name_first"
+  param_tag_style: "name_type"
 ```
 
 they are emitted as:
@@ -910,21 +902,21 @@ Fail the build if files would need safe updates:
 
 ```yaml
 - name: Check inline docs
-  run: docscribe lib/**/*.rb
+  run: docscribe lib
 ```
 
 Apply safe fixes before the test stage:
 
 ```yaml
 - name: Apply safe inline docs
-  run: docscribe -a lib/**/*.rb
+  run: docscribe -a lib
 ```
 
 Aggressively rebuild docs:
 
 ```yaml
 - name: Rebuild inline docs
-  run: docscribe -A lib/**/*.rb
+  run: docscribe -A lib
 ```
 
 ## Comparison to YARD's parser
@@ -952,10 +944,12 @@ yard doc -o docs
 
 ## Roadmap
 
-- Recognize more common APIs for return inference (`Time.now`, `File.read`, `JSON.parse`).
-- More configurable generation and formatting rules.
-- Editor integration for on-save inline docs.
-- Internal strategy API cleanup.
+- Effective config dump;
+- JSON output;
+- Overload-aware signature selection;
+- Manual `@!attribute` merge policy;
+- Richer inference for common APIs;
+- Editor integration.
 
 ## Contributing
 

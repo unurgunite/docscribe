@@ -5,8 +5,6 @@ require 'tmpdir'
 require 'rbconfig'
 
 RSpec.describe 'CLI -a' do
-  let(:exe) { File.expand_path('../exe/docscribe', __dir__) }
-
   it 'applies safe doc updates in place' do
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'abc.rb')

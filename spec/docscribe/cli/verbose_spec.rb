@@ -5,8 +5,6 @@ require 'tmpdir'
 require 'rbconfig'
 
 RSpec.describe 'CLI --verbose' do
-  let(:exe) { File.expand_path('../exe/docscribe', __dir__) }
-
   it 'prints per-file actions in inspect mode' do
     Dir.mktmpdir do |dir|
       File.write(File.join(dir, 'a_ok.rb'), <<~RUBY)
