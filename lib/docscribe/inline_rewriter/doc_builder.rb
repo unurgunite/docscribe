@@ -68,8 +68,10 @@ module Docscribe
           lines << "#{indent}#"
         end
 
-        lines << "#{indent}# #{config.default_message(scope, visibility)}"
-        lines << "#{indent}#"
+        if config.include_default_message?
+          lines << "#{indent}# #{config.default_message(scope, visibility)}"
+          lines << "#{indent}#"
+        end
 
         if config.emit_visibility_tags?
           case visibility
@@ -380,7 +382,7 @@ module Docscribe
         fallback_type = config.fallback_type
         treat_options_keyword_as_hash = config.treat_options_keyword_as_hash?
         param_tag_style = config.param_tag_style
-        param_documentation = config.param_documentation
+        param_documentation = config.include_param_documentation? ? config.param_documentation : ''
 
         args =
           case node.type
