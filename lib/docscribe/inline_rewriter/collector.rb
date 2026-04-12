@@ -240,6 +240,39 @@ module Docscribe
         node
       end
 
+      # Enter a top-level method definition and collect it as a documentation target.
+      #
+      # Top-level methods implicitly belong to +Object+. This handler ensures
+      # that +def foo+ declared outside of any class or module is still picked
+      # up by the collector.
+      #
+      # @param [Parser::AST::Node] node
+      # @return [Parser::AST::Node]
+      def on_def(node)
+        return node unless @name_stack.empty?
+
+        ctx = VisibilityCtx.new
+        ctx.container_is_module = false
+        process_stmt(node, ctx)
+        node
+      end
+
+      # Enter a top-level singleton method definition and collect it as a documentation target.
+      #
+      # Handles the case of +def self.foo+ declared at the top level, outside
+      # of any class or module body.
+      #
+      # @param [Parser::AST::Node] node
+      # @return [Parser::AST::Node]
+      def on_defs(node)
+        return node unless @name_stack.empty?
+
+        ctx = VisibilityCtx.new
+        ctx.container_is_module = false
+        process_stmt(node, ctx)
+        node
+      end
+
       private
 
       # Method documentation.
