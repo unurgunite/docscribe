@@ -19,7 +19,8 @@ module Docscribe
         rbs: false,
         sig_dirs: [],
         sorbet: false,
-        rbi_dirs: []
+        rbi_dirs: [],
+        rbs_collection: false
       }.freeze
 
       module_function
@@ -65,6 +66,7 @@ module Docscribe
                     --sig-dir DIR              Add an RBS signature directory (repeatable). Implies `--rbs`.
                     --sorbet                   Use Sorbet signatures from inline sigs / RBI files when available
                     --rbi-dir DIR              Add a Sorbet RBI directory (repeatable). Implies --sorbet.
+                    --rbs-collection           Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.
 
             Filtering:
                     --include PATTERN          Include PATTERN (method id or file path; glob or /regex/)
@@ -113,6 +115,11 @@ module Docscribe
           opts.on('--rbi-dir DIR', 'Add a Sorbet RBI directory (repeatable). Implies --sorbet.') do |v|
             options[:sorbet] = true
             options[:rbi_dirs] << v
+          end
+
+          opts.on('--rbs-collection', 'Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.') do
+            options[:rbs] = true
+            options[:rbs_collection] = true
           end
 
           opts.on('--include PATTERN', 'Include PATTERN (method id or file path; glob or /regex/)') do |v|

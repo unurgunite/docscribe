@@ -22,13 +22,14 @@ module Docscribe
       # @return [Docscribe::Config] merged effective config
       def build(base, options)
         needs_override =
-          options[:include].any? ||
-          options[:exclude].any? ||
+          options[:include].any?      ||
+          options[:exclude].any?      ||
           options[:include_file].any? ||
           options[:exclude_file].any? ||
-          options[:rbs] ||
-          options[:sig_dirs].any? ||
-          options[:sorbet] ||
+          options[:rbs]               ||
+          options[:rbs_collection]    ||
+          options[:sig_dirs].any?     ||
+          options[:sorbet]            ||
           options[:rbi_dirs].any?
 
         return base unless needs_override
@@ -47,6 +48,17 @@ module Docscribe
           raw['rbs'] ||= {}
           raw['rbs']['enabled'] = true
           raw['rbs']['sig_dirs'] = Array(raw['rbs']['sig_dirs']) + options[:sig_dirs] if options[:sig_dirs].any?
+
+          if options[:rbs_collection]
+            require 'docscribe/types/rbs/collection_loader'
+            collection_path = Docscribe::Types::RBS::CollectionLoader.resolve
+            if collection_path
+              raw['rbs']['sig_dirs'] = Array(raw['rbs']['sig_dirs']) + [collection_path]
+            else
+              warn 'Docscribe: rbs_collection.lock.yaml not found or collection not installed. ' \
+                   'Run `bundle exec rbs collection install` first.'
+            end
+          end
         end
 
         if options[:sorbet] || options[:rbi_dirs].any?

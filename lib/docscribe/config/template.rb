@@ -155,6 +155,11 @@ module Docscribe
           # - Hash<Symbol, String> => Hash
           # - Array<Integer>       => Array
           collapse_generics: false
+          # Auto-discover RBS collection from rbs_collection.lock.yaml.
+          # Equivalent to --rbs-collection CLI flag.
+          # Requires `bundle exec rbs collection install` to have been run.
+          #
+          collection: false
 
         sorbet:
           # Optional: use Sorbet signatures from inline `sig` declarations and

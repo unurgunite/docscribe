@@ -6,16 +6,6 @@ require 'fileutils'
 require 'rbconfig'
 
 RSpec.describe 'CLI Sorbet support' do
-  def skip_unless_sorbet_bridge_available!
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
-    end
-
-    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
-  end
-
   it 'loads Sorbet RBI signatures from --rbi-dir and uses them for @param/@return' do
     skip_unless_sorbet_bridge_available!
 

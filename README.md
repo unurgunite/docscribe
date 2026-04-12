@@ -32,6 +32,7 @@ Common workflows:
 - Inspect what safe doc updates would be applied: `docscribe lib`
 - Apply safe doc updates: `docscribe -a lib`
 - Apply aggressive doc updates: `docscribe -A lib`
+- Use RBS gem collection signatures: `docscribe -a --rbs-collection lib`
 - Use RBS signatures when available: `docscribe -a --rbs --sig-dir sig lib`
 - Use Sorbet signatures when available: `docscribe -a --sorbet --rbi-dir sorbet/rbi lib`
 
@@ -51,6 +52,7 @@ Common workflows:
     * [Parser backend (Parser gem vs Prism)](#parser-backend-parser-gem-vs-prism)
     * [External type integrations (optional)](#external-type-integrations-optional)
         * [RBS](#rbs)
+            * [RBS collection auto-discovery](#rbs-collection-auto-discovery)
         * [Sorbet](#sorbet)
         * [Inline Sorbet example](#inline-sorbet-example)
         * [Sorbet RBI example](#sorbet-rbi-example)
@@ -104,7 +106,6 @@ Requires Ruby 2.7+.
 Given code:
 
 ```ruby
-
 class Demo
   def foo(a, options: {})
     42
@@ -213,6 +214,11 @@ If you pass no files and don’t use `--stdin`, Docscribe processes the current 
 - `-A`, `--autocorrect-all`  
   Apply aggressive doc updates in place.
 
+- `--rbs-collection`  
+  Auto-discover the RBS collection directory from `rbs_collection.lock.yaml`.  
+  Reads the `path:` field written by `bundle exec rbs collection install` and adds  
+  it to the signature search path automatically. Implies `--rbs`.
+
 - `--stdin`  
   Read source from STDIN and print rewritten output.
 
@@ -274,6 +280,16 @@ If you pass no files and don’t use `--stdin`, Docscribe processes the current 
 - Use RBS signatures:
   ```shell
   docscribe -a --rbs --sig-dir sig lib
+  ```
+
+- Use RBS signatures with auto-discovered gem collection:
+  ```shell
+  docscribe -a --rbs-collection lib
+  ```
+
+- Combine collection auto-discovery with a custom sig directory:
+  ```shell
+  docscribe -a --rbs-collection --sig-dir sig lib
   ```
 
 - Show detailed reasons for files that would change:
@@ -415,7 +431,6 @@ end
 Generated docs will prefer the RBS signature over inferred Ruby types:
 
 ```ruby
-
 class Demo
   # +Demo#foo+ -> Integer
   #
@@ -429,6 +444,50 @@ class Demo
   end
 end
 ```
+
+#### RBS collection auto-discovery
+
+If your project uses [`rbs collection`](https://github.com/ruby/rbs/blob/master/docs/collection.md),
+Docscribe can discover the installed gem signatures automatically without requiring
+you to pass `--sig-dir` manually.
+
+**Setup:**
+
+```shell
+# 1. Initialize the collection config (one-time)
+bundle exec rbs collection init
+
+# 2. Install gem signatures
+bundle exec rbs collection install
+```
+
+This produces `rbs_collection.lock.yaml` and `.gem_rbs_collection/` in your project root.
+
+**Usage:**
+
+```shell
+docscribe -a --rbs-collection lib
+```
+
+Docscribe reads the `path:` field from `rbs_collection.lock.yaml` and adds the
+resolved directory to the signature search path. If no `path:` is set, it falls
+back to `.gem_rbs_collection`.
+
+You can combine `--rbs-collection` with `--sig-dir` to mix gem signatures with your own:
+
+```shell
+docscribe -a --rbs-collection --sig-dir sig lib
+```
+
+> [!NOTE]
+> `--rbs-collection` only improves types for methods defined in gems that ship RBS
+> signatures. For your own classes, provide a `sig/` directory with hand-written or
+> generated `.rbs` files.
+
+> [!IMPORTANT]
+> If `rbs_collection.lock.yaml` is missing or the collection directory does not exist
+> on disk, Docscribe will print a warning and skip the collection. Run
+> `bundle exec rbs collection install` first.
 
 ### Sorbet
 
@@ -944,6 +1003,8 @@ yard doc -o docs
 
 ## Roadmap
 
+- Plugin system for custom documentation formats;
+- Method behavior inference from AST;
 - Effective config dump;
 - JSON output;
 - Overload-aware signature selection;
