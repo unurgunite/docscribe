@@ -83,6 +83,7 @@ RSpec.describe 'RBS integration' do
 
   context 'when sig_dir has nested collection-like structure' do
     it 'resolves types from nested subdirectories' do
+      require 'docscribe/types/rbs/provider' if Gem::Version.new(RUBY_VERSION) < Gem::Version.new('3.0')
       # .gem_rbs_collection/my_gem/1.0/my_gem.rbs
       Dir.mktmpdir do |root|
         nested = File.join(root, 'my_gem', '1.0')
