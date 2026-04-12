@@ -80,4 +80,26 @@ RSpec.describe 'RBS integration' do
     expect(out).to include('# @return [Integer]')
     expect(out).not_to include('# @return [String]')
   end
+
+  context 'when sig_dir has nested collection-like structure' do
+    it 'resolves types from nested subdirectories' do
+      # .gem_rbs_collection/my_gem/1.0/my_gem.rbs
+      Dir.mktmpdir do |root|
+        nested = File.join(root, 'my_gem', '1.0')
+        FileUtils.mkdir_p(nested)
+        File.write(File.join(nested, 'my_gem.rbs'), <<~RBS)
+          class MyGemClass
+            def process: (String input) -> Integer
+          end
+        RBS
+
+        provider = Docscribe::Types::RBS::Provider.new(sig_dirs: [root])
+        sig = provider.signature_for(container: 'MyGemClass', scope: :instance, name: :process)
+
+        expect(sig).not_to be_nil
+        expect(sig.return_type).to eq('Integer')
+        expect(sig.param_types['input']).to eq('String')
+      end
+    end
+  end
 end

@@ -3,6 +3,7 @@
 require 'pathname'
 require 'docscribe/types/signature'
 require 'docscribe/types/rbs/type_formatter'
+require 'docscribe/types/rbs/collection_loader'
 
 module Docscribe
   module Types
