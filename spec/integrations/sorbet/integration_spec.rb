@@ -1,33 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Sorbet inline signature integration' do
-  def inline_with_sorbet(code, config_overrides = {})
-    skip_unless_sorbet_bridge_available!
-
-    raw = {
-      'sorbet' => {
-        'enabled' => true
-      }
-    }
-
-    raw.merge!(config_overrides)
-
-    Docscribe::InlineRewriter.insert_comments(
-      code,
-      config: Docscribe::Config.new(raw)
-    )
-  end
-
-  def skip_unless_sorbet_bridge_available!
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
-    end
-
-    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
-  end
-
   it 'uses inline single-line sigs for params and return types' do
     code = <<~RUBY
       class Demo

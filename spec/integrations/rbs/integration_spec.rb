@@ -4,27 +4,6 @@ require 'tmpdir'
 require 'fileutils'
 
 RSpec.describe 'RBS integration' do
-  def inline_with_rbs(code:, rbs:, sig_dir_name: 'sig')
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
-    end
-
-    Dir.mktmpdir do |dir|
-      sig_dir = File.join(dir, sig_dir_name)
-      FileUtils.mkdir_p(sig_dir)
-
-      File.write(File.join(sig_dir, 'demo.rbs'), rbs)
-
-      conf = Docscribe::Config.new(
-        'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] }
-      )
-
-      Docscribe::InlineRewriter.insert_comments(code, config: conf)
-    end
-  end
-
   it 'overrides inferred return type using RBS (String body, Integer in RBS)' do
     rbs = <<~RBS
       class Demo
@@ -83,7 +62,8 @@ RSpec.describe 'RBS integration' do
 
   context 'when sig_dir has nested collection-like structure' do
     it 'resolves types from nested subdirectories' do
-      require 'docscribe/types/rbs/provider' if Gem::Version.new(RUBY_VERSION) < Gem::Version.new('3.0')
+      skip_unless_rbs_available!
+
       # .gem_rbs_collection/my_gem/1.0/my_gem.rbs
       Dir.mktmpdir do |root|
         nested = File.join(root, 'my_gem', '1.0')
