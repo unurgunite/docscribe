@@ -16,7 +16,7 @@ module Docscribe
       exclude_patterns = normalize_file_patterns(files['exclude'])
 
       rel = begin
-        Pathname.new(path).relative_path_from(Pathname.pwd).to_s
+        Pathname.new(path).expand_path.relative_path_from(Pathname.pwd).cleanpath.to_s
       rescue StandardError
         path
       end
@@ -121,7 +121,7 @@ module Docscribe
       patterns_to_try << pattern.gsub('/**/', '/') if pattern.include?('/**/')
 
       patterns_to_try.any? do |pat|
-        File.fnmatch?(pat, path, File::FNM_EXTGLOB | File::FNM_PATHNAME)
+        File.fnmatch?(pat, path, File::FNM_EXTGLOB | File::FNM_DOTMATCH | File::FNM_PATHNAME)
       end
     end
 
