@@ -65,6 +65,9 @@ module Docscribe
         'enabled' => false,
         'rbi_dirs' => ['sorbet/rbi', 'rbi'],
         'collapse_generics' => false
+      },
+      'plugins' => {
+        'require' => []
       }
     }.freeze
   end

@@ -84,16 +84,20 @@ module Docscribe
         collector = Docscribe::InlineRewriter::Collector.new(buffer)
         collector.process(ast)
 
+        # Collect additional insertions from CollectorPlugins
+        plugin_insertions = Docscribe::Plugin.run_collector_plugins(ast, buffer)
+
         method_insertions = collector.insertions
         attr_insertions = collector.respond_to?(:attr_insertions) ? collector.attr_insertions : []
 
-        all = method_insertions.map { |i| [:method, i] } + attr_insertions.map { |i| [:attr, i] }
-
+        all = method_insertions.map { |i| [:method, i] } +
+              attr_insertions.map { |i| [:attr, i] } +
+              plugin_insertions.map { |i| [:plugin, i] }
         rewriter = Parser::Source::TreeRewriter.new(buffer)
         merge_inserts = Hash.new { |h, k| h[k] = [] }
         changes = []
 
-        all.sort_by { |(_kind, ins)| ins.node.loc.expression.begin_pos }
+        all.sort_by { |(kind, ins)| plugin_insertion_pos(kind, ins) }
            .reverse_each do |kind, ins|
           case kind
           when :method
@@ -117,6 +121,13 @@ module Docscribe
               strategy: strategy,
               merge_inserts: merge_inserts
             )
+          when :plugin
+            apply_plugin_insertion!(
+              rewriter: rewriter,
+              buffer: buffer,
+              insertion: ins,
+              strategy: strategy
+            )
           end
         end
 
@@ -126,6 +137,114 @@ module Docscribe
       end
 
       private
+
+      # Resolve the source begin_pos for sorting, handling both Struct-based
+      # insertions (method/attr) and Hash-based insertions (plugin).
+      #
+      # @private
+      # @param [Symbol] kind :method, :attr, or :plugin
+      # @param [Object] ins insertion object or hash
+      # @return [Integer]
+      def plugin_insertion_pos(kind, ins)
+        case kind
+        when :plugin
+          ins[:anchor_node].loc.expression.begin_pos
+        else
+          ins.node.loc.expression.begin_pos
+        end
+      end
+
+      # Apply one CollectorPlugin insertion according to the selected strategy.
+      #
+      # :safe       — skip if a doc-like block already exists above anchor_node
+      # :aggressive — remove existing doc block, insert fresh
+      #
+      # @private
+      # @param [Parser::Source::TreeRewriter] rewriter
+      # @param [Parser::Source::Buffer] buffer
+      # @param [Hash] insertion { anchor_node:, doc: }
+      # @param [Symbol] strategy
+      # @return [void]
+      def apply_plugin_insertion!(rewriter:, buffer:, insertion:, strategy:)
+        anchor_node = insertion[:anchor_node]
+        doc         = insertion[:doc]
+        return unless anchor_node && doc && !doc.empty?
+
+        indent = SourceHelpers.line_indent(anchor_node)
+        doc    = normalize_plugin_doc_indent(doc, indent)
+        bol_range = SourceHelpers.line_start_range(buffer, anchor_node)
+
+        case strategy
+        when :aggressive
+          # Will remove ANY comments above the method. Plugin will decide what will be changed.
+          if (range = any_comment_block_removal_range(buffer, bol_range.begin_pos))
+            rewriter.remove(range)
+          end
+          rewriter.insert_before(bol_range, doc)
+
+        when :safe
+          return if SourceHelpers.already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
+
+          rewriter.insert_before(bol_range, doc)
+        end
+      end
+
+      # Remove any contiguous comment block immediately above anchor_node,
+      # regardless of whether it looks like documentation.
+      #
+      # Used by CollectorPlugin in aggressive mode where the plugin itself
+      # is responsible for deciding what to replace.
+      #
+      # @private
+      # @param [Parser::Source::Buffer] buffer
+      # @param [Integer] bol_pos beginning-of-line position of anchor_node
+      # @return [Parser::Source::Range, nil]
+      def any_comment_block_removal_range(buffer, bol_pos)
+        src   = buffer.source
+        lines = src.lines
+        def_line_idx = src[0...bol_pos].count("\n")
+        i = def_line_idx - 1
+
+        # Skip blank lines directly above node
+        i -= 1 while i >= 0 && lines[i].strip.empty?
+
+        # Nearest non-blank line must be a comment
+        return nil unless i >= 0 && lines[i] =~ /^\s*#/
+
+        # Walk upward through the entire contiguous comment block
+        start_idx = i
+        start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
+        start_idx += 1
+
+        # Preserve leading directive-style lines (rubocop, magic comments, etc.)
+        removable_start_idx = start_idx
+        while removable_start_idx <= i &&
+              SourceHelpers.preserved_comment_line?(lines[removable_start_idx])
+          removable_start_idx += 1
+        end
+
+        return nil if removable_start_idx > i
+
+        start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
+        Parser::Source::Range.new(buffer, start_pos, bol_pos)
+      end
+
+      # Normalise indentation of a plugin-generated doc block.
+      #
+      # Plugins produce doc strings without knowledge of the surrounding
+      # indentation. We strip leading whitespace from each non-empty line
+      # and re-prefix it with the indent derived from anchor_node.
+      #
+      # @private
+      # @param [String] doc raw doc string from plugin
+      # @param [String] indent indentation prefix to apply
+      # @return [String]
+      def normalize_plugin_doc_indent(doc, indent)
+        doc.lines.map do |line|
+          stripped = line.lstrip
+          stripped.match?(/\A\r?\n?\z/) ? line : "#{indent}#{stripped}"
+        end.join
+      end
 
       # Normalize strategy inputs, including compatibility booleans.
       #
