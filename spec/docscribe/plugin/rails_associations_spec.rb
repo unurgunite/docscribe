@@ -1,0 +1,1 @@
+../../../examples/plugins/collector_plugin/rails_associations/spec/plugin_spec.rb

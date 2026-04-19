@@ -24,11 +24,11 @@ module DocscribePlugins
   #   belongs_to :requestable, polymorphic: true, optional: true
   #
   # @example has_many
-  #   # @!attribute [r] songs
-  #   #   Returns the associated songs.
+  #   # @!attribute [r] posts
+  #   #   Returns the associated posts.
   #   #
-  #   #   @return [Array<Song>]
-  #   has_many :songs, dependent: :destroy
+  #   #   @return [Array<Post>]
+  #   has_many :posts, dependent: :destroy
   class RailsAssociations < Docscribe::Plugin::Base::CollectorPlugin
     ASSOCIATION_METHODS = %i[belongs_to has_one has_many has_and_belongs_to_many].freeze
 

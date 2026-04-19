@@ -1,0 +1,1 @@
+../../../examples/plugins/tag_plugin/api_tag/spec/plugin_spec.rb
