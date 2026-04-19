@@ -78,6 +78,7 @@ Common workflows:
         * [Merge behavior](#merge-behavior)
         * [Param tag style](#param-tag-style)
         * [Create a starter config](#create-a-starter-config)
+        * [Generate a plugin skeleton](#generate-a-plugin-skeleton)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
     * [Limitations](#limitations)
@@ -1128,6 +1129,48 @@ Print the template to stdout:
 ```shell
 docscribe init --stdout
 ```
+
+### Generate a plugin skeleton
+
+Docscribe can scaffold a plugin file so you don't have to write boilerplate by hand.
+
+Generate a **TagPlugin**:
+
+```shell
+docscribe generate tag MyPlugin
+# Created: my_plugin.rb
+```
+
+Generate a **CollectorPlugin**:
+
+```shell
+docscribe generate collector MyCollector
+# Created: my_collector.rb
+```
+
+Write to a specific directory:
+
+```shell
+docscribe generate tag SincePlugin --output lib/plugins
+# Created: lib/plugins/since_plugin.rb
+```
+
+Print to STDOUT instead of writing a file:
+
+```shell
+docscribe generate tag SincePlugin --stdout
+```
+
+The generated file contains:
+- the correct base class (`Base::TagPlugin` or `Base::CollectorPlugin`)
+- inline comments describing every available `Context` attribute (TagPlugin)
+  or the expected return shape (CollectorPlugin)
+- TODO markers showing exactly where to add your logic
+- registration and next-steps instructions printed to the terminal
+
+> [!NOTE]
+> The class name must be a valid Ruby constant (`MyPlugin`, `My::Plugin`).
+> The output filename is the snake_case equivalent (`my_plugin.rb`, `my/plugin.rb`).
 
 ## CI integration
 
