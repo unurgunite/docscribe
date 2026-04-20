@@ -63,6 +63,12 @@ Common workflows:
     * [Rescue-aware returns and @raise](#rescue-aware-returns-and-raise)
     * [Visibility semantics](#visibility-semantics)
     * [API (library) usage](#api-library-usage)
+    * [Plugin system](#plugin-system)
+        * [TagPlugin](#tagplugin)
+        * [CollectorPlugin](#collectorplugin)
+        * [Registering plugins](#registering-plugins)
+        * [Idempotency](#idempotency)
+        * [Plugin examples](#plugin-examples)
     * [Configuration](#configuration)
         * [Filtering](#filtering)
         * [`attr_*` example](#attr_-example)
@@ -72,6 +78,7 @@ Common workflows:
         * [Merge behavior](#merge-behavior)
         * [Param tag style](#param-tag-style)
         * [Create a starter config](#create-a-starter-config)
+        * [Generate a plugin skeleton](#generate-a-plugin-skeleton)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
     * [Limitations](#limitations)
@@ -760,6 +767,174 @@ out2 = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 out3 = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
 ```
 
+## Plugin system
+
+Docscribe ships a plugin system that lets you extend documentation generation without modifying the gem itself.
+
+There are two extension points:
+
+| Type                | When it runs                                                 | What it produces                                  |
+|---------------------|--------------------------------------------------------------|---------------------------------------------------|
+| **TagPlugin**       | After a method is collected and its doc block is being built | Extra YARD tags appended to the block             |
+| **CollectorPlugin** | Before doc building, alongside the standard AST collector    | New insertion targets for non-standard constructs |
+
+### TagPlugin
+
+A `TagPlugin` receives a snapshot of everything known about a method at generation time and returns zero or more
+additional YARD tags to append to the doc block.
+
+```ruby
+class SincePlugin < Docscribe::Plugin::Base::TagPlugin
+  def initialize(version:)
+    @version = version
+  end
+
+  # @param [Docscribe::Plugin::Context] context
+  # @return [Array<Docscribe::Plugin::Tag>]
+  def call(context)
+    [Docscribe::Plugin::Tag.new(name: 'since', text: @version)]
+  end
+end
+```
+
+The `Context` struct provides:
+
+| Attribute         | Type                     | Description                            |
+|-------------------|--------------------------|----------------------------------------|
+| `node`            | `Parser::AST::Node`      | The `:def` or `:defs` AST node         |
+| `container`       | `String`                 | e.g. `"MyModule::MyClass"`             |
+| `scope`           | `Symbol`                 | `:instance` or `:class`                |
+| `visibility`      | `Symbol`                 | `:public`, `:protected`, or `:private` |
+| `method_name`     | `Symbol`                 | Method name                            |
+| `inferred_params` | `Hash{String => String}` | Name -> inferred type                  |
+| `inferred_return` | `String`                 | Inferred return type                   |
+| `source`          | `String`                 | Raw method source text                 |
+
+The `Tag` struct:
+
+```ruby
+# Simple tag
+Docscribe::Plugin::Tag.new(name: 'since', text: '1.3.0')
+# => # @since 1.3.0
+
+# Tag with types
+Docscribe::Plugin::Tag.new(name: 'raise', types: ['ArgumentError'], text: 'if name is nil')
+# => # @raise [ArgumentError] if name is nil
+```
+
+### CollectorPlugin
+
+A `CollectorPlugin` receives the raw AST and source buffer for each file. It walks the tree itself and returns insertion
+targets that Docscribe will document according to the selected strategy.
+
+```ruby
+class DefineMethodPlugin < Docscribe::Plugin::Base::CollectorPlugin
+  # @param [Parser::AST::Node] ast
+  # @param [Parser::Source::Buffer] buffer
+  # @return [Array<Hash>]
+  def collect(ast, buffer)
+    results = []
+
+    Docscribe::Infer::ASTWalk.walk(ast) do |node|
+      next unless node.type == :send
+
+      _recv, meth, name_node, *_rest = *node
+      next unless meth == :define_method
+      next unless name_node&.type == :sym
+
+      meth_name = name_node.children.first
+
+      results << {
+        anchor_node: node,
+        doc: "# Dynamic method: #{meth_name}\n# @return [Object]\n"
+      }
+    end
+
+    results
+  end
+end
+```
+
+Each result hash must have:
+
+| Key            | Type                | Description                                |
+|----------------|---------------------|--------------------------------------------|
+| `:anchor_node` | `Parser::AST::Node` | Node above which to insert the doc block   |
+| `:doc`         | `String`            | Complete doc block text including newlines |
+
+> [!NOTE]
+> You do not need to handle indentation manually. Docscribe reads the indentation from `anchor_node` and applies it to
+> every line of `:doc` automatically.
+
+### Registering plugins
+
+Plugins are registered at load time. The recommended pattern is to put registrations in a dedicated file and reference
+it from `docscribe.yml`.
+
+**`docscribe_plugins.rb`** (in your project root or `lib/`):
+
+```ruby
+require 'docscribe/plugin'
+
+# Tag plugin
+class SincePlugin < Docscribe::Plugin::Base::TagPlugin
+  def call(context)
+    [Docscribe::Plugin::Tag.new(name: 'since', text: '1.3.0')]
+  end
+end
+
+# Collector plugin
+class DefineMethodPlugin < Docscribe::Plugin::Base::CollectorPlugin
+  def collect(ast, buffer)
+    # ...
+  end
+end
+
+Docscribe::Plugin::Registry.register(SincePlugin.new)
+Docscribe::Plugin::Registry.register(DefineMethodPlugin.new)
+```
+
+**`docscribe.yml`**:
+
+```yaml
+plugins:
+  require:
+    - ./docscribe_plugins
+```
+
+Each entry is passed to `require`. The path is expanded relative to the current working directory.
+
+Duck typing is also supported — any object responding to `#call` is treated as a `TagPlugin`, any object responding to
+`#collect` is treated as a `CollectorPlugin`:
+
+```ruby
+# Lambda as a TagPlugin
+Docscribe::Plugin::Registry.register(
+  ->(context) { [Docscribe::Plugin::Tag.new(name: 'api', text: 'public')] }
+)
+```
+
+### Idempotency
+
+Docscribe handles idempotency for plugins automatically.
+
+**TagPlugin**: before appending a tag, Docscribe checks whether a tag with that name already exists in the current doc
+block. If it does, the tag is skipped.
+
+**CollectorPlugin**: idempotency depends on the selected strategy.
+
+| Strategy      | Behaviour                                                                            |
+|---------------|--------------------------------------------------------------------------------------|
+| `:safe`       | Skips insertion if any comment block already exists immediately above `anchor_node`  |
+| `:aggressive` | Removes the existing comment block above `anchor_node` and inserts a fresh doc block |
+
+This means a `CollectorPlugin`-generated block will not be duplicated on repeated safe runs, and will be fully rebuilt
+on aggressive runs.
+
+### Plugin examples
+
+Sample plugin available at [examples](examples/plugins) 
+
 ## Configuration
 
 Docscribe can be configured via a YAML file (`docscribe.yml` by default, or pass `--config PATH`).
@@ -955,6 +1130,48 @@ Print the template to stdout:
 docscribe init --stdout
 ```
 
+### Generate a plugin skeleton
+
+Docscribe can scaffold a plugin file so you don't have to write boilerplate by hand.
+
+Generate a **TagPlugin**:
+
+```shell
+docscribe generate tag MyPlugin
+# Created: my_plugin.rb
+```
+
+Generate a **CollectorPlugin**:
+
+```shell
+docscribe generate collector MyCollector
+# Created: my_collector.rb
+```
+
+Write to a specific directory:
+
+```shell
+docscribe generate tag SincePlugin --output lib/plugins
+# Created: lib/plugins/since_plugin.rb
+```
+
+Print to STDOUT instead of writing a file:
+
+```shell
+docscribe generate tag SincePlugin --stdout
+```
+
+The generated file contains:
+- the correct base class (`Base::TagPlugin` or `Base::CollectorPlugin`)
+- inline comments describing every available `Context` attribute (TagPlugin)
+  or the expected return shape (CollectorPlugin)
+- TODO markers showing exactly where to add your logic
+- registration and next-steps instructions printed to the terminal
+
+> [!NOTE]
+> The class name must be a valid Ruby constant (`MyPlugin`, `My::Plugin`).
+> The output filename is the snake_case equivalent (`my_plugin.rb`, `my/plugin.rb`).
+
 ## CI integration
 
 Fail the build if files would need safe updates:
@@ -1003,8 +1220,8 @@ yard doc -o docs
 
 ## Roadmap
 
-- Plugin system for custom documentation formats;
 - Method behavior inference from AST;
+- YAML-based plugin configuration;
 - Effective config dump;
 - JSON output;
 - Overload-aware signature selection;

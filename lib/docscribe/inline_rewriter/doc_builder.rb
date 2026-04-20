@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'docscribe/plugin'
 require 'docscribe/infer'
 require 'docscribe/inline_rewriter/source_helpers'
 
@@ -103,7 +104,10 @@ module Docscribe
             lines << "#{indent}# @return [#{rtype}] if #{exceptions.join(', ')}"
           end
         end
-
+        plugin_tags = Docscribe::Plugin.run_tag_plugins(
+          build_plugin_context(insertion, normal_type: normal_type)
+        )
+        lines.concat(render_plugin_tags(plugin_tags, indent))
         lines.map { |l| "#{l}\n" }.join
       rescue StandardError => e
         debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build')
@@ -295,7 +299,16 @@ module Docscribe
             }
           end
         end
+        plugin_tags = Docscribe::Plugin.run_tag_plugins(
+          build_plugin_context(insertion, normal_type: normal_type)
+        )
+        plugin_tags.each do |tag|
+          next if info[:plugin_tags]&.[](tag.name)
 
+          rendered = render_plugin_tags([tag], indent).first
+          lines << "#{rendered}\n"
+          reasons << { type: :missing_plugin_tag, message: "missing @#{tag.name}" }
+        end
         { lines: lines, reasons: reasons }
       rescue StandardError => e
         debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build_missing_merge_result')
@@ -314,8 +327,12 @@ module Docscribe
         has_protected = false
         has_module_function_note = false
         raise_types = {}
+        plugin_tags = {}
 
         Array(lines).each do |line|
+          if (m = line.match(/^\s*#\s*@(\w+)\b/))
+            plugin_tags[m[1]] = true
+          end
           if (pname = extract_param_name_from_param_line(line))
             param_names[pname] = true
           end
@@ -334,7 +351,8 @@ module Docscribe
           raise_types: raise_types,
           has_private: has_private,
           has_protected: has_protected,
-          has_module_function_note: has_module_function_note
+          has_module_function_note: has_module_function_note,
+          plugin_tags: plugin_tags
         }
       end
 
@@ -568,6 +586,49 @@ module Docscribe
         return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
 
         nil
+      end
+
+      # Build a Plugin::Context from a collected insertion.
+      #
+      # @note module_function
+      # @note module_function: when included, also defines #build_plugin_context (instance visibility: private)
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [String] normal_type resolved return type
+      # @raise [StandardError]
+      # @return [Docscribe::Plugin::Context]
+      def build_plugin_context(insertion, normal_type:)
+        node = insertion.node
+        source = begin
+          node.loc.expression.source
+        rescue StandardError
+          ''
+        end
+
+        Docscribe::Plugin::Context.new(
+          node: node,
+          container: insertion.container,
+          scope: insertion.scope,
+          visibility: insertion.visibility,
+          method_name: SourceHelpers.node_name(node),
+          inferred_params: {},
+          inferred_return: normal_type,
+          source: source
+        )
+      end
+
+      # Render plugin tags as indented comment lines.
+      #
+      # @note module_function
+      # @note module_function: when included, also defines #render_plugin_tags (instance visibility: private)
+      # @param [Array<Docscribe::Plugin::Tag>] tags
+      # @param [String] indent
+      # @return [Array<String>]
+      def render_plugin_tags(tags, indent)
+        tags.map do |tag|
+          type_part = tag.types&.any? ? " [#{tag.types.join(', ')}]" : ''
+          text_part = tag.text ? " #{tag.text}" : ''
+          "#{indent}# @#{tag.name}#{type_part}#{text_part}"
+        end
       end
 
       # Method documentation.

@@ -34,6 +34,7 @@ module Docscribe
         def run(options:, argv:)
           conf = Docscribe::Config.load(options[:config])
           conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
+          conf.load_plugins!
 
           return run_stdin(options: options, conf: conf) if options[:mode] == :stdin
 

@@ -137,6 +137,18 @@ module Docscribe
             include: []
             exclude: ["spec"]
 
+        plugins:
+          # Load custom plugins by path or gem name.
+          #
+          # Each entry is passed to `require`. Registration happens inside
+          # the required file via Docscribe::Plugin::Registry.register.
+          #
+          # Example:
+          #   require:
+          #     - ./docscribe_plugins
+          #     - docscribe-rails-associations
+          require: []
+
         rbs:
           # Optional: use RBS signatures to improve @param / @return types.
           #
