@@ -68,9 +68,11 @@ module Docscribe
       # @param [Boolean, nil] merge compatibility alias for safe strategy
       # @param [Docscribe::Config, nil] config config object (defaults to loaded config)
       # @param [String] file source name used for parser locations/debugging
+      # @param [nil] core_rbs_provider Param documentation.
       # @raise [Docscribe::ParseError]
+      # @raise [StandardError]
       # @return [Hash]
-      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: nil, file: '(inline)')
+      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: nil, core_rbs_provider: nil, file: '(inline)')
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
         validate_strategy!(strategy)
 
@@ -80,6 +82,21 @@ module Docscribe
 
         config ||= Docscribe::Config.load
         signature_provider = build_signature_provider(config, code, file.to_s)
+        unless core_rbs_provider
+          if config.respond_to?(:core_rbs_provider)
+            begin
+              core_rbs_provider = config.core_rbs_provider
+            rescue StandardError
+              core_rbs_provider = nil
+            end
+          elsif config.respond_to?(:rbs_provider)
+            begin
+              core_rbs_provider = config.rbs_provider
+            rescue StandardError
+              core_rbs_provider = nil
+            end
+          end
+        end
 
         collector = Docscribe::InlineRewriter::Collector.new(buffer)
         collector.process(ast)
@@ -107,6 +124,7 @@ module Docscribe
               insertion: ins,
               config: config,
               signature_provider: signature_provider,
+              core_rbs_provider: core_rbs_provider,
               strategy: strategy,
               changes: changes,
               file: file.to_s
@@ -298,9 +316,10 @@ module Docscribe
       # @param [Symbol] strategy
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
+      # @param [Object] core_rbs_provider Param documentation.
       # @return [void]
-      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, changes:,
-                                  file:)
+      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, core_rbs_provider:,
+                                  strategy:, changes:, file:)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
@@ -312,13 +331,20 @@ module Docscribe
 
         anchor_bol_range, = method_bol_ranges(buffer, insertion)
 
+        # Create external_sig for param_types lookup
+        external_sig = signature_provider&.signature_for(
+          container: insertion.container,
+          scope: insertion.scope,
+          name: SourceHelpers.node_name(insertion.node)
+        )
+
         case strategy
         when :aggressive
           if (range = method_comment_block_removal_range(buffer, insertion))
             rewriter.remove(range)
           end
 
-          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider)
+          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider, core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -339,7 +365,9 @@ module Docscribe
               insertion,
               existing_lines: info[:doc_lines],
               config: config,
-              signature_provider: signature_provider
+              signature_provider: signature_provider,
+              core_rbs_provider: core_rbs_provider,
+              param_types: external_sig&.param_types
             )
 
             missing_lines = merge_result[:lines]
@@ -392,7 +420,7 @@ module Docscribe
             return
           end
 
-          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider)
+          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider, core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -736,12 +764,16 @@ module Docscribe
       # @param [Object] insertion Param documentation.
       # @param [Object] config Param documentation.
       # @param [Object] signature_provider Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
       # @return [Object]
-      def build_method_doc(insertion, config:, signature_provider:)
+      def build_method_doc(insertion, config:, signature_provider:, core_rbs_provider:, param_types:)
         DocBuilder.build(
           insertion,
           config: config,
-          signature_provider: signature_provider
+          signature_provider: signature_provider,
+          core_rbs_provider: core_rbs_provider,
+          param_types: param_types
         )
       end
 
@@ -752,13 +784,17 @@ module Docscribe
       # @param [Object] existing_lines Param documentation.
       # @param [Object] config Param documentation.
       # @param [Object] signature_provider Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
       # @return [Object]
-      def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:)
+      def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:, core_rbs_provider:, param_types:)
         DocBuilder.build_missing_merge_result(
           insertion,
           existing_lines: existing_lines,
           config: config,
-          signature_provider: signature_provider
+          signature_provider: signature_provider,
+          core_rbs_provider: core_rbs_provider,
+          param_types: param_types
         )
       end
 

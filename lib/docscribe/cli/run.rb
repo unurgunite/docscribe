@@ -62,6 +62,7 @@ module Docscribe
             code,
             strategy: options[:strategy],
             config: conf,
+            core_rbs_provider: conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil,
             file: '(stdin)'
           )
           puts result[:output]
@@ -251,10 +252,12 @@ module Docscribe
         # @return [Object]
         # @return [nil] if StandardError
         def rewrite_result_for_path(path, src:, conf:, display_path:, options:, state:)
+          core_rbs_provider = conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil
           Docscribe::InlineRewriter.rewrite_with_report(
             src,
             strategy: options[:strategy],
             config: conf,
+            core_rbs_provider: core_rbs_provider,
             file: path
           )
         rescue StandardError => e

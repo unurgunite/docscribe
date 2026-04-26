@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 RSpec.describe 'attr_* documentation' do
-  def inline(code, config:)
-    Docscribe::InlineRewriter.insert_comments(code, config: config)
-  end
-
   it 'generates @!attribute docs for attr_reader when enabled' do
     conf = Docscribe::Config.new('emit' => { 'attributes' => true })
 

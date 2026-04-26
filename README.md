@@ -704,6 +704,13 @@ Return values:
 - For simple bodies, Docscribe looks at the last expression or explicit `return`.
 - Unions with `nil` become optional types (e.g. `String` or `nil` -> `String?`).
 - For control flow (`if`/`case`), it unifies branches conservatively.
+- **RBS core type inference**: when `--rbs` is enabled, Docscribe resolves return types for method calls on core types
+  from their RBS definitions:
+    - `arg.positive?` (`arg = 1`) -> `Boolean` (from `Integer#positive?`)
+    - `arg.to_i` (`arg = ""`) -> `Integer` (from `String#to_i`)
+    - `arg.to_s.length` (`arg = 1`) -> `Integer` (chained: Integer -> String -> Integer)
+    - `arg.upcase` (`arg = ""`) -> `String` (from `String#upcase`)
+    - Rescue branches are also resolved (e.g. `"default"` -> `String`)
 
 ## Rescue-aware returns and @raise
 

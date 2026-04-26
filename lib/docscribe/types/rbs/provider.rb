@@ -70,6 +70,8 @@ module Docscribe
           return if @env && @builder
 
           loader = ::RBS::EnvironmentLoader.new
+          # Load core types transitively
+          loader.add(library: 'rbs')
 
           @sig_dirs.each do |dir|
             path = Pathname(dir)
