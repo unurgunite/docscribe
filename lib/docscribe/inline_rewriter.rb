@@ -68,7 +68,9 @@ module Docscribe
       # @param [Boolean, nil] merge compatibility alias for safe strategy
       # @param [Docscribe::Config, nil] config config object (defaults to loaded config)
       # @param [String] file source name used for parser locations/debugging
+      # @param [nil] core_rbs_provider Param documentation.
       # @raise [Docscribe::ParseError]
+      # @raise [StandardError]
       # @return [Hash]
       def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: nil, core_rbs_provider: nil, file: '(inline)')
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
@@ -314,6 +316,7 @@ module Docscribe
       # @param [Symbol] strategy
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
+      # @param [Object] core_rbs_provider Param documentation.
       # @return [void]
       def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, core_rbs_provider:,
                                   strategy:, changes:, file:)
@@ -762,6 +765,7 @@ module Docscribe
       # @param [Object] config Param documentation.
       # @param [Object] signature_provider Param documentation.
       # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
       # @return [Object]
       def build_method_doc(insertion, config:, signature_provider:, core_rbs_provider:, param_types:)
         DocBuilder.build(
@@ -781,6 +785,7 @@ module Docscribe
       # @param [Object] config Param documentation.
       # @param [Object] signature_provider Param documentation.
       # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
       # @return [Object]
       def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:, core_rbs_provider:, param_types:)
         DocBuilder.build_missing_merge_result(

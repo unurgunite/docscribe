@@ -28,6 +28,8 @@ module Docscribe
       # @param [Docscribe::Config] config
       # @param [Object, nil] signature_provider provider responding to
       #   `signature_for(container:, scope:, name:)`
+      # @param [nil] core_rbs_provider Param documentation.
+      # @param [nil] param_types Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
       def build(insertion, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil)
@@ -128,6 +130,8 @@ module Docscribe
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
       # @param [Object, nil] signature_provider
+      # @param [nil] core_rbs_provider Param documentation.
+      # @param [nil] param_types Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
       def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil)
@@ -221,6 +225,8 @@ module Docscribe
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
       # @param [Object, nil] signature_provider
+      # @param [nil] core_rbs_provider Param documentation.
+      # @param [nil] param_types Param documentation.
       # @raise [StandardError]
       # @return [Hash]
       def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil)
@@ -396,6 +402,7 @@ module Docscribe
 
       # Build a param name => type map from a method node.
       #
+      # @note module_function: when included, also defines #build_param_types_from_node (instance visibility: private)
       # @private
       # @param [Parser::AST::Node] node def or defs node
       # @param [Object, nil] external_sig external signature if available

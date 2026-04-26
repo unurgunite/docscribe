@@ -56,6 +56,8 @@ module Docscribe
       # @param [Parser::AST::Node] node `:def` or `:defs` node
       # @param [String] fallback_type type used when inference is uncertain
       # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
+      # @param [nil] core_rbs_provider Param documentation.
+      # @param [nil] param_types Param documentation.
       # @return [Hash]
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil, param_types: nil)
         body =
@@ -172,6 +174,7 @@ module Docscribe
 
       # Resolve a return type from core RBS for a method call.
       #
+      # @note module_function: when included, also defines #resolve_rbs_return_type (instance visibility: private)
       # @private
       # @param [String] container_type e.g. "Numeric", "String"
       # @param [Symbol] method_name e.g. :positive?
