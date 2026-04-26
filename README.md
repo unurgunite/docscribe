@@ -6,6 +6,8 @@
 [![License](https://img.shields.io/github/license/unurgunite/docscribe.svg)](https://github.com/unurgunite/docscribe/blob/master/LICENSE.txt)
 [![Ruby](https://img.shields.io/badge/ruby-%3E%3D%202.7-blue.svg)](#installation)
 
+![Docscribe before/after demo](docs/image.png)
+
 Generate inline, YARD-style documentation comments for Ruby methods by analyzing your code's AST.
 
 Docscribe inserts doc headers before method definitions, infers parameter and return types (including rescue-aware
@@ -84,6 +86,7 @@ Common workflows:
     * [Limitations](#limitations)
     * [Roadmap](#roadmap)
     * [Contributing](#contributing)
+    * [Discussion & Community](#discussion--community)
     * [License](#license)
 
 ## Installation
@@ -1235,6 +1238,12 @@ yard doc -o docs
 bundle exec rspec
 bundle exec rubocop
 ```
+
+## Discussion & Community
+
+- [Reddit discussion](https://www.reddit.com/r/ruby/comments/1s5uwjj/docscribe_for_ruby_autogenerate_inline_yard_docs/)
+- [Dev.to article](https://dev.to/unurgunite)
+- [GitHub Discussions](https://github.com/unurgunite/docscribe/discussions)
 
 ## License
 
