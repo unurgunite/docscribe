@@ -94,11 +94,13 @@ module Docscribe
       # @param [String] fallback_type
       # @param [Boolean] nil_as_optional
       # @return [Hash]
-      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
+      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil, param_types: nil)
         Returns.returns_spec_from_node(
           node,
           fallback_type: fallback_type,
-          nil_as_optional: nil_as_optional
+          nil_as_optional: nil_as_optional,
+          core_rbs_provider: core_rbs_provider,
+          param_types: param_types
         )
       end
 
