@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe 'module_function note formatting' do
-  it 'does not insert an extra blank line between @note and @param' do
-    code = <<~RUBY
+  subject(:out) { inline(code) }
+
+  let(:code) do
+    <<~RUBY
       module M
         module_function
         def foo(x)
@@ -10,9 +12,9 @@ RSpec.describe 'module_function note formatting' do
         end
       end
     RUBY
+  end
 
-    out = inline(code)
-
+  it 'does not insert an extra blank line between @note and @param' do
     # Must have note
     expect(out).to include('# @note module_function:')
 
