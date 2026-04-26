@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe 'return inference for case expressions' do
+  subject(:out) { inline(code) }
+
   let(:code) do
     <<~RUBY
       class A
@@ -13,8 +15,6 @@ RSpec.describe 'return inference for case expressions' do
       end
     RUBY
   end
-
-  subject(:out) { inline(code) }
 
   it 'does not crash on methods whose body is a case expression' do
     expect(out).to include('# +A#foo+ -> Integer')

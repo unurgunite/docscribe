@@ -5,6 +5,8 @@ require 'fileutils'
 
 RSpec.describe 'Sorbet RBI integration' do
   describe 'RBI signatures' do
+    subject(:out) { inline_with_signature_files(code: code, rbi: rbi) }
+
     let(:rbi) do
       <<~RBI
         # typed: strict
@@ -28,8 +30,6 @@ RSpec.describe 'Sorbet RBI integration' do
       RUBY
     end
 
-    subject(:out) { inline_with_signature_files(code: code, rbi: rbi) }
-
     it 'uses RBI signatures for params and return types' do
       expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
       expect(out).to include('# @return [Integer]')
@@ -42,6 +42,8 @@ RSpec.describe 'Sorbet RBI integration' do
   end
 
   describe 'RBI over RBS priority' do
+    subject(:out) { inline_with_signature_files(code: code, rbi: rbi, rbs: rbs) }
+
     let(:rbi) do
       <<~RBI
         # typed: strict
@@ -73,8 +75,6 @@ RSpec.describe 'Sorbet RBI integration' do
       RUBY
     end
 
-    subject(:out) { inline_with_signature_files(code: code, rbi: rbi, rbs: rbs) }
-
     it 'prefers RBI over RBS when both are present' do
       expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
       expect(out).to include('# @return [Integer]')
@@ -84,6 +84,8 @@ RSpec.describe 'Sorbet RBI integration' do
   end
 
   describe 'invalid RBI fallback' do
+    subject(:out) { inline_with_signature_files(code: code, rbi: bad_rbi) }
+
     let(:bad_rbi) do
       <<~RBI
         class Demo
@@ -106,8 +108,6 @@ RSpec.describe 'Sorbet RBI integration' do
       RUBY
     end
 
-    subject(:out) { inline_with_signature_files(code: code, rbi: bad_rbi) }
-
     it 'falls back cleanly to inference when an RBI file cannot be parsed' do
       expect(out).to match(header_regex('Demo', 'foo', 'String'))
       expect(out).to include('# @return [String]')
@@ -116,6 +116,8 @@ RSpec.describe 'Sorbet RBI integration' do
   end
 
   describe 'inline sig priority' do
+    subject(:out) { inline_with_signature_files(code: code, rbi: rbi, rbs: rbs) }
+
     let(:rbi) do
       <<~RBI
         # typed: strict
@@ -149,8 +151,6 @@ RSpec.describe 'Sorbet RBI integration' do
         end
       RUBY
     end
-
-    subject(:out) { inline_with_signature_files(code: code, rbi: rbi, rbs: rbs) }
 
     it 'prefers inline Sorbet sigs over RBI, RBS, and inference' do
       expect(out).to match(header_regex('Demo', 'foo', 'Float'))

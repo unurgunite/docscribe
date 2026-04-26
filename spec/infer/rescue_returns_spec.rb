@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
+  subject(:out) { inline(code) }
+
   describe 'rescue with explicit exception classes' do
     let(:code) do
       <<~RUBY
@@ -13,8 +15,6 @@ RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
         end
       RUBY
     end
-
-    subject(:out) { inline(code) }
 
     it 'adds @raise tags and conditional @return for the rescue branch' do
       expect(out).to match(header_regex('X', 'a', 'Integer'))
@@ -38,8 +38,6 @@ RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
       RUBY
     end
 
-    subject(:out) { inline(code) }
-
     it 'adds @raise [StandardError] and conditional @return' do
       expect(out).to match(header_regex('X', 'b', 'Object'))
       expect(out).to include('@raise [StandardError]')
@@ -58,8 +56,6 @@ RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
         end
       RUBY
     end
-
-    subject(:out) { inline(code) }
 
     it 'does not add @raise nor conditional return' do
       expect(out).to match(header_regex('X', 'c', 'Symbol'))

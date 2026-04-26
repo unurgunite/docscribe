@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Sorbet inline signature integration' do
+  subject(:out) { inline_with_sorbet(code) }
+
   describe 'single-line sig' do
     let(:code) do
       <<~RUBY
@@ -14,8 +16,6 @@ RSpec.describe 'Sorbet inline signature integration' do
         end
       RUBY
     end
-
-    subject(:out) { inline_with_sorbet(code) }
 
     it 'uses inline sigs for params and return types' do
       expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
@@ -45,8 +45,6 @@ RSpec.describe 'Sorbet inline signature integration' do
       RUBY
     end
 
-    subject(:out) { inline_with_sorbet(code) }
-
     it 'parses multiline signatures' do
       expect(out).to match(
         /# @param \[(?:String\?|String, nil|nil, String)\] name Param documentation\./
@@ -72,8 +70,6 @@ RSpec.describe 'Sorbet inline signature integration' do
       RUBY
     end
 
-    subject(:out) { inline_with_sorbet(code) }
-
     it 'uses inline sigs for class methods' do
       expect(out).to match(/# \+Demo\.status\+\s*-> Symbol/)
       expect(out).to include('# @return [Symbol]')
@@ -94,8 +90,6 @@ RSpec.describe 'Sorbet inline signature integration' do
         end
       RUBY
     end
-
-    subject(:out) { inline_with_sorbet(code) }
 
     it 'renders void returns from inline sigs' do
       expect(out).to match(header_regex('Demo', 'foo', 'void'))
@@ -118,8 +112,6 @@ RSpec.describe 'Sorbet inline signature integration' do
         end
       RUBY
     end
-
-    subject(:out) { inline_with_sorbet(code) }
 
     it 'uses Sorbet rest arg and kwrest element types' do
       expect(out).to include(param_tag('args', 'Array<Integer>'))

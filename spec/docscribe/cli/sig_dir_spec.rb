@@ -6,45 +6,42 @@ require 'fileutils'
 require 'rbconfig'
 
 RSpec.describe 'CLI --sig-dir' do
-  it 'loads RBS signatures from --sig-dir and uses them for @param/@return (when available)' do
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
-    end
+  before { skip_unless_rbs_available! }
 
-    Dir.mktmpdir do |dir|
-      FileUtils.mkdir_p(File.join(dir, 'sig'))
+  describe 'RBS signatures from --sig-dir' do
+    it 'loads RBS signatures and uses them for @param/@return' do
+      Dir.mktmpdir do |dir|
+        FileUtils.mkdir_p(File.join(dir, 'sig'))
 
-      # RBS says x returns Integer and verbose is bool.
-      File.write(File.join(dir, 'sig', 'd.rbs'), <<~RBS)
-        class D
-          def x: (verbose: bool) -> Integer
-        end
-      RBS
-
-      # Ruby returns a String, so inference would produce String unless RBS is used.
-      code = <<~RUBY
-        class D
-          def x(verbose:)
-            "a"
+        # RBS says x returns Integer and verbose is bool.
+        File.write(File.join(dir, 'sig', 'd.rbs'), <<~RBS)
+          class D
+            def x: (verbose: bool) -> Integer
           end
-        end
-      RUBY
+        RBS
 
-      stdout, stderr, status = Open3.capture3(
-        RbConfig.ruby, exe,
-        '--stdin',
-        '--sig-dir', 'sig', # implies --rbs in your CLI
-        stdin_data: code,
-        chdir: dir
-      )
+        # Ruby returns a String, so inference would produce String unless RBS is used.
+        code = <<~RUBY
+          class D
+            def x(verbose:)
+              "a"
+            end
+          end
+        RUBY
 
-      expect(status.success?).to be(true), stderr
+        stdout, stderr, status = Open3.capture3(
+          RbConfig.ruby, exe,
+          '--stdin',
+          '--sig-dir', 'sig', # implies --rbs in your CLI
+          stdin_data: code,
+          chdir: dir
+        )
 
-      expect(stdout).to include('# +D#x+ -> Integer')
-      expect(stdout).to include('# @return [Integer]')
-      expect(stdout).to include(param_tag('verbose', 'Boolean'))
+        expect(status.success?).to be(true), stderr
+        expect(stdout).to include('# +D#x+ -> Integer')
+        expect(stdout).to include('# @return [Integer]')
+        expect(stdout).to include(param_tag('verbose', 'Boolean'))
+      end
     end
   end
 end
