@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 module ParamTag
-  # Method documentation.
+  # Generate a YARD @param tag line matching the configured param tag style.
   #
-  # @param [Object] name Param documentation.
-  # @param [Object] type Param documentation.
-  # @param [Config] config Param documentation.
-  # @param [String] description Param documentation.
-  # @param [Integer] space_size Param documentation.
-  # @param [Boolean] struct Param documentation.
-  # @return [String]
+  # @param [String] name parameter name
+  # @param [String] type parameter type
+  # @param [Docscribe::Config] config configuration for determining tag style (defaults to a fresh empty config)
+  # @param [String] description documentation text appended to the param line
+  # @param [Integer] space_size number of leading spaces (defaults to 1)
+  # @param [Boolean] struct whether this is a struct param (omits description when true)
+  # @return [String] formatted @param tag line
   def param_tag(name, type, config: Docscribe::Config.new, description: 'Param documentation.', space_size: 1,
                 struct: false)
     style = config.raw.dig('doc', 'param_tag_style') || 'type_name'
