@@ -134,8 +134,6 @@ module Docscribe
               insertion: ins,
               config: config,
               signature_provider: signature_provider,
-              core_rbs_provider: core_rbs_provider,
-              param_types: nil,
               strategy: strategy,
               merge_inserts: merge_inserts
             )
@@ -317,8 +315,8 @@ module Docscribe
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
       # @return [void]
-def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, core_rbs_provider:, strategy:, changes:,
-                                   file:)
+      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, core_rbs_provider:,
+                                  strategy:, changes:, file:)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
@@ -476,7 +474,7 @@ def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_p
       # @param [Symbol] strategy
       # @param [Hash] merge_inserts
       # @return [void]
-      def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, core_rbs_provider:, param_types:, strategy:, merge_inserts:)
+      def apply_attr_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, merge_inserts:)
         return unless config.respond_to?(:emit_attributes?) && config.emit_attributes?
         return unless attribute_allowed?(config, insertion)
 
@@ -491,8 +489,7 @@ def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_p
           doc = build_attr_doc_for_node(
             insertion,
             config: config,
-            signature_provider: signature_provider,
-            core_rbs_provider: core_rbs_provider
+            signature_provider: signature_provider
           )
           return if doc.nil? || doc.empty?
 
@@ -506,8 +503,7 @@ def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_p
               insertion,
               existing_lines: info[:lines],
               config: config,
-              signature_provider: signature_provider,
-            core_rbs_provider: core_rbs_provider
+              signature_provider: signature_provider
             )
 
             if additions && !additions.empty?
@@ -521,7 +517,6 @@ def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_p
             insertion,
             config: config,
             signature_provider: signature_provider,
-            core_rbs_provider: core_rbs_provider
           )
           return if doc.nil? || doc.empty?
 
@@ -576,10 +571,9 @@ def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_p
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
       # @param [Object] signature_provider Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build_attr_merge_additions(ins, existing_lines:, config:, signature_provider:, core_rbs_provider:)
+      def build_attr_merge_additions(ins, existing_lines:, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
         param_tag_style = config.param_tag_style
         existing = existing_attr_names(existing_lines)
@@ -668,10 +662,9 @@ def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_p
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Docscribe::Config] config
       # @param [Object] signature_provider Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build_attr_doc_for_node(ins, config:, signature_provider:, core_rbs_provider:)
+      def build_attr_doc_for_node(ins, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
         param_tag_style = config.param_tag_style
         lines = []

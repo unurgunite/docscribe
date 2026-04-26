@@ -47,11 +47,11 @@ module Docscribe
           name: name
         )
 
-      effective_param_types = param_types || build_param_types_from_node(node, external_sig: external_sig, config: config)
+        effective_param_types =
+          param_types || build_param_types_from_node(node, external_sig: external_sig, config: config)
 
         if config.emit_param_tags?
-          params_lines = build_params_lines(node, indent, external_sig: external_sig,
-                                                           config: config)
+          params_lines = build_params_lines(node, indent, external_sig: external_sig, config: config)
         end
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
 
@@ -394,6 +394,68 @@ module Docscribe
         s.to_s.split(',').map(&:strip).reject(&:empty?)
       end
 
+      # Build a param name => type map from a method node.
+      #
+      # @private
+      # @param [Parser::AST::Node] node def or defs node
+      # @param [Object, nil] external_sig external signature if available
+      # @param [Docscribe::Config] config
+      # @return [Hash{String => String}, nil]
+      def build_param_types_from_node(node, external_sig:, config:)
+        return nil unless node
+
+        args =
+          case node.type
+          when :def then node.children[1]
+          when :defs then node.children[2]
+          end
+
+        return nil unless args
+
+        param_types = {}
+
+        (args.children || []).each do |a|
+          case a.type
+          when :arg
+            pname = a.children.first.to_s
+            ty = external_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   pname,
+                   nil,
+                   fallback_type: config.fallback_type,
+                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                 )
+            param_types[pname] = ty
+
+          when :optarg
+            pname, default = *a
+            pname = pname.to_s
+            default_src = default&.loc&.expression&.source
+            ty = external_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   pname,
+                   default_src,
+                   fallback_type: config.fallback_type,
+                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                 )
+            param_types[pname] = ty
+
+          when :kwarg
+            pname = a.children.first.to_s
+            ty = external_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   "#{pname}:",
+                   nil,
+                   fallback_type: config.fallback_type,
+                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                 )
+            param_types[pname] = ty
+          end
+        end
+
+        param_types.empty? ? nil : param_types
+      end
+
       # Build generated `@param` / `@option` lines for a method node.
       #
       # External signatures take precedence over inferred parameter types.
@@ -525,68 +587,6 @@ module Docscribe
         end
 
         params.empty? ? nil : params
-      end
-
-      # Build a param name => type map from a method node.
-      #
-      # @private
-      # @param [Parser::AST::Node] node def or defs node
-      # @param [Object, nil] external_sig external signature if available
-      # @param [Docscribe::Config] config
-      # @return [Hash{String => String}, nil]
-      def build_param_types_from_node(node, external_sig:, config:)
-        return nil unless node
-
-        args =
-          case node.type
-          when :def then node.children[1]
-          when :defs then node.children[2]
-          end
-
-        return nil unless args
-
-        param_types = {}
-
-        (args.children || []).each do |a|
-          case a.type
-          when :arg
-            pname = a.children.first.to_s
-            ty = external_sig&.param_types&.[](pname) ||
-                 Infer.infer_param_type(
-                   pname,
-                   nil,
-                   fallback_type: config.fallback_type,
-                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
-                 )
-            param_types[pname] = ty
-
-          when :optarg
-            pname, default = *a
-            pname = pname.to_s
-            default_src = default&.loc&.expression&.source
-            ty = external_sig&.param_types&.[](pname) ||
-                 Infer.infer_param_type(
-                   pname,
-                   default_src,
-                   fallback_type: config.fallback_type,
-                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
-                 )
-            param_types[pname] = ty
-
-          when :kwarg
-            pname = a.children.first.to_s
-            ty = external_sig&.param_types&.[](pname) ||
-                 Infer.infer_param_type(
-                   "#{pname}:",
-                   nil,
-                   fallback_type: config.fallback_type,
-                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
-                 )
-            param_types[pname] = ty
-          end
-        end
-
-        param_types.empty? ? nil : param_types
       end
 
       # Method documentation.

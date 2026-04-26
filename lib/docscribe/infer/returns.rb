@@ -140,7 +140,8 @@ module Docscribe
           Literals.type_from_literal(node.children.first, fallback_type: fallback_type)
 
         when :send
-          recv, meth = node.children[0], node.children[1]
+          recv = node.children[0]
+          meth = node.children[1]
 
           # Try to resolve return type from RBS core for method calls
           if core_rbs_provider && recv&.type == :send
