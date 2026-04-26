@@ -329,11 +329,14 @@ module Docscribe
         { lines: [], reasons: [] }
       end
 
-      # Method documentation.
+      # Parse existing doc comment lines and extract known YARD tags.
+      #
+      # Extracts: `@param` names, `@return`, `@raise`, `@private`, `@protected`,
+      # `@module_function` notes, and `@option` lines.
       #
       # @note module_function: when included, also defines #parse_existing_doc_tags (instance visibility: private)
-      # @param [Object] lines Param documentation.
-      # @return [Hash]
+      # @param [Array<String>] lines existing doc comment lines
+      # @return [Hash] parsed tag info
       def parse_existing_doc_tags(lines)
         param_names = {}
         has_return = false
@@ -370,13 +373,13 @@ module Docscribe
         }
       end
 
-      # Method documentation.
+      # Extract exception names from a `@raise` doc line.
       #
       # @note module_function: when included, also defines #extract_raise_types_from_line (instance visibility: private)
-      # @param [Object] line Param documentation.
+      # @param [String] line a `@raise` doc line
       # @raise [StandardError]
-      # @return [Object]
-      # @return [Array] if StandardError
+      # @return [String, nil] the exception name or nil
+      # @return [Array] if StandardError or line not matched
       def extract_raise_types_from_line(line)
         return [] unless line.match?(/^\s*#\s*@raise\b/)
 
@@ -391,11 +394,11 @@ module Docscribe
         []
       end
 
-      # Method documentation.
+      # Parse exception names from a `@raise [ExceptionA, ExceptionB]` line.
       #
       # @note module_function: when included, also defines #parse_raise_bracket_list (instance visibility: private)
-      # @param [Object] s Param documentation.
-      # @return [Object]
+      # @param [String] s the `@raise` line text
+      # @return [Array<String>, nil] the exception names or nil
       def parse_raise_bracket_list(s)
         s.to_s.split(',').map(&:strip).reject(&:empty?)
       end
@@ -596,15 +599,15 @@ module Docscribe
         params.empty? ? nil : params
       end
 
-      # Method documentation.
+      # Format a `@param` tag line using the configured param tag style.
       #
       # @note module_function: when included, also defines #format_param_tag (instance visibility: private)
-      # @param [Object] indent Param documentation.
-      # @param [Object] name Param documentation.
-      # @param [Object] type Param documentation.
-      # @param [Object] documentation Param documentation.
-      # @param [Object] style Param documentation.
-      # @return [Object]
+      # @param [String] indent leading whitespace
+      # @param [String] name parameter name
+      # @param [String] type parameter type
+      # @param [String] documentation optional documentation text
+      # @param [String, Symbol] style param tag style (`"name_type"` or `"type_name"`)
+      # @return [String]
       def format_param_tag(indent, name, type, documentation, style:)
         doc = documentation.to_s.strip
         type = type.to_s
@@ -619,22 +622,22 @@ module Docscribe
         doc.empty? ? line : "#{line} #{doc}"
       end
 
-      # Method documentation.
+      # Extract keyword argument option pairs from a hash default value.
       #
       # @note module_function: when included, also defines #hash_option_pairs (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @return [Object]
+      # @param [Parser::AST::Node, nil] node a `:hash` node
+      # @return [Array<Parser::AST::Node>] the `:pair` children
       def hash_option_pairs(node)
         return [] unless node&.type == :hash
 
         node.children.select { |child| child.is_a?(Parser::AST::Node) && child.type == :pair }
       end
 
-      # Method documentation.
+      # Get the symbol name from an option key node.
       #
       # @note module_function: when included, also defines #option_key_name (instance visibility: private)
-      # @param [Object] key_node Param documentation.
-      # @return [Object]
+      # @param [Parser::AST::Node] key_node a `:sym` node
+      # @return [String] the option key name
       def option_key_name(key_node)
         case key_node&.type
         when :sym, :str
@@ -644,20 +647,22 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Get the raw source literal for a default value node.
       #
       # @note module_function: when included, also defines #node_default_literal (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @return [Object]
+      # @param [Parser::AST::Node, nil] node a default value node
+      # @return [String, nil] the source literal or nil
       def node_default_literal(node)
         node&.loc&.expression&.source
       end
 
-      # Method documentation.
+      # Extract the parameter name from a `@param` doc line.
+      #
+      # Handles both `"@param [Type] name"` and `"@param name [Type]"` styles.
       #
       # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
-      # @param [Object] line Param documentation.
-      # @return [nil]
+      # @param [String] line a `@param` doc line
+      # @return [String, nil] the parameter name or nil
       def extract_param_name_from_param_line(line)
         return Regexp.last_match(1) if line =~ /@param\b\s+\[[^\]]+\]\s+(\S+)/
         return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
@@ -708,14 +713,14 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Print a debug warning for a failed doc build phase.
       #
       # @note module_function: when included, also defines #debug_warn (instance visibility: private)
-      # @param [Object] e Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @param [Object] name Param documentation.
-      # @param [Object] phase Param documentation.
-      # @return [Object]
+      # @param [StandardError] e the error that occurred
+      # @param [Collector::Insertion] insertion the method insertion being processed
+      # @param [String] name the method name
+      # @param [String] phase the processing phase
+      # @return [void]
       def debug_warn(e, insertion:, name:, phase:)
         return unless debug?
 
@@ -733,10 +738,10 @@ module Docscribe
         warn "Docscribe DEBUG: #{phase} failed at #{where}: #{e.class}: #{e.message}"
       end
 
-      # Method documentation.
+      # Check whether debug mode is enabled.
       #
       # @note module_function: when included, also defines #debug? (instance visibility: private)
-      # @return [Object]
+      # @return [Boolean]
       def debug?
         ENV['DOCSCRIBE_DEBUG'] == '1'
       end

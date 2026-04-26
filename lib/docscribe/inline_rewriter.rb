@@ -66,13 +66,13 @@ module Docscribe
       # @param [Symbol, nil] strategy :safe or :aggressive
       # @param [Boolean, nil] rewrite compatibility alias for aggressive strategy
       # @param [Boolean, nil] merge compatibility alias for safe strategy
-      # @param [Docscribe::Config, nil] config config object (defaults to loaded config)
+      # @param [Docscribe::Config] config config object (defaults to loaded config)
       # @param [String] file source name used for parser locations/debugging
       # @param [nil] core_rbs_provider Param documentation.
       # @raise [Docscribe::ParseError]
       # @raise [StandardError]
       # @return [Hash]
-      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: nil, core_rbs_provider: nil, file: '(inline)')
+      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: Docscribe::Config.new({}), core_rbs_provider: nil, file: '(inline)')
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
         validate_strategy!(strategy)
 
@@ -697,14 +697,14 @@ module Docscribe
         nil
       end
 
-      # Method documentation.
+      # Format an attribute `@param` tag line using the configured param tag style.
       #
       # @private
-      # @param [Object] indent Param documentation.
-      # @param [Object] name Param documentation.
-      # @param [Object] type Param documentation.
-      # @param [Object] style Param documentation.
-      # @return [String]
+      # @param [String] indent leading whitespace
+      # @param [Symbol] name attribute name
+      # @param [String] type attribute type
+      # @param [String, Symbol] style param tag style (`"name_type"` or `"type_name"`)
+      # @return [String] formatted doc line
       def format_attribute_param_tag(indent, name, type, style:)
         type = type.to_s
 
@@ -737,15 +737,16 @@ module Docscribe
         config.fallback_type
       end
 
-      # Method documentation.
+      # Build the appropriate external signature provider for the given source.
+      #
+      # Checks config methods in order: `signature_provider_for`, `signature_provider`, `rbs_provider`.
       #
       # @private
-      # @param [Object] config Param documentation.
-      # @param [Object] code Param documentation.
-      # @param [Object] file Param documentation.
+      # @param [Docscribe::Config] config the active configuration
+      # @param [String] code the source code being processed
+      # @param [String] file the file name
       # @raise [StandardError]
-      # @return [Object]
-      # @return [Object?] if StandardError
+      # @return [Object, nil] a signature provider or nil
       def build_signature_provider(config, code, file)
         if config.respond_to?(:signature_provider_for)
           config.signature_provider_for(source: code, file: file)
@@ -758,15 +759,15 @@ module Docscribe
         config.respond_to?(:rbs_provider) ? config.rbs_provider : nil
       end
 
-      # Method documentation.
+      # Delegate to DocBuilder.build for generating a complete doc block.
       #
       # @private
-      # @param [Object] insertion Param documentation.
-      # @param [Object] config Param documentation.
-      # @param [Object] signature_provider Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
-      # @param [Object] param_types Param documentation.
-      # @return [Object]
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @param [Docscribe::Config] config the active configuration
+      # @param [Object, nil] signature_provider external signature provider
+      # @param [Object, nil] core_rbs_provider RBS core type provider
+      # @param [Hash, nil] param_types parameter name -> type map
+      # @return [String, nil] generated doc block or nil
       def build_method_doc(insertion, config:, signature_provider:, core_rbs_provider:, param_types:)
         DocBuilder.build(
           insertion,
@@ -777,16 +778,16 @@ module Docscribe
         )
       end
 
-      # Method documentation.
+      # Delegate to DocBuilder.build_missing_merge_result for generating missing doc lines only.
       #
       # @private
-      # @param [Object] insertion Param documentation.
-      # @param [Object] existing_lines Param documentation.
-      # @param [Object] config Param documentation.
-      # @param [Object] signature_provider Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
-      # @param [Object] param_types Param documentation.
-      # @return [Object]
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @param [Array<String>] existing_lines existing doc-like lines
+      # @param [Docscribe::Config] config the active configuration
+      # @param [Object, nil] signature_provider external signature provider
+      # @param [Object, nil] core_rbs_provider RBS core type provider
+      # @param [Hash, nil] param_types parameter name -> type map
+      # @return [Hash] result with `:lines` and `:reasons` keys
       def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:, core_rbs_provider:, param_types:)
         DocBuilder.build_missing_merge_result(
           insertion,
@@ -798,12 +799,12 @@ module Docscribe
         )
       end
 
-      # Method documentation.
+      # Get doc comment block info (preceding comments) for a method insertion.
       #
       # @private
-      # @param [Object] buffer Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @return [Object]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @return [Hash, nil] doc comment block info or nil
       def method_doc_comment_info(buffer, insertion)
         anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
 
@@ -811,12 +812,12 @@ module Docscribe
           SourceHelpers.doc_comment_block_info(buffer, def_bol_range.begin_pos)
       end
 
-      # Method documentation.
+      # Find the range of an existing doc comment block to remove (aggressive mode).
       #
       # @private
-      # @param [Object] buffer Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @return [Object]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @return [Parser::Source::Range, nil]
       def method_comment_block_removal_range(buffer, insertion)
         anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
 
@@ -824,12 +825,12 @@ module Docscribe
           SourceHelpers.comment_block_removal_range(buffer, def_bol_range.begin_pos)
       end
 
-      # Method documentation.
+      # Get the beginning-of-line ranges for the anchor and method nodes.
       #
       # @private
-      # @param [Object] buffer Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @return [Array]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @return [Array<Parser::Source::Range>]
       def method_bol_ranges(buffer, insertion)
         anchor_node = anchor_node_for(insertion)
         [
@@ -838,24 +839,23 @@ module Docscribe
         ]
       end
 
-      # Method documentation.
+      # Get the source line number for the method's anchor node.
       #
       # @private
-      # @param [Object] insertion Param documentation.
+      # @param [Collector::Insertion] insertion the collected method insertion
       # @raise [StandardError]
-      # @return [Object]
-      # @return [Object] if StandardError
+      # @return [Integer] the 1-based line number
       def method_line_for(insertion)
         anchor_node_for(insertion).loc.expression.line
       rescue StandardError
         insertion.node.loc.expression.line
       end
 
-      # Method documentation.
+      # Get the anchor node for an insertion (Sorbet `sig` or the method node itself).
       #
       # @private
-      # @param [Object] insertion Param documentation.
-      # @return [Object]
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @return [Parser::AST::Node]
       def anchor_node_for(insertion)
         if insertion.respond_to?(:anchor_node) && insertion.anchor_node
           insertion.anchor_node
