@@ -516,7 +516,7 @@ module Docscribe
           doc = build_attr_doc_for_node(
             insertion,
             config: config,
-            signature_provider: signature_provider,
+            signature_provider: signature_provider
           )
           return if doc.nil? || doc.empty?
 
