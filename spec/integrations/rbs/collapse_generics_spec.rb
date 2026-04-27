@@ -4,30 +4,7 @@ require 'tmpdir'
 require 'fileutils'
 
 RSpec.describe 'RBS collapse_generics option' do
-  def inline_with_rbs(code:, rbs:, collapse_generics:)
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
-    end
-
-    Dir.mktmpdir do |dir|
-      sig_dir = File.join(dir, 'sig')
-      FileUtils.mkdir_p(sig_dir)
-
-      File.write(File.join(sig_dir, 'demo.rbs'), rbs)
-
-      conf = Docscribe::Config.new(
-        'rbs' => {
-          'enabled' => true,
-          'sig_dirs' => [sig_dir],
-          'collapse_generics' => collapse_generics
-        }
-      )
-
-      Docscribe::InlineRewriter.insert_comments(code, config: conf)
-    end
-  end
+  before { skip_unless_rbs_available! }
 
   let(:rbs) do
     <<~RBS
@@ -47,26 +24,62 @@ RSpec.describe 'RBS collapse_generics option' do
     RUBY
   end
 
-  it 'keeps generics when rbs.collapse_generics is false' do
-    out = inline_with_rbs(code: code, rbs: rbs, collapse_generics: false)
+  let(:collapse_generics) { false }
 
-    # Prove RBS is actually used (otherwise inference would be String)
-    expect(out).to include('# @return [Integer]')
-    expect(out).not_to include('# @return [String]')
+  describe 'when rbs.collapse_generics is false' do
+    subject(:out) do
+      Dir.mktmpdir do |dir|
+        sig_dir = File.join(dir, 'sig')
+        FileUtils.mkdir_p(sig_dir)
+        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
 
-    # And generics should be preserved
-    expect(out).to include(param_tag('options', 'Hash<Symbol, Object>'))
+        inline(
+          code,
+          config: Docscribe::Config.new(
+            'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir], 'collapse_generics' => collapse_generics }
+          )
+        )
+      end
+    end
+
+    let(:collapse_generics) { false }
+
+    it 'keeps generics' do
+      # Prove RBS is actually used (otherwise inference would be String)
+      expect(out).to include('# @return [Integer]')
+      expect(out).not_to include('# @return [String]')
+
+      # And generics should be preserved
+      expect(out).to include(param_tag('options', 'Hash<Symbol, Object>'))
+    end
   end
 
-  it 'collapses generics when rbs.collapse_generics is true' do
-    out = inline_with_rbs(code: code, rbs: rbs, collapse_generics: true)
+  describe 'when rbs.collapse_generics is true' do
+    subject(:out) do
+      Dir.mktmpdir do |dir|
+        sig_dir = File.join(dir, 'sig')
+        FileUtils.mkdir_p(sig_dir)
+        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
 
-    # Prove RBS is actually used
-    expect(out).to include('# @return [Integer]')
-    expect(out).not_to include('# @return [String]')
+        inline(
+          code,
+          config: Docscribe::Config.new(
+            'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir], 'collapse_generics' => collapse_generics }
+          )
+        )
+      end
+    end
 
-    # Generics collapsed
-    expect(out).to include(param_tag('options', 'Hash'))
-    expect(out).not_to include(param_tag('options', 'Hash<Symbol, Object>'))
+    let(:collapse_generics) { true }
+
+    it 'collapses generics' do
+      # Prove RBS is actually used
+      expect(out).to include('# @return [Integer]')
+      expect(out).not_to include('# @return [String]')
+
+      # Generics collapsed
+      expect(out).to include(param_tag('options', 'Hash'))
+      expect(out).not_to include(param_tag('options', 'Hash<Symbol, Object>'))
+    end
   end
 end

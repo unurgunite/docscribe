@@ -72,7 +72,8 @@ module Docscribe
       # @raise [Docscribe::ParseError]
       # @raise [StandardError]
       # @return [Hash]
-      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: Docscribe::Config.new({}), core_rbs_provider: nil, file: '(inline)')
+      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: Docscribe::Config.new({}),
+                              core_rbs_provider: nil, file: '(inline)')
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
         validate_strategy!(strategy)
 
@@ -344,7 +345,8 @@ module Docscribe
             rewriter.remove(range)
           end
 
-          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider, core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
+          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
+                                            core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -420,7 +422,8 @@ module Docscribe
             return
           end
 
-          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider, core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
+          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
+                                            core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -788,7 +791,8 @@ module Docscribe
       # @param [Object, nil] core_rbs_provider RBS core type provider
       # @param [Hash, nil] param_types parameter name -> type map
       # @return [Hash] result with `:lines` and `:reasons` keys
-      def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:, core_rbs_provider:, param_types:)
+      def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:,
+                                            core_rbs_provider:, param_types:)
         DocBuilder.build_missing_merge_result(
           insertion,
           existing_lines: existing_lines,

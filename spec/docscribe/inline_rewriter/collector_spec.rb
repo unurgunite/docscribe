@@ -3,46 +3,41 @@
 require 'docscribe/inline_rewriter/collector'
 
 RSpec.describe Docscribe::InlineRewriter::Collector do
-  it 'treats `private def foo` as private' do
-    code = <<~RUBY
-      class A
-        private def foo; 1; end
-      end
-    RUBY
+  describe 'visibility handling' do
+    subject(:out) { inline(code, config: conf) }
 
-    conf = Docscribe::Config.new('emit' => { 'visibility_tags' => true })
-    out = Docscribe::InlineRewriter.insert_comments(code, config: conf)
+    let(:code) do
+      <<~RUBY
+        class A
+          private def foo; 1; end
+        end
+      RUBY
+    end
 
-    expect(out).to match(/# \+A#foo\+.*?\n.*?# @private/m)
+    let(:conf) { Docscribe::Config.new('emit' => { 'visibility_tags' => true }) }
+
+    it 'treats `private def foo` as private and emits @private when enabled' do
+      expect(out).to match(header_regex('A', 'foo', 'Integer'))
+      expect(out).to include('# @private')
+    end
   end
 
-  it 'treats `private def foo` as private (emits @private when enabled)' do
-    conf = Docscribe::Config.new('emit' => { 'visibility_tags' => true })
+  describe 'Struct.new collection' do
+    it 'collects attr insertions for top-level Struct.new constant assignment' do
+      buffer = Parser::Source::Buffer.new('(inline)')
+      buffer.source = <<~RUBY
+        Foo = Struct.new(:a, :b, keyword_init: true)
+      RUBY
 
-    code = <<~RUBY
-      class A
-        private def foo; 1; end
-      end
-    RUBY
+      ast = Docscribe::Parsing.parse_buffer(buffer)
+      collector = described_class.new(buffer)
+      collector.process(ast)
 
-    out = Docscribe::InlineRewriter.insert_comments(code, config: conf)
-    expect(out).to match(/# \+A#foo\+.*?\n.*?# @private/m)
-  end
+      ins = collector.attr_insertions.find { |i| i.container == 'Foo' }
 
-  it 'collects attr insertions for top-level Struct.new constant assignment' do
-    buffer = Parser::Source::Buffer.new('(inline)')
-    buffer.source = <<~RUBY
-      Foo = Struct.new(:a, :b, keyword_init: true)
-    RUBY
-
-    ast = Docscribe::Parsing.parse_buffer(buffer)
-    collector = described_class.new(buffer)
-    collector.process(ast)
-
-    ins = collector.attr_insertions.find { |i| i.container == 'Foo' }
-
-    expect(ins).not_to be_nil
-    expect(ins.access).to eq(:rw)
-    expect(ins.names).to eq(%i[a b])
+      expect(ins).not_to be_nil
+      expect(ins.access).to eq(:rw)
+      expect(ins.names).to eq(%i[a b])
+    end
   end
 end

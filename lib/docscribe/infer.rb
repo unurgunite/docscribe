@@ -96,7 +96,8 @@ module Docscribe
       # @param [nil] core_rbs_provider Param documentation.
       # @param [nil] param_types Param documentation.
       # @return [Hash]
-      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil, param_types: nil)
+      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
+                                 param_types: nil)
         Returns.returns_spec_from_node(
           node,
           fallback_type: fallback_type,

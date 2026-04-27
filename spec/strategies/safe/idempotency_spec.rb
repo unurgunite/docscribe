@@ -1,17 +1,20 @@
 # frozen_string_literal: true
 
 RSpec.describe 'safe strategy idempotency' do
-  it 'is idempotent' do
-    code = <<~RUBY
+  subject(:out2) { inline(out1) }
+
+  let(:code) do
+    <<~RUBY
       class A
         # @todo docs
         def foo(x); x; end
       end
     RUBY
+  end
 
-    out1 = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
-    out2 = Docscribe::InlineRewriter.insert_comments(out1, strategy: :safe)
+  let(:out1) { inline(code) }
 
+  it 'is idempotent' do
     expect(out2).to eq(out1)
   end
 end

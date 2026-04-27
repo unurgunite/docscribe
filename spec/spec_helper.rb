@@ -6,14 +6,17 @@ require 'docscribe'
 Dir['./spec/support/*.rb'].sort.each { |file| require file }
 
 module InlineHelper
-  # Method documentation.
+  # Run Docscribe's inline rewriter on +code+ with the given configuration and strategy.
   #
-  # @param [Object] code Param documentation.
-  # @param [Config] config Param documentation.
-  # @param [Symbol] strategy Param documentation.
-  # @return [Object]
-  def inline(code, config: Docscribe::Config.new({}), strategy: :safe)
-    Docscribe::InlineRewriter.insert_comments(code, strategy: strategy, config: config)
+  # Defaults to safe mode and an empty config when no arguments are provided.
+  #
+  # @param [String] code Ruby source code to rewrite
+  # @param [Docscribe::Config, nil] config configuration (defaults to empty)
+  # @param [Symbol] strategy rewrite strategy (:safe or :aggressive)
+  # @param [String] file file with Ruby source code
+  # @return [String] rewritten source code
+  def inline(code, config: Docscribe::Config.new({}), strategy: :safe, file: nil)
+    Docscribe::InlineRewriter.insert_comments(code, strategy: strategy, config: config, file: file)
   end
 end
 

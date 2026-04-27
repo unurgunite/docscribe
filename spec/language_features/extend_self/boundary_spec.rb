@@ -1,43 +1,49 @@
 # frozen_string_literal: true
 
 RSpec.describe 'extend self boundary' do
-  it 'does not retroactively promote defs that appear after extend self' do
-    code = <<~RUBY
-      module M
-        def a; 1; end
+  subject(:out) { inline(code) }
 
-        extend self
+  describe 'promotion scope' do
+    let(:code) do
+      <<~RUBY
+        module M
+          def a; 1; end
 
-        def b; 2; end
-      end
-    RUBY
+          extend self
 
-    out = inline(code)
+          def b; 2; end
+        end
+      RUBY
+    end
 
-    # a should be module method
-    expect(out).to include('# +M.a+')
-    expect(out).not_to include('# +M#a+')
+    it 'does not retroactively promote defs that appear after extend self' do
+      # a should be module method
+      expect(out).to include('# +M.a+')
+      expect(out).not_to include('# +M#a+')
 
-    # b should also be module method because extend self applies to subsequent defs too
-    # (this assertion should pass either way)
-    expect(out).to include('# +M.b+')
+      # b should also be module method because extend self applies to subsequent defs too
+      # (this assertion should pass either way)
+      expect(out).to include('# +M.b+')
+    end
   end
 
-  it 'does not promote methods from other containers' do
-    code = <<~RUBY
-      module M
-        def a; 1; end
-        extend self
-      end
+  describe 'cross-container isolation' do
+    let(:code) do
+      <<~RUBY
+        module M
+          def a; 1; end
+          extend self
+        end
 
-      module N
-        def a; 2; end
-      end
-    RUBY
+        module N
+          def a; 2; end
+        end
+      RUBY
+    end
 
-    out = inline(code)
-
-    expect(out).to include('# +M.a+')
-    expect(out).to include('# +N#a+')
+    it 'does not promote methods from other containers' do
+      expect(out).to include('# +M.a+')
+      expect(out).to include('# +N#a+')
+    end
   end
 end

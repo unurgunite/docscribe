@@ -16,7 +16,7 @@ RSpec.describe DocscribePlugins::ApiTagPlugin do
   # @return [Object]
   def rewrite(code, strategy: :safe)
     conf = Docscribe::Config.new({})
-    Docscribe::InlineRewriter.insert_comments(code, strategy: strategy, config: conf)
+    inline(code, strategy: strategy, config: conf)
   end
 
   describe 'public methods' do
