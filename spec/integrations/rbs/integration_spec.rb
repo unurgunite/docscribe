@@ -4,66 +4,78 @@ require 'tmpdir'
 require 'fileutils'
 
 RSpec.describe 'RBS integration' do
-  it 'overrides inferred return type using RBS (String body, Integer in RBS)' do
-    rbs = <<~RBS
-      class Demo
-        def foo: (verbose: bool, options: ::Hash[::Symbol, untyped]) -> ::Integer
-      end
-    RBS
+  before { skip_unless_rbs_available! }
 
-    code = <<~RUBY
-      class Demo
-        def foo(verbose: true, options: {})
-          "a"
+  describe 'overrides inferred return type using RBS' do
+    subject(:out) { inline_with_rbs(code: code, rbs: rbs) }
+
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def foo: (verbose: bool, options: ::Hash[::Symbol, untyped]) -> ::Integer
         end
-      end
-    RUBY
+      RBS
+    end
 
-    out = inline_with_rbs(code: code, rbs: rbs)
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo(verbose: true, options: {})
+            "a"
+          end
+        end
+      RUBY
+    end
 
-    # If RBS was ignored, inference would produce String here.
-    expect(out).to include('# +Demo#foo+ -> Integer')
-    expect(out).to include('# @return [Integer]')
-    expect(out).not_to include('# @return [String]')
+    it 'overrides inferred return type using RBS (String body, Integer in RBS)' do
+      # If RBS was ignored, inference would produce String here.
+      expect(out).to include('# +Demo#foo+ -> Integer')
+      expect(out).to include('# @return [Integer]')
+      expect(out).not_to include('# @return [String]')
 
-    # Param types should also come from RBS when available.
-    expect(out).to include(param_tag('verbose', 'Boolean'))
+      # Param types should also come from RBS when available.
+      expect(out).to include(param_tag('verbose', 'Boolean'))
 
-    # Your formatter currently keeps generics, so Hash[Symbol, untyped] becomes Hash<Symbol, Object>.
-    # If you later decide to "collapse generics", change this expectation accordingly.
-    expect(out).to include(param_tag('options', 'Hash<Symbol, Object>'))
+      # Your formatter currently keeps generics, so Hash[Symbol, untyped] becomes Hash<Symbol, Object>.
+      # If you later decide to "collapse generics", change this expectation accordingly.
+      expect(out).to include(param_tag('options', 'Hash<Symbol, Object>'))
+    end
   end
 
-  it 'overrides required keyword-without-default type using RBS (Object by inference, Boolean by RBS)' do
-    rbs = <<~RBS
-      class Demo
-        def foo: (verbose: bool, options: ::Hash[::Symbol, untyped]) -> ::Integer
-      end
-    RBS
+  describe 'overrides required keyword-without-default type using RBS' do
+    subject(:out) { inline_with_rbs(code: code, rbs: rbs) }
 
-    code = <<~RUBY
-      class Demo
-        def foo(verbose:, options: {})
-          "a"
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def foo: (verbose: bool, options: ::Hash[::Symbol, untyped]) -> ::Integer
         end
-      end
-    RUBY
+      RBS
+    end
 
-    out = inline_with_rbs(code: code, rbs: rbs)
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo(verbose:, options: {})
+            "a"
+          end
+        end
+      RUBY
+    end
 
-    # Without RBS, "verbose:" (no default) is inferred as Object.
-    expect(out).to include(param_tag('verbose', 'Boolean'))
-    expect(out).not_to include(param_tag('verbose', 'Object'))
+    it 'overrides required keyword-without-default type using RBS (Object by inference, Boolean by RBS)' do
+      # Without RBS, "verbose:" (no default) is inferred as Object.
+      expect(out).to include(param_tag('verbose', 'Boolean'))
+      expect(out).not_to include(param_tag('verbose', 'Object'))
 
-    # Without RBS, return would be String; with RBS it must be Integer.
-    expect(out).to include('# @return [Integer]')
-    expect(out).not_to include('# @return [String]')
+      # Without RBS, return would be String; with RBS it must be Integer.
+      expect(out).to include('# @return [Integer]')
+      expect(out).not_to include('# @return [String]')
+    end
   end
 
   context 'when sig_dir has nested collection-like structure' do
     it 'resolves types from nested subdirectories' do
-      skip_unless_rbs_available!
-
       # .gem_rbs_collection/my_gem/1.0/my_gem.rbs
       Dir.mktmpdir do |root|
         nested = File.join(root, 'my_gem', '1.0')

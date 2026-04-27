@@ -4,7 +4,7 @@ require 'docscribe/inline_rewriter/collector'
 
 RSpec.describe Docscribe::InlineRewriter::Collector do
   describe 'visibility handling' do
-    subject(:out) { Docscribe::InlineRewriter.insert_comments(code, config: conf) }
+    subject(:out) { inline(code, config: conf) }
 
     let(:code) do
       <<~RUBY

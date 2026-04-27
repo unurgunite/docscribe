@@ -59,7 +59,8 @@ module Docscribe
       # @param [nil] core_rbs_provider Param documentation.
       # @param [nil] param_types Param documentation.
       # @return [Hash]
-      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil, param_types: nil)
+      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
+                                 param_types: nil)
         body =
           case node.type
           when :def then node.children[2]
@@ -72,7 +73,8 @@ module Docscribe
         if body.type == :rescue
           main_body = body.children[0]
           spec[:normal] =
-            last_expr_type(main_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional, core_rbs_provider: core_rbs_provider, param_types: param_types) || FALLBACK_TYPE
+            last_expr_type(main_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                      core_rbs_provider: core_rbs_provider, param_types: param_types) || FALLBACK_TYPE
 
           body.children.each do |ch|
             next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody
@@ -80,13 +82,15 @@ module Docscribe
             exc_list, _asgn, rescue_body = *ch
             exc_names = Raises.exception_names_from_rescue_list(exc_list)
             rtype =
-              last_expr_type(rescue_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional, core_rbs_provider: core_rbs_provider, param_types: param_types) ||
+              last_expr_type(rescue_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                          core_rbs_provider: core_rbs_provider, param_types: param_types) ||
               fallback_type
             spec[:rescues] << [exc_names, rtype]
           end
         else
           spec[:normal] =
-            last_expr_type(body, fallback_type: fallback_type, nil_as_optional: nil_as_optional, core_rbs_provider: core_rbs_provider, param_types: param_types) || FALLBACK_TYPE
+            last_expr_type(body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                 core_rbs_provider: core_rbs_provider, param_types: param_types) || FALLBACK_TYPE
         end
 
         spec
@@ -114,19 +118,24 @@ module Docscribe
 
         case node.type
         when :begin
-          last_expr_type(node.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional, core_rbs_provider: core_rbs_provider, param_types: param_types)
+          last_expr_type(node.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                             core_rbs_provider: core_rbs_provider, param_types: param_types)
 
         when :if
-          t = last_expr_type(node.children[1], fallback_type: fallback_type, nil_as_optional: nil_as_optional, core_rbs_provider: core_rbs_provider, param_types: param_types)
-          e = last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional, core_rbs_provider: core_rbs_provider, param_types: param_types)
+          t = last_expr_type(node.children[1], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                               core_rbs_provider: core_rbs_provider, param_types: param_types)
+          e = last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                               core_rbs_provider: core_rbs_provider, param_types: param_types)
           unify_types(t, e, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
 
         when :case
           branches = node.children[1..].compact.flat_map do |child|
             if child.type == :when
-              last_expr_type(child.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional, core_rbs_provider: core_rbs_provider, param_types: param_types)
+              last_expr_type(child.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                                  core_rbs_provider: core_rbs_provider, param_types: param_types)
             else
-              last_expr_type(child, fallback_type: fallback_type, nil_as_optional: nil_as_optional, core_rbs_provider: core_rbs_provider, param_types: param_types)
+              last_expr_type(child, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                    core_rbs_provider: core_rbs_provider, param_types: param_types)
             end
           end.compact
 
@@ -148,7 +157,8 @@ module Docscribe
           # Try to resolve return type from RBS core for method calls
           if core_rbs_provider && recv&.type == :send
             # Chained call: arg.to_i.positive?
-            inner_type = last_expr_type(recv, fallback_type: nil, nil_as_optional: false, core_rbs_provider: core_rbs_provider, param_types: param_types)
+            inner_type = last_expr_type(recv, fallback_type: nil, nil_as_optional: false,
+                                              core_rbs_provider: core_rbs_provider, param_types: param_types)
             if inner_type
               rbs_type = resolve_rbs_return_type(inner_type, meth, core_rbs_provider)
               return rbs_type unless rbs_type == FALLBACK_TYPE

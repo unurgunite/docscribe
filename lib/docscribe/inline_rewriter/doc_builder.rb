@@ -134,7 +134,8 @@ module Docscribe
       # @param [nil] param_types Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil)
+      def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil, core_rbs_provider: nil,
+                                param_types: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return '' unless name
@@ -229,7 +230,8 @@ module Docscribe
       # @param [nil] param_types Param documentation.
       # @raise [StandardError]
       # @return [Hash]
-      def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil)
+      def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil,
+                                     core_rbs_provider: nil, param_types: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return { lines: [], reasons: [] } unless name

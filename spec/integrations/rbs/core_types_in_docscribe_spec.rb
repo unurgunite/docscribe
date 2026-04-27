@@ -6,6 +6,8 @@ require 'fileutils'
 RSpec.describe 'RBS core types in Docscribe' do
   subject(:out) { inline(code, config: config) }
 
+  before { skip_unless_rbs_available! }
+
   let(:config) do
     Docscribe::Config.new(
       'rbs' => { 'enabled' => true, 'sig_dirs' => [] },
@@ -25,88 +27,79 @@ RSpec.describe 'RBS core types in Docscribe' do
         RUBY
       end
 
-      it do
-        skip_unless_rbs_available!
-
+      it 'infers Boolean' do
         # With core RBS, positive? returns bool.
         expect(out).to include('# @return [Boolean]')
         expect(out).not_to include('# @return [Object]')
       end
+    end
 
-      describe 'when infers Integer for arg.to_i' do
-        let(:code) do
-          <<~RUBY
-            class Demo
-              def foo(arg = '')
-                arg.to_i
-              end
+    describe 'infers Integer for arg.to_i' do
+      let(:code) do
+        <<~RUBY
+          class Demo
+            def foo(arg = '')
+              arg.to_i
             end
-          RUBY
-        end
-
-        it do
-          skip_unless_rbs_available!
-
-          expect(out).to include('# @return [Integer]')
-          expect(out).not_to include('# @return [Object]')
-        end
+          end
+        RUBY
       end
 
-      describe 'infers Integer for chained call arg.to_s.length' do
-        let(:code) do
-          <<~RUBY
-            class Demo
-              def foo(arg = 1)
-                arg.to_s.length
-              end
+      it 'infers Integer' do
+        expect(out).to include('# @return [Integer]')
+        expect(out).not_to include('# @return [Object]')
+      end
+    end
+
+    describe 'infers Integer for chained call arg.to_s.length' do
+      let(:code) do
+        <<~RUBY
+          class Demo
+            def foo(arg = 1)
+              arg.to_s.length
             end
-          RUBY
-        end
-
-        it do
-          skip_unless_rbs_available!
-
-          expect(out).to include('# @return [Integer]')
-          expect(out).not_to include('# @return [Object]')
-        end
+          end
+        RUBY
       end
 
-      describe 'infers String for arg.upcase' do
-        let(:code) do
-          <<~RUBY
-            class Demo
-              def foo(arg = "")
-                arg.upcase
-              end
-            end
-          RUBY
-        end
+      it 'infers Integer' do
+        expect(out).to include('# @return [Integer]')
+        expect(out).not_to include('# @return [Object]')
+      end
+    end
 
-        it do
-          skip_unless_rbs_available!
-          expect(out).to include('# @return [String]')
-          expect(out).not_to include('# @return [Object]')
-        end
+    describe 'infers String for arg.upcase' do
+      let(:code) do
+        <<~RUBY
+          class Demo
+            def foo(arg = "")
+              arg.upcase
+            end
+          end
+        RUBY
       end
 
-      describe 'infers String for rescue branch' do
-        let(:code) do
-          <<~RUBY
-            class Demo
-              def foo(arg = "")
-                arg.upcase
-              rescue
-                "default"
-              end
+      it 'infers String' do
+        expect(out).to include('# @return [String]')
+        expect(out).not_to include('# @return [Object]')
+      end
+    end
+
+    describe 'infers String for rescue branch' do
+      let(:code) do
+        <<~RUBY
+          class Demo
+            def foo(arg = "")
+              arg.upcase
+            rescue
+              "default"
             end
-          RUBY
-        end
+          end
+        RUBY
+      end
 
-        it do
-          skip_unless_rbs_available!
-
-          expect(out).to include('# @return [String]')
-        end
+      it 'infers String' do
+        expect(out).to include('# @return [String]')
       end
     end
   end

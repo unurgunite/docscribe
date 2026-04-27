@@ -3,12 +3,14 @@
 RSpec.describe Docscribe::Parsing do
   subject(:nodes) { %i[block itblock] }
 
-  it 'parses Ruby 3.4+ syntax with the prism backend and returns parser-gem AST nodes' do
-    skip 'Ruby < 3.4' if Gem::Version.new(RUBY_VERSION) < Gem::Version.new('3.4')
-
-    code = <<~RUBY
+  let(:code) do
+    <<~RUBY
       [1,2,3].map { it + 1 }
     RUBY
+  end
+
+  it 'parses Ruby 3.4+ syntax with the prism backend and returns parser-gem AST nodes' do
+    skip 'Ruby < 3.4' if Gem::Version.new(RUBY_VERSION) < Gem::Version.new('3.4')
 
     ast = described_class.parse(code, backend: :prism)
 

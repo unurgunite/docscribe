@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'docscribe/plugin'
-
 RSpec.describe 'CollectorPlugin integration' do
   after { Docscribe::Plugin::Registry.clear! }
 
@@ -31,69 +29,51 @@ RSpec.describe 'CollectorPlugin integration' do
     end.new
   end
 
-  it 'inserts docs for define_method in safe mode' do
-    Docscribe::Plugin::Registry.register(define_method_plugin)
-
-    code = <<~RUBY
+  let(:code) do
+    <<~RUBY
       class Demo
         define_method(:hello) { 'hi' }
       end
     RUBY
-
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
-
-    expect(out).to include('# Dynamic method: hello')
-    expect(out).to include('# @return [Object]')
   end
 
-  it 'is idempotent in safe mode' do
-    Docscribe::Plugin::Registry.register(define_method_plugin)
+  describe 'in safe mode' do
+    subject(:out) { inline(code) }
 
-    code = <<~RUBY
-      class Demo
-        define_method(:hello) { 'hi' }
-      end
-    RUBY
+    it 'inserts docs for define_method' do
+      Docscribe::Plugin::Registry.register(define_method_plugin)
+      expect(out).to include('# Dynamic method: hello')
+      expect(out).to include('# @return [Object]')
+    end
 
-    first  = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
-    second = Docscribe::InlineRewriter.insert_comments(first, strategy: :safe)
-
-    expect(second.scan('# Dynamic method: hello').length).to eq(1)
+    it 'is idempotent' do
+      Docscribe::Plugin::Registry.register(define_method_plugin)
+      second = inline(out)
+      expect(second.scan('# Dynamic method: hello').length).to eq(1)
+    end
   end
 
-  it 'replaces existing doc in aggressive mode' do
-    Docscribe::Plugin::Registry.register(define_method_plugin)
+  describe 'in aggressive mode' do
+    subject(:out) { inline(code, strategy: :aggressive) }
 
-    code = <<~RUBY
-      class Demo
-        # old doc
-        define_method(:hello) { 'hi' }
-      end
-    RUBY
+    it 'replaces existing doc' do
+      Docscribe::Plugin::Registry.register(define_method_plugin)
+      expect(out).to include('# Dynamic method: hello')
+      expect(out).not_to include('# old doc')
+    end
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
+    it 'isolates broken collector plugins and continues' do
+      broken = Class.new(Docscribe::Plugin::Base::CollectorPlugin) do
+        def collect(_ast, _buffer)
+          raise 'boom'
+        end
+      end.new
 
-    expect(out).to include('# Dynamic method: hello')
-    expect(out).not_to include('# old doc')
-  end
+      Docscribe::Plugin::Registry.register(broken)
 
-  it 'isolates broken collector plugins and continues' do
-    broken = Class.new(Docscribe::Plugin::Base::CollectorPlugin) do
-      def collect(_ast, _buffer)
-        raise 'boom'
-      end
-    end.new
-
-    Docscribe::Plugin::Registry.register(broken)
-
-    code = <<~RUBY
-      class Demo
-        def foo; end
-      end
-    RUBY
-
-    expect do
-      Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
-    end.not_to raise_error
+      expect do
+        out
+      end.not_to raise_error
+    end
   end
 end

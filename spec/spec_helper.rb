@@ -13,9 +13,10 @@ module InlineHelper
   # @param [String] code Ruby source code to rewrite
   # @param [Docscribe::Config, nil] config configuration (defaults to empty)
   # @param [Symbol] strategy rewrite strategy (:safe or :aggressive)
+  # @param [String] file file with Ruby source code
   # @return [String] rewritten source code
-  def inline(code, config: Docscribe::Config.new({}), strategy: :safe)
-    Docscribe::InlineRewriter.insert_comments(code, strategy: strategy, config: config)
+  def inline(code, config: Docscribe::Config.new({}), strategy: :safe, file: nil)
+    Docscribe::InlineRewriter.insert_comments(code, strategy: strategy, config: config, file: file)
   end
 end
 

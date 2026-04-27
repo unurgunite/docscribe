@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe 'top-level methods' do
-  subject(:out) { Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf) }
+  subject(:out) { inline(code, strategy: :safe, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 

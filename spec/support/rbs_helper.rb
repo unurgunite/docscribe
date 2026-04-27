@@ -16,7 +16,7 @@ module RbsHelper
       }
     }.merge(config_overrides)
 
-    Docscribe::InlineRewriter.insert_comments(
+    inline(
       code,
       strategy: strategy,
       config: Docscribe::Config.new(raw)
@@ -60,7 +60,7 @@ module RbsHelper
         }
       end
 
-      Docscribe::InlineRewriter.insert_comments(
+      inline(
         code,
         config: Docscribe::Config.new(raw)
       )
@@ -84,7 +84,7 @@ module RbsHelper
       FileUtils.mkdir_p(sig_dir)
       File.write(File.join(sig_dir, 'demo.rbs'), rbs)
 
-      Docscribe::InlineRewriter.insert_comments(
+      inline(
         code,
         config: Docscribe::Config.new(
           'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] }

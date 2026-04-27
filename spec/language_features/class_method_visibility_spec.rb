@@ -4,7 +4,7 @@ RSpec.describe 'class method visibility helpers' do
   let(:conf) { Docscribe::Config.new('emit' => { 'visibility_tags' => true }) }
 
   describe 'private_class_method' do
-    subject(:out) { Docscribe::InlineRewriter.insert_comments(code, config: conf) }
+    subject(:out) { inline(code, config: conf) }
 
     let(:code) do
       <<~RUBY
@@ -22,7 +22,7 @@ RSpec.describe 'class method visibility helpers' do
   end
 
   describe 'protected_class_method' do
-    subject(:out) { Docscribe::InlineRewriter.insert_comments(code, config: conf) }
+    subject(:out) { inline(code, config: conf) }
 
     let(:code) do
       <<~RUBY
@@ -40,7 +40,7 @@ RSpec.describe 'class method visibility helpers' do
   end
 
   describe 'public_class_method' do
-    subject(:out) { Docscribe::InlineRewriter.insert_comments(code, config: conf) }
+    subject(:out) { inline(code, config: conf) }
 
     let(:code) do
       <<~RUBY

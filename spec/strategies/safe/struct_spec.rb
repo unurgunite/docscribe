@@ -1,50 +1,54 @@
 # frozen_string_literal: true
 
 RSpec.describe 'safe strategy struct docs' do
-  it 'appends missing @!attribute blocks into an existing doc-like block for Struct.new assignment' do
-    conf = Docscribe::Config.new('emit' => { 'attributes' => true })
+  subject(:out) { inline(code, config: conf) }
 
-    code = <<~RUBY
-      # @todo docs
-      # @!attribute [rw] a
-      # @return [Object]
-      # @param value [Object]
-      Foo = Struct.new(:a, :b, keyword_init: true)
-    RUBY
+  let(:conf) { Docscribe::Config.new('emit' => { 'attributes' => true }) }
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
+  context 'when Struct.new assignment has a doc-like block' do
+    let(:code) do
+      <<~RUBY
+        # @todo docs
+        # @!attribute [rw] a
+        # @return [Object]
+        # @param value [Object]
+        Foo = Struct.new(:a, :b, keyword_init: true)
+      RUBY
+    end
 
-    expect(out).to include('# @todo docs')
-    expect(out).to include('# @!attribute [rw] a')
-    expect(out).to include('# @!attribute [rw] b')
-    expect(out.scan(/^\s*#\s*@!attribute\b/).size).to eq(2)
+    it 'appends missing @!attribute blocks into the existing doc-like block' do
+      expect(out).to include('# @todo docs')
+      expect(out).to include('# @!attribute [rw] a')
+      expect(out).to include('# @!attribute [rw] b')
+      expect(out.scan(/^\s*#\s*@!attribute\b/).size).to eq(2)
+    end
   end
 
-  it 'inserts full struct docs when there is no doc-like block' do
-    conf = Docscribe::Config.new('emit' => { 'attributes' => true })
+  context 'when there is no doc-like block' do
+    let(:code) do
+      <<~RUBY
+        # NOTE: keep this
+        Foo = Struct.new(:name, keyword_init: true)
+      RUBY
+    end
 
-    code = <<~RUBY
-      # NOTE: keep this
-      Foo = Struct.new(:name, keyword_init: true)
-    RUBY
-
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
-
-    expect(out).to include('# NOTE: keep this')
-    expect(out).to include('# @!attribute [rw] name')
+    it 'inserts full struct docs' do
+      expect(out).to include('# NOTE: keep this')
+      expect(out).to include('# @!attribute [rw] name')
+    end
   end
 
-  it 'does not rewrite class-based struct style into assignment style' do
-    conf = Docscribe::Config.new('emit' => { 'attributes' => true })
+  context 'when struct is class-based (< Struct.new ...)' do
+    let(:code) do
+      <<~RUBY
+        class Foo < Struct.new(:a, :b, keyword_init: true)
+        end
+      RUBY
+    end
 
-    code = <<~RUBY
-      class Foo < Struct.new(:a, :b, keyword_init: true)
-      end
-    RUBY
-
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
-
-    expect(out).to include('class Foo < Struct.new(:a, :b, keyword_init: true)')
-    expect(out).not_to include('Foo = Struct.new')
+    it 'does not rewrite it into assignment style' do
+      expect(out).to include('class Foo < Struct.new(:a, :b, keyword_init: true)')
+      expect(out).not_to include('Foo = Struct.new')
+    end
   end
 end

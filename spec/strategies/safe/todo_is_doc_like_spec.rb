@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
 RSpec.describe '@todo blocks are doc-like' do
-  it 'merges into a block that only contains @todo' do
-    code = <<~RUBY
+  subject(:out) { inline(code) }
+
+  let(:code) do
+    <<~RUBY
       class A
         # @todo docs
         def foo(x); x; end
       end
     RUBY
+  end
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
-
+  it 'merges into a block that only contains @todo' do
     expect(out).to include('# @todo docs')
     expect(out).to include(param_tag('x', 'Object'))
   end
