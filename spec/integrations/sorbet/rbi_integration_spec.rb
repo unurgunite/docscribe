@@ -4,174 +4,160 @@ require 'tmpdir'
 require 'fileutils'
 
 RSpec.describe 'Sorbet RBI integration' do
-  def inline_with_signature_files(code:, rbi:, rbs: nil, rbi_dir_name: 'sorbet/rbi', sig_dir_name: 'sig')
-    skip_unless_sorbet_bridge_available!
+  describe 'RBI signatures' do
+    subject(:out) { inline_with_signature_files(code: code, rbi: rbi) }
 
-    Dir.mktmpdir do |dir|
-      rbi_dir = File.join(dir, rbi_dir_name)
-      FileUtils.mkdir_p(rbi_dir)
-      File.write(File.join(rbi_dir, 'demo.rbi'), rbi)
+    let(:rbi) do
+      <<~RBI
+        # typed: strict
+        class Demo
+          extend T::Sig
 
-      raw = {
-        'sorbet' => {
-          'enabled' => true,
-          'rbi_dirs' => [rbi_dir]
-        }
-      }
+          sig { params(verbose: T::Boolean, count: Integer).returns(Integer) }
+          def foo(verbose:, count:)
+          end
+        end
+      RBI
+    end
 
-      if rbs
-        sig_dir = File.join(dir, sig_dir_name)
-        FileUtils.mkdir_p(sig_dir)
-        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo(verbose:, count:)
+            "a"
+          end
+        end
+      RUBY
+    end
 
-        raw['rbs'] = {
-          'enabled' => true,
-          'sig_dirs' => [sig_dir]
-        }
-      end
-
-      conf = Docscribe::Config.new(raw)
-      Docscribe::InlineRewriter.insert_comments(code, config: conf)
+    it 'uses RBI signatures for params and return types' do
+      expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
+      expect(out).to include('# @return [Integer]')
+      expect(out).not_to include('# @return [String]')
+      expect(out).to include(param_tag('verbose', 'Boolean'))
+      expect(out).to include(param_tag('count', 'Integer'))
+      expect(out).not_to include(param_tag('verbose', 'Object'))
+      expect(out).not_to include(param_tag('count', 'Object'))
     end
   end
 
-  def skip_unless_sorbet_bridge_available!
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
+  describe 'RBI over RBS priority' do
+    subject(:out) { inline_with_signature_files(code: code, rbi: rbi, rbs: rbs) }
+
+    let(:rbi) do
+      <<~RBI
+        # typed: strict
+        class Demo
+          extend T::Sig
+
+          sig { returns(Integer) }
+          def foo
+          end
+        end
+      RBI
     end
 
-    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def foo: () -> Symbol
+        end
+      RBS
+    end
+
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo
+            "a"
+          end
+        end
+      RUBY
+    end
+
+    it 'prefers RBI over RBS when both are present' do
+      expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
+      expect(out).to include('# @return [Integer]')
+      expect(out).not_to include('# @return [Symbol]')
+      expect(out).not_to include('# @return [String]')
+    end
   end
 
-  it 'uses RBI signatures for params and return types' do
-    rbi = <<~RBI
-      # typed: strict
-      class Demo
-        extend T::Sig
+  describe 'invalid RBI fallback' do
+    subject(:out) { inline_with_signature_files(code: code, rbi: bad_rbi) }
 
-        sig { params(verbose: T::Boolean, count: Integer).returns(Integer) }
-        def foo(verbose:, count:)
+    let(:bad_rbi) do
+      <<~RBI
+        class Demo
+          extend T::Sig
+
+          sig { params(x: Integer).returns( }
+          def foo(x)
+          end
         end
-      end
-    RBI
+      RBI
+    end
 
-    code = <<~RUBY
-      class Demo
-        def foo(verbose:, count:)
-          "a"
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo(x)
+            "a"
+          end
         end
-      end
-    RUBY
+      RUBY
+    end
 
-    out = inline_with_signature_files(code: code, rbi: rbi)
-
-    expect(out).to include('# +Demo#foo+ -> Integer')
-    expect(out).to include('# @return [Integer]')
-    expect(out).not_to include('# @return [String]')
-
-    expect(out).to include(param_tag('verbose', 'Boolean'))
-    expect(out).to include(param_tag('count', 'Integer'))
-    expect(out).not_to include(param_tag('verbose', 'Object'))
-    expect(out).not_to include(param_tag('count', 'Object'))
+    it 'falls back cleanly to inference when an RBI file cannot be parsed' do
+      expect(out).to match(header_regex('Demo', 'foo', 'String'))
+      expect(out).to include('# @return [String]')
+      expect(out).to include(param_tag('x', 'Object'))
+    end
   end
 
-  it 'prefers RBI over RBS when both are present' do
-    rbi = <<~RBI
-      # typed: strict
-      class Demo
-        extend T::Sig
+  describe 'inline sig priority' do
+    subject(:out) { inline_with_signature_files(code: code, rbi: rbi, rbs: rbs) }
 
-        sig { returns(Integer) }
-        def foo
+    let(:rbi) do
+      <<~RBI
+        # typed: strict
+        class Demo
+          extend T::Sig
+
+          sig { returns(Integer) }
+          def foo
+          end
         end
-      end
-    RBI
+      RBI
+    end
 
-    rbs = <<~RBS
-      class Demo
-        def foo: () -> Symbol
-      end
-    RBS
-
-    code = <<~RUBY
-      class Demo
-        def foo
-          "a"
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def foo: () -> Symbol
         end
-      end
-    RUBY
+      RBS
+    end
 
-    out = inline_with_signature_files(code: code, rbi: rbi, rbs: rbs)
+    let(:code) do
+      <<~RUBY
+        class Demo
+          extend T::Sig
 
-    expect(out).to include('# +Demo#foo+ -> Integer')
-    expect(out).to include('# @return [Integer]')
-    expect(out).not_to include('# @return [Symbol]')
-    expect(out).not_to include('# @return [String]')
-  end
-
-  it 'falls back cleanly to inference when an RBI file cannot be parsed' do
-    bad_rbi = <<~RBI
-      class Demo
-        extend T::Sig
-
-        sig { params(x: Integer).returns( }
-        def foo(x)
+          sig { returns(Float) }
+          def foo
+            "a"
+          end
         end
-      end
-    RBI
+      RUBY
+    end
 
-    code = <<~RUBY
-      class Demo
-        def foo(x)
-          "a"
-        end
-      end
-    RUBY
-
-    out = inline_with_signature_files(code: code, rbi: bad_rbi)
-
-    expect(out).to include('# +Demo#foo+ -> String')
-    expect(out).to include('# @return [String]')
-    expect(out).to include(param_tag('x', 'Object'))
-  end
-
-  it 'prefers inline Sorbet sigs over RBI, RBS, and inference' do
-    rbi = <<~RBI
-      # typed: strict
-      class Demo
-        extend T::Sig
-
-        sig { returns(Integer) }
-        def foo
-        end
-      end
-    RBI
-
-    rbs = <<~RBS
-      class Demo
-        def foo: () -> Symbol
-      end
-    RBS
-
-    code = <<~RUBY
-      class Demo
-        extend T::Sig
-
-        sig { returns(Float) }
-        def foo
-          "a"
-        end
-      end
-    RUBY
-
-    out = inline_with_signature_files(code: code, rbi: rbi, rbs: rbs)
-
-    expect(out).to include('# +Demo#foo+ -> Float')
-    expect(out).to include('# @return [Float]')
-    expect(out).not_to include('# @return [Integer]')
-    expect(out).not_to include('# @return [Symbol]')
-    expect(out).not_to include('# @return [String]')
+    it 'prefers inline Sorbet sigs over RBI, RBS, and inference' do
+      expect(out).to match(header_regex('Demo', 'foo', 'Float'))
+      expect(out).to include('# @return [Float]')
+      expect(out).not_to include('# @return [Integer]')
+      expect(out).not_to include('# @return [Symbol]')
+      expect(out).not_to include('# @return [String]')
+    end
   end
 end

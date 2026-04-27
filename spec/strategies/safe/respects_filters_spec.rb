@@ -1,19 +1,20 @@
 # frozen_string_literal: true
 
 RSpec.describe 'safe strategy respects filters' do
-  it 'does not merge into doc blocks for excluded methods' do
-    conf = Docscribe::Config.new('filter' => { 'exclude' => ['A#foo'] })
+  subject(:out) { inline(code, config: conf) }
 
-    code = <<~RUBY
+  let(:conf) { Docscribe::Config.new('filter' => { 'exclude' => ['A#foo'] }) }
+
+  let(:code) do
+    <<~RUBY
       class A
         # @todo docs
         def foo(x); x; end
       end
     RUBY
+  end
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
-
-    # Should remain unchanged
+  it 'does not merge into doc blocks for excluded methods' do
     expect(out).to eq(code)
   end
 end

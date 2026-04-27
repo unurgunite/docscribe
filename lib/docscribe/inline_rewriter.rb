@@ -66,11 +66,14 @@ module Docscribe
       # @param [Symbol, nil] strategy :safe or :aggressive
       # @param [Boolean, nil] rewrite compatibility alias for aggressive strategy
       # @param [Boolean, nil] merge compatibility alias for safe strategy
-      # @param [Docscribe::Config, nil] config config object (defaults to loaded config)
+      # @param [Docscribe::Config] config config object (defaults to loaded config)
       # @param [String] file source name used for parser locations/debugging
+      # @param [nil] core_rbs_provider Param documentation.
       # @raise [Docscribe::ParseError]
+      # @raise [StandardError]
       # @return [Hash]
-      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: nil, file: '(inline)')
+      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: Docscribe::Config.new({}),
+                              core_rbs_provider: nil, file: '(inline)')
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
         validate_strategy!(strategy)
 
@@ -80,20 +83,39 @@ module Docscribe
 
         config ||= Docscribe::Config.load
         signature_provider = build_signature_provider(config, code, file.to_s)
+        unless core_rbs_provider
+          if config.respond_to?(:core_rbs_provider)
+            begin
+              core_rbs_provider = config.core_rbs_provider
+            rescue StandardError
+              core_rbs_provider = nil
+            end
+          elsif config.respond_to?(:rbs_provider)
+            begin
+              core_rbs_provider = config.rbs_provider
+            rescue StandardError
+              core_rbs_provider = nil
+            end
+          end
+        end
 
         collector = Docscribe::InlineRewriter::Collector.new(buffer)
         collector.process(ast)
 
+        # Collect additional insertions from CollectorPlugins
+        plugin_insertions = Docscribe::Plugin.run_collector_plugins(ast, buffer)
+
         method_insertions = collector.insertions
         attr_insertions = collector.respond_to?(:attr_insertions) ? collector.attr_insertions : []
 
-        all = method_insertions.map { |i| [:method, i] } + attr_insertions.map { |i| [:attr, i] }
-
+        all = method_insertions.map { |i| [:method, i] } +
+              attr_insertions.map { |i| [:attr, i] } +
+              plugin_insertions.map { |i| [:plugin, i] }
         rewriter = Parser::Source::TreeRewriter.new(buffer)
         merge_inserts = Hash.new { |h, k| h[k] = [] }
         changes = []
 
-        all.sort_by { |(_kind, ins)| ins.node.loc.expression.begin_pos }
+        all.sort_by { |(kind, ins)| plugin_insertion_pos(kind, ins) }
            .reverse_each do |kind, ins|
           case kind
           when :method
@@ -103,6 +125,7 @@ module Docscribe
               insertion: ins,
               config: config,
               signature_provider: signature_provider,
+              core_rbs_provider: core_rbs_provider,
               strategy: strategy,
               changes: changes,
               file: file.to_s
@@ -117,6 +140,13 @@ module Docscribe
               strategy: strategy,
               merge_inserts: merge_inserts
             )
+          when :plugin
+            apply_plugin_insertion!(
+              rewriter: rewriter,
+              buffer: buffer,
+              insertion: ins,
+              strategy: strategy
+            )
           end
         end
 
@@ -126,6 +156,114 @@ module Docscribe
       end
 
       private
+
+      # Resolve the source begin_pos for sorting, handling both Struct-based
+      # insertions (method/attr) and Hash-based insertions (plugin).
+      #
+      # @private
+      # @param [Symbol] kind :method, :attr, or :plugin
+      # @param [Object] ins insertion object or hash
+      # @return [Integer]
+      def plugin_insertion_pos(kind, ins)
+        case kind
+        when :plugin
+          ins[:anchor_node].loc.expression.begin_pos
+        else
+          ins.node.loc.expression.begin_pos
+        end
+      end
+
+      # Apply one CollectorPlugin insertion according to the selected strategy.
+      #
+      # :safe       — skip if a doc-like block already exists above anchor_node
+      # :aggressive — remove existing doc block, insert fresh
+      #
+      # @private
+      # @param [Parser::Source::TreeRewriter] rewriter
+      # @param [Parser::Source::Buffer] buffer
+      # @param [Hash] insertion { anchor_node:, doc: }
+      # @param [Symbol] strategy
+      # @return [void]
+      def apply_plugin_insertion!(rewriter:, buffer:, insertion:, strategy:)
+        anchor_node = insertion[:anchor_node]
+        doc         = insertion[:doc]
+        return unless anchor_node && doc && !doc.empty?
+
+        indent = SourceHelpers.line_indent(anchor_node)
+        doc    = normalize_plugin_doc_indent(doc, indent)
+        bol_range = SourceHelpers.line_start_range(buffer, anchor_node)
+
+        case strategy
+        when :aggressive
+          # Will remove ANY comments above the method. Plugin will decide what will be changed.
+          if (range = any_comment_block_removal_range(buffer, bol_range.begin_pos))
+            rewriter.remove(range)
+          end
+          rewriter.insert_before(bol_range, doc)
+
+        when :safe
+          return if SourceHelpers.already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
+
+          rewriter.insert_before(bol_range, doc)
+        end
+      end
+
+      # Remove any contiguous comment block immediately above anchor_node,
+      # regardless of whether it looks like documentation.
+      #
+      # Used by CollectorPlugin in aggressive mode where the plugin itself
+      # is responsible for deciding what to replace.
+      #
+      # @private
+      # @param [Parser::Source::Buffer] buffer
+      # @param [Integer] bol_pos beginning-of-line position of anchor_node
+      # @return [Parser::Source::Range, nil]
+      def any_comment_block_removal_range(buffer, bol_pos)
+        src   = buffer.source
+        lines = src.lines
+        def_line_idx = src[0...bol_pos].count("\n")
+        i = def_line_idx - 1
+
+        # Skip blank lines directly above node
+        i -= 1 while i >= 0 && lines[i].strip.empty?
+
+        # Nearest non-blank line must be a comment
+        return nil unless i >= 0 && lines[i] =~ /^\s*#/
+
+        # Walk upward through the entire contiguous comment block
+        start_idx = i
+        start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
+        start_idx += 1
+
+        # Preserve leading directive-style lines (rubocop, magic comments, etc.)
+        removable_start_idx = start_idx
+        while removable_start_idx <= i &&
+              SourceHelpers.preserved_comment_line?(lines[removable_start_idx])
+          removable_start_idx += 1
+        end
+
+        return nil if removable_start_idx > i
+
+        start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
+        Parser::Source::Range.new(buffer, start_pos, bol_pos)
+      end
+
+      # Normalise indentation of a plugin-generated doc block.
+      #
+      # Plugins produce doc strings without knowledge of the surrounding
+      # indentation. We strip leading whitespace from each non-empty line
+      # and re-prefix it with the indent derived from anchor_node.
+      #
+      # @private
+      # @param [String] doc raw doc string from plugin
+      # @param [String] indent indentation prefix to apply
+      # @return [String]
+      def normalize_plugin_doc_indent(doc, indent)
+        doc.lines.map do |line|
+          stripped = line.lstrip
+          stripped.match?(/\A\r?\n?\z/) ? line : "#{indent}#{stripped}"
+        end.join
+      end
 
       # Normalize strategy inputs, including compatibility booleans.
       #
@@ -179,9 +317,10 @@ module Docscribe
       # @param [Symbol] strategy
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
+      # @param [Object] core_rbs_provider Param documentation.
       # @return [void]
-      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, strategy:, changes:,
-                                  file:)
+      def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, core_rbs_provider:,
+                                  strategy:, changes:, file:)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
@@ -193,13 +332,21 @@ module Docscribe
 
         anchor_bol_range, = method_bol_ranges(buffer, insertion)
 
+        # Create external_sig for param_types lookup
+        external_sig = signature_provider&.signature_for(
+          container: insertion.container,
+          scope: insertion.scope,
+          name: SourceHelpers.node_name(insertion.node)
+        )
+
         case strategy
         when :aggressive
           if (range = method_comment_block_removal_range(buffer, insertion))
             rewriter.remove(range)
           end
 
-          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider)
+          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
+                                            core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -220,7 +367,9 @@ module Docscribe
               insertion,
               existing_lines: info[:doc_lines],
               config: config,
-              signature_provider: signature_provider
+              signature_provider: signature_provider,
+              core_rbs_provider: core_rbs_provider,
+              param_types: external_sig&.param_types
             )
 
             missing_lines = merge_result[:lines]
@@ -273,7 +422,8 @@ module Docscribe
             return
           end
 
-          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider)
+          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
+                                            core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -550,14 +700,14 @@ module Docscribe
         nil
       end
 
-      # Method documentation.
+      # Format an attribute `@param` tag line using the configured param tag style.
       #
       # @private
-      # @param [Object] indent Param documentation.
-      # @param [Object] name Param documentation.
-      # @param [Object] type Param documentation.
-      # @param [Object] style Param documentation.
-      # @return [String]
+      # @param [String] indent leading whitespace
+      # @param [Symbol] name attribute name
+      # @param [String] type attribute type
+      # @param [String, Symbol] style param tag style (`"name_type"` or `"type_name"`)
+      # @return [String] formatted doc line
       def format_attribute_param_tag(indent, name, type, style:)
         type = type.to_s
 
@@ -590,15 +740,16 @@ module Docscribe
         config.fallback_type
       end
 
-      # Method documentation.
+      # Build the appropriate external signature provider for the given source.
+      #
+      # Checks config methods in order: `signature_provider_for`, `signature_provider`, `rbs_provider`.
       #
       # @private
-      # @param [Object] config Param documentation.
-      # @param [Object] code Param documentation.
-      # @param [Object] file Param documentation.
+      # @param [Docscribe::Config] config the active configuration
+      # @param [String] code the source code being processed
+      # @param [String] file the file name
       # @raise [StandardError]
-      # @return [Object]
-      # @return [Object?] if StandardError
+      # @return [Object, nil] a signature provider or nil
       def build_signature_provider(config, code, file)
         if config.respond_to?(:signature_provider_for)
           config.signature_provider_for(source: code, file: file)
@@ -611,44 +762,53 @@ module Docscribe
         config.respond_to?(:rbs_provider) ? config.rbs_provider : nil
       end
 
-      # Method documentation.
+      # Delegate to DocBuilder.build for generating a complete doc block.
       #
       # @private
-      # @param [Object] insertion Param documentation.
-      # @param [Object] config Param documentation.
-      # @param [Object] signature_provider Param documentation.
-      # @return [Object]
-      def build_method_doc(insertion, config:, signature_provider:)
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @param [Docscribe::Config] config the active configuration
+      # @param [Object, nil] signature_provider external signature provider
+      # @param [Object, nil] core_rbs_provider RBS core type provider
+      # @param [Hash, nil] param_types parameter name -> type map
+      # @return [String, nil] generated doc block or nil
+      def build_method_doc(insertion, config:, signature_provider:, core_rbs_provider:, param_types:)
         DocBuilder.build(
           insertion,
           config: config,
-          signature_provider: signature_provider
+          signature_provider: signature_provider,
+          core_rbs_provider: core_rbs_provider,
+          param_types: param_types
         )
       end
 
-      # Method documentation.
+      # Delegate to DocBuilder.build_missing_merge_result for generating missing doc lines only.
       #
       # @private
-      # @param [Object] insertion Param documentation.
-      # @param [Object] existing_lines Param documentation.
-      # @param [Object] config Param documentation.
-      # @param [Object] signature_provider Param documentation.
-      # @return [Object]
-      def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:)
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @param [Array<String>] existing_lines existing doc-like lines
+      # @param [Docscribe::Config] config the active configuration
+      # @param [Object, nil] signature_provider external signature provider
+      # @param [Object, nil] core_rbs_provider RBS core type provider
+      # @param [Hash, nil] param_types parameter name -> type map
+      # @return [Hash] result with `:lines` and `:reasons` keys
+      def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:,
+                                            core_rbs_provider:, param_types:)
         DocBuilder.build_missing_merge_result(
           insertion,
           existing_lines: existing_lines,
           config: config,
-          signature_provider: signature_provider
+          signature_provider: signature_provider,
+          core_rbs_provider: core_rbs_provider,
+          param_types: param_types
         )
       end
 
-      # Method documentation.
+      # Get doc comment block info (preceding comments) for a method insertion.
       #
       # @private
-      # @param [Object] buffer Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @return [Object]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @return [Hash, nil] doc comment block info or nil
       def method_doc_comment_info(buffer, insertion)
         anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
 
@@ -656,12 +816,12 @@ module Docscribe
           SourceHelpers.doc_comment_block_info(buffer, def_bol_range.begin_pos)
       end
 
-      # Method documentation.
+      # Find the range of an existing doc comment block to remove (aggressive mode).
       #
       # @private
-      # @param [Object] buffer Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @return [Object]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @return [Parser::Source::Range, nil]
       def method_comment_block_removal_range(buffer, insertion)
         anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
 
@@ -669,12 +829,12 @@ module Docscribe
           SourceHelpers.comment_block_removal_range(buffer, def_bol_range.begin_pos)
       end
 
-      # Method documentation.
+      # Get the beginning-of-line ranges for the anchor and method nodes.
       #
       # @private
-      # @param [Object] buffer Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @return [Array]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @return [Array<Parser::Source::Range>]
       def method_bol_ranges(buffer, insertion)
         anchor_node = anchor_node_for(insertion)
         [
@@ -683,24 +843,23 @@ module Docscribe
         ]
       end
 
-      # Method documentation.
+      # Get the source line number for the method's anchor node.
       #
       # @private
-      # @param [Object] insertion Param documentation.
+      # @param [Collector::Insertion] insertion the collected method insertion
       # @raise [StandardError]
-      # @return [Object]
-      # @return [Object] if StandardError
+      # @return [Integer] the 1-based line number
       def method_line_for(insertion)
         anchor_node_for(insertion).loc.expression.line
       rescue StandardError
         insertion.node.loc.expression.line
       end
 
-      # Method documentation.
+      # Get the anchor node for an insertion (Sorbet `sig` or the method node itself).
       #
       # @private
-      # @param [Object] insertion Param documentation.
-      # @return [Object]
+      # @param [Collector::Insertion] insertion the collected method insertion
+      # @return [Parser::AST::Node]
       def anchor_node_for(insertion)
         if insertion.respond_to?(:anchor_node) && insertion.anchor_node
           insertion.anchor_node

@@ -6,6 +6,8 @@
 [![License](https://img.shields.io/github/license/unurgunite/docscribe.svg)](https://github.com/unurgunite/docscribe/blob/master/LICENSE.txt)
 [![Ruby](https://img.shields.io/badge/ruby-%3E%3D%202.7-blue.svg)](#installation)
 
+![Docscribe before/after demo](docs/image.png)
+
 Generate inline, YARD-style documentation comments for Ruby methods by analyzing your code's AST.
 
 Docscribe inserts doc headers before method definitions, infers parameter and return types (including rescue-aware
@@ -32,6 +34,7 @@ Common workflows:
 - Inspect what safe doc updates would be applied: `docscribe lib`
 - Apply safe doc updates: `docscribe -a lib`
 - Apply aggressive doc updates: `docscribe -A lib`
+- Use RBS gem collection signatures: `docscribe -a --rbs-collection lib`
 - Use RBS signatures when available: `docscribe -a --rbs --sig-dir sig lib`
 - Use Sorbet signatures when available: `docscribe -a --sorbet --rbi-dir sorbet/rbi lib`
 
@@ -51,6 +54,7 @@ Common workflows:
     * [Parser backend (Parser gem vs Prism)](#parser-backend-parser-gem-vs-prism)
     * [External type integrations (optional)](#external-type-integrations-optional)
         * [RBS](#rbs)
+            * [RBS collection auto-discovery](#rbs-collection-auto-discovery)
         * [Sorbet](#sorbet)
         * [Inline Sorbet example](#inline-sorbet-example)
         * [Sorbet RBI example](#sorbet-rbi-example)
@@ -61,6 +65,12 @@ Common workflows:
     * [Rescue-aware returns and @raise](#rescue-aware-returns-and-raise)
     * [Visibility semantics](#visibility-semantics)
     * [API (library) usage](#api-library-usage)
+    * [Plugin system](#plugin-system)
+        * [TagPlugin](#tagplugin)
+        * [CollectorPlugin](#collectorplugin)
+        * [Registering plugins](#registering-plugins)
+        * [Idempotency](#idempotency)
+        * [Plugin examples](#plugin-examples)
     * [Configuration](#configuration)
         * [Filtering](#filtering)
         * [`attr_*` example](#attr_-example)
@@ -70,11 +80,13 @@ Common workflows:
         * [Merge behavior](#merge-behavior)
         * [Param tag style](#param-tag-style)
         * [Create a starter config](#create-a-starter-config)
+        * [Generate a plugin skeleton](#generate-a-plugin-skeleton)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
     * [Limitations](#limitations)
     * [Roadmap](#roadmap)
     * [Contributing](#contributing)
+    * [Discussion & Community](#discussion--community)
     * [License](#license)
 
 ## Installation
@@ -104,7 +116,6 @@ Requires Ruby 2.7+.
 Given code:
 
 ```ruby
-
 class Demo
   def foo(a, options: {})
     42
@@ -213,6 +224,11 @@ If you pass no files and don’t use `--stdin`, Docscribe processes the current 
 - `-A`, `--autocorrect-all`  
   Apply aggressive doc updates in place.
 
+- `--rbs-collection`  
+  Auto-discover the RBS collection directory from `rbs_collection.lock.yaml`.  
+  Reads the `path:` field written by `bundle exec rbs collection install` and adds  
+  it to the signature search path automatically. Implies `--rbs`.
+
 - `--stdin`  
   Read source from STDIN and print rewritten output.
 
@@ -274,6 +290,16 @@ If you pass no files and don’t use `--stdin`, Docscribe processes the current 
 - Use RBS signatures:
   ```shell
   docscribe -a --rbs --sig-dir sig lib
+  ```
+
+- Use RBS signatures with auto-discovered gem collection:
+  ```shell
+  docscribe -a --rbs-collection lib
+  ```
+
+- Combine collection auto-discovery with a custom sig directory:
+  ```shell
+  docscribe -a --rbs-collection --sig-dir sig lib
   ```
 
 - Show detailed reasons for files that would change:
@@ -415,7 +441,6 @@ end
 Generated docs will prefer the RBS signature over inferred Ruby types:
 
 ```ruby
-
 class Demo
   # +Demo#foo+ -> Integer
   #
@@ -429,6 +454,50 @@ class Demo
   end
 end
 ```
+
+#### RBS collection auto-discovery
+
+If your project uses [`rbs collection`](https://github.com/ruby/rbs/blob/master/docs/collection.md),
+Docscribe can discover the installed gem signatures automatically without requiring
+you to pass `--sig-dir` manually.
+
+**Setup:**
+
+```shell
+# 1. Initialize the collection config (one-time)
+bundle exec rbs collection init
+
+# 2. Install gem signatures
+bundle exec rbs collection install
+```
+
+This produces `rbs_collection.lock.yaml` and `.gem_rbs_collection/` in your project root.
+
+**Usage:**
+
+```shell
+docscribe -a --rbs-collection lib
+```
+
+Docscribe reads the `path:` field from `rbs_collection.lock.yaml` and adds the
+resolved directory to the signature search path. If no `path:` is set, it falls
+back to `.gem_rbs_collection`.
+
+You can combine `--rbs-collection` with `--sig-dir` to mix gem signatures with your own:
+
+```shell
+docscribe -a --rbs-collection --sig-dir sig lib
+```
+
+> [!NOTE]
+> `--rbs-collection` only improves types for methods defined in gems that ship RBS
+> signatures. For your own classes, provide a `sig/` directory with hand-written or
+> generated `.rbs` files.
+
+> [!IMPORTANT]
+> If `rbs_collection.lock.yaml` is missing or the collection directory does not exist
+> on disk, Docscribe will print a warning and skip the collection. Run
+> `bundle exec rbs collection install` first.
 
 ### Sorbet
 
@@ -635,6 +704,13 @@ Return values:
 - For simple bodies, Docscribe looks at the last expression or explicit `return`.
 - Unions with `nil` become optional types (e.g. `String` or `nil` -> `String?`).
 - For control flow (`if`/`case`), it unifies branches conservatively.
+- **RBS core type inference**: when `--rbs` is enabled, Docscribe resolves return types for method calls on core types
+  from their RBS definitions:
+    - `arg.positive?` (`arg = 1`) -> `Boolean` (from `Integer#positive?`)
+    - `arg.to_i` (`arg = ""`) -> `Integer` (from `String#to_i`)
+    - `arg.to_s.length` (`arg = 1`) -> `Integer` (chained: Integer -> String -> Integer)
+    - `arg.upcase` (`arg = ""`) -> `String` (from `String#upcase`)
+    - Rescue branches are also resolved (e.g. `"default"` -> `String`)
 
 ## Rescue-aware returns and @raise
 
@@ -700,6 +776,174 @@ out2 = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
 # Aggressive rebuild of existing doc blocks (similar to CLI -A)
 out3 = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive)
 ```
+
+## Plugin system
+
+Docscribe ships a plugin system that lets you extend documentation generation without modifying the gem itself.
+
+There are two extension points:
+
+| Type                | When it runs                                                 | What it produces                                  |
+|---------------------|--------------------------------------------------------------|---------------------------------------------------|
+| **TagPlugin**       | After a method is collected and its doc block is being built | Extra YARD tags appended to the block             |
+| **CollectorPlugin** | Before doc building, alongside the standard AST collector    | New insertion targets for non-standard constructs |
+
+### TagPlugin
+
+A `TagPlugin` receives a snapshot of everything known about a method at generation time and returns zero or more
+additional YARD tags to append to the doc block.
+
+```ruby
+class SincePlugin < Docscribe::Plugin::Base::TagPlugin
+  def initialize(version:)
+    @version = version
+  end
+
+  # @param [Docscribe::Plugin::Context] context
+  # @return [Array<Docscribe::Plugin::Tag>]
+  def call(context)
+    [Docscribe::Plugin::Tag.new(name: 'since', text: @version)]
+  end
+end
+```
+
+The `Context` struct provides:
+
+| Attribute         | Type                     | Description                            |
+|-------------------|--------------------------|----------------------------------------|
+| `node`            | `Parser::AST::Node`      | The `:def` or `:defs` AST node         |
+| `container`       | `String`                 | e.g. `"MyModule::MyClass"`             |
+| `scope`           | `Symbol`                 | `:instance` or `:class`                |
+| `visibility`      | `Symbol`                 | `:public`, `:protected`, or `:private` |
+| `method_name`     | `Symbol`                 | Method name                            |
+| `inferred_params` | `Hash{String => String}` | Name -> inferred type                  |
+| `inferred_return` | `String`                 | Inferred return type                   |
+| `source`          | `String`                 | Raw method source text                 |
+
+The `Tag` struct:
+
+```ruby
+# Simple tag
+Docscribe::Plugin::Tag.new(name: 'since', text: '1.3.0')
+# => # @since 1.3.0
+
+# Tag with types
+Docscribe::Plugin::Tag.new(name: 'raise', types: ['ArgumentError'], text: 'if name is nil')
+# => # @raise [ArgumentError] if name is nil
+```
+
+### CollectorPlugin
+
+A `CollectorPlugin` receives the raw AST and source buffer for each file. It walks the tree itself and returns insertion
+targets that Docscribe will document according to the selected strategy.
+
+```ruby
+class DefineMethodPlugin < Docscribe::Plugin::Base::CollectorPlugin
+  # @param [Parser::AST::Node] ast
+  # @param [Parser::Source::Buffer] buffer
+  # @return [Array<Hash>]
+  def collect(ast, buffer)
+    results = []
+
+    Docscribe::Infer::ASTWalk.walk(ast) do |node|
+      next unless node.type == :send
+
+      _recv, meth, name_node, *_rest = *node
+      next unless meth == :define_method
+      next unless name_node&.type == :sym
+
+      meth_name = name_node.children.first
+
+      results << {
+        anchor_node: node,
+        doc: "# Dynamic method: #{meth_name}\n# @return [Object]\n"
+      }
+    end
+
+    results
+  end
+end
+```
+
+Each result hash must have:
+
+| Key            | Type                | Description                                |
+|----------------|---------------------|--------------------------------------------|
+| `:anchor_node` | `Parser::AST::Node` | Node above which to insert the doc block   |
+| `:doc`         | `String`            | Complete doc block text including newlines |
+
+> [!NOTE]
+> You do not need to handle indentation manually. Docscribe reads the indentation from `anchor_node` and applies it to
+> every line of `:doc` automatically.
+
+### Registering plugins
+
+Plugins are registered at load time. The recommended pattern is to put registrations in a dedicated file and reference
+it from `docscribe.yml`.
+
+**`docscribe_plugins.rb`** (in your project root or `lib/`):
+
+```ruby
+require 'docscribe/plugin'
+
+# Tag plugin
+class SincePlugin < Docscribe::Plugin::Base::TagPlugin
+  def call(context)
+    [Docscribe::Plugin::Tag.new(name: 'since', text: '1.3.0')]
+  end
+end
+
+# Collector plugin
+class DefineMethodPlugin < Docscribe::Plugin::Base::CollectorPlugin
+  def collect(ast, buffer)
+    # ...
+  end
+end
+
+Docscribe::Plugin::Registry.register(SincePlugin.new)
+Docscribe::Plugin::Registry.register(DefineMethodPlugin.new)
+```
+
+**`docscribe.yml`**:
+
+```yaml
+plugins:
+  require:
+    - ./docscribe_plugins
+```
+
+Each entry is passed to `require`. The path is expanded relative to the current working directory.
+
+Duck typing is also supported — any object responding to `#call` is treated as a `TagPlugin`, any object responding to
+`#collect` is treated as a `CollectorPlugin`:
+
+```ruby
+# Lambda as a TagPlugin
+Docscribe::Plugin::Registry.register(
+  ->(context) { [Docscribe::Plugin::Tag.new(name: 'api', text: 'public')] }
+)
+```
+
+### Idempotency
+
+Docscribe handles idempotency for plugins automatically.
+
+**TagPlugin**: before appending a tag, Docscribe checks whether a tag with that name already exists in the current doc
+block. If it does, the tag is skipped.
+
+**CollectorPlugin**: idempotency depends on the selected strategy.
+
+| Strategy      | Behaviour                                                                            |
+|---------------|--------------------------------------------------------------------------------------|
+| `:safe`       | Skips insertion if any comment block already exists immediately above `anchor_node`  |
+| `:aggressive` | Removes the existing comment block above `anchor_node` and inserts a fresh doc block |
+
+This means a `CollectorPlugin`-generated block will not be duplicated on repeated safe runs, and will be fully rebuilt
+on aggressive runs.
+
+### Plugin examples
+
+Sample plugin available at [examples](examples/plugins) 
 
 ## Configuration
 
@@ -896,6 +1140,48 @@ Print the template to stdout:
 docscribe init --stdout
 ```
 
+### Generate a plugin skeleton
+
+Docscribe can scaffold a plugin file so you don't have to write boilerplate by hand.
+
+Generate a **TagPlugin**:
+
+```shell
+docscribe generate tag MyPlugin
+# Created: my_plugin.rb
+```
+
+Generate a **CollectorPlugin**:
+
+```shell
+docscribe generate collector MyCollector
+# Created: my_collector.rb
+```
+
+Write to a specific directory:
+
+```shell
+docscribe generate tag SincePlugin --output lib/plugins
+# Created: lib/plugins/since_plugin.rb
+```
+
+Print to STDOUT instead of writing a file:
+
+```shell
+docscribe generate tag SincePlugin --stdout
+```
+
+The generated file contains:
+- the correct base class (`Base::TagPlugin` or `Base::CollectorPlugin`)
+- inline comments describing every available `Context` attribute (TagPlugin)
+  or the expected return shape (CollectorPlugin)
+- TODO markers showing exactly where to add your logic
+- registration and next-steps instructions printed to the terminal
+
+> [!NOTE]
+> The class name must be a valid Ruby constant (`MyPlugin`, `My::Plugin`).
+> The output filename is the snake_case equivalent (`my_plugin.rb`, `my/plugin.rb`).
+
 ## CI integration
 
 Fail the build if files would need safe updates:
@@ -944,6 +1230,8 @@ yard doc -o docs
 
 ## Roadmap
 
+- Method behavior inference from AST;
+- YAML-based plugin configuration;
 - Effective config dump;
 - JSON output;
 - Overload-aware signature selection;
@@ -957,6 +1245,12 @@ yard doc -o docs
 bundle exec rspec
 bundle exec rubocop
 ```
+
+## Discussion & Community
+
+- [Reddit discussion](https://www.reddit.com/r/ruby/comments/1s5uwjj/docscribe_for_ruby_autogenerate_inline_yard_docs/)
+- [Dev.to article](https://dev.to/unurgunite)
+- [GitHub Discussions](https://github.com/unurgunite/docscribe/discussions)
 
 ## License
 

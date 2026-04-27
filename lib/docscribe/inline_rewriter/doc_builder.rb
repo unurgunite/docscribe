@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'docscribe/plugin'
 require 'docscribe/infer'
 require 'docscribe/inline_rewriter/source_helpers'
 
@@ -27,9 +28,11 @@ module Docscribe
       # @param [Docscribe::Config] config
       # @param [Object, nil] signature_provider provider responding to
       #   `signature_for(container:, scope:, name:)`
+      # @param [nil] core_rbs_provider Param documentation.
+      # @param [nil] param_types Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build(insertion, config:, signature_provider: nil)
+      def build(insertion, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return nil unless name
@@ -46,16 +49,20 @@ module Docscribe
           name: name
         )
 
+        effective_param_types =
+          param_types || build_param_types_from_node(node, external_sig: external_sig, config: config)
+
         if config.emit_param_tags?
-          params_lines = build_params_lines(node, indent, external_sig: external_sig,
-                                                          config: config)
+          params_lines = build_params_lines(node, indent, external_sig: external_sig, config: config)
         end
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
 
         returns_spec = Docscribe::Infer.returns_spec_from_node(
           node,
           fallback_type: config.fallback_type,
-          nil_as_optional: config.nil_as_optional?
+          nil_as_optional: config.nil_as_optional?,
+          param_types: effective_param_types,
+          core_rbs_provider: core_rbs_provider
         )
 
         normal_type = external_sig&.return_type || returns_spec[:normal]
@@ -103,7 +110,10 @@ module Docscribe
             lines << "#{indent}# @return [#{rtype}] if #{exceptions.join(', ')}"
           end
         end
-
+        plugin_tags = Docscribe::Plugin.run_tag_plugins(
+          build_plugin_context(insertion, normal_type: normal_type)
+        )
+        lines.concat(render_plugin_tags(plugin_tags, indent))
         lines.map { |l| "#{l}\n" }.join
       rescue StandardError => e
         debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build')
@@ -120,9 +130,12 @@ module Docscribe
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
       # @param [Object, nil] signature_provider
+      # @param [nil] core_rbs_provider Param documentation.
+      # @param [nil] param_types Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil)
+      def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil, core_rbs_provider: nil,
+                                param_types: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return '' unless name
@@ -141,7 +154,9 @@ module Docscribe
         returns_spec = Docscribe::Infer.returns_spec_from_node(
           node,
           fallback_type: config.fallback_type,
-          nil_as_optional: config.nil_as_optional?
+          nil_as_optional: config.nil_as_optional?,
+          param_types: param_types,
+          core_rbs_provider: core_rbs_provider
         )
 
         normal_type = external_sig&.return_type || returns_spec[:normal]
@@ -211,9 +226,12 @@ module Docscribe
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
       # @param [Object, nil] signature_provider
+      # @param [nil] core_rbs_provider Param documentation.
+      # @param [nil] param_types Param documentation.
       # @raise [StandardError]
       # @return [Hash]
-      def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil)
+      def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil,
+                                     core_rbs_provider: nil, param_types: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return { lines: [], reasons: [] } unless name
@@ -232,7 +250,9 @@ module Docscribe
         returns_spec = Docscribe::Infer.returns_spec_from_node(
           node,
           fallback_type: config.fallback_type,
-          nil_as_optional: config.nil_as_optional?
+          nil_as_optional: config.nil_as_optional?,
+          param_types: param_types,
+          core_rbs_provider: core_rbs_provider
         )
 
         normal_type = external_sig&.return_type || returns_spec[:normal]
@@ -295,18 +315,30 @@ module Docscribe
             }
           end
         end
+        plugin_tags = Docscribe::Plugin.run_tag_plugins(
+          build_plugin_context(insertion, normal_type: normal_type)
+        )
+        plugin_tags.each do |tag|
+          next if info[:plugin_tags]&.[](tag.name)
 
+          rendered = render_plugin_tags([tag], indent).first
+          lines << "#{rendered}\n"
+          reasons << { type: :missing_plugin_tag, message: "missing @#{tag.name}" }
+        end
         { lines: lines, reasons: reasons }
       rescue StandardError => e
         debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build_missing_merge_result')
         { lines: [], reasons: [] }
       end
 
-      # Method documentation.
+      # Parse existing doc comment lines and extract known YARD tags.
+      #
+      # Extracts: `@param` names, `@return`, `@raise`, `@private`, `@protected`,
+      # `@module_function` notes, and `@option` lines.
       #
       # @note module_function: when included, also defines #parse_existing_doc_tags (instance visibility: private)
-      # @param [Object] lines Param documentation.
-      # @return [Hash]
+      # @param [Array<String>] lines existing doc comment lines
+      # @return [Hash] parsed tag info
       def parse_existing_doc_tags(lines)
         param_names = {}
         has_return = false
@@ -314,8 +346,12 @@ module Docscribe
         has_protected = false
         has_module_function_note = false
         raise_types = {}
+        plugin_tags = {}
 
         Array(lines).each do |line|
+          if (m = line.match(/^\s*#\s*@(\w+)\b/))
+            plugin_tags[m[1]] = true
+          end
           if (pname = extract_param_name_from_param_line(line))
             param_names[pname] = true
           end
@@ -334,17 +370,18 @@ module Docscribe
           raise_types: raise_types,
           has_private: has_private,
           has_protected: has_protected,
-          has_module_function_note: has_module_function_note
+          has_module_function_note: has_module_function_note,
+          plugin_tags: plugin_tags
         }
       end
 
-      # Method documentation.
+      # Extract exception names from a `@raise` doc line.
       #
       # @note module_function: when included, also defines #extract_raise_types_from_line (instance visibility: private)
-      # @param [Object] line Param documentation.
+      # @param [String] line a `@raise` doc line
       # @raise [StandardError]
-      # @return [Object]
-      # @return [Array] if StandardError
+      # @return [String, nil] the exception name or nil
+      # @return [Array] if StandardError or line not matched
       def extract_raise_types_from_line(line)
         return [] unless line.match?(/^\s*#\s*@raise\b/)
 
@@ -359,13 +396,76 @@ module Docscribe
         []
       end
 
-      # Method documentation.
+      # Parse exception names from a `@raise [ExceptionA, ExceptionB]` line.
       #
       # @note module_function: when included, also defines #parse_raise_bracket_list (instance visibility: private)
-      # @param [Object] s Param documentation.
-      # @return [Object]
+      # @param [String] s the `@raise` line text
+      # @return [Array<String>, nil] the exception names or nil
       def parse_raise_bracket_list(s)
         s.to_s.split(',').map(&:strip).reject(&:empty?)
+      end
+
+      # Build a param name => type map from a method node.
+      #
+      # @note module_function: when included, also defines #build_param_types_from_node (instance visibility: private)
+      # @private
+      # @param [Parser::AST::Node] node def or defs node
+      # @param [Object, nil] external_sig external signature if available
+      # @param [Docscribe::Config] config
+      # @return [Hash{String => String}, nil]
+      def build_param_types_from_node(node, external_sig:, config:)
+        return nil unless node
+
+        args =
+          case node.type
+          when :def then node.children[1]
+          when :defs then node.children[2]
+          end
+
+        return nil unless args
+
+        param_types = {}
+
+        (args.children || []).each do |a|
+          case a.type
+          when :arg
+            pname = a.children.first.to_s
+            ty = external_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   pname,
+                   nil,
+                   fallback_type: config.fallback_type,
+                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                 )
+            param_types[pname] = ty
+
+          when :optarg
+            pname, default = *a
+            pname = pname.to_s
+            default_src = default&.loc&.expression&.source
+            ty = external_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   pname,
+                   default_src,
+                   fallback_type: config.fallback_type,
+                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                 )
+            param_types[pname] = ty
+
+          when :kwarg
+            pname = a.children.first.to_s
+            ty = external_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   "#{pname}:",
+                   nil,
+                   fallback_type: config.fallback_type,
+                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                 )
+            param_types[pname] = ty
+          end
+        end
+
+        param_types.empty? ? nil : param_types
       end
 
       # Build generated `@param` / `@option` lines for a method node.
@@ -501,15 +601,15 @@ module Docscribe
         params.empty? ? nil : params
       end
 
-      # Method documentation.
+      # Format a `@param` tag line using the configured param tag style.
       #
       # @note module_function: when included, also defines #format_param_tag (instance visibility: private)
-      # @param [Object] indent Param documentation.
-      # @param [Object] name Param documentation.
-      # @param [Object] type Param documentation.
-      # @param [Object] documentation Param documentation.
-      # @param [Object] style Param documentation.
-      # @return [Object]
+      # @param [String] indent leading whitespace
+      # @param [String] name parameter name
+      # @param [String] type parameter type
+      # @param [String] documentation optional documentation text
+      # @param [String, Symbol] style param tag style (`"name_type"` or `"type_name"`)
+      # @return [String]
       def format_param_tag(indent, name, type, documentation, style:)
         doc = documentation.to_s.strip
         type = type.to_s
@@ -524,22 +624,22 @@ module Docscribe
         doc.empty? ? line : "#{line} #{doc}"
       end
 
-      # Method documentation.
+      # Extract keyword argument option pairs from a hash default value.
       #
       # @note module_function: when included, also defines #hash_option_pairs (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @return [Object]
+      # @param [Parser::AST::Node, nil] node a `:hash` node
+      # @return [Array<Parser::AST::Node>] the `:pair` children
       def hash_option_pairs(node)
         return [] unless node&.type == :hash
 
         node.children.select { |child| child.is_a?(Parser::AST::Node) && child.type == :pair }
       end
 
-      # Method documentation.
+      # Get the symbol name from an option key node.
       #
       # @note module_function: when included, also defines #option_key_name (instance visibility: private)
-      # @param [Object] key_node Param documentation.
-      # @return [Object]
+      # @param [Parser::AST::Node] key_node a `:sym` node
+      # @return [String] the option key name
       def option_key_name(key_node)
         case key_node&.type
         when :sym, :str
@@ -549,20 +649,22 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Get the raw source literal for a default value node.
       #
       # @note module_function: when included, also defines #node_default_literal (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @return [Object]
+      # @param [Parser::AST::Node, nil] node a default value node
+      # @return [String, nil] the source literal or nil
       def node_default_literal(node)
         node&.loc&.expression&.source
       end
 
-      # Method documentation.
+      # Extract the parameter name from a `@param` doc line.
+      #
+      # Handles both `"@param [Type] name"` and `"@param name [Type]"` styles.
       #
       # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
-      # @param [Object] line Param documentation.
-      # @return [nil]
+      # @param [String] line a `@param` doc line
+      # @return [String, nil] the parameter name or nil
       def extract_param_name_from_param_line(line)
         return Regexp.last_match(1) if line =~ /@param\b\s+\[[^\]]+\]\s+(\S+)/
         return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
@@ -570,14 +672,57 @@ module Docscribe
         nil
       end
 
-      # Method documentation.
+      # Build a Plugin::Context from a collected insertion.
+      #
+      # @note module_function
+      # @note module_function: when included, also defines #build_plugin_context (instance visibility: private)
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [String] normal_type resolved return type
+      # @raise [StandardError]
+      # @return [Docscribe::Plugin::Context]
+      def build_plugin_context(insertion, normal_type:)
+        node = insertion.node
+        source = begin
+          node.loc.expression.source
+        rescue StandardError
+          ''
+        end
+
+        Docscribe::Plugin::Context.new(
+          node: node,
+          container: insertion.container,
+          scope: insertion.scope,
+          visibility: insertion.visibility,
+          method_name: SourceHelpers.node_name(node),
+          inferred_params: {},
+          inferred_return: normal_type,
+          source: source
+        )
+      end
+
+      # Render plugin tags as indented comment lines.
+      #
+      # @note module_function
+      # @note module_function: when included, also defines #render_plugin_tags (instance visibility: private)
+      # @param [Array<Docscribe::Plugin::Tag>] tags
+      # @param [String] indent
+      # @return [Array<String>]
+      def render_plugin_tags(tags, indent)
+        tags.map do |tag|
+          type_part = tag.types&.any? ? " [#{tag.types.join(', ')}]" : ''
+          text_part = tag.text ? " #{tag.text}" : ''
+          "#{indent}# @#{tag.name}#{type_part}#{text_part}"
+        end
+      end
+
+      # Print a debug warning for a failed doc build phase.
       #
       # @note module_function: when included, also defines #debug_warn (instance visibility: private)
-      # @param [Object] e Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @param [Object] name Param documentation.
-      # @param [Object] phase Param documentation.
-      # @return [Object]
+      # @param [StandardError] e the error that occurred
+      # @param [Collector::Insertion] insertion the method insertion being processed
+      # @param [String] name the method name
+      # @param [String] phase the processing phase
+      # @return [void]
       def debug_warn(e, insertion:, name:, phase:)
         return unless debug?
 
@@ -595,10 +740,10 @@ module Docscribe
         warn "Docscribe DEBUG: #{phase} failed at #{where}: #{e.class}: #{e.message}"
       end
 
-      # Method documentation.
+      # Check whether debug mode is enabled.
       #
       # @note module_function: when included, also defines #debug? (instance visibility: private)
-      # @return [Object]
+      # @return [Boolean]
       def debug?
         ENV['DOCSCRIBE_DEBUG'] == '1'
       end

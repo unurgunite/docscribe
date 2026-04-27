@@ -34,6 +34,7 @@ module Docscribe
         def run(options:, argv:)
           conf = Docscribe::Config.load(options[:config])
           conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
+          conf.load_plugins!
 
           return run_stdin(options: options, conf: conf) if options[:mode] == :stdin
 
@@ -61,6 +62,7 @@ module Docscribe
             code,
             strategy: options[:strategy],
             config: conf,
+            core_rbs_provider: conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil,
             file: '(stdin)'
           )
           puts result[:output]
@@ -132,10 +134,10 @@ module Docscribe
 
         private
 
-        # Method documentation.
+        # Initialize the shared state hash used throughout a run.
         #
         # @private
-        # @return [Hash]
+        # @return [Hash] initial state with counters and tracking arrays
         def initial_run_state
           {
             changed: false,
@@ -150,15 +152,15 @@ module Docscribe
           }
         end
 
-        # Method documentation.
+        # Process a single file: read, rewrite, and dispatch to check/write handler.
         #
         # @private
-        # @param [Object] path Param documentation.
-        # @param [Hash] options Param documentation.
-        # @param [Object] conf Param documentation.
-        # @param [Object] pwd Param documentation.
-        # @param [Object] state Param documentation.
-        # @return [Object]
+        # @param [String] path file path
+        # @param [Hash] options CLI options
+        # @param [Docscribe::Config] conf configuration
+        # @param [Pathname] pwd current working directory
+        # @param [Hash] state shared processing state
+        # @return [void]
         def process_one_file(path, options:, conf:, pwd:, state:)
           display_path = display_path_for(path, pwd: pwd)
 
@@ -217,16 +219,15 @@ module Docscribe
           File.basename(path.to_s)
         end
 
-        # Method documentation.
+        # Read the source file and handle read errors.
         #
         # @private
-        # @param [Object] path Param documentation.
-        # @param [Object] display_path Param documentation.
-        # @param [Hash] options Param documentation.
-        # @param [Object] state Param documentation.
+        # @param [String] path file path to read
+        # @param [String] display_path path shown in CLI output
+        # @param [Hash] options CLI options
+        # @param [Hash] state shared processing state
         # @raise [StandardError]
-        # @return [Object]
-        # @return [nil] if StandardError
+        # @return [String, nil] file contents or nil on error
         def read_source_for_path(path, display_path:, options:, state:)
           File.read(path)
         rescue StandardError => e
@@ -237,23 +238,24 @@ module Docscribe
           nil
         end
 
-        # Method documentation.
+        # Rewrite the source file using InlineRewriter and handle rewrite errors.
         #
         # @private
-        # @param [Object] path Param documentation.
-        # @param [Object] src Param documentation.
-        # @param [Object] conf Param documentation.
-        # @param [Object] display_path Param documentation.
-        # @param [Hash] options Param documentation.
-        # @param [Object] state Param documentation.
+        # @param [String] path file path
+        # @param [String] src source code
+        # @param [Docscribe::Config] conf configuration
+        # @param [String] display_path path shown in CLI output
+        # @param [Hash] options CLI options
+        # @param [Hash] state shared processing state
         # @raise [StandardError]
-        # @return [Object]
-        # @return [nil] if StandardError
+        # @return [Hash, nil] rewrite result or nil on error
         def rewrite_result_for_path(path, src:, conf:, display_path:, options:, state:)
+          core_rbs_provider = conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil
           Docscribe::InlineRewriter.rewrite_with_report(
             src,
             strategy: options[:strategy],
             config: conf,
+            core_rbs_provider: core_rbs_provider,
             file: path
           )
         rescue StandardError => e
@@ -264,17 +266,17 @@ module Docscribe
           nil
         end
 
-        # Method documentation.
+        # Handle the result of an inspect (check) run.
         #
         # @private
-        # @param [Object] path Param documentation.
-        # @param [Object] src Param documentation.
-        # @param [Object] out Param documentation.
-        # @param [Object] file_changes Param documentation.
-        # @param [Object] display_path Param documentation.
-        # @param [Hash] options Param documentation.
-        # @param [Object] state Param documentation.
-        # @return [Object]
+        # @param [String] path file path
+        # @param [String] src original source code
+        # @param [String] out rewritten source code
+        # @param [Array<Hash>] file_changes structured change records
+        # @param [String] display_path path shown in CLI output
+        # @param [Hash] options CLI options
+        # @param [Hash] state shared processing state
+        # @return [void]
         def handle_check_result(path, src:, out:, file_changes:, display_path:, options:, state:)
           if out == src
             options[:verbose] ? puts("OK #{display_path}") : print('.')
@@ -299,19 +301,18 @@ module Docscribe
           state[:fail_changes][path] = file_changes
         end
 
-        # Method documentation.
+        # Handle the result of an autocorrect (write) run.
         #
         # @private
-        # @param [Object] path Param documentation.
-        # @param [Object] src Param documentation.
-        # @param [Object] out Param documentation.
-        # @param [Object] file_changes Param documentation.
-        # @param [Object] display_path Param documentation.
-        # @param [Hash] options Param documentation.
-        # @param [Object] state Param documentation.
+        # @param [String] path file path
+        # @param [String] src original source code
+        # @param [String] out rewritten source code
+        # @param [Array<Hash>] file_changes structured change records
+        # @param [String] display_path path shown in CLI output
+        # @param [Hash] options CLI options
+        # @param [Hash] state shared processing state
         # @raise [StandardError]
-        # @return [Object]
-        # @return [Object] if StandardError
+        # @return [void]
         def handle_write_result(path, src:, out:, file_changes:, display_path:, options:, state:)
           if out == src
             options[:verbose] ? puts("OK #{display_path}") : print('.')
@@ -339,12 +340,12 @@ module Docscribe
           options[:verbose] ? warn("ERR #{display_path}: #{state[:error_messages][path]}") : print('E')
         end
 
-        # Method documentation.
+        # Print the check-mode summary (files OK / need updates / errors).
         #
         # @private
-        # @param [Object] state Param documentation.
-        # @param [Hash] options Param documentation.
-        # @return [Object]
+        # @param [Hash] state shared processing state
+        # @param [Hash] options CLI options
+        # @return [void]
         def print_check_summary(state:, options:)
           puts
 
@@ -392,11 +393,11 @@ module Docscribe
           end
         end
 
-        # Method documentation.
+        # Print the write-mode summary (files corrected, errors).
         #
         # @private
-        # @param [Object] state Param documentation.
-        # @return [Object]
+        # @param [Hash] state shared processing state
+        # @return [void]
         def print_write_summary(state:)
           puts
           puts "Docscribe: updated #{state[:corrected]} file(s)" if state[:corrected].positive?

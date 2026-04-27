@@ -3,6 +3,7 @@
 require 'pathname'
 require 'docscribe/types/signature'
 require 'docscribe/types/rbs/type_formatter'
+require 'docscribe/types/rbs/collection_loader'
 
 module Docscribe
   module Types
@@ -69,6 +70,8 @@ module Docscribe
           return if @env && @builder
 
           loader = ::RBS::EnvironmentLoader.new
+          # Load core types transitively
+          loader.add(library: 'rbs')
 
           @sig_dirs.each do |dir|
             path = Pathname(dir)

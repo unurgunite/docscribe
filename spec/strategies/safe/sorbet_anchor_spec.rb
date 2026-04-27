@@ -1,119 +1,113 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Sorbet-aware doc anchoring' do
-  def inline_with_sorbet(code, strategy: :safe)
-    skip_unless_sorbet_bridge_available!
+  subject(:out) { inline_with_sorbet(code, strategy: strategy) }
 
-    conf = Docscribe::Config.new(
-      'sorbet' => {
-        'enabled' => true
-      }
-    )
+  let(:code) do
+    <<~RUBY
+      class Demo
+        extend T::Sig
 
-    Docscribe::InlineRewriter.insert_comments(
-      code,
-      strategy: strategy,
-      config: conf
-    )
+        sig { params(verbose: T::Boolean).returns(Integer) }
+        def foo(verbose:)
+          "a"
+        end
+      end
+    RUBY
   end
+  let(:strategy) { :safe }
 
-  def skip_unless_sorbet_bridge_available!
-    begin
-      require 'rbs'
-    rescue LoadError
-      skip 'RBS not available'
+  describe 'merging into existing doc above sig' do
+    let(:code) do
+      <<~RUBY
+        class Demo
+          extend T::Sig
+
+          # Existing docs
+          # @return [Integer]
+          sig { params(verbose: T::Boolean).returns(Integer) }
+          def foo(verbose:)
+            "a"
+          end
+        end
+      RUBY
     end
 
-    skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
+    it 'merges into an existing doc block above sig instead of inserting a second block' do
+      expect(out).to include('# Existing docs')
+      expect(out).to include('# @return [Integer]')
+      expect(out).to include(param_tag('verbose', 'Boolean'))
+      expect(out).not_to match(header_regex('Demo', 'foo', 'Integer'))
+      expect(out.scan(/# @return \[Integer\]/).length).to eq(1)
+    end
   end
 
-  it 'merges into an existing doc block above sig instead of inserting a second block' do
-    code = <<~RUBY
-      class Demo
-        extend T::Sig
+  describe 'detecting legacy doc block between sig and def' do
+    let(:code) do
+      <<~RUBY
+        class Demo
+          extend T::Sig
 
-        # Existing docs
-        # @return [Integer]
-        sig { params(verbose: T::Boolean).returns(Integer) }
-        def foo(verbose:)
-          "a"
+          sig { params(verbose: T::Boolean).returns(Integer) }
+          # Existing docs
+          # @return [Integer]
+          def foo(verbose:)
+            "a"
+          end
         end
-      end
-    RUBY
+      RUBY
+    end
 
-    out = inline_with_sorbet(code, strategy: :safe)
-
-    expect(out).to include('# Existing docs')
-    expect(out).to include('# @return [Integer]')
-    expect(out).to include(param_tag('verbose', 'Boolean'))
-    expect(out).not_to include('# +Demo#foo+')
-    expect(out.scan(/# @return \[Integer\]/).length).to eq(1)
+    it 'does not duplicate the existing doc block' do
+      expect(out).to include('# Existing docs')
+      expect(out).to include(param_tag('verbose', 'Boolean'))
+      expect(out).to include('# @return [Integer]')
+      expect(out).not_to match(header_regex('Demo', 'foo', 'Integer'))
+      expect(out.scan(/# @return \[Integer\]/).length).to eq(1)
+    end
   end
 
-  it 'detects a legacy doc block between sig and def and does not duplicate it' do
-    code = <<~RUBY
-      class Demo
-        extend T::Sig
-
-        sig { params(verbose: T::Boolean).returns(Integer) }
-        # Existing docs
-        # @return [Integer]
-        def foo(verbose:)
-          "a"
-        end
-      end
-    RUBY
-
-    out = inline_with_sorbet(code, strategy: :safe)
-
-    expect(out).to include('# Existing docs')
-    expect(out).to include(param_tag('verbose', 'Boolean'))
-    expect(out).to include('# @return [Integer]')
-    expect(out).not_to include('# +Demo#foo+')
-    expect(out.scan(/# @return \[Integer\]/).length).to eq(1)
+  describe 'inserting docs for undocumented Sorbet methods' do
+    it 'inserts generated docs above sig' do
+      expect(out).to match(
+        Regexp.new(<<~'RX', Regexp::EXTENDED)
+          ^\s*\#\s+\+Demo\#foo\+\s+->\s+Integer.*\n
+          (?:^\s*\#.*\n)*?
+          ^\s*\#\s+@param\s+\[Boolean\]\s+verbose\s+Param\s+documentation\.\n
+          (?:^\s*\#\s*\n)*?
+          ^\s*\#\s+@return\s+\[Integer\]\s*\n
+          ^\s*sig\s+\{\s*params\(verbose:\s*T::Boolean\)\.returns\(Integer\)\s*\}\s*\n
+          ^\s*def\s+foo\(verbose:\)
+        RX
+      )
+    end
   end
 
-  it 'inserts newly generated docs above sig for undocumented Sorbet methods' do
-    code = <<~RUBY
-      class Demo
-        extend T::Sig
+  describe 'aggressive mode' do
+    let(:code) do
+      <<~RUBY
+        class Demo
+          extend T::Sig
 
-        sig { params(verbose: T::Boolean).returns(Integer) }
-        def foo(verbose:)
-          "a"
+          # Wrong docs
+          # @return [String]
+          sig { params(verbose: T::Boolean).returns(Integer) }
+          def foo(verbose:)
+            "a"
+          end
         end
-      end
-    RUBY
+      RUBY
+    end
 
-    out = inline_with_sorbet(code, strategy: :safe)
+    let(:strategy) { :aggressive }
 
-    expect(out).to match(
-      /# \+Demo#foo\+ -> Integer.*?\n\s*# @param \[Boolean\] verbose Param documentation\.\n\s*# @return \[Integer\]\n\s*sig \{ params\(verbose: T::Boolean\)\.returns\(Integer\) \}\n\s*def foo\(verbose:\)/m
-    )
-  end
-
-  it 'aggressive mode removes and rebuilds a doc block above sig' do
-    code = <<~RUBY
-      class Demo
-        extend T::Sig
-
-        # Wrong docs
-        # @return [String]
-        sig { params(verbose: T::Boolean).returns(Integer) }
-        def foo(verbose:)
-          "a"
-        end
-      end
-    RUBY
-
-    out = inline_with_sorbet(code, strategy: :aggressive)
-
-    expect(out).to include('# +Demo#foo+ -> Integer')
-    expect(out).to include('# @return [Integer]')
-    expect(out).not_to include('# @return [String]')
-
-    expect(out).to match(
-      /# \+Demo#foo\+ -> Integer.*?\n\s*sig \{ params\(verbose: T::Boolean\)\.returns\(Integer\) \}\n\s*def foo\(verbose:\)/m
-    )
+    it 'removes and rebuilds the doc block above sig' do
+      expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
+      expect(out).to include('# @return [Integer]')
+      expect(out).not_to include('# @return [String]')
+      expect(out).to match(
+        /# \+Demo#foo\+ -> Integer.*?\n\s*sig \{ params\(verbose: T::Boolean\)\.returns\(Integer\) \}\n\s*def foo\(verbose:\)/m
+      )
+    end
   end
 end

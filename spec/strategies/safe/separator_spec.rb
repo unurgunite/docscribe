@@ -1,17 +1,19 @@
 # frozen_string_literal: true
 
 RSpec.describe 'safe strategy separator behavior' do
-  it 'does not add a second blank-comment separator if one already exists' do
-    code = <<~RUBY
+  subject(:out) { inline(code) }
+
+  let(:code) do
+    <<~RUBY
       class A
         # @todo docs
         #
         def foo(x); x; end
       end
     RUBY
+  end
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
-
+  it 'does not add a second blank-comment separator if one already exists' do
     # Must merge @param
     expect(out).to include(param_tag('x', 'Object'))
 

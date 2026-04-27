@@ -1,54 +1,63 @@
 # frozen_string_literal: true
 
 RSpec.describe 'extend self handling' do
-  it 'documents methods after `extend self` as module methods (M.foo)' do
-    code = <<~RUBY
-      module M
-        extend self
+  subject(:out) { inline(code) }
 
-        def foo(x)
-          x
+  describe 'methods after `extend self`' do
+    let(:code) do
+      <<~RUBY
+        module M
+          extend self
+
+          def foo(x)
+            x
+          end
         end
-      end
-    RUBY
+      RUBY
+    end
 
-    out = inline(code)
-
-    expect(out).to include('# +M.foo+')
-    expect(out).to include(param_tag('x', 'Object'))
-    expect(out).not_to include('# +M#foo+')
-    expect(out).not_to include('@note module_function:')
+    it 'documents methods as module methods (M.foo)' do
+      expect(out).to include('# +M.foo+')
+      expect(out).to include(param_tag('x', 'Object'))
+      expect(out).not_to include('# +M#foo+')
+      expect(out).not_to include('@note module_function:')
+    end
   end
 
-  it 'retroactively promotes earlier defs when `extend self` appears after them' do
-    code = <<~RUBY
-      module M
-        def foo; 1; end
-        extend self
-      end
-    RUBY
+  describe 'retroactive promotion' do
+    let(:code) do
+      <<~RUBY
+        module M
+          def foo; 1; end
+          extend self
+        end
+      RUBY
+    end
 
-    out = inline(code)
-
-    expect(out).to include('# +M.foo+')
-    expect(out).not_to include('# +M#foo+')
-    expect(out).not_to include('@note module_function:')
+    it 'promotes earlier defs when `extend self` appears after them' do
+      expect(out).to include('# +M.foo+')
+      expect(out).not_to include('# +M#foo+')
+      expect(out).not_to include('@note module_function:')
+    end
   end
 
-  it 'respects visibility (private methods become private module methods too)' do
-    conf = Docscribe::Config.new('emit' => { 'visibility_tags' => true })
+  describe 'visibility handling' do
+    subject(:out) { inline(code, config: conf) }
 
-    code = <<~RUBY
-      module M
-        extend self
-        private
-        def secret; 1; end
-      end
-    RUBY
+    let(:conf) { Docscribe::Config.new('emit' => { 'visibility_tags' => true }) }
+    let(:code) do
+      <<~RUBY
+        module M
+          extend self
+          private
+          def secret; 1; end
+        end
+      RUBY
+    end
 
-    out = Docscribe::InlineRewriter.insert_comments(code, config: conf)
-
-    expect(out).to include('# +M.secret+')
-    expect(out).to match(/# \+M\.secret\+.*?\n.*?# @private/m)
+    it 'private methods become private module methods too' do
+      expect(out).to include('# +M.secret+')
+      expect(out).to match(/# \+M\.secret\+.*?\n.*?# @private/m)
+    end
   end
 end

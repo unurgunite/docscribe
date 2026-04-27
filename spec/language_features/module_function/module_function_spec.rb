@@ -1,52 +1,55 @@
 # frozen_string_literal: true
 
 RSpec.describe 'module_function handling' do
-  def inline(code)
-    conf = Docscribe::Config.new({})
-    Docscribe::InlineRewriter.insert_comments(code, config: conf)
+  subject(:out) { inline(code) }
+
+  describe '`module_function` (no args)' do
+    let(:code) do
+      <<~RUBY
+        module M
+          module_function
+          def foo; 1; end
+        end
+      RUBY
+    end
+
+    it 'documents methods as module methods' do
+      expect(out).to include('# +M.foo+')
+      expect(out).to include('# @return [Integer]')
+    end
   end
 
-  it 'documents methods after `module_function` (no args) as module methods' do
-    code = <<~RUBY
-      module M
-        module_function
-        def foo; 1; end
-      end
-    RUBY
+  describe '`module_function :foo`' do
+    let(:code) do
+      <<~RUBY
+        module M
+          def foo; 1; end
+          def bar; 2; end
+          module_function :foo
+        end
+      RUBY
+    end
 
-    out = inline(code)
-
-    expect(out).to include('# +M.foo+')
-    expect(out).to include('# @return [Integer]')
+    it 'retroactively documents as a module method' do
+      expect(out).to include('# +M.foo+')
+      expect(out).to include('# +M#bar+')
+    end
   end
 
-  it 'retroactively documents `module_function :foo` as a module method' do
-    code = <<~RUBY
-      module M
-        def foo; 1; end
-        def bar; 2; end
-        module_function :foo
-      end
-    RUBY
+  describe '`module_function :foo, :bar`' do
+    let(:code) do
+      <<~RUBY
+        module M
+          def foo; 1; end
+          def bar; 2; end
+          module_function :foo, :bar
+        end
+      RUBY
+    end
 
-    out = inline(code)
-
-    expect(out).to include('# +M.foo+')
-    expect(out).to include('# +M#bar+')
-  end
-
-  it 'handles multiple names in `module_function :foo, :bar`' do
-    code = <<~RUBY
-      module M
-        def foo; 1; end
-        def bar; 2; end
-        module_function :foo, :bar
-      end
-    RUBY
-
-    out = inline(code)
-
-    expect(out).to include('# +M.foo+')
-    expect(out).to include('# +M.bar+')
+    it 'handles multiple names' do
+      expect(out).to include('# +M.foo+')
+      expect(out).to include('# +M.bar+')
+    end
   end
 end

@@ -1,24 +1,28 @@
 # frozen_string_literal: true
 
 RSpec.describe 'aggressive strategy preserves rubocop directives' do
-  it 'preserves leading rubocop directives but replaces doc blocks' do
-    code = <<~RUBY
-      class A
-        # rubocop:disable Metrics/AbcSize
-        # old doc
-        # @return [String]
-        def foo
-          1
+  let(:conf) { Docscribe::Config.new }
+
+  describe 'preserves leading rubocop directives but replaces doc blocks' do
+    subject(:out) { inline(code, strategy: :aggressive, config: conf) }
+
+    let(:code) do
+      <<~RUBY
+        class A
+          # rubocop:disable Metrics/AbcSize
+          # old doc
+          # @return [String]
+          def foo
+            1
+          end
         end
-      end
-    RUBY
+      RUBY
+    end
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :aggressive, config: Docscribe::Config.new)
-
-    expect(out).to include('# rubocop:disable Metrics/AbcSize')
-    expect(out).to include('# +A#foo+ -> Integer')
-    expect(out).to include('# @return [Integer]')
-    expect(out).not_to include('# old doc')
-    expect(out).not_to include('# @return [String]')
+    it { is_expected.to include('# rubocop:disable Metrics/AbcSize') }
+    it { is_expected.to include('# +A#foo+ -> Integer') }
+    it { is_expected.to include('# @return [Integer]') }
+    it { is_expected.not_to include('# old doc') }
+    it { is_expected.not_to include('# @return [String]') }
   end
 end

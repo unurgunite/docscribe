@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 RSpec.describe 'safe strategy attrs no-op' do
-  it 'does nothing when all @!attribute blocks already exist' do
-    conf = Docscribe::Config.new('emit' => { 'attributes' => true })
+  subject(:out) { inline(code, config: conf) }
 
-    code = <<~RUBY
+  let(:conf) { Docscribe::Config.new('emit' => { 'attributes' => true }) }
+
+  let(:code) do
+    <<~RUBY
       class A
         # @todo docs
         # @!attribute [r] a
@@ -14,8 +16,9 @@ RSpec.describe 'safe strategy attrs no-op' do
         attr_reader :a, :b
       end
     RUBY
+  end
 
-    out = Docscribe::InlineRewriter.insert_comments(code, strategy: :safe, config: conf)
+  it 'does nothing when all @!attribute blocks already exist' do
     expect(out).to eq(code)
   end
 end

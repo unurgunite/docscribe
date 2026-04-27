@@ -137,6 +137,18 @@ module Docscribe
             include: []
             exclude: ["spec"]
 
+        plugins:
+          # Load custom plugins by path or gem name.
+          #
+          # Each entry is passed to `require`. Registration happens inside
+          # the required file via Docscribe::Plugin::Registry.register.
+          #
+          # Example:
+          #   require:
+          #     - ./docscribe_plugins
+          #     - docscribe-rails-associations
+          require: []
+
         rbs:
           # Optional: use RBS signatures to improve @param / @return types.
           #
@@ -155,6 +167,11 @@ module Docscribe
           # - Hash<Symbol, String> => Hash
           # - Array<Integer>       => Array
           collapse_generics: false
+          # Auto-discover RBS collection from rbs_collection.lock.yaml.
+          # Equivalent to --rbs-collection CLI flag.
+          # Requires `bundle exec rbs collection install` to have been run.
+          #
+          collection: false
 
         sorbet:
           # Optional: use Sorbet signatures from inline `sig` declarations and
