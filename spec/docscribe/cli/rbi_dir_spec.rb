@@ -43,7 +43,6 @@ RSpec.describe 'CLI Sorbet support' do
         )
 
         expect(status.success?).to be(true), stderr
-        expect(stdout).to match(header_regex('Demo', 'foo', 'Integer'))
         expect(stdout).to include('# @return [Integer]')
         expect(stdout).to include(param_tag('verbose', 'Boolean'))
         expect(stdout).not_to include('# @return [String]')
@@ -77,7 +76,6 @@ RSpec.describe 'CLI Sorbet support' do
         )
 
         expect(status.success?).to be(true), stderr
-        expect(stdout).to match(header_regex('Demo', 'foo', 'Integer'))
         expect(stdout).to include('# @return [Integer]')
         expect(stdout).to include(param_tag('verbose', 'Boolean'))
         expect(stdout).not_to include('# @return [String]')

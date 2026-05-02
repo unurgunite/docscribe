@@ -283,10 +283,22 @@ module Docscribe
 
           all_params&.each do |pl|
             pname = extract_param_name_from_param_line(pl)
-            next if pname.nil? || info[:param_names].include?(pname)
+            next unless pname
 
-            lines << "#{pl}\n"
-            reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
+            if !info[:param_names].include?(pname)
+              lines << "#{pl}\n"
+              reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
+            elsif info[:param_types][pname]
+              new_type = extract_param_type_from_param_line(pl)
+              if new_type && info[:param_types][pname] != new_type
+                lines << "#{pl}\n"
+                reasons << {
+                  type: :updated_param,
+                  message: "updated @param #{pname} from #{info[:param_types][pname]} to #{new_type}",
+                  extra: { param: pname }
+                }
+              end
+            end
           end
         end
 
@@ -301,9 +313,17 @@ module Docscribe
           end
         end
 
-        if config.emit_return_tag?(scope, visibility) && !info[:has_return]
-          lines << "#{indent}# @return [#{normal_type}]\n"
-          reasons << { type: :missing_return, message: 'missing @return' }
+        if config.emit_return_tag?(scope, visibility)
+          if !info[:has_return]
+            lines << "#{indent}# @return [#{normal_type}]\n"
+            reasons << { type: :missing_return, message: 'missing @return' }
+          elsif info[:return_type] && info[:return_type] != normal_type
+            lines << "#{indent}# @return [#{normal_type}]\n"
+            reasons << {
+              type: :updated_return,
+              message: "updated @return from #{info[:return_type]} to #{normal_type}"
+            }
+          end
         end
 
         if config.emit_rescue_conditional_returns? && !info[:has_return]
@@ -341,7 +361,9 @@ module Docscribe
       # @return [Hash] parsed tag info
       def parse_existing_doc_tags(lines)
         param_names = {}
+        param_types = {}
         has_return = false
+        return_type = nil
         has_private = false
         has_protected = false
         has_module_function_note = false
@@ -354,9 +376,17 @@ module Docscribe
           end
           if (pname = extract_param_name_from_param_line(line))
             param_names[pname] = true
+            if (type_match = line.match(/@param\s+\[([^\]]+)\]\s+\S+/) || line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
+              param_types[pname] = type_match[1]
+            end
           end
 
-          has_return ||= line.match?(/^\s*#\s*@return\b/)
+          if line.match?(/^\s*#\s*@return\b/)
+            has_return = true
+            if (m = line.match(/@return\s+\[([^\]]+)\]/))
+              return_type = m[1]
+            end
+          end
           has_private ||= line.match?(/^\s*#\s*@private\b/)
           has_protected ||= line.match?(/^\s*#\s*@protected\b/)
           has_module_function_note ||= line.match?(/^\s*#\s*@note\s+module_function:/)
@@ -366,7 +396,9 @@ module Docscribe
 
         {
           param_names: param_names,
+          param_types: param_types,
           has_return: has_return,
+          return_type: return_type,
           raise_types: raise_types,
           has_private: has_private,
           has_protected: has_protected,
@@ -458,6 +490,19 @@ module Docscribe
                  Infer.infer_param_type(
                    "#{pname}:",
                    nil,
+                   fallback_type: config.fallback_type,
+                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                 )
+            param_types[pname] = ty
+
+          when :kwoptarg
+            pname, default = *a
+            pname = pname.to_s
+            default_src = default&.loc&.expression&.source
+            ty = external_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   "#{pname}:",
+                   default_src,
                    fallback_type: config.fallback_type,
                    treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
                  )
@@ -670,6 +715,12 @@ module Docscribe
         return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
 
         nil
+      end
+
+      def extract_param_type_from_param_line(line)
+        if (m = line.match(/@param\s+\[([^\]]+)\]\s+\S+/) || line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
+          m[1]
+        end
       end
 
       # Build a Plugin::Context from a collected insertion.

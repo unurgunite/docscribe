@@ -34,7 +34,8 @@ module RbsHelper
   # @param [String] rbi_dir_name relative path for the RBI directory
   # @param [String] sig_dir_name relative path for the RBS sig directory
   # @return [String] rewritten source
-  def inline_with_signature_files(code:, rbi:, rbs: nil, rbi_dir_name: 'sorbet/rbi', sig_dir_name: 'sig')
+  def inline_with_signature_files(code:, rbi:, rbs: nil, rbi_dir_name: 'sorbet/rbi', sig_dir_name: 'sig',
+                                  config_overrides: {})
     skip_unless_sorbet_bridge_available!
 
     Dir.mktmpdir do |dir|
@@ -47,7 +48,7 @@ module RbsHelper
           'enabled' => true,
           'rbi_dirs' => [rbi_dir]
         }
-      }
+      }.merge(config_overrides)
 
       if rbs
         sig_dir = File.join(dir, sig_dir_name)
@@ -76,7 +77,7 @@ module RbsHelper
   # @param [String] rbs RBS file content
   # @param [String] sig_dir_name relative path for the sig directory
   # @return [String] rewritten source
-  def inline_with_rbs(code:, rbs:, sig_dir_name: 'sig')
+  def inline_with_rbs(code:, rbs:, sig_dir_name: 'sig', config: {})
     skip_unless_rbs_available!
 
     Dir.mktmpdir do |dir|
@@ -86,9 +87,7 @@ module RbsHelper
 
       inline(
         code,
-        config: Docscribe::Config.new(
-          'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] }
-        )
+        config: Docscribe::Config.new(config.merge('rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] }))
       )
     end
   end

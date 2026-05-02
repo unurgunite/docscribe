@@ -66,9 +66,17 @@ module Docscribe
       # @param [Boolean] sort_tags whether sortable tags should be reordered
       # @param [Array<String>] tag_order configured sortable tag order
       # @return [Array<String>]
-      def merge(existing_lines, missing_lines:, sort_tags:, tag_order:)
+      def merge(existing_lines, missing_lines:, sort_tags:, tag_order:, filter_existing: {})
         existing_entries = parse(existing_lines, tag_order: tag_order)
         missing_entries = parse_generated(missing_lines, tag_order: tag_order)
+
+        filter_param_names = filter_existing[:param_names] || []
+        filter_return = !!filter_existing[:return]
+
+        existing_entries = existing_entries.reject do |e|
+          (e.kind == :tag && e.tag == 'param' && filter_param_names.include?(e.subject)) ||
+            (e.kind == :tag && e.tag == 'return' && filter_return)
+        end
 
         entries = existing_entries + missing_entries
         entries = sort(entries, tag_order: tag_order) if sort_tags

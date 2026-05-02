@@ -2,7 +2,7 @@
 
 RSpec.describe 'aggressive strategy behavior' do
   describe 'aggressive strategy' do
-    let(:conf) { Docscribe::Config.new }
+    let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
     describe 'replaces an existing contiguous comment block above a method' do
       subject(:out) { inline(code, strategy: :aggressive, config: conf) }
@@ -27,7 +27,7 @@ RSpec.describe 'aggressive strategy behavior' do
   end
 
   describe 'safe strategy' do
-    let(:conf) { Docscribe::Config.new }
+    let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
     describe 'inserts docs non-destructively when only a normal comment exists above' do
       subject(:out) { inline(code, strategy: :safe, config: conf) }

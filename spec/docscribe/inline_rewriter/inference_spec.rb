@@ -33,8 +33,9 @@ RSpec.describe 'Inline rewriter inference' do
   end
 
   describe 'Integer and Symbol for return types from literals' do
-    subject(:out) { inline(code) }
+    subject(:out) { inline(code, config: conf) }
 
+    let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
     let(:code) { <<~RUBY }
       class Demo
       def a; 42; end

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe 'module_function handling' do
-  subject(:out) { inline(code) }
+  subject(:out) { inline(code, config: conf) }
+
+  let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
   describe '`module_function` (no args)' do
     let(:code) do

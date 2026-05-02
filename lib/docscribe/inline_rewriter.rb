@@ -83,20 +83,11 @@ module Docscribe
 
         config ||= Docscribe::Config.load
         signature_provider = build_signature_provider(config, code, file.to_s)
-        unless core_rbs_provider
-          if config.respond_to?(:core_rbs_provider)
-            begin
-              core_rbs_provider = config.core_rbs_provider
-            rescue StandardError
-              core_rbs_provider = nil
-            end
-          elsif config.respond_to?(:rbs_provider)
-            begin
-              core_rbs_provider = config.rbs_provider
-            rescue StandardError
-              core_rbs_provider = nil
-            end
-          end
+        begin
+          core_rbs_provider ||= config.core_rbs_provider if config.respond_to?(:core_rbs_provider)
+        rescue StandardError => e
+          warn "Docscribe: failed to load core RBS provider: #{e.message}" if ENV['DOCSCRIBE_DEBUG']
+          core_rbs_provider = nil
         end
 
         collector = Docscribe::InlineRewriter::Collector.new(buffer)
@@ -345,8 +336,14 @@ module Docscribe
             rewriter.remove(range)
           end
 
+          effective_param_types = external_sig&.param_types || DocBuilder.build_param_types_from_node(
+            insertion.node,
+            external_sig: external_sig,
+            config: config
+          )
+
           doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
-                                            core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
+                                            core_rbs_provider: core_rbs_provider, param_types: effective_param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -363,17 +360,33 @@ module Docscribe
           info = method_doc_comment_info(buffer, insertion)
 
           if info
+            effective_param_types = external_sig&.param_types || DocBuilder.build_param_types_from_node(
+              insertion.node,
+              external_sig: external_sig,
+              config: config
+            )
+
             merge_result = build_missing_method_merge_result(
               insertion,
               existing_lines: info[:doc_lines],
               config: config,
               signature_provider: signature_provider,
               core_rbs_provider: core_rbs_provider,
-              param_types: external_sig&.param_types
+              param_types: effective_param_types
             )
 
             missing_lines = merge_result[:lines]
             reason_specs = merge_result[:reasons] || []
+
+            updated_param_names = reason_specs
+                                  .select { |r| r[:type] == :updated_param }
+                                  .map { |r| r[:extra][:param] }
+                                  .compact
+
+            has_updated_return = reason_specs.any? { |r| r[:type] == :updated_return }
+            filter_existing = {}
+            filter_existing[:param_names] = updated_param_names if updated_param_names.any?
+            filter_existing[:return] = true if has_updated_return
 
             sorted_existing_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
               info[:doc_lines],
@@ -386,7 +399,8 @@ module Docscribe
               info[:doc_lines],
               missing_lines: missing_lines,
               sort_tags: config.sort_tags?,
-              tag_order: config.tag_order
+              tag_order: config.tag_order,
+              filter_existing: filter_existing
             )
 
             existing_order_changed = sorted_existing_doc_lines != info[:doc_lines]
@@ -422,8 +436,14 @@ module Docscribe
             return
           end
 
+          effective_param_types = external_sig&.param_types || DocBuilder.build_param_types_from_node(
+            insertion.node,
+            external_sig: external_sig,
+            config: config
+          )
+
           doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
-                                            core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
+                                            core_rbs_provider: core_rbs_provider, param_types: effective_param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)

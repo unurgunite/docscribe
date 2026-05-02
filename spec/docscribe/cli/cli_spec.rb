@@ -17,7 +17,7 @@ RSpec.describe 'CLI docscribe' do
     Dir.mktmpdir do |dir|
       stdout, status = Open3.capture2('ruby', exe, '--stdin', stdin_data: code, chdir: dir)
       expect(status.success?).to be true
-      expect(stdout).to include('# +D#x+')
+      expect(stdout).to include('@return [Integer]')
     end
   end
 

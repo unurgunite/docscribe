@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Sorbet inline signature integration' do
-  subject(:out) { inline_with_sorbet(code) }
+  subject(:out) { inline_with_sorbet(code, config_overrides: conf) }
+
+  let(:conf) { { 'emit' => { 'header' => true } } }
 
   describe 'single-line sig' do
     let(:code) do
