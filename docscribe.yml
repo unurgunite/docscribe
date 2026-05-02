@@ -11,7 +11,7 @@
 #
 
 emit:
-  header: false
+  header: true
   param_tags: true
   return_tag: true
   visibility_tags: true

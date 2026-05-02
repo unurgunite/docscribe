@@ -278,17 +278,29 @@ module Docscribe
           reasons << { type: :missing_module_function_note, message: 'missing module_function note' }
         end
 
-        if config.emit_param_tags?
-          all_params = build_params_lines(node, indent, external_sig: external_sig, config: config)
+     if config.emit_param_tags?
+           all_params = build_params_lines(node, indent, external_sig: external_sig, config: config)
 
-          all_params&.each do |pl|
-            pname = extract_param_name_from_param_line(pl)
-            next if pname.nil? || info[:param_names].include?(pname)
+           all_params&.each do |pl|
+             pname = extract_param_name_from_param_line(pl)
+             next unless pname
 
-            lines << "#{pl}\n"
-            reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
-          end
-        end
+             if !info[:param_names].include?(pname)
+               lines << "#{pl}\n"
+               reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
+             elsif info[:param_types][pname]
+               new_type = extract_param_type_from_param_line(pl)
+               if new_type && info[:param_types][pname] != new_type
+                 lines << "#{pl}\n"
+                 reasons << {
+                   type: :updated_param,
+                   message: "updated @param #{pname} from #{info[:param_types][pname]} to #{new_type}",
+                   extra: { param: pname }
+                 }
+               end
+             end
+           end
+         end
 
         if config.emit_raise_tags?
           inferred = Docscribe::Infer.infer_raises_from_node(node)
@@ -301,12 +313,20 @@ module Docscribe
           end
         end
 
-        if config.emit_return_tag?(scope, visibility) && !info[:has_return]
-          lines << "#{indent}# @return [#{normal_type}]\n"
-          reasons << { type: :missing_return, message: 'missing @return' }
-        end
+      if config.emit_return_tag?(scope, visibility)
+           if !info[:has_return]
+             lines << "#{indent}# @return [#{normal_type}]\n"
+             reasons << { type: :missing_return, message: 'missing @return' }
+           elsif info[:return_type] && info[:return_type] != normal_type
+             lines << "#{indent}# @return [#{normal_type}]\n"
+             reasons << {
+               type: :updated_return,
+               message: "updated @return from #{info[:return_type]} to #{normal_type}"
+             }
+           end
+         end
 
-        if config.emit_rescue_conditional_returns? && !info[:has_return]
+         if config.emit_rescue_conditional_returns? && !info[:has_return]
           rescue_specs.each do |exceptions, rtype|
             lines << "#{indent}# @return [#{rtype}] if #{exceptions.join(', ')}\n"
             reasons << {
@@ -340,40 +360,54 @@ module Docscribe
       # @param [Array<String>] lines existing doc comment lines
       # @return [Hash] parsed tag info
       def parse_existing_doc_tags(lines)
-        param_names = {}
-        has_return = false
-        has_private = false
-        has_protected = false
-        has_module_function_note = false
-        raise_types = {}
-        plugin_tags = {}
+         param_names = {}
+         param_types = {}
+         has_return = false
+         return_type = nil
+         has_private = false
+         has_protected = false
+         has_module_function_note = false
+         raise_types = {}
+         plugin_tags = {}
 
-        Array(lines).each do |line|
-          if (m = line.match(/^\s*#\s*@(\w+)\b/))
-            plugin_tags[m[1]] = true
-          end
-          if (pname = extract_param_name_from_param_line(line))
-            param_names[pname] = true
-          end
+         Array(lines).each do |line|
+           if (m = line.match(/^\s*#\s*@(\w+)\b/))
+             plugin_tags[m[1]] = true
+           end
+           if (pname = extract_param_name_from_param_line(line))
+             param_names[pname] = true
+             if (type_match = line.match(/@param\s+\[([^\]]+)\]\s+\S+/))
+               param_types[pname] = type_match[1]
+             elsif (type_match = line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
+               param_types[pname] = type_match[1]
+             end
+           end
 
-          has_return ||= line.match?(/^\s*#\s*@return\b/)
-          has_private ||= line.match?(/^\s*#\s*@private\b/)
-          has_protected ||= line.match?(/^\s*#\s*@protected\b/)
-          has_module_function_note ||= line.match?(/^\s*#\s*@note\s+module_function:/)
+           if line.match?(/^\s*#\s*@return\b/)
+             has_return = true
+             if (m = line.match(/@return\s+\[([^\]]+)\]/))
+               return_type = m[1]
+             end
+           end
+           has_private ||= line.match?(/^\s*#\s*@private\b/)
+           has_protected ||= line.match?(/^\s*#\s*@protected\b/)
+           has_module_function_note ||= line.match?(/^\s*#\s*@note\s+module_function:/)
 
-          extract_raise_types_from_line(line).each { |t| raise_types[t] = true }
-        end
+           extract_raise_types_from_line(line).each { |t| raise_types[t] = true }
+         end
 
-        {
-          param_names: param_names,
-          has_return: has_return,
-          raise_types: raise_types,
-          has_private: has_private,
-          has_protected: has_protected,
-          has_module_function_note: has_module_function_note,
-          plugin_tags: plugin_tags
-        }
-      end
+         {
+           param_names: param_names,
+           param_types: param_types,
+           has_return: has_return,
+           return_type: return_type,
+           raise_types: raise_types,
+           has_private: has_private,
+           has_protected: has_protected,
+           has_module_function_note: has_module_function_note,
+           plugin_tags: plugin_tags
+         }
+       end
 
       # Extract exception names from a `@raise` doc line.
       #
@@ -458,6 +492,19 @@ module Docscribe
                  Infer.infer_param_type(
                    "#{pname}:",
                    nil,
+                   fallback_type: config.fallback_type,
+                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
+                 )
+            param_types[pname] = ty
+
+          when :kwoptarg
+            pname, default = *a
+            pname = pname.to_s
+            default_src = default&.loc&.expression&.source
+            ty = external_sig&.param_types&.[](pname) ||
+                 Infer.infer_param_type(
+                   "#{pname}:",
+                   default_src,
                    fallback_type: config.fallback_type,
                    treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?
                  )
@@ -665,12 +712,27 @@ module Docscribe
       # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
       # @param [String] line a `@param` doc line
       # @return [String, nil] the parameter name or nil
-      def extract_param_name_from_param_line(line)
-        return Regexp.last_match(1) if line =~ /@param\b\s+\[[^\]]+\]\s+(\S+)/
-        return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
+     def extract_param_name_from_param_line(line)
+         return Regexp.last_match(1) if line =~ /@param\b\s+\[[^\]]+\]\s+(\S+)/
+         return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
 
-        nil
-      end
+         nil
+       end
+
+       # Extract the parameter type from a `@param` doc line.
+       #
+       # Handles both `"@param [Type] name"` and `"@param name [Type]"` styles.
+       #
+       # @private
+       # @param [String] line a `@param` doc line
+       # @return [String, nil] the parameter type or nil
+       def extract_param_type_from_param_line(line)
+         if (m = line.match(/@param\s+\[([^\]]+)\]\s+\S+/))
+           m[1]
+         elsif (m = line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
+           m[1]
+         end
+       end
 
       # Build a Plugin::Context from a collected insertion.
       #

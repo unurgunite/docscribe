@@ -83,20 +83,11 @@ module Docscribe
 
         config ||= Docscribe::Config.load
         signature_provider = build_signature_provider(config, code, file.to_s)
-        unless core_rbs_provider
-          if config.respond_to?(:core_rbs_provider)
-            begin
-              core_rbs_provider = config.core_rbs_provider
-            rescue StandardError
-              core_rbs_provider = nil
-            end
-          elsif config.respond_to?(:rbs_provider)
-            begin
-              core_rbs_provider = config.rbs_provider
-            rescue StandardError
-              core_rbs_provider = nil
-            end
-          end
+        begin
+          core_rbs_provider ||= config.core_rbs_provider if config.respond_to?(:core_rbs_provider)
+        rescue StandardError => e
+          warn "Docscribe: failed to load core RBS provider: #{e.message}" if ENV['DOCSCRIBE_DEBUG']
+          core_rbs_provider = nil
         end
 
         collector = Docscribe::InlineRewriter::Collector.new(buffer)
@@ -362,32 +353,43 @@ module Docscribe
         when :safe
           info = method_doc_comment_info(buffer, insertion)
 
-          if info
-            merge_result = build_missing_method_merge_result(
-              insertion,
-              existing_lines: info[:doc_lines],
-              config: config,
-              signature_provider: signature_provider,
-              core_rbs_provider: core_rbs_provider,
-              param_types: external_sig&.param_types
-            )
+     if info
+             merge_result = build_missing_method_merge_result(
+               insertion,
+               existing_lines: info[:doc_lines],
+               config: config,
+               signature_provider: signature_provider,
+               core_rbs_provider: core_rbs_provider,
+               param_types: external_sig&.param_types
+             )
 
-            missing_lines = merge_result[:lines]
-            reason_specs = merge_result[:reasons] || []
+             missing_lines = merge_result[:lines]
+             reason_specs = merge_result[:reasons] || []
 
-            sorted_existing_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
-              info[:doc_lines],
-              missing_lines: [],
-              sort_tags: config.sort_tags?,
-              tag_order: config.tag_order
-            )
+             updated_param_names = reason_specs
+               .select { |r| r[:type] == :updated_param }
+               .map { |r| r[:extra][:param] }
+               .compact
 
-            merged_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
-              info[:doc_lines],
-              missing_lines: missing_lines,
-              sort_tags: config.sort_tags?,
-              tag_order: config.tag_order
-            )
+             has_updated_return = reason_specs.any? { |r| r[:type] == :updated_return }
+             filter_existing = {}
+             filter_existing[:param_names] = updated_param_names if updated_param_names.any?
+             filter_existing[:return] = true if has_updated_return
+
+             sorted_existing_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
+               info[:doc_lines],
+               missing_lines: [],
+               sort_tags: config.sort_tags?,
+               tag_order: config.tag_order
+             )
+
+             merged_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
+               info[:doc_lines],
+               missing_lines: missing_lines,
+               sort_tags: config.sort_tags?,
+               tag_order: config.tag_order,
+               filter_existing: filter_existing
+             )
 
             existing_order_changed = sorted_existing_doc_lines != info[:doc_lines]
             new_block = (info[:preserved_lines] + merged_doc_lines).join
@@ -751,16 +753,19 @@ module Docscribe
       # @raise [StandardError]
       # @return [Object, nil] a signature provider or nil
       def build_signature_provider(config, code, file)
-        if config.respond_to?(:signature_provider_for)
-          config.signature_provider_for(source: code, file: file)
-        elsif config.respond_to?(:signature_provider)
-          config.signature_provider
-        elsif config.respond_to?(:rbs_provider)
-          config.rbs_provider
-        end
-      rescue StandardError
-        config.respond_to?(:rbs_provider) ? config.rbs_provider : nil
-      end
+         if config.respond_to?(:signature_provider_for)
+           config.signature_provider_for(source: code, file: file)
+         elsif config.respond_to?(:signature_provider)
+           config.signature_provider
+         elsif config.respond_to?(:core_rbs_provider)
+           config.core_rbs_provider
+         elsif config.respond_to?(:rbs_provider)
+           config.rbs_provider
+         end
+       rescue StandardError
+         config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider :
+           (config.respond_to?(:rbs_provider) ? config.rbs_provider : nil)
+       end
 
       # Delegate to DocBuilder.build for generating a complete doc block.
       #
