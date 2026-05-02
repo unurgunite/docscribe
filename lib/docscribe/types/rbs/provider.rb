@@ -70,7 +70,7 @@ module Docscribe
           return if @env && @builder
 
           loader = ::RBS::EnvironmentLoader.new
-          # Load core types transitively
+          # Load core/stdlib types via the rbs library
           loader.add(library: 'rbs')
 
           @sig_dirs.each do |dir|

@@ -55,7 +55,7 @@ module Docscribe
         keyword_init: true
       )
 
-      # Merge existing doc lines with newly generated missing tag lines.
+   # Merge existing doc lines with newly generated missing tag lines.
       #
       # Existing text is preserved exactly. If sorting is enabled, only sortable tag runs
       # are normalized according to the configured tag order.
@@ -65,16 +65,27 @@ module Docscribe
       # @param [Array<String>] missing_lines generated tag lines to add
       # @param [Boolean] sort_tags whether sortable tags should be reordered
       # @param [Array<String>] tag_order configured sortable tag order
+      # @param [Hash] filter_existing optional filter for entries to exclude from existing
+      # @option filter_existing [Array<String>] :param_names param names to filter
+      # @option filter_existing [Boolean] :return whether to filter return tag
       # @return [Array<String>]
-      def merge(existing_lines, missing_lines:, sort_tags:, tag_order:)
-        existing_entries = parse(existing_lines, tag_order: tag_order)
-        missing_entries = parse_generated(missing_lines, tag_order: tag_order)
+      def merge(existing_lines, missing_lines:, sort_tags:, tag_order:, filter_existing: {})
+         existing_entries = parse(existing_lines, tag_order: tag_order)
+         missing_entries = parse_generated(missing_lines, tag_order: tag_order)
 
-        entries = existing_entries + missing_entries
-        entries = sort(entries, tag_order: tag_order) if sort_tags
+         filter_param_names = filter_existing[:param_names] || []
+         filter_return = !!filter_existing[:return]
 
-        render(entries)
-      end
+         existing_entries = existing_entries.reject do |e|
+           (e.kind == :tag && e.tag == 'param' && filter_param_names.include?(e.subject)) ||
+             (e.kind == :tag && e.tag == 'return' && filter_return)
+         end
+
+         entries = existing_entries + missing_entries
+         entries = sort(entries, tag_order: tag_order) if sort_tags
+
+         render(entries)
+       end
 
       # Parse generated missing tag lines and mark them as generated entries.
       #

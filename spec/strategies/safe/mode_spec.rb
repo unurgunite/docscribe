@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
 RSpec.describe 'safe strategy merge behavior mode' do
-  it 'appends missing @param lines into an existing doc-like block without replacing it' do
-    code = <<~RUBY
-      class A
-        # Existing docs
-        # @return [String]
-        def foo(x); 1; end
-      end
-    RUBY
+  it 'appends missing @param lines and updates @return when type differs' do
+     code = <<~RUBY
+       class A
+         # Existing docs
+         # @return [String]
+         def foo(x); 1; end
+       end
+     RUBY
 
-    out = inline(code, strategy: :safe)
-    expect(out).to include('# Existing docs')
-    expect(out).to include('# @return [String]')          # preserved
-    expect(out).to include(param_tag('x', 'Object'))      # added
-    expect(out).not_to include('# +A#foo+')               # we did not insert a whole new block
-  end
+     out = inline(code, strategy: :safe)
+     expect(out).to include('# Existing docs')
+     expect(out).to include('# @return [Integer]')          # updated from String to Integer
+     expect(out).to include(param_tag('x', 'Object'))      # added
+     expect(out).not_to include('# +A#foo+')               # we did not insert a whole new block
+   end
 
   it 'inserts a full doc block if there is no doc-like block (even if a normal comment exists)' do
     code = <<~RUBY

@@ -28,7 +28,7 @@ module Docscribe
           # Emit the header line:
           #
           #   +MyClass#my_method+ -> ReturnType
-          header: false
+          header: true
 
           # Whether to include the default placeholder line:
           #   # Method documentation.
