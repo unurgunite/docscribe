@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Sorbet-aware doc anchoring' do
-  subject(:out) { inline_with_sorbet(code, strategy: strategy) }
+  subject(:out) { inline_with_sorbet(code, strategy: strategy, config_overrides: { 'emit' => { 'header' => true } }) }
 
   let(:code) do
     <<~RUBY

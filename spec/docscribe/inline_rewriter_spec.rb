@@ -5,7 +5,7 @@ require 'docscribe/inline_rewriter'
 RSpec.describe Docscribe::InlineRewriter do
   it 'preserves tab indentation when inserting docs' do
     code = "class A\n\tdef foo; 1; end\nend\n"
-    out = inline(code)
+    out = inline(code, config: Docscribe::Config.new('emit' => { 'header' => true }))
     expect(out).to include("\t# +A#foo+ -> Integer")
   end
 
@@ -16,7 +16,7 @@ RSpec.describe Docscribe::InlineRewriter do
       end
     RUBY
 
-    out = inline(code)
+    out = inline(code, config: Docscribe::Config.new('emit' => { 'header' => true }))
     expect(out).to include('  # +A#foo+ -> Integer')
   end
 

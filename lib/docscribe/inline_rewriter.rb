@@ -83,20 +83,11 @@ module Docscribe
 
         config ||= Docscribe::Config.load
         signature_provider = build_signature_provider(config, code, file.to_s)
-        unless core_rbs_provider
-          if config.respond_to?(:core_rbs_provider)
-            begin
-              core_rbs_provider = config.core_rbs_provider
-            rescue StandardError
-              core_rbs_provider = nil
-            end
-          elsif config.respond_to?(:rbs_provider)
-            begin
-              core_rbs_provider = config.rbs_provider
-            rescue StandardError
-              core_rbs_provider = nil
-            end
-          end
+        begin
+          core_rbs_provider ||= config.core_rbs_provider if config.respond_to?(:core_rbs_provider)
+        rescue StandardError => e
+          warn "Docscribe: failed to load core RBS provider: #{e.message}" if ENV['DOCSCRIBE_DEBUG']
+          core_rbs_provider = nil
         end
 
         collector = Docscribe::InlineRewriter::Collector.new(buffer)
@@ -345,8 +336,14 @@ module Docscribe
             rewriter.remove(range)
           end
 
+          effective_param_types = external_sig&.param_types || DocBuilder.build_param_types_from_node(
+            insertion.node,
+            external_sig: external_sig,
+            config: config
+          )
+
           doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
-                                            core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
+                                            core_rbs_provider: core_rbs_provider, param_types: effective_param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -369,7 +366,8 @@ module Docscribe
               config: config,
               signature_provider: signature_provider,
               core_rbs_provider: core_rbs_provider,
-              param_types: external_sig&.param_types
+              param_types: external_sig&.param_types,
+              strategy: strategy
             )
 
             missing_lines = merge_result[:lines]
@@ -423,7 +421,8 @@ module Docscribe
           end
 
           doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
-                                            core_rbs_provider: core_rbs_provider, param_types: external_sig&.param_types)
+                                            core_rbs_provider: core_rbs_provider,
+                                            param_types: external_sig&.param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -790,16 +789,18 @@ module Docscribe
       # @param [Object, nil] signature_provider external signature provider
       # @param [Object, nil] core_rbs_provider RBS core type provider
       # @param [Hash, nil] param_types parameter name -> type map
+      # @param [Object] strategy Param documentation.
       # @return [Hash] result with `:lines` and `:reasons` keys
       def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:,
-                                            core_rbs_provider:, param_types:)
+                                            core_rbs_provider:, param_types:, strategy:)
         DocBuilder.build_missing_merge_result(
           insertion,
           existing_lines: existing_lines,
           config: config,
           signature_provider: signature_provider,
           core_rbs_provider: core_rbs_provider,
-          param_types: param_types
+          param_types: param_types,
+          strategy: strategy
         )
       end
 

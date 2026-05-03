@@ -27,6 +27,8 @@ RSpec.describe 'DOCSCRIBE_DEBUG' do
   end
 
   it 'does not print warnings by default when doc building raises' do
+    skip 'cannot suppress RBS fallback warning on Ruby 2.7' if RUBY_VERSION < '3.0'
+
     old = ENV.fetch('DOCSCRIBE_DEBUG', nil)
     ENV['DOCSCRIBE_DEBUG'] = nil
 

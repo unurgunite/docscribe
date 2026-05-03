@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
-  subject(:out) { inline(code) }
+  subject(:out) { inline(code, config: conf) }
+
+  let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
   describe 'rescue with explicit exception classes' do
     let(:code) do

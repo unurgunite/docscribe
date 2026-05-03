@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe 'receiver-based containers' do
+  let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
+
   describe 'def Foo.bar' do
-    subject(:out) { inline(code) }
+    subject(:out) { inline(code, config: conf) }
 
     let(:code) do
       <<~RUBY
@@ -20,7 +22,7 @@ RSpec.describe 'receiver-based containers' do
   end
 
   describe 'class << Foo with private :name' do
-    subject(:out) { inline(code) }
+    subject(:out) { inline(code, config: conf) }
 
     let(:code) do
       <<~RUBY
@@ -40,7 +42,7 @@ RSpec.describe 'receiver-based containers' do
   end
 
   describe 'class << Foo does not leak' do
-    subject(:out) { inline(code) }
+    subject(:out) { inline(code, config: conf) }
 
     let(:code) do
       <<~RUBY

@@ -14,7 +14,9 @@ module Docscribe
     # - optional Sorbet integration
     DEFAULT = {
       'emit' => {
-        'header' => true,
+        'header' => false,
+        'include_default_message' => true,
+        'include_param_documentation' => true,
         'param_tags' => true,
         'return_tag' => true,
         'visibility_tags' => true,
@@ -53,11 +55,12 @@ module Docscribe
         'exclude' => [],
         'files' => {
           'include' => [],
-          'exclude' => []
+          'exclude' => ['spec']
         }
       },
       'rbs' => {
         'enabled' => false,
+        'collection' => false,
         'sig_dirs' => ['sig'],
         'collapse_generics' => false
       },

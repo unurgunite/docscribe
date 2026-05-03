@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe 'class method visibility helpers' do
-  let(:conf) { Docscribe::Config.new('emit' => { 'visibility_tags' => true }) }
+  let(:conf) { Docscribe::Config.new('emit' => { 'visibility_tags' => true, 'header' => true }) }
 
   describe 'private_class_method' do
     subject(:out) { inline(code, config: conf) }

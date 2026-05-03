@@ -4,7 +4,7 @@ RSpec.describe 'Inference config' do
   describe 'fallback_type' do
     subject(:out) { inline(code, config: conf) }
 
-    let(:conf) { Docscribe::Config.new('inference' => { 'fallback_type' => 'Any' }) }
+    let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }, 'inference' => { 'fallback_type' => 'Any' }) }
 
     let(:code) do
       <<~RUBY
@@ -25,7 +25,7 @@ RSpec.describe 'Inference config' do
   describe 'nil_as_optional' do
     subject(:out) { inline(code, config: conf) }
 
-    let(:conf) { Docscribe::Config.new('inference' => { 'nil_as_optional' => false }) }
+    let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }, 'inference' => { 'nil_as_optional' => false }) }
 
     let(:code) do
       <<~RUBY

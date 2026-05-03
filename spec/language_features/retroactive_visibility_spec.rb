@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe 'retroactive visibility' do
-  subject(:out) { inline(code) }
+  subject(:out) { inline(code, config: conf) }
 
+  let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
   let(:code) do
     <<~RUBY
       class A
