@@ -228,10 +228,11 @@ module Docscribe
       # @param [Object, nil] signature_provider
       # @param [nil] core_rbs_provider Param documentation.
       # @param [nil] param_types Param documentation.
+      # @param [nil] strategy Param documentation.
       # @raise [StandardError]
       # @return [Hash]
       def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil,
-                                     core_rbs_provider: nil, param_types: nil)
+                                     core_rbs_provider: nil, param_types: nil, strategy: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return { lines: [], reasons: [] } unless name
@@ -288,7 +289,7 @@ module Docscribe
             if !info[:param_names].include?(pname)
               lines << "#{pl}\n"
               reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
-            elsif info[:param_types][pname]
+            elsif info[:param_types][pname] && strategy != :safe
               new_type = extract_param_type_from_param_line(pl)
               if new_type && info[:param_types][pname] != new_type
                 lines << "#{pl}\n"
@@ -317,7 +318,7 @@ module Docscribe
           if !info[:has_return]
             lines << "#{indent}# @return [#{normal_type}]\n"
             reasons << { type: :missing_return, message: 'missing @return' }
-          elsif info[:return_type] && info[:return_type] != normal_type
+          elsif info[:return_type] && info[:return_type] != normal_type && strategy != :safe
             lines << "#{indent}# @return [#{normal_type}]\n"
             reasons << {
               type: :updated_return,
@@ -717,6 +718,11 @@ module Docscribe
         nil
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_param_type_from_param_line (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @return [Object]
       def extract_param_type_from_param_line(line)
         if (m = line.match(/@param\s+\[([^\]]+)\]\s+\S+/) || line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
           m[1]

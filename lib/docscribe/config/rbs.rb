@@ -67,6 +67,7 @@ module Docscribe
 
     # Signature directories used by the RBS provider.
     #
+    # @private
     # @return [Array<String>]
     def rbs_sig_dirs
       Array(raw.dig('rbs', 'sig_dirs') || DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s)

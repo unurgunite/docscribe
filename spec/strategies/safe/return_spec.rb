@@ -20,41 +20,21 @@ RSpec.describe 'safe strategy return' do
     end
   end
 
-  describe 'does not add another @return when type matches' do
+  describe 'does not add another @return when one already exists' do
     subject(:out) { inline(code) }
 
     let(:code) do
       <<~RUBY
         class A
           # @todo docs
-          # @return [Integer] already correct
+          # @return [String] already documented
           def foo; 1; end
         end
       RUBY
     end
 
-    it 'preserves existing @return when type matches' do
-      expect(out).to include('# @return [Integer] already correct')
-      expect(out.scan(/^\s*#\s*@return\b/).size).to eq(1)
-    end
-  end
-
-  describe 'updates @return when type changed' do
-    subject(:out) { inline(code) }
-
-    let(:code) do
-      <<~RUBY
-        class A
-          # @todo docs
-          # @return [String] wrong type
-          def foo; 1; end
-        end
-      RUBY
-    end
-
-    it 'updates existing @return with correct type' do
-      expect(out).to include('# @return [Integer]')
-      expect(out).not_to include('# @return [String]')
+    it 'does not add another @return when one already exists' do
+      expect(out).to include('# @return [String] already documented')
       expect(out.scan(/^\s*#\s*@return\b/).size).to eq(1)
     end
   end

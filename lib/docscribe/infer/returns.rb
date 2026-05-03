@@ -111,9 +111,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #resolve_rbs_return_type (instance visibility: private)
       # @private
-      # @param [String] container_type e.g. "Numeric", "String"
-      # @param [Symbol] method_name e.g. :positive?
-      # @param [Object, nil] core_rbs_provider RBS provider
+      # @param [Object] node Param documentation.
       # @return [String] FALLBACK_TYPE if lookup fails
       def build_local_variable_types(node)
         types = {}
@@ -154,6 +152,7 @@ module Docscribe
       # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
       # @param [Object, nil] core_rbs_provider optional RBS provider for core type lookup
       # @param [Hash, nil] param_types parameter name -> type map for lvar resolution
+      # @param [nil] local_var_types Param documentation.
       # @return [String, nil]
       def last_expr_type(node, fallback_type:, nil_as_optional:, core_rbs_provider: nil, param_types: nil,
                          local_var_types: nil)

@@ -360,33 +360,18 @@ module Docscribe
           info = method_doc_comment_info(buffer, insertion)
 
           if info
-            effective_param_types = external_sig&.param_types || DocBuilder.build_param_types_from_node(
-              insertion.node,
-              external_sig: external_sig,
-              config: config
-            )
-
             merge_result = build_missing_method_merge_result(
               insertion,
               existing_lines: info[:doc_lines],
               config: config,
               signature_provider: signature_provider,
               core_rbs_provider: core_rbs_provider,
-              param_types: effective_param_types
+              param_types: external_sig&.param_types,
+              strategy: strategy
             )
 
             missing_lines = merge_result[:lines]
             reason_specs = merge_result[:reasons] || []
-
-            updated_param_names = reason_specs
-                                  .select { |r| r[:type] == :updated_param }
-                                  .map { |r| r[:extra][:param] }
-                                  .compact
-
-            has_updated_return = reason_specs.any? { |r| r[:type] == :updated_return }
-            filter_existing = {}
-            filter_existing[:param_names] = updated_param_names if updated_param_names.any?
-            filter_existing[:return] = true if has_updated_return
 
             sorted_existing_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
               info[:doc_lines],
@@ -399,8 +384,7 @@ module Docscribe
               info[:doc_lines],
               missing_lines: missing_lines,
               sort_tags: config.sort_tags?,
-              tag_order: config.tag_order,
-              filter_existing: filter_existing
+              tag_order: config.tag_order
             )
 
             existing_order_changed = sorted_existing_doc_lines != info[:doc_lines]
@@ -436,14 +420,9 @@ module Docscribe
             return
           end
 
-          effective_param_types = external_sig&.param_types || DocBuilder.build_param_types_from_node(
-            insertion.node,
-            external_sig: external_sig,
-            config: config
-          )
-
           doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
-                                            core_rbs_provider: core_rbs_provider, param_types: effective_param_types)
+                                            core_rbs_provider: core_rbs_provider,
+                                            param_types: external_sig&.param_types)
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -810,16 +789,18 @@ module Docscribe
       # @param [Object, nil] signature_provider external signature provider
       # @param [Object, nil] core_rbs_provider RBS core type provider
       # @param [Hash, nil] param_types parameter name -> type map
+      # @param [Object] strategy Param documentation.
       # @return [Hash] result with `:lines` and `:reasons` keys
       def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:,
-                                            core_rbs_provider:, param_types:)
+                                            core_rbs_provider:, param_types:, strategy:)
         DocBuilder.build_missing_merge_result(
           insertion,
           existing_lines: existing_lines,
           config: config,
           signature_provider: signature_provider,
           core_rbs_provider: core_rbs_provider,
-          param_types: param_types
+          param_types: param_types,
+          strategy: strategy
         )
       end
 

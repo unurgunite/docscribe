@@ -6,14 +6,14 @@ RSpec.describe 'Inline rewriter respects existing tags' do
 
     let(:code) { <<~RUBY }
       class A
-      # @param [Object] name The name
+      # @param [String] name The name
       def foo(name); "x"; end
       end
     RUBY
 
     it 'does not insert when user provided @param/@option above the method' do
       expect(out).not_to include('# +A#foo+')
-      expect(out).to include('@param [Object] name The name') # original stays
+      expect(out).to include('@param [String] name The name') # original stays
     end
   end
 
