@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe 'extend self extra behaviors' do
-  subject(:out) { inline(code) }
+  subject(:out) { inline(code, config: conf) }
+
+  let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
   describe '`extend self, X`' do
     let(:code) do
@@ -23,7 +25,7 @@ RSpec.describe 'extend self extra behaviors' do
   describe 'private_class_method after extend self' do
     subject(:out) { inline(code, config: conf) }
 
-    let(:conf) { Docscribe::Config.new('emit' => { 'visibility_tags' => true }) }
+    let(:conf) { Docscribe::Config.new('emit' => { 'header' => true, 'visibility_tags' => true }) }
 
     let(:code) do
       <<~RUBY

@@ -4,9 +4,11 @@ require 'tmpdir'
 require 'fileutils'
 
 RSpec.describe 'Sorbet RBI integration' do
-  describe 'RBI signatures' do
-    subject(:out) { inline_with_signature_files(code: code, rbi: rbi) }
+  subject(:out) { inline_with_signature_files(code: code, rbi: rbi, config_overrides: conf) }
 
+  let(:conf) { { 'emit' => { 'header' => true } } }
+
+  describe 'RBI signatures' do
     let(:rbi) do
       <<~RBI
         # typed: strict
@@ -42,8 +44,6 @@ RSpec.describe 'Sorbet RBI integration' do
   end
 
   describe 'RBI over RBS priority' do
-    subject(:out) { inline_with_signature_files(code: code, rbi: rbi, rbs: rbs) }
-
     let(:rbi) do
       <<~RBI
         # typed: strict
@@ -84,9 +84,7 @@ RSpec.describe 'Sorbet RBI integration' do
   end
 
   describe 'invalid RBI fallback' do
-    subject(:out) { inline_with_signature_files(code: code, rbi: bad_rbi) }
-
-    let(:bad_rbi) do
+    let(:rbi) do
       <<~RBI
         class Demo
           extend T::Sig
@@ -116,7 +114,7 @@ RSpec.describe 'Sorbet RBI integration' do
   end
 
   describe 'inline sig priority' do
-    subject(:out) { inline_with_signature_files(code: code, rbi: rbi, rbs: rbs) }
+    subject(:out) { inline_with_signature_files(code: code, rbi: rbi, rbs: rbs, config_overrides: conf) }
 
     let(:rbi) do
       <<~RBI

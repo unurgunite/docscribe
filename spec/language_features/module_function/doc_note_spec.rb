@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 RSpec.describe 'module_function documentation note' do
-  subject(:out) { inline(code) }
+  subject(:out) { inline(code, config: conf) }
+
+  let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
   describe 'default instance visibility' do
     let(:code) do

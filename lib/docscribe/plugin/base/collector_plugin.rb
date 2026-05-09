@@ -41,8 +41,6 @@ module Docscribe
         # - :anchor_node => Parser::AST::Node — node above which to insert doc
         # - :doc         => String — complete doc block including newlines
         #
-        # @param [Parser::AST::Node] ast root AST node of the file
-        # @param [Parser::Source::Buffer] buffer source buffer
         # @param [Object] _ast Param documentation.
         # @param [Object] _buffer Param documentation.
         # @return [Array<Hash>]

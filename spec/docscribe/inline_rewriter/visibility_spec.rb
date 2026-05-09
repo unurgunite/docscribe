@@ -2,8 +2,9 @@
 
 RSpec.describe 'Inline rewriter visibility' do
   describe 'private after bare private' do
-    subject(:out) { inline(code) }
+    subject(:out) { inline(code, config: conf) }
 
+    let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
     let(:code) { <<~RUBY }
       class Demo
       def pub; end
@@ -31,8 +32,9 @@ RSpec.describe 'Inline rewriter visibility' do
   end
 
   describe 'protected instance methods' do
-    subject(:out) { inline(code) }
+    subject(:out) { inline(code, config: conf) }
 
+    let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
     let(:code) { <<~RUBY }
       class P
       protected

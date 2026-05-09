@@ -17,7 +17,6 @@ RSpec.describe Docscribe::InlineRewriter::Collector do
     let(:conf) { Docscribe::Config.new('emit' => { 'visibility_tags' => true }) }
 
     it 'treats `private def foo` as private and emits @private when enabled' do
-      expect(out).to match(header_regex('A', 'foo', 'Integer'))
       expect(out).to include('# @private')
     end
   end

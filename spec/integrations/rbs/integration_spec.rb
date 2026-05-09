@@ -7,8 +7,9 @@ RSpec.describe 'RBS integration' do
   before { skip_unless_rbs_available! }
 
   describe 'overrides inferred return type using RBS' do
-    subject(:out) { inline_with_rbs(code: code, rbs: rbs) }
+    subject(:out) { inline_with_rbs(code: code, rbs: rbs, config: conf) }
 
+    let(:conf) { { 'emit' => { 'header' => true } } }
     let(:rbs) do
       <<~RBS
         class Demo
@@ -30,6 +31,7 @@ RSpec.describe 'RBS integration' do
     it 'overrides inferred return type using RBS (String body, Integer in RBS)' do
       # If RBS was ignored, inference would produce String here.
       expect(out).to include('# +Demo#foo+ -> Integer')
+      expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
       expect(out).to include('# @return [Integer]')
       expect(out).not_to include('# @return [String]')
 

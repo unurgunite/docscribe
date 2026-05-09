@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe 'aggressive strategy preserves rubocop directives' do
-  let(:conf) { Docscribe::Config.new }
+  let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
   describe 'preserves leading rubocop directives but replaces doc blocks' do
     subject(:out) { inline(code, strategy: :aggressive, config: conf) }

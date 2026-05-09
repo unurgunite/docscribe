@@ -4,7 +4,7 @@ RSpec.describe 'Inline rewriter filter' do
   subject(:out) { inline(code, config: config) }
 
   let(:filter_overrides) { { 'exclude' => ['*#initialize'] } }
-  let(:config) { Docscribe::Config.new('filter' => filter_overrides) }
+  let(:config) { Docscribe::Config.new('emit' => { 'header' => true }, 'filter' => filter_overrides) }
 
   let(:code) { <<~RUBY }
     class A
@@ -22,7 +22,7 @@ RSpec.describe 'Inline rewriter filter' do
     subject(:out) { inline(code, config: config) }
 
     let(:filter_overrides) { { 'include' => ['A#foo'] } }
-    let(:config) { Docscribe::Config.new('filter' => filter_overrides) }
+    let(:config) { Docscribe::Config.new('emit' => { 'header' => true }, 'filter' => filter_overrides) }
 
     let(:code) { <<~RUBY }
       class A
