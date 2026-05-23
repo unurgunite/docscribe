@@ -395,6 +395,20 @@ module Docscribe
               range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
               rewriter.replace(range, new_block)
 
+              if existing_order_changed
+                add_change(
+                  changes,
+                  type: :unsorted_tags,
+                  insertion: insertion,
+                  file: file,
+                  message: 'unsorted tags'
+                )
+              end
+            end
+
+            type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return].include?(r[:type]) }
+
+            if new_block != old_block || type_mismatch_reasons.any?
               reason_specs.each do |reason|
                 add_change(
                   changes,
@@ -403,16 +417,6 @@ module Docscribe
                   file: file,
                   message: reason[:message],
                   extra: reason[:extra] || {}
-                )
-              end
-
-              if existing_order_changed
-                add_change(
-                  changes,
-                  type: :unsorted_tags,
-                  insertion: insertion,
-                  file: file,
-                  message: 'unsorted tags'
                 )
               end
             end
