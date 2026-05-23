@@ -289,7 +289,7 @@ module Docscribe
             if !info[:param_names].include?(pname)
               lines << "#{pl}\n"
               reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
-            elsif info[:param_types][pname]
+            elsif external_sig && info[:param_types][pname]
               new_type = extract_param_type_from_param_line(pl)
               if new_type && info[:param_types][pname] != new_type
                 lines << "#{pl}\n" unless strategy == :safe
@@ -318,7 +318,7 @@ module Docscribe
           if !info[:has_return]
             lines << "#{indent}# @return [#{normal_type}]\n"
             reasons << { type: :missing_return, message: 'missing @return' }
-          elsif info[:return_type] && info[:return_type] != normal_type
+          elsif external_sig && info[:return_type] && info[:return_type] != normal_type
             lines << "#{indent}# @return [#{normal_type}]\n" unless strategy == :safe
             reasons << {
               type: :updated_return,
