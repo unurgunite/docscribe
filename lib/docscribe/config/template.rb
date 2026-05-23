@@ -86,6 +86,7 @@ module Docscribe
           # Use RBS signatures for better types (requires `gem "rbs"`)
           enabled: false
           sig_dirs: ["sig"]
+          collection_dirs: []                 # auto-discovered from --rbs-collection
           collapse_generics: false            # Hash<Symbol, String> => Hash
           collection: false                   # auto-discover from rbs_collection.lock.yaml
 

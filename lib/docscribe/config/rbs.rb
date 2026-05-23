@@ -17,6 +17,7 @@ module Docscribe
         require 'docscribe/types/rbs/provider'
         Docscribe::Types::RBS::Provider.new(
           sig_dirs: rbs_sig_dirs,
+          collection_dirs: rbs_collection_dirs,
           collapse_generics: rbs_collapse_generics?
         )
       rescue LoadError
@@ -71,6 +72,18 @@ module Docscribe
     # @return [Array<String>]
     def rbs_sig_dirs
       Array(raw.dig('rbs', 'sig_dirs') || DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s)
+    end
+
+    # RBS collection directories (auto-discovered from rbs_collection.lock.yaml).
+    #
+    # Loaded separately from user sig_dirs so that collection-related
+    # RBS environment errors (e.g. duplicate declarations against core
+    # stdlib types) do not silence all RBS lookups.
+    #
+    # @private
+    # @return [Array<String>]
+    def rbs_collection_dirs
+      Array(raw.dig('rbs', 'collection_dirs')).map(&:to_s)
     end
 
     # Whether generic RBS types should be collapsed to simpler container names.
