@@ -75,6 +75,8 @@ module Docscribe
         # dirs are dropped and only user sig_dirs are used.
         #
         # @private
+        # @raise [::RBS::BaseError]
+        # @raise [StandardError]
         # @return [void]
         def load_env!
           return if @env && @builder
