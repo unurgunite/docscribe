@@ -53,7 +53,7 @@ module Docscribe
             require 'docscribe/types/rbs/collection_loader'
             collection_path = Docscribe::Types::RBS::CollectionLoader.resolve
             if collection_path
-              raw['rbs']['sig_dirs'] = Array(raw['rbs']['sig_dirs']) + [collection_path]
+              raw['rbs']['collection_dirs'] = Array(raw['rbs']['collection_dirs']) + [collection_path]
             else
               warn 'Docscribe: rbs_collection.lock.yaml not found or collection not installed. ' \
                    'Run `bundle exec rbs collection install` first.'

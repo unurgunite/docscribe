@@ -15,16 +15,21 @@ module Docscribe
       # the pipeline can stay independent of the underlying signature source.
       class Provider
         # @param [Array<String>] sig_dirs directories containing `.rbs` files
+        # @param [Array<String>] collection_dirs RBS collection directories
+        #   (loaded separately; on error they are silently dropped and only
+        #   user sig_dirs are used)
         # @param [Boolean] collapse_generics whether generic container types
         #   should be simplified during formatting
         # @return [Object]
-        def initialize(sig_dirs:, collapse_generics: false)
+        def initialize(sig_dirs:, collection_dirs: [], collapse_generics: false)
           require 'rbs'
           @sig_dirs = Array(sig_dirs).map(&:to_s)
+          @collection_dirs = Array(collection_dirs).map(&:to_s)
           @collapse_generics = !!collapse_generics
           @env = nil
           @builder = nil
           @warned = false
+          @collection_dropped = false
         end
 
         # Look up a normalized method signature from loaded RBS definitions.
@@ -64,22 +69,48 @@ module Docscribe
 
         # Lazily load and resolve the RBS environment.
         #
+        # Tries to load collection dirs together with user sig_dirs.
+        # If the combined environment raises a load error (e.g. duplicate
+        # declarations between collection and core stdlib types), collection
+        # dirs are dropped and only user sig_dirs are used.
+        #
         # @private
+        # @raise [::RBS::BaseError]
+        # @raise [StandardError]
         # @return [void]
         def load_env!
           return if @env && @builder
 
+          @env = build_env(@sig_dirs + @collection_dirs)
+        rescue ::RBS::BaseError => e
+          raise unless @collection_dirs.any? && !@collection_dropped
+
+          @collection_dropped = true
+          if ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
+            warn "Docscribe: RBS collection error (#{e.class}), dropping collection dirs. " \
+                 'Set DOCSCRIBE_RBS_DEBUG=1 for details.'
+          end
+          @env = build_env(@sig_dirs)
+        end
+
+        # Build an RBS environment from the given directories.
+        #
+        # @private
+        # @param [Array<String>] dirs
+        # @return [::RBS::Environment]
+        def build_env(dirs)
           loader = ::RBS::EnvironmentLoader.new
           # Load core types transitively
           loader.add(library: 'rbs')
 
-          @sig_dirs.each do |dir|
+          dirs.each do |dir|
             path = Pathname(dir)
             loader.add(path: path) if path.directory?
           end
 
-          @env = ::RBS::Environment.from_loader(loader).resolve_type_names
-          @builder = ::RBS::DefinitionBuilder.new(env: @env)
+          env = ::RBS::Environment.from_loader(loader).resolve_type_names
+          @builder = ::RBS::DefinitionBuilder.new(env: env)
+          env
         end
 
         # Build the appropriate instance or singleton definition for a container.
