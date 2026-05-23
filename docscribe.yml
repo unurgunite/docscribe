@@ -1,29 +1,65 @@
+---
 # Docscribe configuration file
 #
-# CI check (fails if any file would change):
-#   bundle exec docscribe lib
+# Docscribe works without this file — create it only for customization.
 #
-# Auto-fix (rewrites files):
-#   bundle exec docscribe -a lib
-#
-# Regenerate docs even if a comment block already exists:
-#   bundle exec docscribe -A lib
-#
+# Quick start:
+#   bundle exec docscribe lib          # check what would change
+#   bundle exec docscribe -a lib       # apply safe updates
+#   bundle exec docscribe -A lib       # rebuild all doc blocks
 
 emit:
-  header: false
-  param_tags: true
-  return_tag: true
-  visibility_tags: true
-  raise_tags: true
-  rescue_conditional_returns: true
-  attributes: true
+  # What to include in generated documentation
+  header: false                       # +MyClass#foo+ -> ReturnType
+  param_tags: true                    # @param tags
+  return_tag: true                    # @return tag
+  visibility_tags: true               # @private / @protected
+  raise_tags: true                    # @raise tags
+  rescue_conditional_returns: true    # @return [Type] if Error
+  attributes: true                    # @!attribute for attr_*
+
+  # Placeholder text for generated docs
+  include_default_message: true       # "Method documentation."
+  include_param_documentation: true   # "Param documentation."
 
 doc:
+  # Default text and formatting
   default_message: "Method documentation."
-  param_tag_style: 'type_name'
+  param_documentation: "Param documentation."
+  param_tag_style: "type_name"        # "type_name" or "name_type"
+  sort_tags: true
+  tag_order: ["todo", "note", "api", "private", "protected", "param", "option", "yieldparam", "raise", "return"]
+
+inference:
+  # Type inference behavior
+  fallback_type: "Object"             # when uncertain
+  nil_as_optional: true               # String | nil => String?
+  treat_options_keyword_as_hash: true # options: keyword => Hash
+
+filter:
+  # Which methods and files to process
+  # Method format: "Container#method" (instance) or "Container.method" (class)
+  # Supports globs ("*#initialize") and regex ("/^MyApp::.*$/")
+  include: []
+  exclude: []
+  visibilities: ["public", "private"]
+  scopes: ["instance", "class"]
+
+  files:
+    # File paths relative to project root (globs or /regex/)
+    include: []
+    exclude: ["spec"]
 
 methods:
+  # Override defaults per scope and visibility.
+  # Empty {} means "use values from `doc` section".
+  #
+  # Example:
+  #   instance:
+  #     public:
+  #       default_message: "Public API."
+  #     private:
+  #       return_tag: false
   instance:
     public: {}
     protected: {}
@@ -33,30 +69,23 @@ methods:
     protected: {}
     private: {}
 
-inference:
-  fallback_type: "Object"
-  nil_as_optional: true
-  treat_options_keyword_as_hash: true
+rbs:
+  # Use RBS signatures for better types (requires `gem "rbs"`)
+  enabled: false
+  sig_dirs: ["sig"]
+  collapse_generics: false            # Hash<Symbol, String> => Hash
+  collection: false                   # auto-discover from rbs_collection.lock.yaml
 
-# Filter which methods Docscribe touches.
-#
-# Method id format:
-#   "MyModule::MyClass#instance_method"
-#   "MyModule::MyClass.class_method"
-#
-# Patterns:
-# - glob strings like "*#initialize", "MyApp::*#*"
-# - or regex strings like "/^MyApp::.*#(foo|bar)$/"
-#
-# Semantics:
-# - scopes/visibilities act as allow-lists
-# - exclude always wins
-# - if include is empty => include everything (subject to allow-lists)
-filter:
-  visibilities: ["public", "private"]
-  scopes: ["instance", "class"]
-  include: []
-  exclude: []
-  files:
-    include: []
-    exclude: ['spec']
+sorbet:
+  # Use Sorbet inline sigs and RBI files for better types
+  enabled: false
+  rbi_dirs: ["sorbet/rbi", "rbi"]
+  collapse_generics: false
+
+plugins:
+  # Load custom plugins
+  # Example:
+  #   require:
+  #     - ./docscribe_plugins
+  #     - docscribe-rails-associations
+  require: []

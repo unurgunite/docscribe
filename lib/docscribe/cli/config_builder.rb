@@ -44,7 +44,7 @@ module Docscribe
         raw['filter']['files']['include'] = Array(raw['filter']['files']['include']) + options[:include_file]
         raw['filter']['files']['exclude'] = Array(raw['filter']['files']['exclude']) + options[:exclude_file]
 
-        if options[:rbs] || options[:sig_dirs].any?
+        if options[:rbs] || options[:rbs_collection] || options[:sig_dirs].any?
           raw['rbs'] ||= {}
           raw['rbs']['enabled'] = true
           raw['rbs']['sig_dirs'] = Array(raw['rbs']['sig_dirs']) + options[:sig_dirs] if options[:sig_dirs].any?
