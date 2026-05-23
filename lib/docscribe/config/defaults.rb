@@ -62,6 +62,7 @@ module Docscribe
         'enabled' => false,
         'collection' => false,
         'sig_dirs' => ['sig'],
+        'collection_dirs' => [],
         'collapse_generics' => false
       },
       'sorbet' => {
