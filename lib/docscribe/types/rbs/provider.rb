@@ -89,8 +89,25 @@ module Docscribe
         # @param [Symbol] scope
         # @return [Object]
         def definition_for(container:, scope:)
-          type_name = ::RBS::TypeName.parse(absolute_const(container))
+          type_name = parse_type_name(absolute_const(container))
           scope == :class ? @builder.build_singleton(type_name) : @builder.build_instance(type_name)
+        end
+
+        # Parse a fully-qualified constant string into an RBS TypeName.
+        #
+        # Uses the lower-level constructor so it works across RBS versions
+        # that may not expose `TypeName.parse`.
+        #
+        # @private
+        # @param [String] string e.g. "::Irb::Autosuggestions"
+        # @return [::RBS::TypeName]
+        def parse_type_name(string)
+          absolute = string.start_with?('::')
+          *path, name = string.delete_prefix('::').split('::').map(&:to_sym)
+          ::RBS::TypeName.new(
+            name: name,
+            namespace: ::RBS::Namespace.new(path: path, absolute: absolute)
+          )
         end
 
         # Normalize a container name into an absolute constant path.

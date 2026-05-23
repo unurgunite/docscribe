@@ -148,7 +148,9 @@ module Docscribe
             fail_paths: [],
             fail_changes: {},
             error_paths: [],
-            error_messages: {}
+            error_messages: {},
+            type_mismatch_paths: [],
+            type_mismatch_changes: {}
           }
         end
 
@@ -278,9 +280,18 @@ module Docscribe
         # @param [Hash] state shared processing state
         # @return [void]
         def handle_check_result(path, src:, out:, file_changes:, display_path:, options:, state:)
-          if out == src
-            options[:verbose] ? puts("OK #{display_path}") : print('.')
-            state[:checked_ok] += 1
+          type_mismatches = file_changes.select { |c| %i[updated_param updated_return].include?(c[:type]) }
+          has_real_changes = file_changes.any? { |c| !%i[updated_param updated_return].include?(c[:type]) }
+
+          if out == src && !has_real_changes
+            if type_mismatches.any?
+              state[:type_mismatch_paths] << path
+              state[:type_mismatch_changes][path] = type_mismatches
+              options[:verbose] ? puts("MT #{display_path}") : print('M')
+            else
+              state[:checked_ok] += 1
+              options[:verbose] ? puts("OK #{display_path}") : print('.')
+            end
             return
           end
 
@@ -350,13 +361,22 @@ module Docscribe
           puts
 
           checked_error = state[:error_paths].size
+          type_mismatch_count = state[:type_mismatch_paths].size
 
-          if state[:checked_fail].zero? && checked_error.zero?
+          if state[:checked_fail].zero? && checked_error.zero? && type_mismatch_count.zero?
             puts "Docscribe: OK (#{state[:checked_ok]} files checked)"
             return
           end
 
-          puts "Docscribe: FAILED (#{state[:checked_fail]} files need updates, #{checked_error} errors, #{state[:checked_ok]} ok)"
+          if state[:checked_fail].zero? && checked_error.zero?
+            puts "Docscribe: OK (#{state[:checked_ok]} files checked, #{type_mismatch_count} with type mismatches)"
+          else
+            parts = ["#{state[:checked_fail]} need updates"]
+            parts << "#{type_mismatch_count} type mismatches" if type_mismatch_count.positive?
+            parts << "#{checked_error} errors"
+            parts << "#{state[:checked_ok]} ok"
+            puts "Docscribe: FAILED (#{parts.join(', ')})"
+          end
 
           state[:fail_paths].each do |p|
             warn "Would update docs: #{p}"
@@ -364,6 +384,15 @@ module Docscribe
 
             Array(state[:fail_changes][p]).each do |change|
               warn "  - #{format_change_reason(change)}"
+            end
+          end
+
+          if options[:verbose] || options[:explain]
+            state[:type_mismatch_paths].each do |p|
+              warn "Type mismatches: #{p}"
+              Array(state[:type_mismatch_changes][p]).each do |change|
+                warn "  - #{format_change_reason(change)}"
+              end
             end
           end
 
