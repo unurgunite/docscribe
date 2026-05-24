@@ -75,6 +75,7 @@ module DocscribePlugins
     # @param [String] root
     # @return [self]
     def initialize(root: Dir.pwd)
+      super()
       @root = root
       @schema_tables = nil
       @yard_type_map = SchemaParser::TYPE_MAP

@@ -15,7 +15,8 @@ RSpec.describe DocscribePlugins::SchemaAttributes do
 
   describe 'collect' do
     it 'documents columns for ApplicationRecord models' do
-      plugin.instance_variable_set(:@schema, { 'users' => [{ name: 'email', type: 'string' }, { name: 'is_admin', type: 'boolean' }] })
+      plugin.instance_variable_set(:@schema,
+                                   { 'users' => [{ name: 'email', type: 'string' }, { name: 'is_admin', type: 'boolean' }] })
 
       code = <<~RUBY
         class User < ApplicationRecord
@@ -73,7 +74,9 @@ RSpec.describe DocscribePlugins::SchemaAttributes do
     end
 
     it 'skips standard Rails columns' do
-      plugin.instance_variable_set(:@schema, { 'users' => [{ name: 'id', type: 'integer' }, { name: 'created_at', type: 'datetime' }, { name: 'updated_at', type: 'datetime' }, { name: 'email', type: 'string' }] })
+      plugin.instance_variable_set(:@schema,
+                                   { 'users' => [{ name: 'id', type: 'integer' }, { name: 'created_at', type: 'datetime' }, { name: 'updated_at', type: 'datetime' },
+                                                 { name: 'email', type: 'string' }] })
 
       code = <<~RUBY
         class User < ApplicationRecord
@@ -81,9 +84,9 @@ RSpec.describe DocscribePlugins::SchemaAttributes do
       RUBY
 
       out = rewrite(code)
-      expect(out).to_not include('# @!attribute [r] id')
-      expect(out).to_not include('# @!attribute [r] created_at')
-      expect(out).to_not include('# @!attribute [r] updated_at')
+      expect(out).not_to include('# @!attribute [r] id')
+      expect(out).not_to include('# @!attribute [r] created_at')
+      expect(out).not_to include('# @!attribute [r] updated_at')
       expect(out).to include('# @!attribute [r] email')
     end
 
@@ -99,7 +102,7 @@ RSpec.describe DocscribePlugins::SchemaAttributes do
       RUBY
 
       out = rewrite(code)
-      expect(out).to_not include('# @!attribute [r] template')
+      expect(out).not_to include('# @!attribute [r] template')
     end
 
     it 'handles namespaced models' do
@@ -165,7 +168,7 @@ RSpec.describe DocscribePlugins::SchemaAttributes do
         RUBY
 
         out = rewrite(code)
-        expect(out).to_not include('# @!attribute [r]')
+        expect(out).not_to include('# @!attribute [r]')
       end
     end
   end
