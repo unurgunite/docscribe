@@ -1,7 +1,13 @@
 # Rails associations
 
-An example plugin that documents ActiveRecord associations (`belongs_to`, `has_many`, `has_one`,
-`has_and_belongs_to_many`) is available in [`examples/plugins/rails_associations/`]().
+An example `CollectorPlugin` that documents ActiveRecord associations:
+
+- `belongs_to`
+- `has_many`
+- `has_one`
+- `has_and_belongs_to_many`
+
+## Example
 
 Given:
 
@@ -33,7 +39,7 @@ end
 To use it, register the plugin in `docscribe_plugins.rb`:
 
 ```ruby
-require_relative 'examples/plugins/rails_associations/plugin'
+require_relative 'examples/plugins/collector_plugin/rails_associations/plugin'
 
-Docscribe::Plugin::Registry.register(DocscribePlugins::RailsAssociations::Plugin.new)
+Docscribe::Plugin::Registry.register(DocscribePlugins::RailsAssociations.new)
 ```

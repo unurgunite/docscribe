@@ -68,7 +68,9 @@ class SchemaRbParser
 
   private
 
+  # @private
   # @param [String] root
+  # @return [Object]
   def initialize(root:)
     @root = root
     @tables = nil
@@ -76,6 +78,7 @@ class SchemaRbParser
 
   # Parse schema.rb source into a table → column map.
   #
+  # @private
   # @param [String] source
   # @return [Hash{String => Hash{String => String}}]
   def parse(source)

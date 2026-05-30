@@ -13,7 +13,7 @@ module DocscribePlugins
   # - has_and_belongs_to_many
   #
   # @example Registration
-  #   require 'examples/plugins/rails_associations/plugin'
+  #   require 'examples/plugins/collector_plugin/rails_associations/plugin'
   #   Docscribe::Plugin::Registry.register(DocscribePlugins::RailsAssociations.new)
   #
   # @example belongs_to
@@ -205,7 +205,7 @@ module DocscribePlugins
     #
     # @private
     # @param [Symbol, String] name
-    # @return [String]
+    # @return [String, nil]
     def singular(name)
       str = name.to_s
       str.end_with?('s') ? str[0..-2] : str

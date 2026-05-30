@@ -46,9 +46,12 @@ The plugin receives the raw AST and source buffer and returns insertion
 targets directly.
 
 > [!NOTE]
-> A CollectorPlugin **can** target ordinary `def` methods to override the standard collector's output. When a plugin and
-> the standard collector both insert docs at the same source position, the plugin takes priority and the standard
-> collector's insertion is dropped. This allows plugins like `ModelAttributes` to provide more accurate `@return` types
-> for ActiveRecord model methods while suppressing the generic docs that the standard collector would produce for the
-> same `def`. Multiple plugin insertions at the same position are all preserved (e.g. `SchemaAttributes` may generate
-> several `@!attribute` blocks at one anchor point).
+> A `CollectorPlugin` **can** target ordinary `def` methods to override the standard collector's output.
+> When a plugin and the standard collector both insert docs at the same source position, the plugin takes priority and
+> the standard collector's insertion is dropped.
+>
+> If multiple `CollectorPlugins` target the same source position, `Registry.register(plugin, priority: N)` (default `0`)
+> controls which one wins: the highest priority plugin(s) are kept (ties are kept).
+> - only the highest-priority plugin insertion(s) are kept (ties are kept)
+> - multiple insertions from the winning plugin(s) at that position are preserved (e.g. `SchemaAttributes` may generate
+    several `@!attribute` blocks at one anchor point)

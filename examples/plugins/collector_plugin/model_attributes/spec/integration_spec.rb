@@ -49,6 +49,10 @@ RSpec.describe 'ModelAttributes end-to-end' do
     FileUtils.rm_rf(root)
   end
 
+  # Method documentation.
+  #
+  # @param [Object] code Param documentation.
+  # @return [Object]
   def rewrite(code)
     Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
   end

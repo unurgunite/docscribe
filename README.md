@@ -900,8 +900,9 @@ class DefineMethodPlugin < Docscribe::Plugin::Base::CollectorPlugin
   end
 end
 
-Docscribe::Plugin::Registry.register(SincePlugin.new)
-Docscribe::Plugin::Registry.register(DefineMethodPlugin.new)
+# You can optionally set priority (default: 0). Higher number => higher priority.
+Docscribe::Plugin::Registry.register(SincePlugin.new, priority: 10)
+Docscribe::Plugin::Registry.register(DefineMethodPlugin.new, priority: 0)
 ```
 
 **`docscribe.yml`**:
@@ -926,15 +927,21 @@ Docscribe::Plugin::Registry.register(
 
 ### Plugin priority
 
-When a `CollectorPlugin` targets the same `def` node as the standard collector,
-the plugin takes priority:
+`Registry.register(plugin, priority: N)` accepts an optional integer priority (default: `0`).
+Higher number means higher priority.
 
-- If a plugin insertion and a standard method insertion share the same source
-  position (`anchor_node.loc.expression.begin_pos`), the standard insertion is
-  dropped and the plugin insertion is kept.
-- Multiple plugin insertions at the same position are all kept — a single plugin
-  may generate several doc blocks at one anchor point (e.g. one `@!attribute`
-  per database column).
+**CollectorPlugin priority (conflicts at the same source position):**
+
+- If a plugin insertion and a standard *method* insertion share the same source position (
+  `anchor_node.loc.expression.begin_pos`), the standard insertion is dropped and the plugin insertion is kept.
+- If multiple CollectorPlugins insert at the same source position, only insertions from the highest-priority plugin(s)
+  are kept (ties are kept).
+- Multiple insertions from the winning plugin(s) at the same position are preserved (e.g. one `@!attribute` per column).
+
+**TagPlugin priority:**
+
+- TagPlugins run in descending priority order (higher priority runs earlier).
+- Multiple TagPlugins may emit the same tag name (e.g. two `@since` tags) — duplicates in the same run are allowed.
 
 This allows plugins like `ModelAttributes` to supply more accurate `@return`
 types for ActiveRecord model methods, replacing the generic docs the standard
@@ -944,8 +951,8 @@ collector would have produced for the same `def`.
 
 Docscribe handles idempotency for plugins automatically.
 
-**TagPlugin**: before appending a tag, Docscribe checks whether a tag with that name already exists in the current doc
-block. If it does, the tag is skipped.
+**TagPlugin**: in safe merge mode, Docscribe will not add a plugin tag if the existing doc block already contains a tag
+with that name. (Multiple TagPlugins can still emit the same tag name in a single run; duplicates are allowed.)
 
 **CollectorPlugin**: idempotency depends on the selected strategy.
 
@@ -969,7 +976,7 @@ Sample plugins available at [examples](examples/plugins):
   that generates `@!attribute` blocks by reading `db/schema.rb`.
 - **`ModelAttributes`** (`collector_plugin/model_attributes/`): CollectorPlugin
   that generates accurate `@return` types for model methods using `db/schema.rb`
-  or `db/structure.sql`. 
+  or `db/structure.sql`.
 
 ## Configuration
 

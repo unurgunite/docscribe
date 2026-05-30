@@ -11,8 +11,22 @@ module Docscribe
     # Thread safety: registration is expected to happen before any parallel
     # rewriting begins.
     module Registry
-      @tag_plugins = []
-      @collector_plugins = []
+      # @!attribute [rw] plugin
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] priority
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] order
+      #   @return [Object]
+      #   @param [Object] value
+      Entry = Struct.new(:plugin, :priority, :order, keyword_init: true)
+
+      @tag_entries = []
+      @collector_entries = []
+      @order_seq = 0
 
       module_function
 
@@ -26,13 +40,25 @@ module Docscribe
       #
       # @note module_function: when included, also defines #register (instance visibility: private)
       # @param [Object] plugin plugin instance
+      # @param [Integer] priority plugin priority (higher wins for conflicts)
       # @raise [ArgumentError] if plugin type cannot be determined
+      # @raise [StandardError]
       # @return [void]
-      def register(plugin)
+      def register(plugin, priority: 0)
+        prio =
+          begin
+            Integer(priority)
+          rescue StandardError
+            raise ArgumentError, "priority must be an Integer-like value, got: #{priority.inspect}"
+          end
+
+        @order_seq += 1
+        entry = Entry.new(plugin: plugin, priority: prio, order: @order_seq)
+
         if plugin.is_a?(Base::CollectorPlugin) || plugin.respond_to?(:collect)
-          @collector_plugins << plugin
+          @collector_entries << entry
         elsif plugin.is_a?(Base::TagPlugin) || plugin.respond_to?(:call)
-          @tag_plugins << plugin
+          @tag_entries << entry
         else
           raise ArgumentError, 'Plugin must respond to #call (TagPlugin) or #collect (CollectorPlugin)'
         end
@@ -43,7 +69,7 @@ module Docscribe
       # @note module_function: when included, also defines #tag_plugins (instance visibility: private)
       # @return [Array<#call>]
       def tag_plugins
-        @tag_plugins.dup
+        @tag_entries.map(&:plugin)
       end
 
       # All registered collector plugins in registration order.
@@ -51,7 +77,23 @@ module Docscribe
       # @note module_function: when included, also defines #collector_plugins (instance visibility: private)
       # @return [Array<#collect>]
       def collector_plugins
-        @collector_plugins.dup
+        @collector_entries.map(&:plugin)
+      end
+
+      # All registered tag plugin entries (plugin + priority metadata).
+      #
+      # @note module_function: when included, also defines #tag_entries (instance visibility: private)
+      # @return [Array<Entry>]
+      def tag_entries
+        @tag_entries.dup
+      end
+
+      # All registered collector plugin entries (plugin + priority metadata).
+      #
+      # @note module_function: when included, also defines #collector_entries (instance visibility: private)
+      # @return [Array<Entry>]
+      def collector_entries
+        @collector_entries.dup
       end
 
       # Remove all registered plugins.
@@ -61,8 +103,9 @@ module Docscribe
       # @note module_function: when included, also defines #clear! (instance visibility: private)
       # @return [void]
       def clear!
-        @tag_plugins.clear
-        @collector_plugins.clear
+        @tag_entries.clear
+        @collector_entries.clear
+        @order_seq = 0
       end
     end
   end

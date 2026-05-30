@@ -1,43 +1,48 @@
 # frozen_string_literal: true
 
-require 'parser/current'
-require 'docscribe/plugin'
+require 'fileutils'
 require 'tmpdir'
-require_relative '../schema_parser/schema_parser'
-require_relative '../plugin'
+
+require_relative '../../../collector_plugin/model_attributes/plugin'
 
 RSpec.describe 'ModelAttributes integration' do
-  let(:root) { Dir.mktmpdir }
+  let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
+
+  let(:root) { Dir.mktmpdir('docscribe-model-attributes') }
   let(:schema_path) { File.join(root, 'db', 'schema.rb') }
+
   let(:plugin) { DocscribePlugins::ModelAttributes.new(root: root) }
 
   before do
-    # Create db/schema.rb with test tables
     FileUtils.mkdir_p(File.dirname(schema_path))
-    File.write(schema_path, <<~RUBY)
-      ActiveRecord::Schema.define(version: 2024_01_01_000000) do
-        create_table "users", force: :cascade do |t|
-          t.string "email", null: false
-          t.string "name"
-          t.string "surname"
-          t.boolean "is_admin", default: false
-          t.integer "age"
-          t.boolean "deleted", default: false
-          t.datetime "created_at", null: false
-          t.datetime "updated_at", null: false
-        end
 
-        create_table "posts", force: :cascade do |t|
-          t.string "title"
-          t.text "body"
-          t.integer "view_count", default: 0
-          t.boolean "published"
-          t.boolean "draft"
-          t.datetime "published_at"
-          t.references "user", null: false, foreign_key: true
+    File.write(
+      schema_path,
+      <<~RUBY
+        ActiveRecord::Schema.define(version: 2024_01_01_000000) do
+          create_table "users", force: :cascade do |t|
+            t.string "email", null: false
+            t.string "name"
+            t.string "surname"
+            t.boolean "is_admin", default: false
+            t.integer "age"
+            t.boolean "deleted", default: false
+            t.datetime "created_at", null: false
+            t.datetime "updated_at", null: false
+          end
+
+          create_table "posts", force: :cascade do |t|
+            t.string "title"
+            t.text "body"
+            t.integer "view_count", default: 0
+            t.boolean "published"
+            t.boolean "draft"
+            t.datetime "published_at"
+            t.references "user", null: false, foreign_key: true
+          end
         end
-      end
-    RUBY
+      RUBY
+    )
 
     Docscribe::Plugin::Registry.register(plugin)
   end
@@ -47,8 +52,12 @@ RSpec.describe 'ModelAttributes integration' do
     FileUtils.rm_rf(root)
   end
 
+  # Method documentation.
+  #
+  # @param [Object] code Param documentation.
+  # @return [Object]
   def rewrite(code)
-    Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
+    inline(code, config: conf, strategy: :safe)
   end
 
   describe 'User model' do
@@ -62,8 +71,8 @@ RSpec.describe 'ModelAttributes integration' do
       RUBY
 
       out = rewrite(code)
+
       expect(out).to include('# @return [Boolean]')
-      # Should not have multiple @return lines
       expect(out.scan('# @return [Boolean]').size).to eq(1)
     end
 
@@ -163,7 +172,11 @@ RSpec.describe 'ModelAttributes integration' do
 
   describe 'namespaced models' do
     before do
-      plugin.instance_variable_set(:@schema_tables, { 'admin_users' => { 'is_admin' => 'boolean', 'email' => 'string' } })
+      # Shortcut: model_name_to_table_name('Admin::User') => 'admin_users'
+      plugin.instance_variable_set(
+        :@schema_tables,
+        { 'admin_users' => { 'is_admin' => 'boolean', 'email' => 'string' } }
+      )
     end
 
     it 'handles Admin::User mapping' do
@@ -181,7 +194,7 @@ RSpec.describe 'ModelAttributes integration' do
   end
 
   describe 'non-model classes' do
-    xit 'does not generate plugin docs' do
+    it 'does not generate plugin docs (falls back to standard collector output)' do
       code = <<~RUBY
         class EmailValidator
           def valid?(email)
@@ -191,9 +204,14 @@ RSpec.describe 'ModelAttributes integration' do
       RUBY
 
       out = rewrite(code)
-      expect(out).not_to include('return')
-      # The plugin should not generate docs for non-ActiveRecord classes
-      # (collector still generates default docs)
+
+      # Key property:
+      # - If ModelAttributes plugin ran for this method, it would override the standard
+      #   method insertion at the same anchor, and the standard header line would disappear.
+      # - For non-AR classes, the plugin should return [] => standard collector should win.
+      expect(out).to include('# +EmailValidator#valid?+ -> Boolean')
+      expect(out).to include('# Method documentation.')
+      expect(out).to include('# @return [Boolean]')
     end
   end
 
@@ -207,13 +225,10 @@ RSpec.describe 'ModelAttributes integration' do
         end
       RUBY
 
-      first  = rewrite(code)
+      first = rewrite(code)
       second = rewrite(first)
 
-      first_count  = first.scan('# @return [Boolean]').size
-      second_count = second.scan('# @return [Boolean]').size
-
-      expect(second_count).to eq(first_count)
+      expect(second.scan('# @return [Boolean]').size).to eq(first.scan('# @return [Boolean]').size)
     end
   end
 end

@@ -75,32 +75,36 @@ Standard Rails columns are skipped: `id`, `created_at`, `updated_at`, `deleted_a
 
 ## Installation
 
-### 1. Add parser and plugin to your project
-
-Copy these files into your project:
+Copy these files into your project (example layout):
 
 ```
-lib/
-├── docscribe_schema_parser.rb  # from examples/plugins/schema_parser.rb
-└── docscribe_model_attributes/
-    ├── plugin.rb               # from examples/plugins/model_attributes/plugin.rb
-    └── README.md
+lib/docscribe_model_attributes/
+  plugin.rb
+  schema_parser/
+    schema_parser.rb
+    schema_rb_parser.rb
+    structure_sql_parser.rb
 ```
 
-### 2. Register in docscribe.yml
+Then require/register it (example `docscribe_plugins.rb`):
+
+```ruby
+require_relative 'lib/docscribe_model_attributes/plugin'
+
+# Higher number => higher priority. Recommended to set this high if you have other
+# CollectorPlugins that might also target method anchors.
+Docscribe::Plugin::Registry.register(
+  DocscribePlugins::ModelAttributes.new(root: Dir.pwd),
+  priority: 10
+)
+```
+
+And reference `docscribe_plugins.rb` from `docscribe.yml`:
 
 ```yaml
 plugins:
   require:
-    - ./lib/docscribe_model_attributes/plugin
-```
-
-### 3. Or register manually
-
-```ruby
-require 'lib/docscribe_schema_parser'
-require 'lib/docscribe_model_attributes/plugin'
-Docscribe::Plugin::Registry.register(DocscribePlugins::ModelAttributes.new(root: Dir.pwd))
+    - ./docscribe_plugins
 ```
 
 ## Supported formats

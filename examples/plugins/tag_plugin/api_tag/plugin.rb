@@ -10,7 +10,7 @@ module DocscribePlugins
   # YARD-documented gems and is a minimal but realistic TagPlugin example.
   #
   # @example Registration
-  #   require 'examples/plugins/tag_plugin/plugin'
+  #   require 'examples/plugins/tag_plugin/api_tag/plugin'
   #   Docscribe::Plugin::Registry.register(DocscribePlugins::ApiTagPlugin.new)
   #
   # @example Public method output

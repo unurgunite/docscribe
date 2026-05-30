@@ -20,7 +20,7 @@ module DocscribePlugins
   # - created_at, updated_at, deleted_at (standard Rails timestamps)
   #
   # @example Registration
-  #   require 'examples/plugins/schema_attributes/plugin'
+  #   require 'examples/plugins/collector_plugin/schema_attributes/plugin'
   #   Docscribe::Plugin::Registry.register(DocscribePlugins::SchemaAttributes.new)
   #
   # @example Generated doc block
@@ -87,7 +87,7 @@ module DocscribePlugins
     # Walk the AST and return doc insertion targets for database columns.
     #
     # @param [Parser::AST::Node] ast
-    # @param [Parser::Source::Buffer] buffer
+    # @param [Parser::Source::Buffer] _buffer
     # @return [Array<Hash>]
     def collect(ast, _buffer)
       return [] unless active_record_model?(ast)
@@ -137,6 +137,7 @@ module DocscribePlugins
     # Load schema.rb from the project root and parse it.
     #
     # @private
+    # @raise [StandardError]
     # @return [void]
     def load_schema!
       return if @schema
@@ -304,6 +305,7 @@ module DocscribePlugins
     #
     # @private
     # @param [Parser::AST::Node] node
+    # @raise [StandardError]
     # @return [String]
     def extract_indent(node)
       line = node.loc.expression.source_line

@@ -36,13 +36,14 @@ end
 ```yaml
 plugins:
   require:
-    - ./examples/plugins/schema_attributes/plugin
+    - ./examples/plugins/collector_plugin/schema_attributes/plugin
 ```
 
-### 2. Or register manually
+And register it
 
 ```ruby
-require 'examples/plugins/schema_attributes/plugin'
+require 'examples/plugins/collector_plugin/schema_attributes/plugin'
+
 Docscribe::Plugin::Registry.register(DocscribePlugins::SchemaAttributes.new)
 ```
 
