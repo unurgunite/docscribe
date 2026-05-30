@@ -31,9 +31,10 @@ module Docscribe
       # @param [nil] core_rbs_provider Param documentation.
       # @param [nil] param_types Param documentation.
       # @param [nil] return_type_override Param documentation.
+      # @param [nil] override_tags Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build(insertion, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil, return_type_override: nil)
+      def build(insertion, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil, return_type_override: nil, override_tags: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return nil unless name
@@ -54,7 +55,7 @@ module Docscribe
           param_types || build_param_types_from_node(node, external_sig: external_sig, config: config)
 
         if config.emit_param_tags?
-          params_lines = build_params_lines(node, indent, external_sig: external_sig, config: config)
+          params_lines = build_params_lines(node, indent, external_sig: external_sig, config: config, param_types_override: effective_param_types)
         end
         raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
 
@@ -111,9 +112,9 @@ module Docscribe
             lines << "#{indent}# @return [#{rtype}] if #{exceptions.join(', ')}"
           end
         end
-        plugin_tags = Docscribe::Plugin.run_tag_plugins(
-          build_plugin_context(insertion, normal_type: normal_type)
-        )
+        plugin_tags = Docscribe::Plugin.run_tag_plugins(build_plugin_context(insertion, normal_type: normal_type))
+        plugin_tags.concat(Array(override_tags)) if override_tags
+
         lines.concat(render_plugin_tags(plugin_tags, indent))
         lines.map { |l| "#{l}\n" }.join
       rescue StandardError => e
@@ -182,7 +183,7 @@ module Docscribe
         end
 
         if config.emit_param_tags?
-          all_params = build_params_lines(node, indent, external_sig: external_sig, config: config)
+          all_params = build_params_lines(node, indent, external_sig: external_sig, config: config, param_types_override: param_types)
           all_params&.each do |pl|
             pname = extract_param_name_from_param_line(pl)
             next if pname.nil? || info[:param_names].include?(pname)
@@ -232,10 +233,11 @@ module Docscribe
       # @param [nil] param_types Param documentation.
       # @param [nil] strategy Param documentation.
       # @param [nil] return_type_override Param documentation.
+      # @param [nil] override_tags Param documentation.
       # @raise [StandardError]
       # @return [Hash]
       def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil,
-                                     core_rbs_provider: nil, param_types: nil, strategy: nil, return_type_override: nil)
+                                     core_rbs_provider: nil, param_types: nil, strategy: nil, return_type_override: nil, override_tags: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return { lines: [], reasons: [] } unless name
@@ -283,7 +285,7 @@ module Docscribe
         end
 
         if config.emit_param_tags?
-          all_params = build_params_lines(node, indent, external_sig: external_sig, config: config)
+          all_params = build_params_lines(node, indent, external_sig: external_sig, config: config, param_types_override: param_types)
 
           all_params&.each do |pl|
             pname = extract_param_name_from_param_line(pl)
@@ -339,9 +341,9 @@ module Docscribe
             }
           end
         end
-        plugin_tags = Docscribe::Plugin.run_tag_plugins(
-          build_plugin_context(insertion, normal_type: normal_type)
-        )
+        plugin_tags = Docscribe::Plugin.run_tag_plugins(build_plugin_context(insertion, normal_type: normal_type))
+        plugin_tags.concat(Array(override_tags)) if override_tags
+
         plugin_tags.each do |tag|
           next if info[:plugin_tags]&.[](tag.name)
 
@@ -526,8 +528,9 @@ module Docscribe
       # @param [String] indent
       # @param [Docscribe::Types::MethodSignature, nil] external_sig
       # @param [Docscribe::Config] config
+      # @param [nil] param_types_override Param documentation.
       # @return [Array<String>, nil]
-      def build_params_lines(node, indent, external_sig:, config:)
+      def build_params_lines(node, indent, external_sig:, config:, param_types_override: nil)
         fallback_type = config.fallback_type
         treat_options_keyword_as_hash = config.treat_options_keyword_as_hash?
         param_tag_style = config.param_tag_style
@@ -548,6 +551,7 @@ module Docscribe
           when :arg
             pname = a.children.first.to_s
             ty = external_sig&.param_types&.[](pname) ||
+                 override_param_type_for(pname, param_types_override) ||
                  Infer.infer_param_type(
                    pname,
                    nil,
@@ -561,6 +565,7 @@ module Docscribe
             pname = pname.to_s
             default_src = default&.loc&.expression&.source
             ty = external_sig&.param_types&.[](pname) ||
+                 override_param_type_for(pname, param_types_override) ||
                  Infer.infer_param_type(
                    pname,
                    default_src,
@@ -584,6 +589,7 @@ module Docscribe
           when :kwarg
             pname = a.children.first.to_s
             ty = external_sig&.param_types&.[](pname) ||
+                 override_param_type_for(pname, param_types_override) ||
                  Infer.infer_param_type(
                    "#{pname}:",
                    nil,
@@ -597,6 +603,7 @@ module Docscribe
             pname = pname.to_s
             default_src = default&.loc&.expression&.source
             ty = external_sig&.param_types&.[](pname) ||
+                 override_param_type_for(pname, param_types_override) ||
                  Infer.infer_param_type(
                    "#{pname}:",
                    default_src,
@@ -611,18 +618,20 @@ module Docscribe
               if external_sig&.rest_positional&.element_type
                 "Array<#{external_sig.rest_positional.element_type}>"
               else
-                Infer.infer_param_type(
-                  "*#{pname}",
-                  nil,
-                  fallback_type: fallback_type,
-                  treat_options_keyword_as_hash: treat_options_keyword_as_hash
-                )
+                override_param_type_for(pname, param_types_override) ||
+                  Infer.infer_param_type(
+                    "*#{pname}",
+                    nil,
+                    fallback_type: fallback_type,
+                    treat_options_keyword_as_hash: treat_options_keyword_as_hash
+                  )
               end
             params << format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
 
           when :kwrestarg
             pname = (a.children.first || 'kwargs').to_s
             ty = external_sig&.rest_keywords&.type ||
+                 override_param_type_for(pname, param_types_override) ||
                  Infer.infer_param_type(
                    "**#{pname}",
                    nil,
@@ -634,6 +643,7 @@ module Docscribe
           when :blockarg
             pname = (a.children.first || 'block').to_s
             ty = external_sig&.param_types&.[](pname) ||
+                 override_param_type_for(pname, param_types_override) ||
                  Infer.infer_param_type(
                    "&#{pname}",
                    nil,
@@ -648,6 +658,19 @@ module Docscribe
         end
 
         params.empty? ? nil : params
+      end
+
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #override_param_type_for (instance visibility: private)
+      # @param [Object] pname Param documentation.
+      # @param [Object] override_map Param documentation.
+      # @return [Object]
+      def override_param_type_for(pname, override_map)
+        return nil unless override_map
+
+        key = pname.to_s
+        override_map[key] || override_map[:"#{key}"] || override_map["#{key}:"] || override_map[:"#{key}:"]
       end
 
       # Format a `@param` tag line using the configured param tag style.

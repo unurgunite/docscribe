@@ -562,6 +562,15 @@ module Docscribe
         override_param_types =
           method_override.is_a?(Hash) && method_override[:param_types].is_a?(Hash) ? method_override[:param_types] : nil
 
+        override_tags =
+          if method_override.is_a?(Hash)
+            Array(method_override[:tags]).filter_map do |t|
+              t.is_a?(Docscribe::Plugin::Tag) ? t : nil
+            end
+          else
+            []
+          end
+
         case strategy
         when :aggressive
           if (range = method_comment_block_removal_range(buffer, insertion))
@@ -584,7 +593,8 @@ module Docscribe
             signature_provider: signature_provider,
             core_rbs_provider: core_rbs_provider,
             param_types: effective_param_types,
-            return_type_override: override_return_type
+            return_type_override: override_return_type,
+            override_tags: override_tags
           )
 
           return if doc.nil? || doc.empty?
@@ -602,6 +612,16 @@ module Docscribe
         when :safe
           info = method_doc_comment_info(buffer, insertion)
 
+          effective_param_types = external_sig&.param_types || DocBuilder.build_param_types_from_node(
+            insertion.node,
+            external_sig: external_sig,
+            config: config
+          )
+
+          if override_param_types && !override_param_types.empty?
+            effective_param_types = effective_param_types.merge(override_param_types)
+          end
+
           if info
             merge_result = build_missing_method_merge_result(
               insertion,
@@ -609,9 +629,10 @@ module Docscribe
               config: config,
               signature_provider: signature_provider,
               core_rbs_provider: core_rbs_provider,
-              param_types: external_sig&.param_types,
+              param_types: effective_param_types,
               strategy: strategy,
-              return_type_override: override_return_type
+              return_type_override: override_return_type,
+              override_tags: override_tags
             )
 
             missing_lines = merge_result[:lines]
@@ -673,8 +694,9 @@ module Docscribe
             config: config,
             signature_provider: signature_provider,
             core_rbs_provider: core_rbs_provider,
-            param_types: external_sig&.param_types,
-            return_type_override: override_return_type
+            param_types: effective_param_types,
+            return_type_override: override_return_type,
+            override_tags: override_tags
           )
           return if doc.nil? || doc.empty?
 
@@ -1023,15 +1045,18 @@ module Docscribe
       # @param [Object, nil] core_rbs_provider RBS core type provider
       # @param [Hash, nil] param_types parameter name -> type map
       # @param [Object] return_type_override Param documentation.
+      # @param [Object] override_tags Param documentation.
       # @return [String, nil] generated doc block or nil
-      def build_method_doc(insertion, config:, signature_provider:, core_rbs_provider:, param_types:, return_type_override:)
+      def build_method_doc(insertion, config:, signature_provider:, core_rbs_provider:, param_types:, return_type_override:,
+                           override_tags:)
         DocBuilder.build(
           insertion,
           config: config,
           signature_provider: signature_provider,
           core_rbs_provider: core_rbs_provider,
           param_types: param_types,
-          return_type_override: return_type_override
+          return_type_override: return_type_override,
+          override_tags: override_tags
         )
       end
 
@@ -1046,9 +1071,10 @@ module Docscribe
       # @param [Hash, nil] param_types parameter name -> type map
       # @param [Object] strategy Param documentation.
       # @param [Object] return_type_override Param documentation.
+      # @param [nil] override_tags Param documentation.
       # @return [Hash] result with `:lines` and `:reasons` keys
       def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:,
-                                            core_rbs_provider:, param_types:, strategy:, return_type_override:)
+                                            core_rbs_provider:, param_types:, strategy:, return_type_override:, override_tags: nil)
         DocBuilder.build_missing_merge_result(
           insertion,
           existing_lines: existing_lines,
@@ -1057,7 +1083,8 @@ module Docscribe
           core_rbs_provider: core_rbs_provider,
           param_types: param_types,
           strategy: strategy,
-          return_type_override: return_type_override
+          return_type_override: return_type_override,
+          override_tags: override_tags
         )
       end
 
