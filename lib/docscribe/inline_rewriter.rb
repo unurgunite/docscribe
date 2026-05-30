@@ -102,6 +102,7 @@ module Docscribe
         all = method_insertions.map { |i| [:method, i] } +
               attr_insertions.map { |i| [:attr, i] } +
               plugin_insertions.map { |i| [:plugin, i] }
+        all = deduplicate_insertions(all)
         rewriter = Parser::Source::TreeRewriter.new(buffer)
         merge_inserts = Hash.new { |h, k| h[k] = [] }
         changes = []
@@ -162,6 +163,39 @@ module Docscribe
         else
           ins.node.loc.expression.begin_pos
         end
+      end
+
+      # Deduplicate insertions by source position.
+      #
+      # Rules:
+      # 1. Plugin insertions override method insertions at the same position
+      #    (CollectorPlugin knows more than the standard collector for that node).
+      # 2. Multiple plugin insertions at the same position are all kept
+      #    (a single plugin may generate multiple doc blocks, e.g. one per column).
+      #
+      # @private
+      # @param [Array<Array(Symbol,Object)>] insertions tagged insertion list
+      # @return [Array<Array(Symbol,Object)>]
+      def deduplicate_insertions(insertions)
+        groups = {}
+
+        insertions.each do |item|
+          kind, ins = item
+          pos = plugin_insertion_pos(kind, ins)
+          groups[pos] ||= []
+          groups[pos] << item
+        end
+
+        result = []
+        groups.each_value do |items|
+          if items.any? { |k, _| k == :plugin } && items.any? { |k, _| k == :method }
+            items = items.reject { |k, _| k == :method }
+          end
+
+          result.concat(items)
+        end
+
+        result
       end
 
       # Apply one CollectorPlugin insertion according to the selected strategy.

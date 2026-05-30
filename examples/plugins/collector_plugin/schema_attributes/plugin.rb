@@ -32,6 +32,20 @@ module DocscribePlugins
   #   class User < ApplicationRecord
   #   end
   class SchemaAttributes < Docscribe::Plugin::Base::CollectorPlugin
+    # @!attribute [r] root
+    #   @return [String] Rails application root directory
+    attr_reader :root
+
+    # Create a new schema attribute collector.
+    #
+    # @param [String] root
+    # @return [self]
+    def initialize(root: Dir.pwd)
+      super()
+      @root = root
+      @schema = nil
+    end
+
     # Column types from schema.rb mapped to YARD types.
     #
     # @private
