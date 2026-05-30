@@ -52,6 +52,10 @@ RSpec.describe 'ModelAttributes integration' do
     FileUtils.rm_rf(root)
   end
 
+  # Method documentation.
+  #
+  # @param [Object] code Param documentation.
+  # @return [Object]
   def rewrite(code)
     inline(code, config: conf, strategy: :safe)
   end

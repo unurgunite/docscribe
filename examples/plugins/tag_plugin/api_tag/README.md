@@ -20,7 +20,7 @@ This mirrors the `@api` convention used by many YARD-documented Ruby gems
 Register the plugin in `docscribe_plugins.rb`:
 
 ```ruby
-require_relative 'examples/plugins/tag_plugin/plugin'
+require_relative 'examples/plugins/tag_plugin/api_tag/plugin'
 
 Docscribe::Plugin::Registry.register(DocscribePlugins::ApiTagPlugin.new)
 ```

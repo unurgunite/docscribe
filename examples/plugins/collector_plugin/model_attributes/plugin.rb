@@ -31,7 +31,7 @@ module DocscribePlugins
   #   end
   #
   # @example Registration
-  #   require 'examples/plugins/model_attributes/plugin'
+  #   require 'examples/plugins/collector_plugin/model_attributes/plugin'
   #   Docscribe::Plugin::Registry.register(DocscribePlugins::ModelAttributes.new)
   class ModelAttributes < Docscribe::Plugin::Base::CollectorPlugin
     # @!attribute [r] root
@@ -72,6 +72,7 @@ module DocscribePlugins
 
     # Create a new schema attribute collector.
     #
+    # @private
     # @param [String] root
     # @return [self]
     def initialize(root: Dir.pwd)
@@ -179,6 +180,7 @@ module DocscribePlugins
     # Load schema.rb or structure.sql and return table columns.
     #
     # @private
+    # @raise [StandardError]
     # @return [Hash{String => Hash{String => String}}]
     def load_schema!
       return @schema_tables if @schema_tables
@@ -244,6 +246,7 @@ module DocscribePlugins
     #
     # @private
     # @param [Parser::AST::Node] meth_node
+    # @raise [StandardError]
     # @return [Array<String>]
     def extract_method_source_lines(meth_node)
       return [] unless meth_node.loc && @source_lines
@@ -441,8 +444,8 @@ module DocscribePlugins
     #
     # @private
     # @param [Symbol] meth
-    # @param [Array<Parser::AST::Node>] args
-    # @param [Hash{String => String}] columns
+    # @param [Array<Parser::AST::Node>] _args
+    # @param [Hash{String => String}] _columns
     # @return [String, nil]
     def infer_integer_method_type(meth, _args, _columns)
       # Methods that return Boolean
@@ -530,9 +533,9 @@ module DocscribePlugins
     # Build a @return doc block for a method.
     #
     # @private
-    # @param [Symbol] meth_name
-    # @param [String] yard_type
     # @param [String] indent
+    # @param [Object] _meth_name Param documentation.
+    # @param [Object] yard_type Param documentation.
     # @return [String]
     def build_method_doc(_meth_name, yard_type, indent)
       lines = []
@@ -545,6 +548,7 @@ module DocscribePlugins
     #
     # @private
     # @param [Parser::AST::Node] node
+    # @raise [StandardError]
     # @return [String]
     def extract_indent(node)
       line = node.loc.expression.source_line

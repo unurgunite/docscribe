@@ -68,11 +68,13 @@ class StructureSqlParser
     'enum' => 'enum'
   }.freeze
 
-  # @return [Hash]
+  # @!attribute [r] tables
+  #   @return [Hash]
   attr_reader :tables
 
   # Parse the structure.sql file and return a table → column map.
   #
+  # @param [Object] root Param documentation.
   # @return [Hash{String => Hash{String => String}}]
   def initialize(root:)
     @root = root
@@ -94,6 +96,7 @@ class StructureSqlParser
 
   # Parse structure.sql source into a table → column map.
   #
+  # @private
   # @param [String] source
   # @return [Hash{String => Hash{String => String}}]
   def parse(source)
@@ -112,8 +115,10 @@ class StructureSqlParser
 
   # Parse column definitions from a CREATE TABLE body.
   #
+  # @private
   # @param [String] columns_sql
   # @param [Hash{String => String}] columns
+  # @return [Object]
   def parse_columns(columns_sql, columns)
     # Split by commas, but handle parentheses in types like varchar(255)
     parts = split_columns(columns_sql)
@@ -143,6 +148,7 @@ class StructureSqlParser
 
   # Split column definitions by comma, respecting parentheses.
   #
+  # @private
   # @param [String] sql
   # @return [Array<String>]
   def split_columns(sql)
@@ -176,6 +182,7 @@ class StructureSqlParser
 
   # Normalize a raw SQL type to our canonical type name.
   #
+  # @private
   # @param [String] raw_type
   # @return [String, nil]
   def normalize_type(raw_type)

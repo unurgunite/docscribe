@@ -11,7 +11,7 @@ require_relative 'structure_sql_parser'
 # - `db/structure.sql` (SQL DDL)
 #
 # @example Usage
-#   require 'examples/plugins/schema_parser'
+#   require 'examples/plugins/collector_plugin/model_attributes/schema_parser/schema_parser'
 #
 #   # For schema.rb
 #   schema = SchemaParser::SchemaRbParser.new(root: '/path/to/rails_app').tables
