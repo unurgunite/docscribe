@@ -28,7 +28,10 @@ module Docscribe
     # @return [Array<Docscribe::Plugin::Tag>]
     def self.run_tag_plugins(context)
       Registry.tag_entries
-              .sort_by { |entry| [entry.priority, entry.order] }
+              # Higher number => higher priority (run earlier).
+              # This matters when multiple TagPlugins emit the same tag name
+              # and Docscribe deduplicates tags by name.
+              .sort_by { |entry| [-entry.priority, entry.order] }
               .flat_map do |entry|
         plugin = entry.plugin
         plugin.call(context)
