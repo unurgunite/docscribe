@@ -36,14 +36,12 @@ points provided by Docscribe's plugin system.
 
 ## Choosing the right plugin type
 
-Use **TagPlugin** when you want to append one or more tags to methods that Docscribe already
-collects (`def` / `def self.`). The plugin receives a snapshot of the method
-and returns `Array<Docscribe::Plugin::Tag>`.
+Use **TagPlugin** when you want to append one or more tags to methods that Docscribe already collects (`def` /
+`def self.`). The plugin receives a snapshot of the method and returns `Array<Docscribe::Plugin::Tag>`.
 
-Use **CollectorPlugin** when you need to document constructs that are not
-`def` nodes — DSL macros, `define_method`, association helpers, and so on.
-The plugin receives the raw AST and source buffer and returns insertion
-targets directly.
+Use **CollectorPlugin** when you need to document constructs that are not `def` nodes — DSL macros, `define_method`,
+association helpers, and so on. The plugin receives the raw AST and source buffer and returns insertion targets
+directly.
 
 > [!NOTE]
 > A `CollectorPlugin` **can** target ordinary `def` methods to override the standard collector's output.
@@ -55,3 +53,6 @@ targets directly.
 > - only the highest-priority plugin insertion(s) are kept (ties are kept)
 > - multiple insertions from the winning plugin(s) at that position are preserved (e.g. `SchemaAttributes` may generate
     several `@!attribute` blocks at one anchor point)
+>
+> CollectorPlugin insertions are raw doc strings (`doc:`). Docscribe applies indentation automatically and may prepend
+> the configured default method message for `def/defs` anchors if the plugin output contains only tags.
