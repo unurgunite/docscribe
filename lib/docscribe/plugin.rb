@@ -42,8 +42,21 @@ module Docscribe
     # @raise [StandardError]
     # @return [Array<Hash>]
     def self.run_collector_plugins(ast, buffer)
-      Registry.collector_plugins.flat_map do |plugin|
-        plugin.collect(ast, buffer)
+      Registry.collector_entries.flat_map do |entry|
+        plugin = entry.plugin
+
+        Array(plugin.collect(ast, buffer)).map do |insertion|
+          unless insertion.is_a?(Hash)
+            warn "Docscribe: CollectorPlugin #{plugin.class} returned #{insertion.class}, expected Hash" if debug?
+            next nil
+          end
+
+          insertion.merge(
+            __docscribe_priority: entry.priority,
+            __docscribe_plugin_class: plugin.class.name,
+            __docscribe_plugin_order: entry.order
+          )
+        end.compact
       rescue StandardError => e
         warn "Docscribe: CollectorPlugin #{plugin.class} raised #{e.class}: #{e.message}" if debug?
         []
