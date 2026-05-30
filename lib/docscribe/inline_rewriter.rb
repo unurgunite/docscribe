@@ -196,7 +196,7 @@ module Docscribe
           if Docscribe::Plugin.debug?
             kept_plugin_labels =
               items
-              .slice(:plugin)
+              .select { |k, _| k == :plugin }
               .map { |_k, ins| plugin_insertion_label(ins) }
               .uniq
 
@@ -344,7 +344,7 @@ module Docscribe
         Parser::Source::Range.new(buffer, start_pos, bol_pos)
       end
 
-      # Normalise indentation of a plugin-generated doc block.
+      # Normalize indentation of a plugin-generated doc block.
       #
       # Plugins produce doc strings without knowledge of the surrounding
       # indentation. We strip leading whitespace from each non-empty line
