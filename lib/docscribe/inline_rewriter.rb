@@ -102,7 +102,9 @@ module Docscribe
         all = method_insertions.map { |i| [:method, i] } +
               attr_insertions.map { |i| [:attr, i] } +
               plugin_insertions.map { |i| [:plugin, i] }
-        all = deduplicate_insertions(all)
+
+        method_overrides_by_pos = {}
+        all = deduplicate_insertions(all, method_overrides_by_pos: method_overrides_by_pos)
         rewriter = Parser::Source::TreeRewriter.new(buffer)
         merge_inserts = Hash.new { |h, k| h[k] = [] }
         changes = []
@@ -111,6 +113,9 @@ module Docscribe
            .reverse_each do |kind, ins|
           case kind
           when :method
+            pos = plugin_insertion_pos(:method, ins)
+            method_override = method_overrides_by_pos[pos]
+
             apply_method_insertion!(
               rewriter: rewriter,
               buffer: buffer,
@@ -120,7 +125,8 @@ module Docscribe
               core_rbs_provider: core_rbs_provider,
               strategy: strategy,
               changes: changes,
-              file: file.to_s
+              file: file.to_s,
+              method_override: method_override
             )
           when :attr
             apply_attr_insertion!(
@@ -162,55 +168,89 @@ module Docscribe
       #
       # @private
       # @param [Array<Array(Symbol,Object)>] insertions tagged insertion list
+      # @param [nil] method_overrides_by_pos Param documentation.
       # @return [Array<Array(Symbol,Object)>]
-      def deduplicate_insertions(insertions)
+      def deduplicate_insertions(insertions, method_overrides_by_pos: nil)
         groups = {}
 
-        insertions.each do |item|
-          kind, ins = item
+        insertions.each do |kind, ins|
           pos = plugin_insertion_pos(kind, ins)
-          (groups[pos] ||= []) << item
+          (groups[pos] ||= []) << [kind, ins]
         end
 
         result = []
 
         groups.each do |pos, items|
+          # plugin insertions at this pos
           plugin_items = items.select { |k, _| k == :plugin }
 
-          # No plugins at this position -> keep as-is
+          # no plugins -> keep as-is
           if plugin_items.empty?
             result.concat(items)
             next
           end
 
-          # Rule 1: plugin overrides method insertion at the same position
-          items = items.reject { |k, _| k == :method }
+          method_items = items.select { |k, _| k == :method }
 
-          # Rule 2: keep only highest-priority plugin insertions
-          max_prio = plugin_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
-
-          items = items.reject do |k, ins|
-            k == :plugin && plugin_insertion_priority(ins) < max_prio
-          end
-
-          # Warn on ties between different plugins at the winning priority
-          if Docscribe::Plugin.debug?
-            kept_plugin_labels =
-              items
-              .select { |k, _| k == :plugin }
-              .map { |_k, ins| plugin_insertion_label(ins) }
-              .uniq
-
-            if kept_plugin_labels.size > 1
-              line = plugin_insertion_line(plugin_items.first[1])
-              loc = +"pos=#{pos}"
-              loc << " line=#{line}" if line
-
-              warn "Docscribe: CollectorPlugin conflict at #{loc} (priority=#{max_prio}): " \
-                   "#{kept_plugin_labels.join(', ')} — keeping all. Set explicit priority to resolve."
+          plugin_doc_items =
+            plugin_items.select do |_k, ins|
+              ins.is_a?(Hash) && ins[:doc] && !ins[:doc].empty?
             end
+
+          override_items =
+            plugin_items.select do |_k, ins|
+              ins.is_a?(Hash) && ins[:method_override].is_a?(Hash)
+            end
+
+          # --- Case A: raw plugin doc exists => legacy behavior: plugin replaces method ---
+          if plugin_doc_items.any?
+            # drop standard method insertions at same pos
+            items = items.reject { |k, _| k == :method }
+
+            # drop method_overrides too (they have nothing to patch)
+            items = items.reject { |k, ins| k == :plugin && ins.is_a?(Hash) && ins.key?(:method_override) }
+
+            # keep only highest-priority plugin docs
+            max_prio = plugin_doc_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
+            items = items.reject do |k, ins|
+              k == :plugin && ins.is_a?(Hash) && ins[:doc] && plugin_insertion_priority(ins) < max_prio
+            end
+
+            # debug tie warning (existing behavior)
+            if Docscribe::Plugin.debug?
+              kept_labels =
+                items.select { |k, _| k == :plugin }
+                     .map { |_k, ins| plugin_insertion_label(ins) }
+                     .uniq
+              if kept_labels.size > 1
+                line = plugin_insertion_line(plugin_items.first[1])
+                loc = +"pos=#{pos}"
+                loc << " line=#{line}" if line
+                warn "Docscribe: CollectorPlugin conflict at #{loc} (priority=#{max_prio}): " \
+                     "#{kept_labels.join(', ')} — keeping all. Set explicit priority to resolve."
+              end
+            end
+
+            result.concat(items)
+            next
           end
 
+          # --- Case B: method_override exists and there is a method insertion => patch method ---
+          if override_items.any? && method_items.any?
+            if method_overrides_by_pos
+              winning_ins = pick_highest_priority_override_insertion(override_items, pos: pos)
+              method_overrides_by_pos[pos] = winning_ins[:method_override] if winning_ins
+            end
+
+            # remove override items from final insertions (they are applied via method_overrides_by_pos)
+            items = items.reject { |k, ins| k == :plugin && ins.is_a?(Hash) && ins.key?(:method_override) }
+
+            result.concat(items)
+            next
+          end
+
+          # --- Case C: override exists, but no method insertion (filtered out, etc.) => ignore override ---
+          items = items.reject { |k, ins| k == :plugin && ins.is_a?(Hash) && ins.key?(:method_override) }
           result.concat(items)
         end
 
@@ -495,9 +535,10 @@ module Docscribe
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
       # @param [Object] core_rbs_provider Param documentation.
+      # @param [nil] method_override Param documentation.
       # @return [void]
       def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, core_rbs_provider:,
-                                  strategy:, changes:, file:)
+                                  strategy:, changes:, file:, method_override: nil)
         name = SourceHelpers.node_name(insertion.node)
 
         return unless config.process_method?(
@@ -515,6 +556,11 @@ module Docscribe
           scope: insertion.scope,
           name: SourceHelpers.node_name(insertion.node)
         )
+        override_return_type =
+          method_override.is_a?(Hash) ? method_override[:return_type] : nil
+
+        override_param_types =
+          method_override.is_a?(Hash) && method_override[:param_types].is_a?(Hash) ? method_override[:param_types] : nil
 
         case strategy
         when :aggressive
@@ -528,8 +574,19 @@ module Docscribe
             config: config
           )
 
-          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
-                                            core_rbs_provider: core_rbs_provider, param_types: effective_param_types)
+          if override_param_types && !override_param_types.empty?
+            effective_param_types = effective_param_types.merge(override_param_types)
+          end
+
+          doc = build_method_doc(
+            insertion,
+            config: config,
+            signature_provider: signature_provider,
+            core_rbs_provider: core_rbs_provider,
+            param_types: effective_param_types,
+            return_type_override: override_return_type
+          )
+
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -553,7 +610,8 @@ module Docscribe
               signature_provider: signature_provider,
               core_rbs_provider: core_rbs_provider,
               param_types: external_sig&.param_types,
-              strategy: strategy
+              strategy: strategy,
+              return_type_override: override_return_type
             )
 
             missing_lines = merge_result[:lines]
@@ -610,9 +668,14 @@ module Docscribe
             return
           end
 
-          doc = build_method_doc(insertion, config: config, signature_provider: signature_provider,
-                                            core_rbs_provider: core_rbs_provider,
-                                            param_types: external_sig&.param_types)
+          doc = build_method_doc(
+            insertion,
+            config: config,
+            signature_provider: signature_provider,
+            core_rbs_provider: core_rbs_provider,
+            param_types: external_sig&.param_types,
+            return_type_override: override_return_type
+          )
           return if doc.nil? || doc.empty?
 
           rewriter.insert_before(anchor_bol_range, doc)
@@ -959,14 +1022,16 @@ module Docscribe
       # @param [Object, nil] signature_provider external signature provider
       # @param [Object, nil] core_rbs_provider RBS core type provider
       # @param [Hash, nil] param_types parameter name -> type map
+      # @param [Object] return_type_override Param documentation.
       # @return [String, nil] generated doc block or nil
-      def build_method_doc(insertion, config:, signature_provider:, core_rbs_provider:, param_types:)
+      def build_method_doc(insertion, config:, signature_provider:, core_rbs_provider:, param_types:, return_type_override:)
         DocBuilder.build(
           insertion,
           config: config,
           signature_provider: signature_provider,
           core_rbs_provider: core_rbs_provider,
-          param_types: param_types
+          param_types: param_types,
+          return_type_override: return_type_override
         )
       end
 
@@ -980,9 +1045,10 @@ module Docscribe
       # @param [Object, nil] core_rbs_provider RBS core type provider
       # @param [Hash, nil] param_types parameter name -> type map
       # @param [Object] strategy Param documentation.
+      # @param [Object] return_type_override Param documentation.
       # @return [Hash] result with `:lines` and `:reasons` keys
       def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:,
-                                            core_rbs_provider:, param_types:, strategy:)
+                                            core_rbs_provider:, param_types:, strategy:, return_type_override:)
         DocBuilder.build_missing_merge_result(
           insertion,
           existing_lines: existing_lines,
@@ -990,7 +1056,8 @@ module Docscribe
           signature_provider: signature_provider,
           core_rbs_provider: core_rbs_provider,
           param_types: param_types,
-          strategy: strategy
+          strategy: strategy,
+          return_type_override: return_type_override
         )
       end
 

@@ -50,6 +50,7 @@ module DocscribePlugins
     #
     # @param [Parser::AST::Node] ast
     # @param [Parser::Source::Buffer] buffer
+    # @param [Object] _buffer Param documentation.
     # @return [Array<Hash>]
     def collect(ast, _buffer)
       return [] unless active_record_model?(ast)

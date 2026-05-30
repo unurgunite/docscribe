@@ -30,9 +30,10 @@ module Docscribe
       #   `signature_for(container:, scope:, name:)`
       # @param [nil] core_rbs_provider Param documentation.
       # @param [nil] param_types Param documentation.
+      # @param [nil] return_type_override Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build(insertion, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil)
+      def build(insertion, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil, return_type_override: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return nil unless name
@@ -65,7 +66,7 @@ module Docscribe
           core_rbs_provider: core_rbs_provider
         )
 
-        normal_type = external_sig&.return_type || returns_spec[:normal]
+        normal_type = return_type_override || external_sig&.return_type || returns_spec[:normal]
         rescue_specs = returns_spec[:rescues] || []
 
         lines = []
@@ -132,10 +133,11 @@ module Docscribe
       # @param [Object, nil] signature_provider
       # @param [nil] core_rbs_provider Param documentation.
       # @param [nil] param_types Param documentation.
+      # @param [nil] return_type_override Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
       def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil, core_rbs_provider: nil,
-                                param_types: nil)
+                                param_types: nil, return_type_override: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return '' unless name
@@ -159,7 +161,7 @@ module Docscribe
           core_rbs_provider: core_rbs_provider
         )
 
-        normal_type = external_sig&.return_type || returns_spec[:normal]
+        normal_type = return_type_override || external_sig&.return_type || returns_spec[:normal]
         rescue_specs = returns_spec[:rescues] || []
 
         lines = []
@@ -229,10 +231,11 @@ module Docscribe
       # @param [nil] core_rbs_provider Param documentation.
       # @param [nil] param_types Param documentation.
       # @param [nil] strategy Param documentation.
+      # @param [nil] return_type_override Param documentation.
       # @raise [StandardError]
       # @return [Hash]
       def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil,
-                                     core_rbs_provider: nil, param_types: nil, strategy: nil)
+                                     core_rbs_provider: nil, param_types: nil, strategy: nil, return_type_override: nil)
         node = insertion.node
         name = SourceHelpers.node_name(node)
         return { lines: [], reasons: [] } unless name
@@ -256,7 +259,7 @@ module Docscribe
           core_rbs_provider: core_rbs_provider
         )
 
-        normal_type = external_sig&.return_type || returns_spec[:normal]
+        normal_type = return_type_override || external_sig&.return_type || returns_spec[:normal]
         rescue_specs = returns_spec[:rescues] || []
 
         lines = []
