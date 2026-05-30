@@ -51,7 +51,7 @@ module DocscribePlugins
     # @param [Parser::AST::Node] ast
     # @param [Parser::Source::Buffer] buffer
     # @return [Array<Hash>]
-    def collect(ast, buffer)
+    def collect(ast, _buffer)
       return [] unless active_record_model?(ast)
 
       tables = load_schema!
