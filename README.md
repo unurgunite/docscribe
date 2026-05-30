@@ -68,7 +68,9 @@ Common workflows:
     * [Plugin system](#plugin-system)
         * [TagPlugin](#tagplugin)
         * [CollectorPlugin](#collectorplugin)
+            * [Plugin doc normalization (CollectorPlugin)](#plugin-doc-normalization-collectorplugin)
         * [Registering plugins](#registering-plugins)
+        * [Plugin priority](#plugin-priority)
         * [Idempotency](#idempotency)
         * [Plugin examples](#plugin-examples)
     * [Configuration](#configuration)
@@ -867,14 +869,29 @@ end
 
 Each result hash must have:
 
-| Key            | Type                | Description                                |
-|----------------|---------------------|--------------------------------------------|
-| `:anchor_node` | `Parser::AST::Node` | Node above which to insert the doc block   |
-| `:doc`         | `String`            | Complete doc block text including newlines |
+| Key            | Type                | Description                                                                                                             |
+|----------------|---------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `:anchor_node` | `Parser::AST::Node` | Node above which to insert the doc block                                                                                |
+| `:doc`         | `String`            | Complete doc block text including newlines (Docscribe may normalize indentation and default message for method anchors) |
 
 > [!NOTE]
 > You do not need to handle indentation manually. Docscribe reads the indentation from `anchor_node` and applies it to
 > every line of `:doc` automatically.
+
+#### Plugin doc normalization (CollectorPlugin)
+
+CollectorPlugins return raw doc strings (`{ anchor_node:, doc: }`) which Docscribe inserts without running the standard
+method DocBuilder pipeline.
+
+Docscribe does, however, normalize plugin docs before insertion:
+
+- indentation is applied automatically based on `anchor_node`
+- for `def/defs` anchors: if the plugin output contains only tags (no prose) and `doc.include_default_message` is
+  enabled, Docscribe prepends the configured default method message (e.g. `Method documentation.`)
+
+> [!NOTE]
+> Note: plugin insertions still do **not** automatically generate method headers (`emit.header`) or param/return tags —
+> plugins must provide those explicitly if desired.
 
 ### Registering plugins
 

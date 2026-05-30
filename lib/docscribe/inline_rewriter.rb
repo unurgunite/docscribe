@@ -137,7 +137,8 @@ module Docscribe
               rewriter: rewriter,
               buffer: buffer,
               insertion: ins,
-              strategy: strategy
+              strategy: strategy,
+              config: config
             )
           end
         end
@@ -279,14 +280,15 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer
       # @param [Hash] insertion { anchor_node:, doc: }
       # @param [Symbol] strategy
+      # @param [Docscribe::Config] config
       # @return [void]
-      def apply_plugin_insertion!(rewriter:, buffer:, insertion:, strategy:)
+      def apply_plugin_insertion!(rewriter:, buffer:, insertion:, strategy:, config:)
         anchor_node = insertion[:anchor_node]
         doc         = insertion[:doc]
         return unless anchor_node && doc && !doc.empty?
 
         indent = SourceHelpers.line_indent(anchor_node)
-        doc    = normalize_plugin_doc_indent(doc, indent)
+        doc    = normalize_plugin_doc(doc, indent, config: config, anchor_node: anchor_node)
         bol_range = SourceHelpers.line_start_range(buffer, anchor_node)
 
         case strategy
@@ -342,6 +344,50 @@ module Docscribe
 
         start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
         Parser::Source::Range.new(buffer, start_pos, bol_pos)
+      end
+
+      # Normalize a CollectorPlugin-provided doc string before insertion.
+      #
+      # Responsibilities:
+      # - apply indentation based on the anchor node
+      # - trim trailing whitespace-only lines
+      # - (optionally) prepend the configured default message for `def/defs` anchors
+      #   when the plugin output contains only tags (no prose)
+      #
+      # @private
+      # @param doc [String] Raw doc string returned by a CollectorPlugin insertion (`:doc`)
+      # @param indent [String] Indentation to apply to every doc line
+      # @param config [Docscribe::Config] Effective Docscribe config for this run
+      # @param anchor_node [Parser::AST::Node, nil] AST node used as insertion anchor
+      # @return [String] Normalized doc string ready to be inserted
+      def normalize_plugin_doc(doc, indent, config:, anchor_node:)
+        doc = normalize_plugin_doc_indent(doc, indent)
+
+        lines = doc.lines
+        lines.pop while lines.any? && lines.last.strip.empty?
+
+        doc = lines.join
+        doc << "\n" unless doc.end_with?("\n")
+
+        if %i[def defs].include?(anchor_node&.type) && config.include_default_message?
+          scope = anchor_node.type == :defs ? :class : :instance
+          msg = config.default_message(scope, :public)
+
+          has_prose = doc.lines.any? do |l|
+            s = l.strip
+            next false if s.empty? || s == '#'
+            next false if s.start_with?('# @')      # tag line
+            next false if s.start_with?('# +')      # header line
+
+            true
+          end
+
+          unless has_prose
+            doc = "#{indent}# #{msg}\n#{indent}#\n" + doc
+          end
+        end
+
+        doc
       end
 
       # Normalize indentation of a plugin-generated doc block.
