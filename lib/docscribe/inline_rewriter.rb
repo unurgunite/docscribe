@@ -149,22 +149,6 @@ module Docscribe
 
       private
 
-      # Resolve the source begin_pos for sorting, handling both Struct-based
-      # insertions (method/attr) and Hash-based insertions (plugin).
-      #
-      # @private
-      # @param [Symbol] kind :method, :attr, or :plugin
-      # @param [Object] ins insertion object or hash
-      # @return [Integer]
-      def plugin_insertion_pos(kind, ins)
-        case kind
-        when :plugin
-          ins[:anchor_node].loc.expression.begin_pos
-        else
-          ins.node.loc.expression.begin_pos
-        end
-      end
-
       # Deduplicate insertions by source position.
       #
       # Rules:
@@ -196,6 +180,22 @@ module Docscribe
         end
 
         result
+      end
+
+      # Resolve the source begin_pos for sorting, handling both Struct-based
+      # insertions (method/attr) and Hash-based insertions (plugin).
+      #
+      # @private
+      # @param [Symbol] kind :method, :attr, or :plugin
+      # @param [Object] ins insertion object or hash
+      # @return [Integer]
+      def plugin_insertion_pos(kind, ins)
+        case kind
+        when :plugin
+          ins[:anchor_node].loc.expression.begin_pos
+        else
+          ins.node.loc.expression.begin_pos
+        end
       end
 
       # Apply one CollectorPlugin insertion according to the selected strategy.
