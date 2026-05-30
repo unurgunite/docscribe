@@ -519,7 +519,6 @@ module DocscribePlugins
     def build_method_doc(_meth_name, yard_type, indent)
       lines = []
       lines << "#{indent}# @return [#{yard_type}]"
-      lines << "#{indent}#"
       lines.map { |l| "#{l}\n" }.join
     end
 

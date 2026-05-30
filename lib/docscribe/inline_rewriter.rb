@@ -218,6 +218,41 @@ module Docscribe
       end
 
       # @private
+      # @param override_items [Array<Array(Symbol, Hash)>] list of [:plugin, insertion_hash] that include :method_override
+      # @param pos [Integer] begin_pos (used only for debug output)
+      # @return [Hash, nil] winning insertion hash (the one whose override will be applied)
+      def pick_highest_priority_override_insertion(override_items, pos:)
+        return nil if override_items.empty?
+
+        max_prio =
+          override_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
+
+        winners =
+          override_items.select { |_k, ins| plugin_insertion_priority(ins) == max_prio }
+
+        # Deterministic tie-break: smallest plugin order wins.
+        # (We warn in debug if the tie is between different plugins.)
+        winners_sorted =
+          winners.sort_by do |_k, ins|
+            order = ins.is_a?(Hash) ? ins[:__docscribe_plugin_order] : nil
+            order.nil? ? 0 : order
+          end
+
+        if Docscribe::Plugin.debug?
+          labels = winners_sorted.map { |_k, ins| plugin_insertion_label(ins) }.uniq
+          if labels.size > 1
+            line = plugin_insertion_line(winners_sorted.first[1])
+            loc = +"pos=#{pos}"
+            loc << " line=#{line}" if line
+            warn "Docscribe: method_override conflict at #{loc} (priority=#{max_prio}): " \
+                 "#{labels.join(', ')} — using first by registration order."
+          end
+        end
+
+        winners_sorted.first[1]
+      end
+
+      # @private
       # @param [Hash] insertion
       # @raise [StandardError]
       # @return [Integer]
