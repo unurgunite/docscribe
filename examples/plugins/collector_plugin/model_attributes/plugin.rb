@@ -51,8 +51,7 @@ module DocscribePlugins
     # @param [Parser::AST::Node] ast
     # @param [Parser::Source::Buffer] buffer
     # @return [Array<Hash>]
-    def collect(ast, buffer)
-      @source_lines = buffer.source.lines
+    def collect(ast, _buffer)
       return [] unless active_record_model?(ast)
 
       tables = load_schema!
@@ -213,14 +212,16 @@ module DocscribePlugins
         # Find all method definitions in the class
         method_nodes = stmts.select { |s| %i[def defs].include?(s.type) }
         method_nodes.each do |meth_node|
-          next unless meth_node.type == :def
-
-          meth_name = meth_node.children[0]
+          meth_name =
+            case meth_node.type
+            when :def
+              meth_node.children[0]
+            when :defs
+              meth_node.children[1]
+            else
+              next
+            end
           next if reserved_method?(meth_name.to_s)
-
-          # Check if method already has a doc block in the source
-          source_lines = extract_method_source_lines(meth_node)
-          next if has_existing_doc_block?(source_lines)
 
           inferred_type = infer_method_return_type(meth_node, columns)
           next if inferred_type.nil?
@@ -231,32 +232,6 @@ module DocscribePlugins
       end
 
       results
-    end
-
-    # Check if the source lines around the method already contain a doc block.
-    #
-    # @private
-    # @param [Array<String>] source_lines
-    # @return [Boolean]
-    def has_existing_doc_block?(source_lines)
-      source_lines.any? { |l| l.match?(/^\s*#\s*@/) }
-    end
-
-    # Extract source lines around a method definition.
-    #
-    # @private
-    # @param [Parser::AST::Node] meth_node
-    # @raise [StandardError]
-    # @return [Array<String>]
-    def extract_method_source_lines(meth_node)
-      return [] unless meth_node.loc && @source_lines
-
-      start_line = meth_node.loc.expression.line - 1 # 0-indexed
-      count = [5, start_line].min
-      range = ((start_line - count).clamp(0, start_line)...start_line)
-      range.map { |i| @source_lines[i] }
-    rescue StandardError
-      []
     end
 
     # Check if a method name should be skipped.
@@ -279,11 +254,15 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_method_return_type(meth_node, columns)
-      _name, _params, body = *meth_node
-
+      body =
+        case meth_node.type
+        when :def
+          meth_node.children[2]
+        when :defs
+          meth_node.children[3]
+        end
       return nil unless body
 
-      # Get the last expression (implicit return)
       last_expr = extract_last_expression(body)
       return nil unless last_expr
 
