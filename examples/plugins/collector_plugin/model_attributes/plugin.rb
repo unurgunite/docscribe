@@ -50,6 +50,7 @@ module DocscribePlugins
     #
     # @param [Parser::AST::Node] ast
     # @param [Parser::Source::Buffer] buffer
+    # @param [Object] _buffer Param documentation.
     # @return [Array<Hash>]
     def collect(ast, _buffer)
       return [] unless active_record_model?(ast)
@@ -519,7 +520,6 @@ module DocscribePlugins
     def build_method_doc(_meth_name, yard_type, indent)
       lines = []
       lines << "#{indent}# @return [#{yard_type}]"
-      lines << "#{indent}#"
       lines.map { |l| "#{l}\n" }.join
     end
 
