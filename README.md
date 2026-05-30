@@ -924,6 +924,22 @@ Docscribe::Plugin::Registry.register(
 )
 ```
 
+### Plugin priority
+
+When a `CollectorPlugin` targets the same `def` node as the standard collector,
+the plugin takes priority:
+
+- If a plugin insertion and a standard method insertion share the same source
+  position (`anchor_node.loc.expression.begin_pos`), the standard insertion is
+  dropped and the plugin insertion is kept.
+- Multiple plugin insertions at the same position are all kept — a single plugin
+  may generate several doc blocks at one anchor point (e.g. one `@!attribute`
+  per database column).
+
+This allows plugins like `ModelAttributes` to supply more accurate `@return`
+types for ActiveRecord model methods, replacing the generic docs the standard
+collector would have produced for the same `def`.
+
 ### Idempotency
 
 Docscribe handles idempotency for plugins automatically.
@@ -943,7 +959,17 @@ on aggressive runs.
 
 ### Plugin examples
 
-Sample plugin available at [examples](examples/plugins) 
+Sample plugins available at [examples](examples/plugins):
+
+- **`ApiTagPlugin`** (`tag_plugin/`): TagPlugin that appends `@api public` / `@api private`
+  based on method visibility.
+- **`RailsAssociations`** (`collector_plugin/rails_associations/`): CollectorPlugin
+  that documents ActiveRecord `belongs_to`, `has_many`, etc.
+- **`SchemaAttributes`** (`collector_plugin/schema_attributes/`): CollectorPlugin
+  that generates `@!attribute` blocks by reading `db/schema.rb`.
+- **`ModelAttributes`** (`collector_plugin/model_attributes/`): CollectorPlugin
+  that generates accurate `@return` types for model methods using `db/schema.rb`
+  or `db/structure.sql`. 
 
 ## Configuration
 

@@ -1,0 +1,1 @@
+../../../examples/plugins/collector_plugin/schema_attributes/spec/plugin_spec.rb
