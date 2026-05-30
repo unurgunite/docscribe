@@ -22,6 +22,24 @@ RSpec.describe Docscribe::Plugin::Registry do
         expect(described_class.collector_plugins).to include(plugin)
         expect(described_class.tag_plugins).to be_empty
       end
+
+      it 'stores priority metadata (default 0)' do
+        plugin = Class.new(Docscribe::Plugin::Base::CollectorPlugin).new
+        described_class.register(plugin)
+
+        entry = described_class.collector_entries.first
+        expect(entry.plugin).to eq(plugin)
+        expect(entry.priority).to eq(0)
+      end
+
+      it 'stores priority metadata (explicit)' do
+        plugin = Class.new(Docscribe::Plugin::Base::CollectorPlugin).new
+        described_class.register(plugin, priority: 7)
+
+        entry = described_class.collector_entries.first
+        expect(entry.plugin).to eq(plugin)
+        expect(entry.priority).to eq(7)
+      end
     end
 
     context 'with a duck-typed tag plugin (responds to #call)' do

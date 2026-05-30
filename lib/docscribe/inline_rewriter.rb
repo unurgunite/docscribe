@@ -102,6 +102,7 @@ module Docscribe
         all = method_insertions.map { |i| [:method, i] } +
               attr_insertions.map { |i| [:attr, i] } +
               plugin_insertions.map { |i| [:plugin, i] }
+        all = deduplicate_insertions(all)
         rewriter = Parser::Source::TreeRewriter.new(buffer)
         merge_inserts = Hash.new { |h, k| h[k] = [] }
         changes = []
@@ -147,6 +148,110 @@ module Docscribe
       end
 
       private
+
+      # Deduplicate insertions by source position.
+      #
+      # Rules:
+      # 1. Plugin insertions override method insertions at the same position
+      #    (CollectorPlugin knows more than the standard collector for that node).
+      # 2. If multiple CollectorPlugins target the same position, only insertions
+      # from the highest priority plugin(s) are kept (ties are kept).
+      # 3. Multiple plugin insertions at the same position are allowed
+      # (a single plugin may generate multiple doc blocks, e.g. one per column).
+      #
+      # @private
+      # @param [Array<Array(Symbol,Object)>] insertions tagged insertion list
+      # @return [Array<Array(Symbol,Object)>]
+      def deduplicate_insertions(insertions)
+        groups = {}
+
+        insertions.each do |item|
+          kind, ins = item
+          pos = plugin_insertion_pos(kind, ins)
+          (groups[pos] ||= []) << item
+        end
+
+        result = []
+
+        groups.each do |pos, items|
+          plugin_items = items.select { |k, _| k == :plugin }
+
+          # No plugins at this position -> keep as-is
+          if plugin_items.empty?
+            result.concat(items)
+            next
+          end
+
+          # Rule 1: plugin overrides method insertion at the same position
+          items = items.reject { |k, _| k == :method }
+
+          # Rule 2: keep only highest-priority plugin insertions
+          max_prio = plugin_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
+
+          items = items.reject do |k, ins|
+            k == :plugin && plugin_insertion_priority(ins) < max_prio
+          end
+
+          # Warn on ties between different plugins at the winning priority
+          if Docscribe::Plugin.debug?
+            kept_plugin_labels =
+              items
+              .select { |k, _| k == :plugin }
+              .map { |_k, ins| plugin_insertion_label(ins) }
+              .uniq
+
+            if kept_plugin_labels.size > 1
+              line = plugin_insertion_line(plugin_items.first[1])
+              loc = +"pos=#{pos}"
+              loc << " line=#{line}" if line
+
+              warn "Docscribe: CollectorPlugin conflict at #{loc} (priority=#{max_prio}): " \
+                   "#{kept_plugin_labels.join(', ')} — keeping all. Set explicit priority to resolve."
+            end
+          end
+
+          result.concat(items)
+        end
+
+        result
+      end
+
+      # @private
+      # @param [Hash] insertion
+      # @raise [StandardError]
+      # @return [Integer]
+      def plugin_insertion_priority(insertion)
+        return 0 unless insertion.is_a?(Hash)
+
+        Integer(insertion[:__docscribe_priority] || 0)
+      rescue StandardError
+        0
+      end
+
+      # @private
+      # @param [Hash] insertion
+      # @raise [StandardError]
+      # @return [String]
+      def plugin_insertion_label(insertion)
+        return 'unknown' unless insertion.is_a?(Hash)
+
+        label = insertion[:__docscribe_plugin_class].to_s
+        label.empty? ? 'unknown' : label
+      rescue StandardError
+        'unknown'
+      end
+
+      # @private
+      # @param [Hash] insertion
+      # @raise [StandardError]
+      # @return [Integer, nil]
+      def plugin_insertion_line(insertion)
+        return nil unless insertion.is_a?(Hash)
+
+        insertion[:anchor_node]&.loc&.expression&.line
+      rescue StandardError
+        nil
+      end
 
       # Resolve the source begin_pos for sorting, handling both Struct-based
       # insertions (method/attr) and Hash-based insertions (plugin).
@@ -239,7 +344,7 @@ module Docscribe
         Parser::Source::Range.new(buffer, start_pos, bol_pos)
       end
 
-      # Normalise indentation of a plugin-generated doc block.
+      # Normalize indentation of a plugin-generated doc block.
       #
       # Plugins produce doc strings without knowledge of the surrounding
       # indentation. We strip leading whitespace from each non-empty line

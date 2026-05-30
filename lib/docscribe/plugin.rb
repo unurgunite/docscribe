@@ -27,7 +27,13 @@ module Docscribe
     # @raise [StandardError]
     # @return [Array<Docscribe::Plugin::Tag>]
     def self.run_tag_plugins(context)
-      Registry.tag_plugins.flat_map do |plugin|
+      Registry.tag_entries
+              # Higher number => higher priority (run earlier).
+              # This matters when multiple TagPlugins emit the same tag name
+              # and Docscribe deduplicates tags by name.
+              .sort_by { |entry| [-entry.priority, entry.order] }
+              .flat_map do |entry|
+        plugin = entry.plugin
         plugin.call(context)
       rescue StandardError => e
         warn "Docscribe: TagPlugin #{plugin.class} raised #{e.class}: #{e.message}" if debug?
@@ -42,8 +48,21 @@ module Docscribe
     # @raise [StandardError]
     # @return [Array<Hash>]
     def self.run_collector_plugins(ast, buffer)
-      Registry.collector_plugins.flat_map do |plugin|
-        plugin.collect(ast, buffer)
+      Registry.collector_entries.flat_map do |entry|
+        plugin = entry.plugin
+
+        Array(plugin.collect(ast, buffer)).map do |insertion|
+          unless insertion.is_a?(Hash)
+            warn "Docscribe: CollectorPlugin #{plugin.class} returned #{insertion.class}, expected Hash" if debug?
+            next nil
+          end
+
+          insertion.merge(
+            __docscribe_priority: entry.priority,
+            __docscribe_plugin_class: plugin.class.name,
+            __docscribe_plugin_order: entry.order
+          )
+        end.compact
       rescue StandardError => e
         warn "Docscribe: CollectorPlugin #{plugin.class} raised #{e.class}: #{e.message}" if debug?
         []
