@@ -11,6 +11,17 @@ module Docscribe
     # Thread safety: registration is expected to happen before any parallel
     # rewriting begins.
     module Registry
+      # @!attribute [rw] plugin
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] priority
+      #   @return [Object]
+      #   @param [Object] value
+      #
+      # @!attribute [rw] order
+      #   @return [Object]
+      #   @param [Object] value
       Entry = Struct.new(:plugin, :priority, :order, keyword_init: true)
 
       @tag_entries = []
@@ -31,6 +42,7 @@ module Docscribe
       # @param [Object] plugin plugin instance
       # @param [Integer] priority plugin priority (higher wins for conflicts)
       # @raise [ArgumentError] if plugin type cannot be determined
+      # @raise [StandardError]
       # @return [void]
       def register(plugin, priority: 0)
         prio =

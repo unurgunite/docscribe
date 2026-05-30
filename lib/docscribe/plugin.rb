@@ -27,7 +27,10 @@ module Docscribe
     # @raise [StandardError]
     # @return [Array<Docscribe::Plugin::Tag>]
     def self.run_tag_plugins(context)
-      Registry.tag_plugins.flat_map do |plugin|
+      Registry.tag_entries
+              .sort_by { |entry| [entry.priority, entry.order] }
+              .flat_map do |entry|
+        plugin = entry.plugin
         plugin.call(context)
       rescue StandardError => e
         warn "Docscribe: TagPlugin #{plugin.class} raised #{e.class}: #{e.message}" if debug?
