@@ -121,12 +121,12 @@ RSpec.describe 'CollectorPlugin method_override' do
   it 'uses param_types from method_override in @param tags' do
     plugin = build_override_plugin(
       return_type: 'ActiveRecord::Relation',
-      param_types: { 'period' => 'Integer' }
+      param_types: { 'period' => 'String' }
     )
 
     Docscribe::Plugin::Registry.register(plugin, priority: 10)
 
-    expect(out).to include('# @param [Integer] period')
+    expect(out).to include('# @param [String] period')
     expect(out).to include('# @return [ActiveRecord::Relation]')
   end
 
