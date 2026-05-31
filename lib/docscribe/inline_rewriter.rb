@@ -230,7 +230,7 @@ module Docscribe
               warn "Docscribe: CollectorPlugin conflict at #{loc} — " \
                    "#{dropped_labels.join(', ')} (pri=#{dropped.map { |_k, ins| plugin_insertion_priority(ins) }.max}) " \
                    "dropped in favor of #{kept_labels.join(', ')} (pri=#{max_prio}). " \
-                   "Set explicit priority or adjust anchor_node to avoid collision."
+                   'Set explicit priority or adjust anchor_node to avoid collision.'
             end
 
             result.concat(items)
