@@ -49,23 +49,15 @@ module DocscribePlugins
     # Walk the AST and return doc insertion targets for model methods.
     #
     # @param [Parser::AST::Node] ast
-    # @param [Parser::Source::Buffer] buffer
+    # @param [Parser::Source::Buffer] _buffer Param documentation.
     # @return [Array<Hash>]
-    def collect(ast, buffer)
-      @source_lines = buffer.source.lines
+    def collect(ast, _buffer)
       return [] unless active_record_model?(ast)
 
       tables = load_schema!
       return [] if tables.empty?
 
-      model_name = extract_model_name(ast)
-      return [] unless model_name
-
-      table_name = model_name_to_table_name(model_name)
-      columns = tables[table_name]
-      return [] unless columns
-
-      build_method_docs(ast, table_name, columns)
+      build_method_docs(ast, tables)
     end
 
     private
@@ -191,72 +183,54 @@ module DocscribePlugins
       @schema_tables = {}
     end
 
-    # Build doc blocks for methods in a model class.
+    # Build doc blocks for methods in all model classes.
+    #
+    # Each class gets its own table's column mapping.
     #
     # @private
     # @param [Parser::AST::Node] ast
-    # @param [String] _table_name
-    # @param [Hash{String => String}] columns
+    # @param [Hash{String => Hash{String => String}}] tables
     # @return [Array<Hash>]
-    def build_method_docs(ast, _table_name, columns)
+    def build_method_docs(ast, tables)
       results = []
 
       Docscribe::Infer::ASTWalk.walk(ast) do |node|
         next unless node.type == :class
 
+        model_name = resolve_const_name(node.children[0])
+        next unless model_name
+
+        table_name = model_name_to_table_name(model_name)
+        columns = tables[table_name]
+        next unless columns
+
         _name, _parent, body = *node
         next unless body
 
         stmts = body.type == :begin ? body.children : [body]
-        indent = extract_indent(node)
 
         # Find all method definitions in the class
         method_nodes = stmts.select { |s| %i[def defs].include?(s.type) }
         method_nodes.each do |meth_node|
-          next unless meth_node.type == :def
-
-          meth_name = meth_node.children[0]
+          meth_name =
+            case meth_node.type
+            when :def
+              meth_node.children[0]
+            when :defs
+              meth_node.children[1]
+            else
+              next
+            end
           next if reserved_method?(meth_name.to_s)
-
-          # Check if method already has a doc block in the source
-          source_lines = extract_method_source_lines(meth_node)
-          next if has_existing_doc_block?(source_lines)
 
           inferred_type = infer_method_return_type(meth_node, columns)
           next if inferred_type.nil?
 
-          doc = build_method_doc(meth_name, inferred_type, indent)
-          results << { anchor_node: meth_node, doc: doc }
+          results << { anchor_node: meth_node, method_override: { return_type: inferred_type } }
         end
       end
 
       results
-    end
-
-    # Check if the source lines around the method already contain a doc block.
-    #
-    # @private
-    # @param [Array<String>] source_lines
-    # @return [Boolean]
-    def has_existing_doc_block?(source_lines)
-      source_lines.any? { |l| l.match?(/^\s*#\s*@/) }
-    end
-
-    # Extract source lines around a method definition.
-    #
-    # @private
-    # @param [Parser::AST::Node] meth_node
-    # @raise [StandardError]
-    # @return [Array<String>]
-    def extract_method_source_lines(meth_node)
-      return [] unless meth_node.loc && @source_lines
-
-      start_line = meth_node.loc.expression.line - 1 # 0-indexed
-      count = [5, start_line].min
-      range = ((start_line - count).clamp(0, start_line)...start_line)
-      range.map { |i| @source_lines[i] }
-    rescue StandardError
-      []
     end
 
     # Check if a method name should be skipped.
@@ -279,11 +253,15 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_method_return_type(meth_node, columns)
-      _name, _params, body = *meth_node
-
+      body =
+        case meth_node.type
+        when :def
+          meth_node.children[2]
+        when :defs
+          meth_node.children[3]
+        end
       return nil unless body
 
-      # Get the last expression (implicit return)
       last_expr = extract_last_expression(body)
       return nil unless last_expr
 
@@ -414,6 +392,7 @@ module DocscribePlugins
         upcase downcase capitalize capitalize_first
         strip lstrip rstrip
         trim gsub sub gsub! sub!
+        truncate
         concat append +
         split chars each_char each_line
         include? start_with? end_with?
@@ -487,6 +466,7 @@ module DocscribePlugins
         upcase downcase capitalize
         strip lstrip rstrip
         gsub sub
+        truncate
         concat append +
         include? start_with? end_with?
         match scan
@@ -528,33 +508,6 @@ module DocscribePlugins
       return nil unless db_type
 
       SchemaParser.yard_type_for(db_type)
-    end
-
-    # Build a @return doc block for a method.
-    #
-    # @private
-    # @param [String] indent
-    # @param [Object] _meth_name Param documentation.
-    # @param [Object] yard_type Param documentation.
-    # @return [String]
-    def build_method_doc(_meth_name, yard_type, indent)
-      lines = []
-      lines << "#{indent}# @return [#{yard_type}]"
-      lines << "#{indent}#"
-      lines.map { |l| "#{l}\n" }.join
-    end
-
-    # Extract source indentation from a node.
-    #
-    # @private
-    # @param [Parser::AST::Node] node
-    # @raise [StandardError]
-    # @return [String]
-    def extract_indent(node)
-      line = node.loc.expression.source_line
-      line[/\A[ \t]*/] || ''
-    rescue StandardError
-      '  '
     end
   end
 end

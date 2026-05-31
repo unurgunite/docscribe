@@ -65,7 +65,7 @@ module Docscribe
     #
     # Supports:
     # - `/regex/`
-    # - shell-style glob patterns
+    # - shell-style glob patterns (with `/` translated to `#` since method IDs use `#`)
     #
     # @private
     # @param [String] pattern
@@ -75,7 +75,7 @@ module Docscribe
       if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
         Regexp.new(pattern[1..-2]).match?(text)
       else
-        File.fnmatch?(pattern, text, File::FNM_EXTGLOB)
+        File.fnmatch?(pattern.tr('/', '#'), text, File::FNM_EXTGLOB)
       end
     end
 
