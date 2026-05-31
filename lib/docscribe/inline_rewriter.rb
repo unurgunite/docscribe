@@ -212,23 +212,25 @@ module Docscribe
 
             # keep only highest-priority plugin docs
             max_prio = plugin_doc_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
+
+            dropped = items.select { |k, ins| k == :plugin && ins.is_a?(Hash) && ins[:doc] && plugin_insertion_priority(ins) < max_prio }
+
             items = items.reject do |k, ins|
               k == :plugin && ins.is_a?(Hash) && ins[:doc] && plugin_insertion_priority(ins) < max_prio
             end
 
-            # debug tie warning (existing behavior)
-            if Docscribe::Plugin.debug?
-              kept_labels =
-                items.select { |k, _| k == :plugin }
-                     .map { |_k, ins| plugin_insertion_label(ins) }
-                     .uniq
-              if kept_labels.size > 1
-                line = plugin_insertion_line(plugin_items.first[1])
-                loc = +"pos=#{pos}"
-                loc << " line=#{line}" if line
-                warn "Docscribe: CollectorPlugin conflict at #{loc} (priority=#{max_prio}): " \
-                     "#{kept_labels.join(', ')} — keeping all. Set explicit priority to resolve."
-              end
+            if Docscribe::Plugin.debug? && dropped.any?
+              kept_labels = items.select { |k, _| k == :plugin }
+                                 .map { |_k, ins| plugin_insertion_label(ins) }
+                                 .uniq
+              dropped_labels = dropped.map { |_k, ins| plugin_insertion_label(ins) }.uniq
+              line = plugin_insertion_line(plugin_items.first[1])
+              loc = +"pos=#{pos}"
+              loc << " line=#{line}" if line
+              warn "Docscribe: CollectorPlugin conflict at #{loc} — " \
+                   "#{dropped_labels.join(', ')} (pri=#{dropped.map { |_k, ins| plugin_insertion_priority(ins) }.max}) " \
+                   "dropped in favor of #{kept_labels.join(', ')} (pri=#{max_prio}). " \
+                   "Set explicit priority or adjust anchor_node to avoid collision."
             end
 
             result.concat(items)
