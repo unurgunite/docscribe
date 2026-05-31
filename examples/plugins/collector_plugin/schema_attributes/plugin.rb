@@ -265,14 +265,15 @@ module DocscribePlugins
 
         _name, _parent, body = *node
 
-        if body
-          stmts = body.type == :begin ? body.children : [body]
-          anchor = stmts.first || node
-        else
-          anchor = node
-        end
+        anchor = node
 
-        indent = extract_indent(anchor)
+        indent =
+          if body
+            stmts = body.type == :begin ? body.children : [body]
+            extract_indent(stmts.first || node)
+          else
+            ''
+          end
 
         columns.each do |col|
           next if SKIPPED_COLUMNS.include?(col[:name])
