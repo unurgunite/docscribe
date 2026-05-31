@@ -203,6 +203,7 @@ module Docscribe
       # @return [Boolean]
       def looks_like_file_pattern?(pat)
         return false if pat.start_with?('/') && pat.end_with?('/') && pat.length >= 2
+        return false if pat.match?(%r{\A\*/})
 
         pat.include?('/') || pat.include?('**') || pat.end_with?('.rb')
       end

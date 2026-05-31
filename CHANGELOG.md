@@ -1,4 +1,4 @@
-## 1.4.1 (unreleased)
+## 1.4.1
 
 ### Added
 
@@ -13,11 +13,15 @@
 
 - `build_override_plugin` test helper not forwarding `tags` to constructor
 - `rewrite_with_report` default `config:` (`nil` instead of `Docscribe::Config.new({})`)
+- `--include '*/get'` glob pattern now correctly routes as method filter instead of file filter
+- `match_pattern?` translates `/` to `#` in glob patterns so `*/get` matches `ApiClient#get`
+- ModelAttributes `build_method_docs` processes each class with its own table columns instead of using the first model's columns for the entire AST
 
 ### Changed
 
 - ModelAttributes plugin converted from `doc:` to `method_override:` (dead code removed)
 - ModelAttributes plugin now supports `defs` (class methods) and works with aggressive mode
+- ModelAttributes `string_method?` / `infer_string_method_type` now includes `truncate`
 
 ## 1.4.0 (2026-05-30)
 
