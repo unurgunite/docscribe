@@ -49,8 +49,7 @@ module DocscribePlugins
     # Walk the AST and return doc insertion targets for model methods.
     #
     # @param [Parser::AST::Node] ast
-    # @param [Parser::Source::Buffer] buffer
-    # @param [Object] _buffer Param documentation.
+    # @param [Parser::Source::Buffer] _buffer Param documentation.
     # @return [Array<Hash>]
     def collect(ast, _buffer)
       return [] unless active_record_model?(ast)
@@ -58,14 +57,7 @@ module DocscribePlugins
       tables = load_schema!
       return [] if tables.empty?
 
-      model_name = extract_model_name(ast)
-      return [] unless model_name
-
-      table_name = model_name_to_table_name(model_name)
-      columns = tables[table_name]
-      return [] unless columns
-
-      build_method_docs(ast, table_name, columns)
+      build_method_docs(ast, tables)
     end
 
     private
@@ -191,18 +183,26 @@ module DocscribePlugins
       @schema_tables = {}
     end
 
-    # Build doc blocks for methods in a model class.
+    # Build doc blocks for methods in all model classes.
+    #
+    # Each class gets its own table's column mapping.
     #
     # @private
     # @param [Parser::AST::Node] ast
-    # @param [String] _table_name
-    # @param [Hash{String => String}] columns
+    # @param [Hash{String => Hash{String => String}}] tables
     # @return [Array<Hash>]
-    def build_method_docs(ast, _table_name, columns)
+    def build_method_docs(ast, tables)
       results = []
 
       Docscribe::Infer::ASTWalk.walk(ast) do |node|
         next unless node.type == :class
+
+        model_name = resolve_const_name(node.children[0])
+        next unless model_name
+
+        table_name = model_name_to_table_name(model_name)
+        columns = tables[table_name]
+        next unless columns
 
         _name, _parent, body = *node
         next unless body
@@ -392,6 +392,7 @@ module DocscribePlugins
         upcase downcase capitalize capitalize_first
         strip lstrip rstrip
         trim gsub sub gsub! sub!
+        truncate
         concat append +
         split chars each_char each_line
         include? start_with? end_with?
@@ -465,6 +466,7 @@ module DocscribePlugins
         upcase downcase capitalize
         strip lstrip rstrip
         gsub sub
+        truncate
         concat append +
         include? start_with? end_with?
         match scan
