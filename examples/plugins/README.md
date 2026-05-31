@@ -54,5 +54,7 @@ directly.
 > - multiple insertions from the winning plugin(s) at that position are preserved (e.g. `SchemaAttributes` may generate
     several `@!attribute` blocks at one anchor point)
 >
-> CollectorPlugin insertions are raw doc strings (`doc:`). Docscribe applies indentation automatically and may prepend
-> the configured default method message for `def/defs` anchors if the plugin output contains only tags.
+> CollectorPlugins can return either `doc:` (raw string, replaces the standard output entirely) or `method_override:`
+> (structured data that patches `@return`, `@param`, and tags while keeping the standard DocBuilder pipeline).
+> Docscribe applies indentation automatically and may prepend the configured default method message for `def/defs`
+> anchors if the plugin output contains only tags.
