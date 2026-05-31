@@ -152,4 +152,15 @@ RSpec.describe 'CollectorPlugin method_override' do
 
     expect(out).to include('# @deprecated Use .new instead')
   end
+
+  it 'accepts string-keyed Hash-form tags' do
+    plugin = build_override_plugin(
+      return_type: 'ActiveRecord::Relation',
+      tags: [{ 'name' => 'since', 'text' => '3.0' }]
+    )
+
+    Docscribe::Plugin::Registry.register(plugin, priority: 10)
+
+    expect(out).to include('# @since 3.0')
+  end
 end

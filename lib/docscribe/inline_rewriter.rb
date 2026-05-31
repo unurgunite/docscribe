@@ -568,7 +568,7 @@ module Docscribe
               case t
               when Docscribe::Plugin::Tag then t
               when Hash
-                Docscribe::Plugin::Tag.new(**t)
+                Docscribe::Plugin::Tag.new(**t.transform_keys(&:to_sym))
               end
             end
           else
