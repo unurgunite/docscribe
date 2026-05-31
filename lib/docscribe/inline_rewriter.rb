@@ -72,7 +72,7 @@ module Docscribe
       # @raise [Docscribe::ParseError]
       # @raise [StandardError]
       # @return [Hash]
-      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: Docscribe::Config.new({}),
+      def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, config: nil,
                               core_rbs_provider: nil, file: '(inline)')
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
         validate_strategy!(strategy)
@@ -565,7 +565,11 @@ module Docscribe
         override_tags =
           if method_override.is_a?(Hash)
             Array(method_override[:tags]).filter_map do |t|
-              t.is_a?(Docscribe::Plugin::Tag) ? t : nil
+              case t
+              when Docscribe::Plugin::Tag then t
+              when Hash
+                Docscribe::Plugin::Tag.new(**t)
+              end
             end
           else
             []

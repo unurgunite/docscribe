@@ -208,7 +208,6 @@ module DocscribePlugins
         next unless body
 
         stmts = body.type == :begin ? body.children : [body]
-        indent = extract_indent(node)
 
         # Find all method definitions in the class
         method_nodes = stmts.select { |s| %i[def defs].include?(s.type) }
@@ -227,8 +226,7 @@ module DocscribePlugins
           inferred_type = infer_method_return_type(meth_node, columns)
           next if inferred_type.nil?
 
-          doc = build_method_doc(meth_name, inferred_type, indent)
-          results << { anchor_node: meth_node, doc: doc }
+          results << { anchor_node: meth_node, method_override: { return_type: inferred_type } }
         end
       end
 
@@ -508,32 +506,6 @@ module DocscribePlugins
       return nil unless db_type
 
       SchemaParser.yard_type_for(db_type)
-    end
-
-    # Build a @return doc block for a method.
-    #
-    # @private
-    # @param [String] indent
-    # @param [Object] _meth_name Param documentation.
-    # @param [Object] yard_type Param documentation.
-    # @return [String]
-    def build_method_doc(_meth_name, yard_type, indent)
-      lines = []
-      lines << "#{indent}# @return [#{yard_type}]"
-      lines.map { |l| "#{l}\n" }.join
-    end
-
-    # Extract source indentation from a node.
-    #
-    # @private
-    # @param [Parser::AST::Node] node
-    # @raise [StandardError]
-    # @return [String]
-    def extract_indent(node)
-      line = node.loc.expression.source_line
-      line[/\A[ \t]*/] || ''
-    rescue StandardError
-      '  '
     end
   end
 end

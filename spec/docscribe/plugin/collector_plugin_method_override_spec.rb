@@ -5,12 +5,13 @@ RSpec.describe 'CollectorPlugin method_override' do
 
   after { Docscribe::Plugin::Registry.clear! }
 
-  def build_override_plugin(return_type:, param_types: {})
+  def build_override_plugin(return_type:, param_types: {}, tags: [])
     Class.new(Docscribe::Plugin::Base::CollectorPlugin) do
-      def initialize(return_type:, param_types:)
+      def initialize(return_type:, param_types: {}, tags: [])
         super()
         @return_type = return_type
         @param_types = param_types
+        @tags = tags
       end
 
       def collect(ast, _buffer)
@@ -22,7 +23,7 @@ RSpec.describe 'CollectorPlugin method_override' do
           method_override: {
             return_type: @return_type,
             param_types: @param_types,
-            tags: []
+            tags: @tags
           }
         }]
       end
@@ -43,7 +44,7 @@ RSpec.describe 'CollectorPlugin method_override' do
 
         nil
       end
-    end.new(return_type: return_type, param_types: param_types)
+    end.new(return_type: return_type, param_types: param_types, tags: tags)
   end
 
   def find_first(node, type)
@@ -115,5 +116,40 @@ RSpec.describe 'CollectorPlugin method_override' do
     # Still should keep @param
     expect(out).to include('# @param')
     expect(out).to include(' period')
+  end
+
+  it 'uses param_types from method_override in @param tags' do
+    plugin = build_override_plugin(
+      return_type: 'ActiveRecord::Relation',
+      param_types: { 'period' => 'Integer' }
+    )
+
+    Docscribe::Plugin::Registry.register(plugin, priority: 10)
+
+    expect(out).to include('# @param [Integer] period')
+    expect(out).to include('# @return [ActiveRecord::Relation]')
+  end
+
+  it 'appends override tags to the doc block' do
+    override_tag = Docscribe::Plugin::Tag.new(name: 'since', text: '2.0')
+    plugin = build_override_plugin(
+      return_type: 'ActiveRecord::Relation',
+      tags: [override_tag]
+    )
+
+    Docscribe::Plugin::Registry.register(plugin, priority: 10)
+
+    expect(out).to include('# @since 2.0')
+  end
+
+  it 'accepts Hash-form tags in method_override and converts to Tag' do
+    plugin = build_override_plugin(
+      return_type: 'ActiveRecord::Relation',
+      tags: [{ name: 'deprecated', text: 'Use .new instead' }]
+    )
+
+    Docscribe::Plugin::Registry.register(plugin, priority: 10)
+
+    expect(out).to include('# @deprecated Use .new instead')
   end
 end

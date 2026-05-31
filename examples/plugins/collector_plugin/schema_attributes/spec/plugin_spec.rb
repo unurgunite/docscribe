@@ -9,10 +9,6 @@ RSpec.describe DocscribePlugins::SchemaAttributes do
   before { Docscribe::Plugin::Registry.register(plugin) }
   after  { Docscribe::Plugin::Registry.clear! }
 
-  # Method documentation.
-  #
-  # @param [Object] code Param documentation.
-  # @return [Object]
   def rewrite(code)
     Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
   end
