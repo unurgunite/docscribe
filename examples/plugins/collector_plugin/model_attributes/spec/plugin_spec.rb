@@ -6,7 +6,46 @@ require 'tmpdir'
 require_relative '../../../collector_plugin/model_attributes/plugin'
 
 RSpec.describe 'ModelAttributes integration' do
-  let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
+  subject(:out) { rewrite(code) }
+
+  let(:conf) do
+    Docscribe::Config.new(
+      'emit' => {
+        'header' => true,
+        'param_tags' => param_tags,
+        'return_tag' => true,
+        'include_default_message' => false
+      }
+    )
+  end
+  let(:schema_content) do
+    <<~RUBY
+      ActiveRecord::Schema.define(version: 2024_01_01_000000) do
+        create_table "users", force: :cascade do |t|
+          t.string "email", null: false
+          t.string "name"
+          t.string "surname"
+          t.boolean "is_admin", default: false
+          t.integer "age"
+          t.boolean "deleted", default: false
+          t.datetime "created_at", null: false
+          t.datetime "updated_at", null: false
+        end
+
+        create_table "posts", force: :cascade do |t|
+          t.string "title"
+          t.text "body"
+          t.integer "view_count", default: 0
+          t.boolean "published"
+          t.boolean "draft"
+          t.datetime "published_at"
+          t.references "user", null: false, foreign_key: true
+        end
+      end
+    RUBY
+  end
+
+  let(:param_tags) { false }
 
   let(:root) { Dir.mktmpdir('docscribe-model-attributes') }
   let(:schema_path) { File.join(root, 'db', 'schema.rb') }
@@ -15,35 +54,7 @@ RSpec.describe 'ModelAttributes integration' do
 
   before do
     FileUtils.mkdir_p(File.dirname(schema_path))
-
-    File.write(
-      schema_path,
-      <<~RUBY
-        ActiveRecord::Schema.define(version: 2024_01_01_000000) do
-          create_table "users", force: :cascade do |t|
-            t.string "email", null: false
-            t.string "name"
-            t.string "surname"
-            t.boolean "is_admin", default: false
-            t.integer "age"
-            t.boolean "deleted", default: false
-            t.datetime "created_at", null: false
-            t.datetime "updated_at", null: false
-          end
-
-          create_table "posts", force: :cascade do |t|
-            t.string "title"
-            t.text "body"
-            t.integer "view_count", default: 0
-            t.boolean "published"
-            t.boolean "draft"
-            t.datetime "published_at"
-            t.references "user", null: false, foreign_key: true
-          end
-        end
-      RUBY
-    )
-
+    File.write(schema_path, schema_content)
     Docscribe::Plugin::Registry.register(plugin)
   end
 
@@ -52,179 +63,212 @@ RSpec.describe 'ModelAttributes integration' do
     FileUtils.rm_rf(root)
   end
 
-  # Method documentation.
-  #
-  # @param [Object] code Param documentation.
-  # @return [Object]
   def rewrite(code)
     inline(code, config: conf, strategy: :safe)
   end
 
   describe 'User model' do
-    it 'generates Boolean @return for is_admin' do
-      code = <<~RUBY
+    let(:code) do
+      <<~RUBY
         class User < ApplicationRecord
           def admin?
             is_admin
           end
         end
       RUBY
+    end
 
-      out = rewrite(code)
+    it 'generates header with correct return type' do
+      expect(out).to include('# +User#admin?+ -> Boolean')
+    end
 
+    it 'generates @return with overridden type' do
       expect(out).to include('# @return [Boolean]')
+    end
+
+    it 'generates a single @return line' do
       expect(out.scan('# @return [Boolean]').size).to eq(1)
     end
+  end
 
-    it 'generates String @return for email' do
-      code = <<~RUBY
+  describe 'User model with params' do
+    let(:param_tags) { true }
+
+    let(:code) do
+      <<~RUBY
         class User < ApplicationRecord
-          def formatted_email
-            email.upcase
+          def self.by_email(email)
+            email
           end
         end
       RUBY
-
-      out = rewrite(code)
-      expect(out).to include('# @return [String]')
     end
 
-    it 'generates Integer @return for age' do
-      code = <<~RUBY
-        class User < ApplicationRecord
-          def age_in_months
-            age * 12
-          end
-        end
-      RUBY
-
-      out = rewrite(code)
-      expect(out).to include('# @return [Integer]')
+    it 'generates header with overridden return type' do
+      expect(out).to include('# +User.by_email+ -> String')
     end
 
-    it 'generates Boolean @return for comparison' do
-      code = <<~RUBY
-        class User < ApplicationRecord
-          def adult?
-            age >= 18
-          end
-        end
-      RUBY
-
-      out = rewrite(code)
-      expect(out).to include('# @return [Boolean]')
+    it 'generates @param from the method signature' do
+      expect(out).to include('# @param [Object] email')
     end
 
-    it 'handles string concatenation' do
-      code = <<~RUBY
-        class User < ApplicationRecord
-          def fullname
-            name + surname
-          end
-        end
-      RUBY
-
-      out = rewrite(code)
+    it 'generates @return from plugin override' do
       expect(out).to include('# @return [String]')
     end
   end
 
+  describe 'type inference' do
+    describe 'string return' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            def formatted_email
+              email.upcase
+            end
+          end
+        RUBY
+      end
+
+      it { is_expected.to include('# @return [String]') }
+    end
+
+    describe 'integer return' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            def age_in_months
+              age * 12
+            end
+          end
+        RUBY
+      end
+
+      it { is_expected.to include('# @return [Integer]') }
+    end
+
+    describe 'comparison return' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            def adult?
+              age >= 18
+            end
+          end
+        RUBY
+      end
+
+      it { is_expected.to include('# @return [Boolean]') }
+    end
+
+    describe 'string concatenation' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            def fullname
+              name + surname
+            end
+          end
+        RUBY
+      end
+
+      it { is_expected.to include('# @return [String]') }
+    end
+  end
+
   describe 'Post model' do
-    it 'generates String @return for title' do
-      code = <<~RUBY
-        class Post < ApplicationRecord
-          def title_upcased
-            title.upcase
+    describe 'string column' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+            def title_upcased
+              title.upcase
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-      expect(out).to include('# @return [String]')
+      it { is_expected.to include('# @return [String]') }
     end
 
-    it 'generates Integer @return for view_count' do
-      code = <<~RUBY
-        class Post < ApplicationRecord
-          def doubled_views
-            view_count * 2
+    describe 'integer column' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+            def doubled_views
+              view_count * 2
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-      expect(out).to include('# @return [Integer]')
+      it { is_expected.to include('# @return [Integer]') }
     end
 
-    it 'generates Boolean @return for published?' do
-      code = <<~RUBY
-        class Post < ApplicationRecord
-          def published?
-            published
+    describe 'boolean column' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+            def published?
+              published
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-      expect(out).to include('# @return [Boolean]')
+      it { is_expected.to include('# @return [Boolean]') }
     end
   end
 
   describe 'namespaced models' do
     before do
-      # Shortcut: model_name_to_table_name('Admin::User') => 'admin_users'
       plugin.instance_variable_set(
         :@schema_tables,
         { 'admin_users' => { 'is_admin' => 'boolean', 'email' => 'string' } }
       )
     end
 
-    it 'handles Admin::User mapping' do
-      code = <<~RUBY
+    let(:code) do
+      <<~RUBY
         class Admin::User < ApplicationRecord
           def admin_role
             is_admin
           end
         end
       RUBY
-
-      out = rewrite(code)
-      expect(out).to include('# @return [Boolean]')
     end
+
+    it { is_expected.to include('# @return [Boolean]') }
   end
 
   describe 'non-model classes' do
-    it 'does not generate plugin docs (falls back to standard collector output)' do
-      code = <<~RUBY
+    let(:code) do
+      <<~RUBY
         class EmailValidator
           def valid?(email)
             true
           end
         end
       RUBY
+    end
 
-      out = rewrite(code)
-
-      # Key property:
-      # - If ModelAttributes plugin ran for this method, it would override the standard
-      #   method insertion at the same anchor, and the standard header line would disappear.
-      # - For non-AR classes, the plugin should return [] => standard collector should win.
+    it 'falls back to standard collector output when plugin returns nothing' do
       expect(out).to include('# +EmailValidator#valid?+ -> Boolean')
-      expect(out).to include('# Method documentation.')
       expect(out).to include('# @return [Boolean]')
     end
   end
 
   describe 'idempotency' do
-    it 'does not duplicate docs on second run' do
-      code = <<~RUBY
+    let(:code) do
+      <<~RUBY
         class User < ApplicationRecord
           def admin?
             is_admin
           end
         end
       RUBY
+    end
 
+    it 'does not duplicate docs on second run' do
       first = rewrite(code)
       second = rewrite(first)
 

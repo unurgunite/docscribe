@@ -69,6 +69,7 @@ Common workflows:
         * [TagPlugin](#tagplugin)
         * [CollectorPlugin](#collectorplugin)
             * [Plugin doc normalization (CollectorPlugin)](#plugin-doc-normalization-collectorplugin)
+            * [`method_override` (structured patch)](#method_override-structured-patch)
         * [Registering plugins](#registering-plugins)
         * [Plugin priority](#plugin-priority)
         * [Idempotency](#idempotency)
@@ -867,12 +868,13 @@ class DefineMethodPlugin < Docscribe::Plugin::Base::CollectorPlugin
 end
 ```
 
-Each result hash must have:
+Each result hash must have `:anchor_node` plus either `:doc` or `:method_override`:
 
-| Key            | Type                | Description                                                                                                             |
-|----------------|---------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `:anchor_node` | `Parser::AST::Node` | Node above which to insert the doc block                                                                                |
-| `:doc`         | `String`            | Complete doc block text including newlines (Docscribe may normalize indentation and default message for method anchors) |
+| Key                | Type                | Description                                                                                                             |
+|--------------------|---------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `:anchor_node`     | `Parser::AST::Node` | Node above which to insert the doc block                                                                                |
+| `:doc`             | `String`            | Complete doc block text including newlines (Docscribe may normalize indentation and default message for method anchors) |
+| `:method_override` | `Hash`              | Structured overrides that patch the standard DocBuilder output instead of replacing it (see below)                      |
 
 > [!NOTE]
 > You do not need to handle indentation manually. Docscribe reads the indentation from `anchor_node` and applies it to
@@ -880,18 +882,34 @@ Each result hash must have:
 
 #### Plugin doc normalization (CollectorPlugin)
 
-CollectorPlugins return raw doc strings (`{ anchor_node:, doc: }`) which Docscribe inserts without running the standard
-method DocBuilder pipeline.
+When returning `doc:`, CollectorPlugins provide raw strings that Docscribe inserts without running the standard
+method DocBuilder pipeline. Docscribe does normalize indentation and may prepend the default method message for
+`def/defs` anchors, but headers (`emit.header`) and param/return tags must be included explicitly.
 
-Docscribe does, however, normalize plugin docs before insertion:
+#### `method_override` (structured patch)
 
-- indentation is applied automatically based on `anchor_node`
-- for `def/defs` anchors: if the plugin output contains only tags (no prose) and `doc.include_default_message` is
-  enabled, Docscribe prepends the configured default method message (e.g. `Method documentation.`)
+When a CollectorPlugin targets a `def` method, it can return `method_override:` instead of `doc:` to patch the
+standard DocBuilder output rather than replace it entirely:
 
-> [!NOTE]
-> Note: plugin insertions still do **not** automatically generate method headers (`emit.header`) or param/return tags —
-> plugins must provide those explicitly if desired.
+```ruby
+{
+  anchor_node: node,
+  method_override: {
+    return_type: 'ActiveRecord::Relation', # overrides @return
+    param_types: { 'period' => 'Integer' }, # merges into @param types
+    tags: [Docscribe::Plugin::Tag.new(name: 'since', text: '2.0')] # additional tags
+  }
+}
+```
+
+| Key            | Type                   | Description                                                 |
+|----------------|------------------------|-------------------------------------------------------------|
+| `:return_type` | `String`               | Overrides the `@return` type name                           |
+| `:param_types` | `Hash{String=>String}` | Merges into inferred param types (external sig wins)        |
+| `:tags`        | `Array<Tag/Hash>`      | Tags appended to the doc block (Hash auto-converted to Tag) |
+
+`method_override` merges at the data level before rendering, so the standard pipeline still generates headers,
+`@param` tags, default messages, and tag sorting. Only the specified fields are overridden.
 
 ### Registering plugins
 
@@ -949,9 +967,11 @@ Higher number means higher priority.
 
 **CollectorPlugin priority (conflicts at the same source position):**
 
-- If a plugin insertion and a standard *method* insertion share the same source position (
-  `anchor_node.loc.expression.begin_pos`), the standard insertion is dropped and the plugin insertion is kept.
-- If multiple CollectorPlugins insert at the same source position, only insertions from the highest-priority plugin(s)
+- For `doc:` insertions: if a plugin insertion and a standard *method* insertion share the same source position
+  (`anchor_node.loc.expression.begin_pos`), the standard insertion is dropped and the plugin insertion is kept.
+- For `method_override:` insertions: the method insertion is kept and patched with the override data. The standard
+  DocBuilder pipeline still runs (generating `@param`, headers, etc.), and only the specified fields are overridden.
+- If multiple CollectorPlugins target the same source position, only insertions from the highest-priority plugin(s)
   are kept (ties are kept).
 - Multiple insertions from the winning plugin(s) at the same position are preserved (e.g. one `@!attribute` per column).
 
