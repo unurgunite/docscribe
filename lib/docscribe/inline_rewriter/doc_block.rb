@@ -65,7 +65,7 @@ module Docscribe
       # @param [Array<String>] missing_lines generated tag lines to add
       # @param [Boolean] sort_tags whether sortable tags should be reordered
       # @param [Array<String>] tag_order configured sortable tag order
-      # @param [Hash] filter_existing Param documentation.
+      # @param [Hash] filter_existing tags to filter from existing block
       # @return [Array<String>]
       def merge(existing_lines, missing_lines:, sort_tags:, tag_order:, filter_existing: {})
         existing_entries = parse(existing_lines, tag_order: tag_order)

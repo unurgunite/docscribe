@@ -2,7 +2,7 @@
 
 require_relative 'schema_parser'
 
-# Parse Rails `db/schema.rb` into a table → columns mapping.
+# Parse Rails `db/schema.rb` into a table -> columns mapping.
 #
 # Supports:
 # - create_table blocks
@@ -53,7 +53,7 @@ class SchemaRbParser
   # @return [Set<String>]
   SKIPPED_COLUMNS = %w[id created_at updated_at deleted_at].to_set.freeze
 
-  # Parse the schema.rb file and return a table → column map.
+  # Parse the schema.rb file and return a table -> column map.
   #
   # @return [Hash{String => Hash{String => String}}]
   def tables
@@ -76,7 +76,7 @@ class SchemaRbParser
     @tables = nil
   end
 
-  # Parse schema.rb source into a table → column map.
+  # Parse schema.rb source into a table -> column map.
   #
   # @private
   # @param [String] source

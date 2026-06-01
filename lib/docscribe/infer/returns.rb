@@ -60,8 +60,8 @@ module Docscribe
       # @param [Parser::AST::Node] node `:def` or `:defs` node
       # @param [String] fallback_type type used when inference is uncertain
       # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
-      # @param [nil] core_rbs_provider Param documentation.
-      # @param [nil] param_types Param documentation.
+      # @param [nil] core_rbs_provider core RBS type lookup provider
+      # @param [nil] param_types parameter name -> type map
       # @return [Hash]
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
                                  param_types: nil)
@@ -111,7 +111,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #resolve_rbs_return_type (instance visibility: private)
       # @private
-      # @param [Object] node Param documentation.
+      # @param [Parser::AST::Node] node AST node to walk
       # @return [String] FALLBACK_TYPE if lookup fails
       def build_local_variable_types(node)
         types = {}
@@ -152,7 +152,7 @@ module Docscribe
       # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
       # @param [Object, nil] core_rbs_provider optional RBS provider for core type lookup
       # @param [Hash, nil] param_types parameter name -> type map for lvar resolution
-      # @param [nil] local_var_types Param documentation.
+      # @param [nil] local_var_types pre-built local variable types map
       # @return [String, nil]
       def last_expr_type(node, fallback_type:, nil_as_optional:, core_rbs_provider: nil, param_types: nil,
                          local_var_types: nil)
@@ -261,13 +261,13 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Resolve an RBS return type for a method call.
       #
       # @note module_function: when included, also defines #resolve_rbs_return_type (instance visibility: private)
-      # @param [Object] container_type Param documentation.
-      # @param [Object] method_name Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
-      # @return [Object]
+      # @param [String] container_type class or module name
+      # @param [String] method_name method name
+      # @param [Object] core_rbs_provider core RBS type lookup provider
+      # @return [String] inferred return type
       def resolve_rbs_return_type(container_type, method_name, core_rbs_provider)
         return FALLBACK_TYPE unless core_rbs_provider
 

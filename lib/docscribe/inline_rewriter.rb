@@ -68,7 +68,7 @@ module Docscribe
       # @param [Boolean, nil] merge compatibility alias for safe strategy
       # @param [Docscribe::Config] config config object (defaults to loaded config)
       # @param [String] file source name used for parser locations/debugging
-      # @param [nil] core_rbs_provider Param documentation.
+      # @param [nil] core_rbs_provider core RBS type lookup provider
       # @raise [Docscribe::ParseError]
       # @raise [StandardError]
       # @return [Hash]
@@ -168,7 +168,7 @@ module Docscribe
       #
       # @private
       # @param [Array<Array(Symbol,Object)>] insertions tagged insertion list
-      # @param [nil] method_overrides_by_pos Param documentation.
+      # @param [nil] method_overrides_by_pos method-level overrides keyed by insertion position
       # @return [Array<Array(Symbol,Object)>]
       def deduplicate_insertions(insertions, method_overrides_by_pos: nil)
         groups = {}
@@ -536,8 +536,8 @@ module Docscribe
       # @param [Symbol] strategy
       # @param [Array<Hash>] changes structured change records
       # @param [String] file
-      # @param [Object] core_rbs_provider Param documentation.
-      # @param [nil] method_override Param documentation.
+      # @param [Object] core_rbs_provider core RBS type lookup provider
+      # @param [nil] method_override method-level override hash
       # @return [void]
       def apply_method_insertion!(rewriter:, buffer:, insertion:, config:, signature_provider:, core_rbs_provider:,
                                   strategy:, changes:, file:, method_override: nil)
@@ -856,7 +856,7 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
-      # @param [Object] signature_provider Param documentation.
+      # @param [Object] signature_provider RBS signature provider
       # @raise [StandardError]
       # @return [String, nil]
       def build_attr_merge_additions(ins, existing_lines:, config:, signature_provider:)
@@ -947,7 +947,7 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Docscribe::Config] config
-      # @param [Object] signature_provider Param documentation.
+      # @param [Object] signature_provider RBS signature provider
       # @raise [StandardError]
       # @return [String, nil]
       def build_attr_doc_for_node(ins, config:, signature_provider:)
@@ -1007,7 +1007,7 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @param [Symbol] name_sym
       # @param [Docscribe::Config] config
-      # @param [Object] signature_provider Param documentation.
+      # @param [Object] signature_provider RBS signature provider
       # @raise [StandardError]
       # @return [String]
       def attribute_type(ins, name_sym, config, signature_provider:)
@@ -1050,8 +1050,8 @@ module Docscribe
       # @param [Object, nil] signature_provider external signature provider
       # @param [Object, nil] core_rbs_provider RBS core type provider
       # @param [Hash, nil] param_types parameter name -> type map
-      # @param [Object] return_type_override Param documentation.
-      # @param [Object] override_tags Param documentation.
+      # @param [Object] return_type_override return type override string
+      # @param [Object] override_tags hash of tags to override
       # @return [String, nil] generated doc block or nil
       def build_method_doc(insertion, config:, signature_provider:, core_rbs_provider:, param_types:, return_type_override:,
                            override_tags:)
@@ -1075,9 +1075,9 @@ module Docscribe
       # @param [Object, nil] signature_provider external signature provider
       # @param [Object, nil] core_rbs_provider RBS core type provider
       # @param [Hash, nil] param_types parameter name -> type map
-      # @param [Object] strategy Param documentation.
-      # @param [Object] return_type_override Param documentation.
-      # @param [nil] override_tags Param documentation.
+      # @param [Object] strategy rewrite strategy
+      # @param [Object] return_type_override return type override string
+      # @param [nil] override_tags hash of tags to override
       # @return [Hash] result with `:lines` and `:reasons` keys
       def build_missing_method_merge_result(insertion, existing_lines:, config:, signature_provider:,
                                             core_rbs_provider:, param_types:, strategy:, return_type_override:, override_tags: nil)

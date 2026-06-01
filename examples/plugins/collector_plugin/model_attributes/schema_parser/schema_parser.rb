@@ -54,7 +54,7 @@ module SchemaParser
   #   @return [Object, nil]
   ColumnWithYard = Struct.new(:name, :yard_type, :raw_type, :nullable, :default, keyword_init: true)
 
-  # Database type → YARD type mapping for documentation.
+  # Database type -> YARD type mapping for documentation.
   #
   # @return [Hash{String => String}]
   TYPE_MAP = {

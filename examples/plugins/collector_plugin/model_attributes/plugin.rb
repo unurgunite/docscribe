@@ -39,11 +39,11 @@ module DocscribePlugins
     attr_reader :root
 
     # @!attribute [r] schema_tables
-    #   @return [Hash{String => Hash{String => String}}] table → column → db_type
+    #   @return [Hash{String => Hash{String => String}}] table -> column -> db_type
     attr_reader :schema_tables
 
     # @!attribute [r] yard_type_map
-    #   @return [Hash{String => String}] db_type → YARD type
+    #   @return [Hash{String => String}] db_type -> YARD type
     attr_reader :yard_type_map
 
     # Walk the AST and return doc insertion targets for model methods.
@@ -353,7 +353,7 @@ module DocscribePlugins
         column_yard_type(name, columns)
       when :ivar
         name = node.children[0].to_s
-        # @attribute → attribute
+        # @attribute -> attribute
         column_name = name.sub(/^@/, '')
         column_yard_type(column_name, columns)
       when :ivasgn

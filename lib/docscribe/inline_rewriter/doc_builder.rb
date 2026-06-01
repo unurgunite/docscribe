@@ -28,10 +28,10 @@ module Docscribe
       # @param [Docscribe::Config] config
       # @param [Object, nil] signature_provider provider responding to
       #   `signature_for(container:, scope:, name:)`
-      # @param [nil] core_rbs_provider Param documentation.
-      # @param [nil] param_types Param documentation.
-      # @param [nil] return_type_override Param documentation.
-      # @param [nil] override_tags Param documentation.
+      # @param [nil] core_rbs_provider core RBS type lookup provider
+      # @param [nil] param_types parameter name -> type map
+      # @param [nil] return_type_override return type override string
+      # @param [nil] override_tags hash of tags to override
       # @raise [StandardError]
       # @return [String, nil]
       def build(insertion, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil, return_type_override: nil, override_tags: nil)
@@ -132,9 +132,9 @@ module Docscribe
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
       # @param [Object, nil] signature_provider
-      # @param [nil] core_rbs_provider Param documentation.
-      # @param [nil] param_types Param documentation.
-      # @param [nil] return_type_override Param documentation.
+      # @param [nil] core_rbs_provider core RBS type lookup provider
+      # @param [nil] param_types parameter name -> type map
+      # @param [nil] return_type_override return type override string
       # @raise [StandardError]
       # @return [String, nil]
       def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil, core_rbs_provider: nil,
@@ -229,11 +229,11 @@ module Docscribe
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
       # @param [Object, nil] signature_provider
-      # @param [nil] core_rbs_provider Param documentation.
-      # @param [nil] param_types Param documentation.
-      # @param [nil] strategy Param documentation.
-      # @param [nil] return_type_override Param documentation.
-      # @param [nil] override_tags Param documentation.
+      # @param [nil] core_rbs_provider core RBS type lookup provider
+      # @param [nil] param_types parameter name -> type map
+      # @param [nil] strategy rewrite strategy (:safe or :aggressive)
+      # @param [nil] return_type_override return type override string
+      # @param [nil] override_tags hash of tags to override
       # @raise [StandardError]
       # @return [Hash]
       def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil,
@@ -528,7 +528,7 @@ module Docscribe
       # @param [String] indent
       # @param [Docscribe::Types::MethodSignature, nil] external_sig
       # @param [Docscribe::Config] config
-      # @param [nil] param_types_override Param documentation.
+      # @param [nil] param_types_override parameter name -> type map override
       # @return [Array<String>, nil]
       def build_params_lines(node, indent, external_sig:, config:, param_types_override: nil)
         fallback_type = config.fallback_type
@@ -660,12 +660,12 @@ module Docscribe
         params.empty? ? nil : params
       end
 
-      # Method documentation.
+      # Look up the override type for a given parameter name from an override map.
       #
       # @note module_function: when included, also defines #override_param_type_for (instance visibility: private)
-      # @param [Object] pname Param documentation.
-      # @param [Object] override_map Param documentation.
-      # @return [Object]
+      # @param [Symbol, String] pname parameter name
+      # @param [Hash] override_map hash mapping parameter names to types
+      # @return [String, nil]
       def override_param_type_for(pname, override_map)
         return nil unless override_map
 
@@ -744,11 +744,11 @@ module Docscribe
         nil
       end
 
-      # Method documentation.
+      # Extract the type from a `@param` tag line.
       #
       # @note module_function: when included, also defines #extract_param_type_from_param_line (instance visibility: private)
-      # @param [Object] line Param documentation.
-      # @return [Object]
+      # @param [String] line a `@param` tag line
+      # @return [String, nil]
       def extract_param_type_from_param_line(line)
         if (m = line.match(/@param\s+\[([^\]]+)\]\s+\S+/) || line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
           m[1]

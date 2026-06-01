@@ -2,7 +2,7 @@
 
 require_relative 'schema_parser'
 
-# Parse Rails `db/structure.sql` into a table → columns mapping.
+# Parse Rails `db/structure.sql` into a table -> columns mapping.
 #
 # Supports PostgreSQL and MySQL SQL DDL syntax:
 # - CREATE TABLE with column definitions
@@ -13,7 +13,7 @@ require_relative 'schema_parser'
 #   parser.tables
 #   # => { 'users' => { 'email' => 'varchar', 'age' => 'integer' } }
 class StructureSqlParser
-  # SQL type → normalized database type mapping.
+  # SQL type -> normalized database type mapping.
   #
   # @return [Hash{String => String}]
   SQL_TYPE_MAP = {
@@ -72,7 +72,7 @@ class StructureSqlParser
   #   @return [Hash]
   attr_reader :tables
 
-  # Parse the structure.sql file and return a table → column map.
+  # Parse the structure.sql file and return a table -> column map.
   #
   # @param [Object] root Param documentation.
   # @return [Hash{String => Hash{String => String}}]
@@ -94,7 +94,7 @@ class StructureSqlParser
 
   private
 
-  # Parse structure.sql source into a table → column map.
+  # Parse structure.sql source into a table -> column map.
   #
   # @private
   # @param [String] source
