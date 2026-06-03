@@ -13,7 +13,7 @@ Gemspec/DevelopmentDependencies:
   Exclude:
     - 'docscribe.gemspec'
 
-# Offense count: 2
+# Offense count: 1
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: EnforcedStyle, IndentationWidth.
 # SupportedStyles: with_first_element, with_fixed_indentation
@@ -21,17 +21,23 @@ Layout/ArrayAlignment:
   Exclude:
     - 'lib/docscribe/inline_rewriter.rb'
 
-# Offense count: 2
+# Offense count: 1
 # This cop supports safe autocorrection (--autocorrect).
 Layout/BlockEndNewline:
   Exclude:
     - 'lib/docscribe/inline_rewriter.rb'
 
-# Offense count: 2
+# Offense count: 1
 # This cop supports safe autocorrection (--autocorrect).
 Layout/MultilineBlockLayout:
   Exclude:
     - 'lib/docscribe/inline_rewriter.rb'
+
+# Offense count: 2
+# This cop supports unsafe autocorrection (--autocorrect-all).
+Lint/BooleanSymbol:
+  Exclude:
+    - 'lib/docscribe/infer/constants.rb'
 
 # Offense count: 2
 # Configuration parameters: IgnoreLiteralBranches, IgnoreConstantBranches, IgnoreDuplicateElseBranch.
@@ -45,48 +51,48 @@ Lint/DuplicateMethods:
   Exclude:
     - 'examples/plugins/collector_plugin/model_attributes/schema_parser/structure_sql_parser.rb'
 
-# Offense count: 50
+# Offense count: 36
 # Configuration parameters: AllowedMethods, AllowedPatterns, CountRepeatedAttributes.
 Metrics/AbcSize:
-  Max: 107
+  Max: 42
 
-# Offense count: 5
+# Offense count: 3
 # Configuration parameters: CountComments, CountAsOne, AllowedMethods, AllowedPatterns, inherit_mode.
 # AllowedMethods: refine
 Metrics/BlockLength:
-  Max: 98
+  Max: 54
 
 # Offense count: 9
 # Configuration parameters: CountComments, CountAsOne.
 Metrics/ClassLength:
-  Max: 661
+  Max: 698
 
-# Offense count: 44
+# Offense count: 34
 # Configuration parameters: AllowedMethods, AllowedPatterns.
 Metrics/CyclomaticComplexity:
-  Max: 49
+  Max: 16
 
-# Offense count: 110
+# Offense count: 99
 # Configuration parameters: CountComments, CountAsOne, AllowedMethods, AllowedPatterns.
 Metrics/MethodLength:
-  Max: 112
+  Max: 45
 
 # Offense count: 8
 # Configuration parameters: CountComments, CountAsOne.
 Metrics/ModuleLength:
-  Max: 663
+  Max: 700
 
-# Offense count: 16
+# Offense count: 24
 # Configuration parameters: CountKeywordArgs, MaxOptionalParameters.
 Metrics/ParameterLists:
   Max: 9
 
-# Offense count: 29
+# Offense count: 16
 # Configuration parameters: AllowedMethods, AllowedPatterns.
 Metrics/PerceivedComplexity:
-  Max: 48
+  Max: 13
 
-# Offense count: 8
+# Offense count: 22
 # Configuration parameters: MinNameLength, AllowNamesEndingInNumbers, AllowedNames, ForbiddenNames.
 # AllowedNames: as, at, by, cc, db, id, if, in, io, ip, of, on, os, pp, to
 Naming/MethodParameterName:
@@ -94,6 +100,7 @@ Naming/MethodParameterName:
     - 'lib/docscribe/infer.rb'
     - 'lib/docscribe/infer/names.rb'
     - 'lib/docscribe/infer/returns.rb'
+    - 'lib/docscribe/inline_rewriter.rb'
     - 'lib/docscribe/inline_rewriter/doc_builder.rb'
 
 # Offense count: 5
@@ -143,14 +150,15 @@ RSpec/VerifiedDoubles:
   Exclude:
     - 'spec/docscribe/plugin/registry_spec.rb'
 
-# Offense count: 1
+# Offense count: 2
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: AllowedRecursion, SkipCyclicSiblingEdges.
 SortedMethodsByCall/Waterfall:
   Exclude:
     - 'examples/plugins/collector_plugin/model_attributes/plugin.rb'
+    - 'lib/docscribe/config/rbs.rb'
 
-# Offense count: 2
+# Offense count: 1
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: EnforcedStyle, ProceduralMethods, FunctionalMethods, AllowedMethods, AllowedPatterns, AllowBracesOnProceduralOneLiners, BracesRequiredMethods.
 # SupportedStyles: line_count_based, semantic, braces_for_chaining, always_braces
@@ -188,22 +196,21 @@ Style/HashSlice:
   Exclude:
     - 'lib/docscribe/inline_rewriter.rb'
 
-# Offense count: 5
+# Offense count: 4
 # This cop supports safe autocorrection (--autocorrect).
 Style/IfUnlessModifier:
   Exclude:
     - 'lib/docscribe/config/filtering.rb'
     - 'lib/docscribe/inline_rewriter.rb'
-    - 'lib/docscribe/inline_rewriter/doc_builder.rb'
 
-# Offense count: 9
+# Offense count: 6
 # Configuration parameters: Max.
 Style/SafeNavigationChainLength:
   Exclude:
     - 'lib/docscribe/inline_rewriter.rb'
     - 'lib/docscribe/inline_rewriter/doc_builder.rb'
 
-# Offense count: 3
+# Offense count: 2
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: EnforcedStyle, MinSize.
 # SupportedStyles: percent, brackets
@@ -211,7 +218,7 @@ Style/SymbolArray:
   Exclude:
     - 'lib/docscribe/inline_rewriter.rb'
 
-# Offense count: 21
+# Offense count: 39
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: AllowHeredoc, AllowURI, AllowQualifiedName, URISchemes, AllowRBSInlineAnnotation, AllowCopDirectives, AllowedPatterns, SplitStrings.
 # URISchemes: http, https
