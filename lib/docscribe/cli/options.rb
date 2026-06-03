@@ -25,6 +25,45 @@ module Docscribe
 
       module_function
 
+      BANNER = <<~TEXT
+        Usage: docscribe [options] [files...]
+
+        Default behavior:
+          Inspect files and report what safe doc updates would be applied.
+
+        Autocorrect:
+            -a, --autocorrect              Apply safe doc updates in place
+                                           (insert missing docs, merge existing doc-like blocks,
+                                           normalize tag order)
+            -A, --autocorrect-all          Apply aggressive doc updates in place
+                                           (rebuild existing doc blocks)
+
+        Input / config:
+                --stdin                    Read code from STDIN and print rewritten output
+            -C, --config PATH              Path to config YAML (default: docscribe.yml)
+
+        Type information:
+                --rbs                      Use RBS signatures for @param/@return when available
+                --sig-dir DIR              Add an RBS signature directory (repeatable). Implies `--rbs`.
+                --sorbet                   Use Sorbet signatures from inline sigs / RBI files when available
+                --rbi-dir DIR              Add a Sorbet RBI directory (repeatable). Implies --sorbet.
+                --rbs-collection           Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.
+
+        Filtering:
+                --include PATTERN          Include PATTERN (method id or file path; glob or /regex/)
+                --exclude PATTERN          Exclude PATTERN (method id or file path; glob or /regex/)
+                --include-file PATTERN     Only process files matching PATTERN (glob or /regex/)
+                --exclude-file PATTERN     Skip files matching PATTERN (glob or /regex/)
+
+        Output:
+                --verbose                  Print per-file actions
+            -e, --explain                  Show detailed reasons for changes
+
+        Other:
+            -v, --version                  Print version and exit
+            -h, --help                     Show this help
+      TEXT
+
       # Parse CLI arguments into normalized Docscribe runtime options.
       #
       # CLI behavior model:
@@ -41,126 +80,211 @@ module Docscribe
       # @return [Hash] normalized runtime options
       def parse!(argv)
         options = Marshal.load(Marshal.dump(DEFAULT))
-        autocorrect_mode = nil
+        autocorrect = { mode: nil }
 
         parser = OptionParser.new do |opts|
-          opts.banner = <<~TEXT
-            Usage: docscribe [options] [files...]
-
-            Default behavior:
-              Inspect files and report what safe doc updates would be applied.
-
-            Autocorrect:
-                -a, --autocorrect              Apply safe doc updates in place
-                                               (insert missing docs, merge existing doc-like blocks,
-                                               normalize tag order)
-                -A, --autocorrect-all          Apply aggressive doc updates in place
-                                               (rebuild existing doc blocks)
-
-            Input / config:
-                    --stdin                    Read code from STDIN and print rewritten output
-                -C, --config PATH              Path to config YAML (default: docscribe.yml)
-
-            Type information:
-                    --rbs                      Use RBS signatures for @param/@return when available
-                    --sig-dir DIR              Add an RBS signature directory (repeatable). Implies `--rbs`.
-                    --sorbet                   Use Sorbet signatures from inline sigs / RBI files when available
-                    --rbi-dir DIR              Add a Sorbet RBI directory (repeatable). Implies --sorbet.
-                    --rbs-collection           Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.
-
-            Filtering:
-                    --include PATTERN          Include PATTERN (method id or file path; glob or /regex/)
-                    --exclude PATTERN          Exclude PATTERN (method id or file path; glob or /regex/)
-                    --include-file PATTERN     Only process files matching PATTERN (glob or /regex/)
-                    --exclude-file PATTERN     Skip files matching PATTERN (glob or /regex/)
-
-            Output:
-                    --verbose                  Print per-file actions
-                -e, --explain                  Show detailed reasons for changes
-
-            Other:
-                -v, --version                  Print version and exit
-                -h, --help                     Show this help
-          TEXT
-
-          opts.on('-a', '--autocorrect', 'Apply safe doc updates in place') do
-            autocorrect_mode = :safe
-          end
-
-          opts.on('-A', '--autocorrect-all', 'Apply aggressive doc updates in place') do
-            autocorrect_mode = :aggressive
-          end
-
-          opts.on('--stdin', 'Read code from STDIN and print rewritten output') do
-            options[:stdin] = true
-          end
-
-          opts.on('-C', '--config PATH', 'Path to config YAML (default: docscribe.yml)') do |v|
-            options[:config] = v
-          end
-
-          opts.on('--rbs', 'Use RBS signatures for @param/@return when available (falls back to inference)') do
-            options[:rbs] = true
-          end
-
-          opts.on('--sig-dir DIR', 'Add an RBS signature directory (repeatable). Implies --rbs.') do |v|
-            options[:rbs] = true
-            options[:sig_dirs] << v
-          end
-
-          opts.on('--sorbet', 'Use Sorbet signatures from inline sigs / RBI files when available') do
-            options[:sorbet] = true
-          end
-
-          opts.on('--rbi-dir DIR', 'Add a Sorbet RBI directory (repeatable). Implies --sorbet.') do |v|
-            options[:sorbet] = true
-            options[:rbi_dirs] << v
-          end
-
-          opts.on('--rbs-collection', 'Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.') do
-            options[:rbs] = true
-            options[:rbs_collection] = true
-          end
-
-          opts.on('--include PATTERN', 'Include PATTERN (method id or file path; glob or /regex/)') do |v|
-            route_include_exclude(options, :include, v)
-          end
-
-          opts.on('--exclude PATTERN',
-                  'Exclude PATTERN (method id or file path; glob or /regex/). Exclude wins.') do |v|
-            route_include_exclude(options, :exclude, v)
-          end
-
-          opts.on('--include-file PATTERN', 'Only process files matching PATTERN (glob or /regex/)') do |v|
-            options[:include_file] << v
-          end
-
-          opts.on('--exclude-file PATTERN', 'Skip files matching PATTERN (glob or /regex/). Exclude wins.') do |v|
-            options[:exclude_file] << v
-          end
-
-          opts.on('--verbose', 'Print per-file actions') do
-            options[:verbose] = true
-          end
-
-          opts.on('-e', '--explain', 'Show detailed reasons for changes') do
-            options[:explain] = true
-          end
-
-          opts.on('-v', '--version', 'Print version and exit') do
-            require 'docscribe/version'
-            puts Docscribe::VERSION
-            exit 0
-          end
-
-          opts.on('-h', '--help', 'Show this help') do
-            puts opts
-            exit 0
-          end
+          opts.banner = BANNER
+          define_autocorrect_options(opts, autocorrect)
+          define_input_options(opts, options)
+          define_type_options(opts, options)
+          define_filter_options(opts, options)
+          define_output_options(opts, options)
+          define_misc_options(opts)
         end
 
         parser.parse!(argv)
+        resolve_mode_and_strategy!(options, autocorrect[:mode])
+        options
+      end
 
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash{Symbol => Symbol,nil}] autocorrect mutable container for autocorrect mode (:safe, :aggressive, nil)
+      # @return [void]
+      def define_autocorrect_options(opts, autocorrect)
+        opts.on('-a', '--autocorrect', 'Apply safe doc updates in place') do
+          autocorrect[:mode] = :safe
+        end
+
+        opts.on('-A', '--autocorrect-all', 'Apply aggressive doc updates in place') do
+          autocorrect[:mode] = :aggressive
+        end
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
+      def define_input_options(opts, options)
+        define_stdin_option(opts, options)
+        define_config_option(opts, options)
+      end
+
+      # @private
+      def define_stdin_option(opts, options)
+        opts.on('--stdin', 'Read code from STDIN and print rewritten output') do
+          options[:stdin] = true
+        end
+      end
+
+      # @private
+      def define_config_option(opts, options)
+        opts.on('-C', '--config PATH', 'Path to config YAML (default: docscribe.yml)') do |v|
+          options[:config] = v
+        end
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
+      def define_type_options(opts, options)
+        define_rbs_option(opts, options)
+        define_sig_dir_option(opts, options)
+        define_sorbet_option(opts, options)
+        define_rbi_dir_option(opts, options)
+        define_rbs_collection_option(opts, options)
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash] options
+      # @return [void]
+      def define_rbs_option(opts, options)
+        opts.on('--rbs', 'Use RBS signatures for @param/@return when available (falls back to inference)') do
+          options[:rbs] = true
+        end
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash] options
+      # @return [void]
+      def define_sig_dir_option(opts, options)
+        opts.on('--sig-dir DIR', 'Add an RBS signature directory (repeatable). Implies --rbs.') do |v|
+          options[:rbs] = true
+          options[:sig_dirs] << v
+        end
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash] options
+      # @return [void]
+      def define_sorbet_option(opts, options)
+        opts.on('--sorbet', 'Use Sorbet signatures from inline sigs / RBI files when available') do
+          options[:sorbet] = true
+        end
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash] options
+      # @return [void]
+      def define_rbi_dir_option(opts, options)
+        opts.on('--rbi-dir DIR', 'Add a Sorbet RBI directory (repeatable). Implies --sorbet.') do |v|
+          options[:sorbet] = true
+          options[:rbi_dirs] << v
+        end
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash] options
+      # @return [void]
+      def define_rbs_collection_option(opts, options)
+        opts.on('--rbs-collection', 'Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.') do
+          options[:rbs] = true
+          options[:rbs_collection] = true
+        end
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
+      def define_filter_options(opts, options)
+        define_include_option(opts, options)
+        define_exclude_option(opts, options)
+        define_include_file_option(opts, options)
+        define_exclude_file_option(opts, options)
+      end
+
+      # @private
+      def define_include_option(opts, options)
+        opts.on('--include PATTERN', 'Include PATTERN (method id or file path; glob or /regex/)') do |v|
+          route_include_exclude(options, :include, v)
+        end
+      end
+
+      # @private
+      def define_exclude_option(opts, options)
+        opts.on('--exclude PATTERN',
+                'Exclude PATTERN (method id or file path; glob or /regex/). Exclude wins.') do |v|
+          route_include_exclude(options, :exclude, v)
+        end
+      end
+
+      # @private
+      def define_include_file_option(opts, options)
+        opts.on('--include-file PATTERN', 'Only process files matching PATTERN (glob or /regex/)') do |v|
+          options[:include_file] << v
+        end
+      end
+
+      # @private
+      def define_exclude_file_option(opts, options)
+        opts.on('--exclude-file PATTERN', 'Skip files matching PATTERN (glob or /regex/). Exclude wins.') do |v|
+          options[:exclude_file] << v
+        end
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
+      def define_output_options(opts, options)
+        define_verbose_option(opts, options)
+        define_explain_option(opts, options)
+      end
+
+      # @private
+      def define_verbose_option(opts, options)
+        opts.on('--verbose', 'Print per-file actions') do
+          options[:verbose] = true
+        end
+      end
+
+      # @private
+      def define_explain_option(opts, options)
+        opts.on('-e', '--explain', 'Show detailed reasons for changes') do
+          options[:explain] = true
+        end
+      end
+
+      # @private
+      # @param [OptionParser] opts
+      # @return [void]
+      def define_misc_options(opts)
+        opts.on('-v', '--version', 'Print version and exit') do
+          require 'docscribe/version'
+          puts Docscribe::VERSION
+          exit 0
+        end
+
+        opts.on('-h', '--help', 'Show this help') do
+          puts opts
+          exit 0
+        end
+      end
+
+      # Set the runtime mode and strategy after all options have been parsed.
+      #
+      # @private
+      # @param [Hash] options mutable parsed options hash
+      # @param [Symbol, nil] autocorrect_mode autocorrect mode selected (:safe, :aggressive, or nil)
+      # @return [void]
+      def resolve_mode_and_strategy!(options, autocorrect_mode)
         if options[:stdin]
           options[:mode] = :stdin
           options[:strategy] = autocorrect_mode || :safe
@@ -171,8 +295,6 @@ module Docscribe
           options[:mode] = :check
           options[:strategy] = :safe
         end
-
-        options
       end
 
       # Route an include/exclude pattern into method filters or file filters.

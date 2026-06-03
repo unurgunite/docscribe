@@ -124,32 +124,65 @@ module Docscribe
         pipeline[:all].sort_by { |(kind, ins)| plugin_insertion_pos(kind, ins) }
                       .reverse_each do |kind, ins|
           case kind
-          when :method
-            pos = plugin_insertion_pos(:method, ins)
-            method_override = pipeline[:method_overrides_by_pos][pos]
-
-            apply_method_insertion!(
-              rewriter: pipeline[:rewriter], buffer: buffer, insertion: ins,
-              config: options[:config], signature_provider: options[:signature_provider],
-              core_rbs_provider: options[:core_rbs_provider], strategy: options[:strategy],
-              changes: pipeline[:changes], file: options[:file],
-              method_override: method_override
-            )
-          when :attr
-            apply_attr_insertion!(
-              rewriter: pipeline[:rewriter], buffer: buffer, insertion: ins,
-              config: options[:config], signature_provider: options[:signature_provider],
-              strategy: options[:strategy], merge_inserts: pipeline[:merge_inserts]
-            )
-          when :plugin
-            apply_plugin_insertion!(
-              rewriter: pipeline[:rewriter], buffer: buffer, insertion: ins,
-              strategy: options[:strategy], config: options[:config]
-            )
+          when :method then dispatch_method_insertion(ins, pipeline, buffer, **options)
+          when :attr then dispatch_attr_insertion(ins, pipeline, buffer, **options)
+          when :plugin then dispatch_plugin_insertion(ins, pipeline, buffer, **options)
           end
         end
 
         apply_merge_inserts!(rewriter: pipeline[:rewriter], buffer: buffer, merge_inserts: pipeline[:merge_inserts])
+      end
+
+      # Dispatch a method insertion.
+      #
+      # @private
+      # @param [Object] ins
+      # @param [Hash] pipeline
+      # @param [Object] buffer
+      # @param [Hash] options
+      # @return [void]
+      def dispatch_method_insertion(ins, pipeline, buffer, **options)
+        pos = plugin_insertion_pos(:method, ins)
+        method_override = pipeline[:method_overrides_by_pos][pos]
+
+        apply_method_insertion!(
+          rewriter: pipeline[:rewriter], buffer: buffer, insertion: ins,
+          config: options[:config], signature_provider: options[:signature_provider],
+          core_rbs_provider: options[:core_rbs_provider], strategy: options[:strategy],
+          changes: pipeline[:changes], file: options[:file],
+          method_override: method_override
+        )
+      end
+
+      # Dispatch an attr insertion.
+      #
+      # @private
+      # @param [Object] ins
+      # @param [Hash] pipeline
+      # @param [Object] buffer
+      # @param [Hash] options
+      # @return [void]
+      def dispatch_attr_insertion(ins, pipeline, buffer, **options)
+        apply_attr_insertion!(
+          rewriter: pipeline[:rewriter], buffer: buffer, insertion: ins,
+          config: options[:config], signature_provider: options[:signature_provider],
+          strategy: options[:strategy], merge_inserts: pipeline[:merge_inserts]
+        )
+      end
+
+      # Dispatch a plugin insertion.
+      #
+      # @private
+      # @param [Object] ins
+      # @param [Hash] pipeline
+      # @param [Object] buffer
+      # @param [Hash] options
+      # @return [void]
+      def dispatch_plugin_insertion(ins, pipeline, buffer, **options)
+        apply_plugin_insertion!(
+          rewriter: pipeline[:rewriter], buffer: buffer, insertion: ins,
+          strategy: options[:strategy], config: options[:config]
+        )
       end
 
       # Load core RBS provider from config with safe fallback.
@@ -312,13 +345,20 @@ module Docscribe
       def warn_plugin_conflict!(dropped, plugin_items, max_prio, pos)
         kept_labels = plugin_items.map { |_k, ins| plugin_insertion_label(ins) }.uniq
         dropped_labels = dropped.map { |_k, ins| plugin_insertion_label(ins) }.uniq
-        line = plugin_insertion_line(plugin_items.first[1])
-        loc = +"pos=#{pos}"
-        loc << " line=#{line}" if line
+        loc = conflict_location_str(pos, plugin_items)
         warn "Docscribe: CollectorPlugin conflict at #{loc} — " \
              "#{dropped_labels.join(', ')} (pri=#{dropped.map { |_k, ins| plugin_insertion_priority(ins) }.max}) " \
              "dropped in favor of #{kept_labels.join(', ')} (pri=#{max_prio}). " \
              'Set explicit priority or adjust anchor_node to avoid collision.'
+      end
+
+      # Build a human-readable location string for a conflict warning.
+      # @private
+      def conflict_location_str(pos, plugin_items)
+        line = plugin_insertion_line(plugin_items.first[1])
+        loc = +"pos=#{pos}"
+        loc << " line=#{line}" if line
+        loc
       end
 
       # @private
@@ -328,32 +368,43 @@ module Docscribe
       def pick_highest_priority_override_insertion(override_items, pos:)
         return nil if override_items.empty?
 
-        max_prio =
-          override_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
+        max_prio = max_plugin_priority_for(override_items)
+        winners  = override_items.select { |_k, ins| plugin_insertion_priority(ins) == max_prio }
+        winners_sorted = sort_winners_by_order(winners)
 
-        winners =
-          override_items.select { |_k, ins| plugin_insertion_priority(ins) == max_prio }
-
-        # Deterministic tie-break: smallest plugin order wins.
-        # (We warn in debug if the tie is between different plugins.)
-        winners_sorted =
-          winners.sort_by do |_k, ins|
-            order = ins.is_a?(Hash) ? ins[:__docscribe_plugin_order] : nil
-            order.nil? ? 0 : order
-          end
-
-        if Docscribe::Plugin.debug?
-          labels = winners_sorted.map { |_k, ins| plugin_insertion_label(ins) }.uniq
-          if labels.size > 1
-            line = plugin_insertion_line(winners_sorted.first[1])
-            loc = +"pos=#{pos}"
-            loc << " line=#{line}" if line
-            warn "Docscribe: method_override conflict at #{loc} (priority=#{max_prio}): " \
-                 "#{labels.join(', ')} — using first by registration order."
-          end
-        end
+        warn_override_conflict!(winners_sorted, max_prio, pos)
 
         winners_sorted.first[1]
+      end
+
+      # Compute max priority among override items.
+      # @private
+      def max_plugin_priority_for(override_items)
+        override_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
+      end
+
+      # Sort override winners deterministically by plugin order.
+      # @private
+      def sort_winners_by_order(winners)
+        winners.sort_by do |_k, ins|
+          order = ins.is_a?(Hash) ? ins[:__docscribe_plugin_order] : nil
+          order.nil? ? 0 : order
+        end
+      end
+
+      # Warn about override conflicts in debug mode.
+      # @private
+      def warn_override_conflict!(winners_sorted, max_prio, pos)
+        return unless Docscribe::Plugin.debug?
+
+        labels = winners_sorted.map { |_k, ins| plugin_insertion_label(ins) }.uniq
+        return unless labels.size > 1
+
+        line = plugin_insertion_line(winners_sorted.first[1])
+        loc = +"pos=#{pos}"
+        loc << " line=#{line}" if line
+        warn "Docscribe: method_override conflict at #{loc} (priority=#{max_prio}): " \
+             "#{labels.join(', ')} — using first by registration order."
       end
 
       # @private
@@ -458,31 +509,43 @@ module Docscribe
       def any_comment_block_removal_range(buffer, bol_pos)
         src   = buffer.source
         lines = src.lines
-        def_line_idx = src[0...bol_pos].count("\n")
-        i = def_line_idx - 1
+        i = nearest_comment_line_index(src, lines, bol_pos)
+        return nil unless i
 
-        # Skip blank lines directly above node
-        i -= 1 while i >= 0 && lines[i].strip.empty?
+        start_idx = comment_block_start_index(lines, i)
 
-        # Nearest non-blank line must be a comment
-        return nil unless i >= 0 && lines[i] =~ /^\s*#/
-
-        # Walk upward through the entire contiguous comment block
-        start_idx = i
-        start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
-        start_idx += 1
-
-        # Preserve leading directive-style lines (rubocop, magic comments, etc.)
-        removable_start_idx = start_idx
-        while removable_start_idx <= i &&
-              SourceHelpers.preserved_comment_line?(lines[removable_start_idx])
-          removable_start_idx += 1
-        end
-
+        removable_start_idx = skip_preserved_lines(lines, start_idx, i)
         return nil if removable_start_idx > i
 
         start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
         Parser::Source::Range.new(buffer, start_pos, bol_pos)
+      end
+
+      # Find the nearest comment line index above a position.
+      # @private
+      def nearest_comment_line_index(src, lines, bol_pos)
+        def_line_idx = src[0...bol_pos].count("\n")
+        i = def_line_idx - 1
+        i -= 1 while i >= 0 && lines[i].strip.empty?
+        return nil unless i >= 0 && lines[i] =~ /^\s*#/
+
+        i
+      end
+
+      # Walk upward through contiguous comment block to find the start.
+      # @private
+      def comment_block_start_index(lines, i)
+        start_idx = i
+        start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
+        start_idx + 1
+      end
+
+      # Skip preserved directive-style lines at the top of the comment block.
+      # @private
+      def skip_preserved_lines(lines, start_idx, i)
+        idx = start_idx
+        idx += 1 while idx <= i && SourceHelpers.preserved_comment_line?(lines[idx])
+        idx
       end
 
       # Normalize a CollectorPlugin-provided doc string before insertion.
@@ -501,32 +564,45 @@ module Docscribe
       # @return [String] Normalized doc string ready to be inserted
       def normalize_plugin_doc(doc, indent, config:, anchor_node:)
         doc = normalize_plugin_doc_indent(doc, indent)
-
-        lines = doc.lines
-        lines.pop while lines.any? && lines.last.strip.empty?
-
-        doc = lines.join
-        doc << "\n" unless doc.end_with?("\n")
+        doc = trim_trailing_blank_lines(doc)
 
         if %i[def defs].include?(anchor_node&.type) && config.include_default_message?
-          scope = anchor_node.type == :defs ? :class : :instance
-          msg = config.default_message(scope, :public)
-
-          has_prose = doc.lines.any? do |l|
-            s = l.strip
-            next false if s.empty? || s == '#'
-            next false if s.start_with?('# @')      # tag line
-            next false if s.start_with?('# +')      # header line
-
-            true
-          end
-
-          unless has_prose
-            doc = "#{indent}# #{msg}\n#{indent}#\n" + doc
-          end
+          doc = prepend_default_message_if_no_prose(doc, anchor_node, indent, config)
         end
 
         doc
+      end
+
+      # Trim trailing blank lines from a doc string.
+      # @private
+      def trim_trailing_blank_lines(doc)
+        lines = doc.lines
+        lines.pop while lines.any? && lines.last.strip.empty?
+        result = lines.join
+        result.end_with?("\n") ? result : "#{result}\n"
+      end
+
+      # Prepend default message if the doc block has only tags.
+      # @private
+      def prepend_default_message_if_no_prose(doc, anchor_node, indent, config)
+        return doc if doc_has_prose?(doc)
+
+        scope = anchor_node.type == :defs ? :class : :instance
+        msg = config.default_message(scope, :public)
+        "#{indent}# #{msg}\n#{indent}#\n" + doc
+      end
+
+      # Check if a doc block has any prose content.
+      # @private
+      def doc_has_prose?(doc)
+        doc.lines.any? do |l|
+          s = l.strip
+          next false if s.empty? || s == '#'
+          next false if s.start_with?('# @')
+          next false if s.start_with?('# +')
+
+          true
+        end
       end
 
       # Normalize indentation of a plugin-generated doc block.
@@ -593,32 +669,26 @@ module Docscribe
       # @param [Hash] options Param documentation.
       # @return [void]
       def apply_method_insertion!(**options)
-        rewriter = options[:rewriter]
-        buffer         = options[:buffer]
-        insertion      = options[:insertion]
-        strategy       = options[:strategy]
-        changes        = options[:changes]
-        file           = options[:file]
-        method_override = options[:method_override]
-        signature_provider = options[:signature_provider]
-        core_rbs_provider = options[:core_rbs_provider]
-        config = options[:config]
+        insertion = options[:insertion]
+        config    = options[:config]
 
         return unless method_insertion_allowed?(insertion, config)
 
-        anchor_bol_range, = method_bol_ranges(buffer, insertion)
-        params = build_method_insertion_params(insertion, config, signature_provider,
-                                               core_rbs_provider, method_override)
+        anchor_bol_range, = method_bol_ranges(options[:buffer], insertion)
+        params = build_method_insertion_params(insertion, config, options[:signature_provider],
+                                               options[:core_rbs_provider], options[:method_override])
+        doc = build_method_doc(insertion, **params)
 
-        case strategy
-        when :aggressive then apply_method_insertion_aggressive!(anchor_bol_range: anchor_bol_range,
-                                                                 insertion: insertion, rewriter: rewriter,
-                                                                 buffer: buffer, changes: changes, file: file,
-                                                                 doc: build_method_doc(insertion, **params))
-        when :safe then apply_method_insertion_safe!(anchor_bol_range: anchor_bol_range,
-                                                     insertion: insertion, rewriter: rewriter,
-                                                     buffer: buffer, strategy: strategy, changes: changes,
-                                                     file: file, **params)
+        case options[:strategy]
+        when :aggressive
+          apply_method_insertion_aggressive!(anchor_bol_range: anchor_bol_range, insertion: insertion,
+                                             rewriter: options[:rewriter], buffer: options[:buffer],
+                                             changes: options[:changes], file: options[:file], doc: doc)
+        when :safe
+          apply_method_insertion_safe!(anchor_bol_range: anchor_bol_range, insertion: insertion,
+                                       rewriter: options[:rewriter], buffer: options[:buffer],
+                                       strategy: options[:strategy], changes: options[:changes],
+                                       file: options[:file], **params)
         end
       end
 
@@ -740,33 +810,40 @@ module Docscribe
         changes        = options[:changes]
         file           = options[:file]
         strategy       = options[:strategy]
-        doc_params     = options.reject { |k, _| [:rewriter, :buffer, :insertion,
-                                         :anchor_bol_range, :info, :changes, :file, :strategy].include?(k) }
+        doc_params     = filter_doc_params(options)
 
         merge_result = build_missing_method_merge_result(insertion, existing_lines: info[:doc_lines],
                                                                     strategy: strategy, **doc_params)
         existing_order_changed, new_block, old_block = compute_doc_replacement(
-          info, merge_result[:lines], strategy: strategy,
-                                      config: doc_params[:config], signature_provider: doc_params[:signature_provider],
-                                      core_rbs_provider: doc_params[:core_rbs_provider],
-                                      param_types: doc_params[:param_types],
-                                      return_type_override: doc_params[:return_type_override],
-                                      override_tags: doc_params[:override_tags]
+          info, merge_result[:lines], strategy: strategy, **doc_params
         )
 
         if new_block != old_block
-          range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
-          rewriter.replace(range, new_block)
-
-          if existing_order_changed
-            add_change(changes: changes, type: :unsorted_tags, insertion: insertion, file: file,
-                       message: 'unsorted tags')
-          end
+          handle_doc_replacement(rewriter, buffer, info, new_block, existing_order_changed,
+                                 insertion, changes, file)
         end
 
         log_method_doc_changes!(insertion: insertion, merge_result: merge_result,
                                 new_block: new_block, old_block: old_block,
                                 changes: changes, file: file)
+      end
+
+      # Filter doc params from options hash.
+      # @private
+      def filter_doc_params(options)
+        options.reject { |k, _| %i[rewriter buffer insertion anchor_bol_range info changes file strategy].include?(k) }
+      end
+
+      # Handle replacement when doc block content changed.
+      # @private
+      def handle_doc_replacement(rewriter, buffer, info, new_block, existing_order_changed, insertion, changes, file)
+        range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
+        rewriter.replace(range, new_block)
+
+        return unless existing_order_changed
+
+        add_change(changes: changes, type: :unsorted_tags, insertion: insertion, file: file,
+                   message: 'unsorted tags')
       end
 
       # Compute merged doc lines and determine if replacement is needed.
@@ -988,24 +1065,36 @@ module Docscribe
       def merge_text_for_pos(chunks)
         return nil if chunks.empty?
 
-        sep_re = /^\s*#\s*\r?\n$/
         chunks = chunks.sort_by { |(sort_key, _s)| sort_key }
         out_lines = []
+        sep_re = /^\s*#\s*\r?\n$/
 
         chunks.each do |(_k, chunk)|
           next if chunk.nil? || chunk.empty?
 
-          lines = chunk.lines
-          seps = []
-          seps << lines.shift while !lines.empty? && lines.first.match?(sep_re)
-
-          sep = seps.first
-          out_lines << sep if sep && (out_lines.empty? || !out_lines.last.match?(sep_re))
-          out_lines.concat(lines)
+          merge_chunk_into_out(chunk, out_lines, sep_re)
         end
 
         text = out_lines.join
         text.empty? ? nil : text
+      end
+
+      # Merge a single chunk into the output lines array.
+      # @private
+      def merge_chunk_into_out(chunk, out_lines, sep_re)
+        lines = chunk.lines
+        seps = extract_separators(lines, sep_re)
+        sep = seps.first
+        out_lines << sep if sep && (out_lines.empty? || !out_lines.last.match?(sep_re))
+        out_lines.concat(lines)
+      end
+
+      # Extract leading separator lines from a chunk.
+      # @private
+      def extract_separators(lines, sep_re)
+        seps = []
+        seps << lines.shift while !lines.empty? && lines.first.match?(sep_re)
+        seps
       end
 
       # Method documentation.
@@ -1122,30 +1211,41 @@ module Docscribe
       # @param [nil] names Param documentation.
       # @return [Object]
       def build_attr_doc_lines(ins, indent:, config:, signature_provider:, names: nil)
-        param_tag_style = config.param_tag_style
         names ||= ins.names
         lines = []
 
         names.each_with_index do |name_sym, idx|
-          attr_name = name_sym.to_s
-          mode = ins.access.to_s
-          attr_type = attribute_type(ins, name_sym, config, signature_provider: signature_provider)
-
-          lines << "#{indent}# @!attribute [#{mode}] #{attr_name}"
-
-          if config.emit_visibility_tags?
-            lines << "#{indent}# @private" if ins.visibility == :private
-            lines << "#{indent}# @protected" if ins.visibility == :protected
-          end
-
-          lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
-          if %i[w rw].include?(ins.access)
-            lines << format_attribute_param_tag(indent, 'value', attr_type, style: param_tag_style)
-          end
-
-          lines << "#{indent}#" if idx < names.length - 1
+          lines.concat(build_single_attr_lines(ins, name_sym, idx, names.length,
+                                               indent: indent, config: config, signature_provider: signature_provider))
         end
 
+        lines
+      end
+
+      # Build doc lines for a single attribute.
+      # @private
+      def build_single_attr_lines(ins, name_sym, idx, total, indent:, config:, signature_provider:)
+        attr_type = attribute_type(ins, name_sym, config, signature_provider: signature_provider)
+        lines = ["#{indent}# @!attribute [#{ins.access}] #{name_sym}"]
+
+        lines.concat(attr_visibility_lines(indent, config, ins))
+        lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
+        if %i[w rw].include?(ins.access)
+          lines << format_attribute_param_tag(indent, 'value', attr_type, style: config.param_tag_style)
+        end
+
+        lines << "#{indent}#" if idx < total - 1
+        lines
+      end
+
+      # Build visibility lines for an attribute.
+      # @private
+      def attr_visibility_lines(indent, config, ins)
+        return [] unless config.emit_visibility_tags?
+
+        lines = []
+        lines << "#{indent}# @private" if ins.visibility == :private
+        lines << "#{indent}# @protected" if ins.visibility == :protected
         lines
       end
 

@@ -294,98 +294,125 @@ module Docscribe
 
         case node.type
         when :def
-          name, _args, _body = *node
-          anchor_node = pending_sig_anchor || node
-
-          if module_function_applies?(ctx, name)
-            scope = :class
-            vis = ctx.explicit_class[name] || ctx.default_class_vis
-
-            # module_function makes included instance method private by default,
-            # but explicit named visibility can override it (e.g. `public :foo`).
-            included_vis = ctx.explicit_instance[name] || :private
-
-            @insertions << Insertion.new(node, scope, vis, container_for(ctx), true, included_vis, anchor_node)
-            return
-          end
-
-          if extend_self_applies?(ctx)
-            # Under `extend self` in a module, instance methods are callable as module methods (M.foo).
-            scope = :class
-            vis = ctx.explicit_instance[name] || ctx.default_instance_vis
-
-            @insertions << Insertion.new(node, scope, vis, container_for(ctx), nil, nil, anchor_node)
-            return
-          end
-
-          # existing behavior for non-module_function:
-          if ctx.inside_sclass
-            vis = ctx.explicit_class[name] || ctx.default_class_vis
-            scope = :class
-          else
-            vis = ctx.explicit_instance[name] || ctx.default_instance_vis
-            scope = :instance
-          end
-
-          @insertions << Insertion.new(node, scope, vis, container_for(ctx), nil, nil, anchor_node)
-
+          process_def_stmt(node, ctx, pending_sig_anchor: pending_sig_anchor)
         when :defs
-          recv, name, _args, _body = *node
-          vis = ctx.explicit_class[name] || ctx.default_class_vis
-
-          container =
-            if const_receiver?(recv)
-              const_name(recv)
-            else
-              container_for(ctx)
-            end
-
-          @insertions << Insertion.new(node, :class, vis, container, nil, nil, pending_sig_anchor || node)
-
+          process_defs_stmt(node, ctx, pending_sig_anchor: pending_sig_anchor)
         when :sclass
-          # `class << self` — affects default visibility for singleton methods and changes scope.
-          recv, body = *node
-          inner_ctx = ctx.dup
-
-          if self_node?(recv)
-            # class << self
-            inner_ctx.inside_sclass = true
-            inner_ctx.container_override = nil
-          elsif const_receiver?(recv)
-            # class << Foo  (const receiver) — document methods under Foo
-            inner_ctx.inside_sclass = true
-            inner_ctx.container_override = const_name(recv)
-          else
-            # Unknown receiver (e.g. class << obj) — keep prior behavior
-            inner_ctx.inside_sclass = false
-            inner_ctx.container_override = nil
-          end
-
-          # NOTE: we intentionally do NOT reset default_class_vis here; we inherit via ctx.dup.
-          process_body(body, inner_ctx)
-
+          process_sclass_stmt(node, ctx)
         when :casgn
           if process_struct_casgn(node)
             # handled
           else
             process(node)
           end
-
         when :send
-          if process_attr_send(node, ctx)
-            # handled
-          elsif process_extend_self_send(node, ctx)
-            # handled
-          elsif process_module_function_send(node, ctx)
-            # handled
-          elsif process_class_method_visibility_send(node, ctx)
-            # handled
-          else
-            process_visibility_send(node, ctx, pending_sig_anchor: pending_sig_anchor)
-          end
-
+          process_send_stmt(node, ctx, pending_sig_anchor: pending_sig_anchor)
         else
           process(node)
+        end
+      end
+
+      # Process a `:def` node for documentation insertion.
+      #
+      # @private
+      # @param [Parser::AST::Node] node
+      # @param [VisibilityCtx] ctx
+      # @param [Parser::AST::Node, nil] pending_sig_anchor
+      # @return [void]
+      def process_def_stmt(node, ctx, pending_sig_anchor:)
+        name, _args, _body = *node
+        anchor_node = pending_sig_anchor || node
+
+        if module_function_applies?(ctx, name)
+          scope = :class
+          vis = ctx.explicit_class[name] || ctx.default_class_vis
+          included_vis = ctx.explicit_instance[name] || :private
+
+          @insertions << Insertion.new(node, scope, vis, container_for(ctx), true, included_vis, anchor_node)
+          return
+        end
+
+        if extend_self_applies?(ctx)
+          @insertions << Insertion.new(node, :class, ctx.explicit_instance[name] || ctx.default_instance_vis,
+                                       container_for(ctx), nil, nil, anchor_node)
+          return
+        end
+
+        if ctx.inside_sclass
+          vis = ctx.explicit_class[name] || ctx.default_class_vis
+          scope = :class
+        else
+          vis = ctx.explicit_instance[name] || ctx.default_instance_vis
+          scope = :instance
+        end
+
+        @insertions << Insertion.new(node, scope, vis, container_for(ctx), nil, nil, anchor_node)
+      end
+
+      # Process a `:defs` node for documentation insertion.
+      #
+      # @private
+      # @param [Parser::AST::Node] node
+      # @param [VisibilityCtx] ctx
+      # @param [Parser::AST::Node, nil] pending_sig_anchor
+      # @return [void]
+      def process_defs_stmt(node, ctx, pending_sig_anchor:)
+        recv, name, _args, _body = *node
+        vis = ctx.explicit_class[name] || ctx.default_class_vis
+
+        container =
+          if const_receiver?(recv)
+            const_name(recv)
+          else
+            container_for(ctx)
+          end
+
+        @insertions << Insertion.new(node, :class, vis, container, nil, nil, pending_sig_anchor || node)
+      end
+
+      # Process a `:sclass` node for documentation insertion.
+      #
+      # @private
+      # @param [Parser::AST::Node] node
+      # @param [VisibilityCtx] ctx
+      # @return [void]
+      def process_sclass_stmt(node, ctx)
+        # `class << self` — affects default visibility for singleton methods and changes scope.
+        recv, body = *node
+        inner_ctx = ctx.dup
+
+        if self_node?(recv)
+          inner_ctx.inside_sclass = true
+          inner_ctx.container_override = nil
+        elsif const_receiver?(recv)
+          inner_ctx.inside_sclass = true
+          inner_ctx.container_override = const_name(recv)
+        else
+          inner_ctx.inside_sclass = false
+          inner_ctx.container_override = nil
+        end
+
+        process_body(body, inner_ctx)
+      end
+
+      # Process a `:send` node for documentation insertion.
+      #
+      # @private
+      # @param [Parser::AST::Node] node
+      # @param [VisibilityCtx] ctx
+      # @param [Parser::AST::Node, nil] pending_sig_anchor
+      # @return [void]
+      def process_send_stmt(node, ctx, pending_sig_anchor:)
+        if process_attr_send(node, ctx)
+          # handled
+        elsif process_extend_self_send(node, ctx)
+          # handled
+        elsif process_module_function_send(node, ctx)
+          # handled
+        elsif process_class_method_visibility_send(node, ctx)
+          # handled
+        else
+          process_visibility_send(node, ctx, pending_sig_anchor: pending_sig_anchor)
         end
       end
 
@@ -611,42 +638,83 @@ module Docscribe
         container = container_for(ctx)
 
         if args.empty?
-          if ctx.inside_sclass
-            ctx.default_class_vis = meth
-          else
-            ctx.default_instance_vis = meth
-          end
+          process_visibility_bare_modifier(ctx, meth)
           return
         end
 
-        # Inline modifier: private def foo / private def self.foo
         if args.length == 1 && args[0].is_a?(Parser::AST::Node) && %i[def defs].include?(args[0].type)
-          def_node = args[0]
-          anchor_node = pending_sig_anchor || def_node
-
-          case def_node.type
-          when :def
-            name, = *def_node
-
-            if module_function_applies?(ctx, name)
-              mod_vis = ctx.explicit_class[name] || ctx.default_class_vis
-              included_vis = meth
-              @insertions << Insertion.new(def_node, :class, mod_vis, container, true, included_vis, anchor_node)
-            elsif ctx.inside_sclass
-              @insertions << Insertion.new(def_node, :class, meth, container, nil, nil, anchor_node)
-            else
-              @insertions << Insertion.new(def_node, :instance, meth, container, nil, nil, anchor_node)
-            end
-
-            return
-
-          when :defs
-            @insertions << Insertion.new(def_node, :class, meth, container, nil, nil, anchor_node)
-            return
-          end
+          process_visibility_inline_modifier(args[0], ctx, meth, container, pending_sig_anchor)
+          return
         end
 
-        # Named visibility: private :foo
+        process_visibility_named_modifier(args, ctx, meth, container)
+      end
+
+      # Process a bare visibility modifier (no args).
+      #
+      # @private
+      # @param [VisibilityCtx] ctx
+      # @param [Symbol] meth
+      # @return [void]
+      def process_visibility_bare_modifier(ctx, meth)
+        if ctx.inside_sclass
+          ctx.default_class_vis = meth
+        else
+          ctx.default_instance_vis = meth
+        end
+      end
+
+      # Process an inline visibility modifier (private def foo).
+      #
+      # @private
+      # @param [Parser::AST::Node] def_node
+      # @param [VisibilityCtx] ctx
+      # @param [Symbol] meth
+      # @param [String] container
+      # @param [Parser::AST::Node, nil] pending_sig_anchor
+      # @return [void]
+      def process_visibility_inline_modifier(def_node, ctx, meth, container, pending_sig_anchor)
+        anchor_node = pending_sig_anchor || def_node
+
+        case def_node.type
+        when :def
+          process_visibility_inline_def(def_node, ctx, meth, container, anchor_node)
+        when :defs
+          @insertions << Insertion.new(def_node, :class, meth, container, nil, nil, anchor_node)
+        end
+      end
+
+      # Process an inline def under a visibility modifier.
+      #
+      # @private
+      # @param [Parser::AST::Node] def_node
+      # @param [VisibilityCtx] ctx
+      # @param [Symbol] meth
+      # @param [String] container
+      # @param [Parser::AST::Node] anchor_node
+      # @return [void]
+      def process_visibility_inline_def(def_node, ctx, meth, container, anchor_node)
+        name, = *def_node
+
+        if module_function_applies?(ctx, name)
+          mod_vis = ctx.explicit_class[name] || ctx.default_class_vis
+          @insertions << Insertion.new(def_node, :class, mod_vis, container, true, meth, anchor_node)
+        elsif ctx.inside_sclass
+          @insertions << Insertion.new(def_node, :class, meth, container, nil, nil, anchor_node)
+        else
+          @insertions << Insertion.new(def_node, :instance, meth, container, nil, nil, anchor_node)
+        end
+      end
+
+      # Process a named visibility modifier (private :foo).
+      #
+      # @private
+      # @param [Array<Parser::AST::Node>] args
+      # @param [VisibilityCtx] ctx
+      # @param [Symbol] meth
+      # @param [String] container
+      # @return [void]
+      def process_visibility_named_modifier(args, ctx, meth, container)
         args.each do |arg|
           sym = extract_name_sym(arg)
           next unless sym

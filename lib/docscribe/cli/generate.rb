@@ -21,10 +21,32 @@ module Docscribe
         # @raise [OptionParser::InvalidOption]
         # @return [Integer] exit code
         def run(argv)
-          opts = {
-            output: nil,
-            stdout: false
-          }
+          opts, parser = parse_generate_options(argv)
+          return 0 if opts[:help]
+
+          plugin_type, class_name = extract_generate_args(argv)
+          result = validate_generate_args(plugin_type, class_name, parser)
+          return result if result
+
+          content = render(plugin_type, class_name)
+
+          if opts[:stdout]
+            puts content
+            return 0
+          end
+
+          write_plugin(content, plugin_type: plugin_type, class_name: class_name, output_dir: opts[:output] || '.')
+        end
+
+        private
+
+        # Parse options for the generate subcommand.
+        #
+        # @private
+        # @param [Array<String>] argv
+        # @return [Array(Hash, OptionParser)]
+        def parse_generate_options(argv)
+          opts = { output: nil, stdout: false, help: false }
 
           parser = OptionParser.new do |o|
             o.banner = <<~TEXT
@@ -40,8 +62,7 @@ module Docscribe
             o.on('--output DIR', 'Directory to write the plugin file (default: .)') { |v| opts[:output] = v }
             o.on('--stdout', 'Print the generated plugin to STDOUT instead of writing a file') { opts[:stdout] = true }
             o.on('-h', '--help', 'Show this help') do
-              puts o
-              return 0
+              opts[:help] = true
             end
           end
 
@@ -50,12 +71,28 @@ module Docscribe
           rescue OptionParser::InvalidOption => e
             warn e.message
             warn parser
-            return 1
           end
 
-          plugin_type = argv.shift
-          class_name  = argv.shift
+          [opts, parser]
+        end
 
+        # Extract plugin_type and class_name from remaining argv.
+        #
+        # @private
+        # @param [Array<String>] argv
+        # @return [Array(String, String)]
+        def extract_generate_args(argv)
+          [argv.shift, argv.shift]
+        end
+
+        # Validate generate arguments and return exit code on failure.
+        #
+        # @private
+        # @param [String, nil] plugin_type
+        # @param [String, nil] class_name
+        # @param [OptionParser] parser
+        # @return [Integer, nil] exit code or nil if valid
+        def validate_generate_args(plugin_type, class_name, parser)
           unless plugin_type && class_name
             warn 'Error: both <type> and <PluginName> are required.'
             warn parser
@@ -72,17 +109,8 @@ module Docscribe
             return 1
           end
 
-          content = render(plugin_type, class_name)
-
-          if opts[:stdout]
-            puts content
-            return 0
-          end
-
-          write_plugin(content, plugin_type: plugin_type, class_name: class_name, output_dir: opts[:output] || '.')
+          nil
         end
-
-        private
 
         # Check whether a string is a valid Ruby constant name.
         #

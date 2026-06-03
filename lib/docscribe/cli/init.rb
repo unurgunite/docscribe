@@ -18,22 +18,8 @@ module Docscribe
         # @param [Array<String>] argv command-line arguments for `docscribe init`
         # @return [Integer] process exit code
         def run(argv)
-          opts = {
-            config: 'docscribe.yml',
-            force: false,
-            stdout: false
-          }
-
-          OptionParser.new do |o|
-            o.banner = 'Usage: docscribe init [options]'
-            o.on('--config PATH', 'Where to write the config (default: docscribe.yml)') { |v| opts[:config] = v }
-            o.on('-f', '--force', 'Overwrite if the file already exists') { opts[:force] = true }
-            o.on('--stdout', 'Print config template to STDOUT instead of writing a file') { opts[:stdout] = true }
-            o.on('-h', '--help', 'Show this help') do
-              puts o
-              return 0
-            end
-          end.parse!(argv)
+          opts = parse_init_options(argv)
+          return 0 if opts[:help]
 
           yaml = Docscribe::Config.default_yaml
 
@@ -42,6 +28,45 @@ module Docscribe
             return 0
           end
 
+          write_init_config(opts, yaml)
+        end
+
+        private
+
+        # Parse CLI options for `docscribe init`.
+        #
+        # @private
+        # @param [Array<String>] argv
+        # @return [Hash] parsed options
+        def parse_init_options(argv)
+          opts = {
+            config: 'docscribe.yml',
+            force: false,
+            stdout: false,
+            help: false
+          }
+
+          OptionParser.new do |o|
+            o.banner = 'Usage: docscribe init [options]'
+            o.on('--config PATH', 'Where to write the config (default: docscribe.yml)') { |v| opts[:config] = v }
+            o.on('-f', '--force', 'Overwrite if the file already exists') { opts[:force] = true }
+            o.on('--stdout', 'Print config template to STDOUT instead of writing a file') { opts[:stdout] = true }
+            o.on('-h', '--help', 'Show this help') do
+              opts[:help] = true
+              puts o
+            end
+          end.parse!(argv)
+
+          opts
+        end
+
+        # Write the config template to a file.
+        #
+        # @private
+        # @param [Hash] opts parsed options
+        # @param [String] yaml config template content
+        # @return [Integer] exit code
+        def write_init_config(opts, yaml)
           path = opts[:config]
           if File.exist?(path) && !opts[:force]
             warn "Config already exists: #{path} (use --force to overwrite)"

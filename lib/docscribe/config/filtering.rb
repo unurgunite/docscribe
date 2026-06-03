@@ -11,20 +11,33 @@ module Docscribe
     # @raise [StandardError]
     # @return [Boolean]
     def process_file?(path)
-      files = raw.dig('filter', 'files') || {}
-      include_patterns = normalize_file_patterns(files['include'])
-      exclude_patterns = normalize_file_patterns(files['exclude'])
-
-      rel = begin
-        Pathname.new(path).expand_path.relative_path_from(Pathname.pwd).cleanpath.to_s
-      rescue StandardError
-        path
-      end
+      include_patterns, exclude_patterns = load_file_patterns
+      rel = relative_path(path)
 
       return false if file_matches_any?(exclude_patterns, rel)
       return true if include_patterns.empty?
 
       file_matches_any?(include_patterns, rel)
+    end
+
+    # Load normalized file include/exclude patterns from config.
+    #
+    # @private
+    # @return [Array(Array<String>, Array<String>)] include_patterns, exclude_patterns
+    def load_file_patterns
+      files = raw.dig('filter', 'files') || {}
+      [normalize_file_patterns(files['include']), normalize_file_patterns(files['exclude'])]
+    end
+
+    # Compute the relative path for filtering.
+    #
+    # @private
+    # @param [String] path
+    # @return [String]
+    def relative_path(path)
+      Pathname.new(path).expand_path.relative_path_from(Pathname.pwd).cleanpath.to_s
+    rescue StandardError
+      path
     end
 
     # Decide whether a method should be processed based on configured method filters.
@@ -54,8 +67,6 @@ module Docscribe
 
       matches_any?(inc, method_id)
     end
-
-    private
 
     # Normalize file filter patterns:
     # - compact nils

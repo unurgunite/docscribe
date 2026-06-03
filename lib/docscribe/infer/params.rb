@@ -23,10 +23,32 @@ module Docscribe
       #   be treated specially as Hash
       # @return [String]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
+        prefix_param_type(name) || inferred_param_type(name, default_str, fallback_type,
+                                                       treat_options_keyword_as_hash: treat_options_keyword_as_hash)
+      end
+
+      # Return type for special parameter prefixes.
+      #
+      # @private
+      # @param [String] name parameter name
+      # @return [String, nil]
+      def prefix_param_type(name)
         return 'Array' if name.start_with?('*') && !name.start_with?('**')
         return 'Hash'  if name.start_with?('**')
         return 'Proc'  if name.start_with?('&')
 
+        nil
+      end
+
+      # Infer type for a regular or keyword parameter with optional default.
+      #
+      # @private
+      # @param [String] name parameter name
+      # @param [String, nil] default_str default expression source
+      # @param [String] fallback_type
+      # @param [Boolean] treat_options_keyword_as_hash
+      # @return [String]
+      def inferred_param_type(name, default_str, fallback_type, treat_options_keyword_as_hash:)
         is_kw = name.end_with?(':')
         node = parse_expr(default_str)
         ty = Literals.type_from_literal(node, fallback_type: fallback_type)

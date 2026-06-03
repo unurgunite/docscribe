@@ -17,24 +17,48 @@ module Docscribe
     # @return [Docscribe::Types::ProviderChain, nil]
     def signature_provider_for(source:, file:)
       providers = []
-
-      if sorbet_enabled?
-        begin
-          require 'docscribe/types/sorbet/source_provider'
-          providers << Docscribe::Types::Sorbet::SourceProvider.new(
-            source: source,
-            file: file,
-            collapse_generics: sorbet_collapse_generics?
-          )
-        rescue LoadError
-          # Sorbet support is optional; fall back quietly.
-        end
-
-        providers << sorbet_rbi_provider
-      end
-
+      append_sorbet_providers(providers, source: source, file: file)
       providers << rbs_provider if rbs_enabled?
+      build_provider_chain(providers)
+    end
 
+    # Append Sorbet-based providers to the list.
+    #
+    # @private
+    # @param [Array] providers
+    # @param [String] source
+    # @param [String] file
+    # @return [void]
+    def append_sorbet_providers(providers, source:, file:)
+      return unless sorbet_enabled?
+
+      providers << sorbet_source_provider(source, file)
+      providers << sorbet_rbi_provider
+    end
+
+    # Build a Sorbet source provider (inline sigs).
+    #
+    # @private
+    # @param [String] source
+    # @param [String] file
+    # @return [Docscribe::Types::Sorbet::SourceProvider, nil]
+    def sorbet_source_provider(source, file)
+      require 'docscribe/types/sorbet/source_provider'
+      Docscribe::Types::Sorbet::SourceProvider.new(
+        source: source,
+        file: file,
+        collapse_generics: sorbet_collapse_generics?
+      )
+    rescue LoadError
+      nil
+    end
+
+    # Build the provider chain from a non-empty list, or return nil.
+    #
+    # @private
+    # @param [Array] providers
+    # @return [Docscribe::Types::ProviderChain, nil]
+    def build_provider_chain(providers)
       providers = providers.compact
       return nil if providers.empty?
 

@@ -65,10 +65,7 @@ module Docscribe
       results = Array(plugin.collect(ast, buffer))
 
       results.map do |insertion|
-        unless insertion.is_a?(Hash)
-          warn "Docscribe: CollectorPlugin #{plugin.class} returned #{insertion.class}, expected Hash" if debug?
-          next nil
-        end
+        next nil unless valid_plugin_result?(insertion, plugin)
 
         insertion.merge(
           __docscribe_priority: entry.priority,
@@ -79,6 +76,19 @@ module Docscribe
     rescue StandardError => e
       warn "Docscribe: CollectorPlugin #{plugin.class} raised #{e.class}: #{e.message}" if debug?
       []
+    end
+
+    # Validate a CollectorPlugin result is a Hash.
+    #
+    # @private
+    # @param [Object] insertion
+    # @param [Object] plugin
+    # @return [Boolean]
+    def self.valid_plugin_result?(insertion, plugin)
+      return true if insertion.is_a?(Hash)
+
+      warn "Docscribe: CollectorPlugin #{plugin.class} returned #{insertion.class}, expected Hash" if debug?
+      false
     end
 
     # @return [Boolean]

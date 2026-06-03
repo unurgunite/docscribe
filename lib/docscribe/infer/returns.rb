@@ -25,8 +25,8 @@ module Docscribe
 
         body = root.children.last
         local_var_types = build_local_variable_types(body)
-        last_expr_type(body, fallback_type: FALLBACK_TYPE, nil_as_optional: true,
-                             local_var_types: local_var_types) || FALLBACK_TYPE
+        run_last_expr_type(body, fallback_type: FALLBACK_TYPE, nil_as_optional: true,
+                                 local_var_types: local_var_types) || FALLBACK_TYPE
       rescue Parser::SyntaxError
         FALLBACK_TYPE
       end
@@ -46,8 +46,8 @@ module Docscribe
         return FALLBACK_TYPE unless body
 
         local_var_types = build_local_variable_types(body)
-        last_expr_type(body, fallback_type: FALLBACK_TYPE, nil_as_optional: true,
-                             local_var_types: local_var_types) || FALLBACK_TYPE
+        run_last_expr_type(body, fallback_type: FALLBACK_TYPE, nil_as_optional: true,
+                                 local_var_types: local_var_types) || FALLBACK_TYPE
       end
 
       # Return a structured return-type spec for a method node.
@@ -82,9 +82,9 @@ module Docscribe
                                           param_types: param_types)
         else
           spec[:normal] =
-            last_expr_type(body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                 core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                 local_var_types: local_var_types) || FALLBACK_TYPE
+            run_last_expr_type(body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                     core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                     local_var_types: local_var_types) || FALLBACK_TYPE
         end
 
         spec
@@ -106,9 +106,9 @@ module Docscribe
         main_body = body.children[0]
         all_local_var_types = build_local_variable_types(body)
         spec[:normal] =
-          last_expr_type(main_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                    core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                    local_var_types: all_local_var_types) || FALLBACK_TYPE
+          run_last_expr_type(main_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                        core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                        local_var_types: all_local_var_types) || FALLBACK_TYPE
 
         body.children.each do |ch|
           next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody
@@ -116,9 +116,9 @@ module Docscribe
           exc_list, _asgn, rescue_body = *ch
           exc_names = Raises.exception_names_from_rescue_list(exc_list)
           rtype =
-            last_expr_type(rescue_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                        core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                        local_var_types: all_local_var_types) ||
+            run_last_expr_type(rescue_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                            core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                            local_var_types: all_local_var_types) ||
             fallback_type
           spec[:rescues] << [exc_names, rtype]
         end
@@ -163,122 +163,85 @@ module Docscribe
       end
 
       # Handle `:begin` node for last_expr_type.
-      # Method documentation.
       #
       # @note module_function: when included, also defines #handle_begin_node (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] nil_as_optional Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
-      # @param [Object] param_types Param documentation.
-      # @param [Object] local_var_types Param documentation.
+      # @param [Object] node
+      # @param [Hash] opts
       # @return [Object]
-      def handle_begin_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
-        last_expr_type(node.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                           core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                           local_var_types: local_var_types)
+      def handle_begin_node(node, **opts)
+        run_last_expr_type(node.children.last, **opts)
       end
 
       # Handle `:if` node for last_expr_type.
-      # Method documentation.
       #
       # @note module_function: when included, also defines #handle_if_node (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] nil_as_optional Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
-      # @param [Object] param_types Param documentation.
-      # @param [Object] local_var_types Param documentation.
+      # @param [Object] node
+      # @param [Hash] opts
       # @return [Object]
-      def handle_if_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
-        t = last_expr_type(node.children[1], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                             core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                             local_var_types: local_var_types)
-        e = last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                             core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                             local_var_types: local_var_types)
-        unify_types(t, e, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+      def handle_if_node(node, **opts)
+        t = run_last_expr_type(node.children[1], **opts)
+        e = run_last_expr_type(node.children[2], **opts)
+        unify_types(t, e, fallback_type: opts[:fallback_type], nil_as_optional: opts[:nil_as_optional])
       end
 
       # Handle `:case` node for last_expr_type.
-      # Method documentation.
       #
       # @note module_function: when included, also defines #handle_case_node (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] nil_as_optional Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
-      # @param [Object] param_types Param documentation.
-      # @param [Object] local_var_types Param documentation.
+      # @param [Object] node
+      # @param [Hash] opts
       # @return [Object]
-      def handle_case_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
+      def handle_case_node(node, **opts)
         branches = node.children[1..].compact.flat_map do |child|
           if child.type == :when
-            last_expr_type(child.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                                core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                                local_var_types: local_var_types)
+            run_last_expr_type(child.children.last, **opts)
           else
-            last_expr_type(child, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                  core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                  local_var_types: local_var_types)
+            run_last_expr_type(child, **opts)
           end
         end.compact
 
         if branches.empty?
-          fallback_type
+          opts[:fallback_type]
         else
           branches.reduce do |a, b|
-            unify_types(a, b, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+            unify_types(a, b, fallback_type: opts[:fallback_type], nil_as_optional: opts[:nil_as_optional])
           end
         end
       end
 
       # Handle `:block` node for last_expr_type.
-      # Method documentation.
       #
       # @note module_function: when included, also defines #handle_block_node (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] nil_as_optional Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
-      # @param [Object] param_types Param documentation.
-      # @param [Object] local_var_types Param documentation.
+      # @param [Object] node
+      # @param [Hash] opts
       # @return [Object]
-      def handle_block_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
+      def handle_block_node(node, **opts)
         send_node = node.children[0]
         if send_node&.type == :send
           recv = send_node.children[0]
           meth = send_node.children[1]
-          rbs_type = resolve_rbs_for_send(recv, meth, core_rbs_provider, local_var_types, param_types)
+          rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types], opts[:param_types])
           return rbs_type if rbs_type
         end
 
-        last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                         core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                         local_var_types: local_var_types)
+        run_last_expr_type(node.children[2], **opts)
       end
 
       # Handle `:send` node for last_expr_type.
-      # Method documentation.
       #
       # @note module_function: when included, also defines #handle_send_node (instance visibility: private)
-      # @param [Object] node Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] _nil_as_optional Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
-      # @param [Object] param_types Param documentation.
-      # @param [Object] local_var_types Param documentation.
+      # @param [Object] node
+      # @param [Hash] opts
       # @return [Object]
-      def handle_send_node(node, fallback_type, _nil_as_optional, core_rbs_provider, param_types, local_var_types)
+      def handle_send_node(node, **opts)
         recv = node.children[0]
         meth = node.children[1]
 
-        if core_rbs_provider
-          rbs_type = resolve_rbs_for_send(recv, meth, core_rbs_provider, local_var_types, param_types)
+        if opts[:core_rbs_provider]
+          rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types], opts[:param_types])
           return rbs_type if rbs_type
         end
 
-        Literals.type_from_literal(node, fallback_type: fallback_type)
+        Literals.type_from_literal(node, fallback_type: opts[:fallback_type])
       end
 
       # Resolve RBS return type for a send node's receiver, if possible.
@@ -296,25 +259,49 @@ module Docscribe
         return nil unless core_rbs_provider
 
         if recv&.type == :lvar
-          lvar_name = recv.children.first
-          recv_type = nil
-          recv_type = local_var_types[lvar_name.to_s] if local_var_types && lvar_name
-          recv_type = param_types[lvar_name.to_s] if !recv_type && param_types && lvar_name
-          if recv_type
-            rbs_type = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
-            return rbs_type unless rbs_type == FALLBACK_TYPE
-          end
+          resolve_lvar_rbs(recv, meth, core_rbs_provider, local_var_types, param_types)
         elsif recv&.type == :send
-          inner_type = last_expr_type(recv, fallback_type: nil, nil_as_optional: false,
-                                            core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                            local_var_types: local_var_types)
-          if inner_type
-            rbs_type = resolve_rbs_return_type(inner_type, meth, core_rbs_provider)
-            return rbs_type unless rbs_type == FALLBACK_TYPE
-          end
+          resolve_chained_send_rbs(recv, meth, core_rbs_provider, local_var_types, param_types)
         end
+      end
 
-        nil
+      # Resolve RBS return type for an `:lvar` receiver.
+      #
+      # @private
+      # @param [Object] recv
+      # @param [Object] meth
+      # @param [Object] core_rbs_provider
+      # @param [Object] local_var_types
+      # @param [Object] param_types
+      # @return [String, nil]
+      def resolve_lvar_rbs(recv, meth, core_rbs_provider, local_var_types, param_types)
+        lvar_name = recv.children.first
+        recv_type = nil
+        recv_type = local_var_types[lvar_name.to_s] if local_var_types && lvar_name
+        recv_type = param_types[lvar_name.to_s] if !recv_type && param_types && lvar_name
+        return nil unless recv_type
+
+        rbs_type = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
+        rbs_type unless rbs_type == FALLBACK_TYPE
+      end
+
+      # Resolve RBS return type for a chained `:send` receiver.
+      #
+      # @private
+      # @param [Object] recv
+      # @param [Object] meth
+      # @param [Object] core_rbs_provider
+      # @param [Object] local_var_types
+      # @param [Object] param_types
+      # @return [String, nil]
+      def resolve_chained_send_rbs(recv, meth, core_rbs_provider, local_var_types, param_types)
+        inner_type = run_last_expr_type(recv, fallback_type: nil, nil_as_optional: false,
+                                              core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                              local_var_types: local_var_types)
+        return nil unless inner_type
+
+        rbs_type = resolve_rbs_return_type(inner_type, meth, core_rbs_provider)
+        rbs_type unless rbs_type == FALLBACK_TYPE
       end
 
       # Infer the type of the last expression in a node.
@@ -337,23 +324,28 @@ module Docscribe
       # @return [String, nil]
       def last_expr_type(node, fallback_type:, nil_as_optional:, core_rbs_provider: nil, param_types: nil,
                          local_var_types: nil)
+        run_last_expr_type(node, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                 core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                 local_var_types: local_var_types)
+      end
+
+      # Dispatch `last_expr_type` based on node type.
+      #
+      # @note module_function: when included, also defines #run_last_expr_type (instance visibility: private)
+      # @param [Parser::AST::Node, nil] node
+      # @param [Hash] opts options passed through as keyword args
+      # @return [String, nil]
+      def run_last_expr_type(node, **opts)
         return nil unless node
 
         case node.type
-        when :begin
-          handle_begin_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
-        when :if
-          handle_if_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
-        when :case
-          handle_case_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
-        when :return
-          Literals.type_from_literal(node.children.first, fallback_type: fallback_type)
-        when :block
-          handle_block_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
-        when :send
-          handle_send_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
-        else
-          Literals.type_from_literal(node, fallback_type: fallback_type)
+        when :begin then handle_begin_node(node, **opts)
+        when :if then handle_if_node(node, **opts)
+        when :case then handle_case_node(node, **opts)
+        when :return then Literals.type_from_literal(node.children.first, fallback_type: opts[:fallback_type])
+        when :block then handle_block_node(node, **opts)
+        when :send then handle_send_node(node, **opts)
+        else Literals.type_from_literal(node, fallback_type: opts[:fallback_type])
         end
       end
 

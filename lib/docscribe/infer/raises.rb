@@ -25,19 +25,9 @@ module Docscribe
         ASTWalk.walk(node) do |n|
           case n.type
           when :resbody
-            exc_list = n.children[0]
-            raises.concat(exception_names_from_rescue_list(exc_list))
-
+            raises.concat(exception_names_from_rescue_list(n.children[0]))
           when :send
-            recv, meth, *args = *n
-            next unless recv.nil? && %i[raise fail].include?(meth)
-
-            if args.empty?
-              raises << DEFAULT_ERROR
-            else
-              c = Names.const_full_name(args[0])
-              raises << (c || DEFAULT_ERROR)
-            end
+            collect_send_raise(raises, n)
           end
         end
 
@@ -61,6 +51,24 @@ module Docscribe
           exc_list.children.map { |e| Names.const_full_name(e) || DEFAULT_ERROR }
         else
           [Names.const_full_name(exc_list) || DEFAULT_ERROR]
+        end
+      end
+
+      # Collect exception names from a `raise` or `fail` send node.
+      #
+      # @private
+      # @param [Array<String>] raises accumulator
+      # @param [Parser::AST::Node] node send node
+      # @return [void]
+      def collect_send_raise(raises, node)
+        recv, meth, *args = *node
+        return unless recv.nil? && %i[raise fail].include?(meth)
+
+        if args.empty?
+          raises << DEFAULT_ERROR
+        else
+          c = Names.const_full_name(args[0])
+          raises << (c || DEFAULT_ERROR)
         end
       end
     end

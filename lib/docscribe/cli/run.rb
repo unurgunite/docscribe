@@ -280,28 +280,61 @@ module Docscribe
         # @param [Hash] state shared processing state
         # @return [void]
         def handle_check_result(path, src:, out:, file_changes:, display_path:, options:, state:)
-          type_mismatches = file_changes.select { |c| %i[updated_param updated_return].include?(c[:type]) }
+          type_mismatches = type_mismatch_changes(file_changes)
           has_real_changes = file_changes.any? { |c| !%i[updated_param updated_return].include?(c[:type]) }
 
           if out == src && !has_real_changes
-            if type_mismatches.any?
-              state[:type_mismatch_paths] << path
-              state[:type_mismatch_changes][path] = type_mismatches
-              options[:verbose] ? puts("MT #{display_path}") : print('M')
-            else
-              state[:checked_ok] += 1
-              options[:verbose] ? puts("OK #{display_path}") : print('.')
-            end
+            handle_check_no_changes(path, type_mismatches: type_mismatches, display_path: display_path,
+                                          options: options, state: state)
             return
           end
 
+          handle_check_failed(path, file_changes: file_changes, display_path: display_path,
+                                    options: options, state: state)
+        end
+
+        # Extract type mismatch changes from file_changes.
+        #
+        # @private
+        # @param [Array<Hash>] file_changes
+        # @return [Array<Hash>]
+        def type_mismatch_changes(file_changes)
+          file_changes.select { |c| %i[updated_param updated_return].include?(c[:type]) }
+        end
+
+        # Handle check result when there are no real changes.
+        #
+        # @private
+        # @param [String] path
+        # @param [Array<Hash>] type_mismatches
+        # @param [String] display_path
+        # @param [Hash] options
+        # @param [Hash] state
+        # @return [void]
+        def handle_check_no_changes(path, type_mismatches:, display_path:, options:, state:)
+          if type_mismatches.any?
+            state[:type_mismatch_paths] << path
+            state[:type_mismatch_changes][path] = type_mismatches
+            log_check_verdict('MT', display_path, options)
+          else
+            state[:checked_ok] += 1
+            log_check_verdict('OK', display_path, options)
+          end
+        end
+
+        # Handle a failed check (file needs updates).
+        #
+        # @private
+        # @param [String] path
+        # @param [Array<Hash>] file_changes
+        # @param [String] display_path
+        # @param [Hash] options
+        # @param [Hash] state
+        # @return [void]
+        def handle_check_failed(path, file_changes:, display_path:, options:, state:)
           if options[:verbose]
             puts("FAIL #{display_path}")
-            if options[:explain]
-              file_changes.each do |change|
-                puts("  - #{format_change_reason(change)}")
-              end
-            end
+            print_check_explanations(file_changes, options)
           else
             print('F')
           end
@@ -326,29 +359,81 @@ module Docscribe
         # @return [void]
         def handle_write_result(path, src:, out:, file_changes:, display_path:, options:, state:)
           if out == src
-            options[:verbose] ? puts("OK #{display_path}") : print('.')
+            log_check_verdict('OK', display_path, options)
             return
           end
 
           File.write(path, out)
+          log_write_verdict('CHANGED', display_path, file_changes, options)
+          state[:corrected] += 1
+        rescue StandardError => e
+          record_write_error(path, e, display_path: display_path, options: options, state: state)
+        end
 
+        # Log a write-mode verdict.
+        #
+        # @private
+        # @param [String] verdict
+        # @param [String] display_path
+        # @param [Array<Hash>] file_changes
+        # @param [Hash] options
+        # @return [void]
+        def log_write_verdict(verdict, display_path, file_changes, options)
           if options[:verbose]
-            puts("CHANGED #{display_path}")
-            if options[:explain]
-              file_changes.each do |change|
-                puts("  - #{format_change_reason(change)}")
-              end
-            end
+            puts("#{verdict} #{display_path}")
+            print_check_explanations(file_changes, options)
           else
             print('C')
           end
+        end
 
-          state[:corrected] += 1
-        rescue StandardError => e
+        # Print explanations for file changes.
+        #
+        # @private
+        # @param [Array<Hash>] file_changes
+        # @param [Hash] options
+        # @return [void]
+        def print_check_explanations(file_changes, options)
+          return unless options[:explain]
+
+          file_changes.each do |change|
+            puts("  - #{format_change_reason(change)}")
+          end
+        end
+
+        # Record a write error in state.
+        #
+        # @private
+        # @param [String] path
+        # @param [StandardError] e
+        # @param [String] display_path
+        # @param [Hash] options
+        # @param [Hash] state
+        # @return [void]
+        def record_write_error(path, error, display_path:, options:, state:)
           state[:had_errors] = true
           state[:error_paths] << path
-          state[:error_messages][path] = "#{e.class}: #{e.message}"
-          options[:verbose] ? warn("ERR #{display_path}: #{state[:error_messages][path]}") : print('E')
+          state[:error_messages][path] = "#{error.class}: #{error.message}"
+          log_check_verdict('ERR', display_path, options)
+        end
+
+        # Log a per-file check verdict.
+        #
+        # @private
+        # @param [String] verdict
+        # @param [String] display_path
+        # @param [Hash] options
+        # @return [void]
+        def log_check_verdict(verdict, display_path, options)
+          if options[:verbose]
+            puts("#{verdict} #{display_path}")
+          else
+            print(if verdict == 'FAIL'
+                    'F'
+                  else
+                    verdict == 'MT' ? 'M' : '.'
+                  end)
+          end
         end
 
         # Print the check-mode summary (files OK / need updates / errors).
@@ -359,7 +444,18 @@ module Docscribe
         # @return [void]
         def print_check_summary(state:, options:)
           puts
+          print_check_status_line(state)
+          print_fail_paths(state, options)
+          print_type_mismatch_paths(state, options)
+          print_error_paths(state)
+        end
 
+        # Print the check-mode status line.
+        #
+        # @private
+        # @param [Hash] state
+        # @return [void]
+        def print_check_status_line(state)
           checked_error = state[:error_paths].size
           type_mismatch_count = state[:type_mismatch_paths].size
 
@@ -377,7 +473,15 @@ module Docscribe
             parts << "#{state[:checked_ok]} ok"
             puts "Docscribe: FAILED (#{parts.join(', ')})"
           end
+        end
 
+        # Print fail paths from check summary.
+        #
+        # @private
+        # @param [Hash] state
+        # @param [Hash] options
+        # @return [void]
+        def print_fail_paths(state, options)
           state[:fail_paths].each do |p|
             warn "Would update docs: #{p}"
             next unless options[:explain] && !options[:verbose]
@@ -386,16 +490,31 @@ module Docscribe
               warn "  - #{format_change_reason(change)}"
             end
           end
+        end
 
-          if options[:verbose] || options[:explain]
-            state[:type_mismatch_paths].each do |p|
-              warn "Type mismatches: #{p}"
-              Array(state[:type_mismatch_changes][p]).each do |change|
-                warn "  - #{format_change_reason(change)}"
-              end
+        # Print type mismatch paths from check summary.
+        #
+        # @private
+        # @param [Hash] state
+        # @param [Hash] options
+        # @return [void]
+        def print_type_mismatch_paths(state, options)
+          return unless options[:verbose] || options[:explain]
+
+          state[:type_mismatch_paths].each do |p|
+            warn "Type mismatches: #{p}"
+            Array(state[:type_mismatch_changes][p]).each do |change|
+              warn "  - #{format_change_reason(change)}"
             end
           end
+        end
 
+        # Print error paths from check summary.
+        #
+        # @private
+        # @param [Hash] state
+        # @return [void]
+        def print_error_paths(state)
           state[:error_paths].each do |p|
             warn "Error processing: #{p}"
             warn "  #{state[:error_messages][p]}" if state[:error_messages][p]

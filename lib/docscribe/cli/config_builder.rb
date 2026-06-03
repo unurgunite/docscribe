@@ -21,8 +21,22 @@ module Docscribe
       # @param [Hash] options parsed CLI options
       # @return [Docscribe::Config] merged effective config
       def build(base, options)
-        needs_override =
-          options[:include].any?      ||
+        return base unless needs_override?(options)
+
+        raw = Marshal.load(Marshal.dump(base.raw))
+        apply_filter_overrides(raw, options)
+        apply_rbs_overrides(raw, options) if options[:rbs] || options[:rbs_collection] || options[:sig_dirs].any?
+        apply_sorbet_overrides(raw, options) if options[:sorbet] || options[:rbi_dirs].any?
+        Docscribe::Config.new(raw)
+      end
+
+      # Whether any CLI override is present.
+      #
+      # @private
+      # @param [Hash] options parsed CLI options
+      # @return [Boolean]
+      def needs_override?(options)
+        options[:include].any? ||
           options[:exclude].any?      ||
           options[:include_file].any? ||
           options[:exclude_file].any? ||
@@ -31,11 +45,15 @@ module Docscribe
           options[:sig_dirs].any?     ||
           options[:sorbet]            ||
           options[:rbi_dirs].any?
+      end
 
-        return base unless needs_override
-
-        raw = Marshal.load(Marshal.dump(base.raw))
-
+      # Apply method and file filter overrides to the raw config.
+      #
+      # @private
+      # @param [Hash] raw raw config hash
+      # @param [Hash] options parsed CLI options
+      # @return [void]
+      def apply_filter_overrides(raw, options)
         raw['filter'] ||= {}
         raw['filter']['include'] = Array(raw['filter']['include']) + options[:include]
         raw['filter']['exclude'] = Array(raw['filter']['exclude']) + options[:exclude]
@@ -43,31 +61,43 @@ module Docscribe
         raw['filter']['files'] ||= {}
         raw['filter']['files']['include'] = Array(raw['filter']['files']['include']) + options[:include_file]
         raw['filter']['files']['exclude'] = Array(raw['filter']['files']['exclude']) + options[:exclude_file]
+      end
 
-        if options[:rbs] || options[:rbs_collection] || options[:sig_dirs].any?
-          raw['rbs'] ||= {}
-          raw['rbs']['enabled'] = true
-          raw['rbs']['sig_dirs'] = Array(raw['rbs']['sig_dirs']) + options[:sig_dirs] if options[:sig_dirs].any?
+      # Apply RBS-related CLI overrides to the raw config.
+      #
+      # @private
+      # @param [Hash] raw raw config hash
+      # @param [Hash] options parsed CLI options
+      # @return [void]
+      def apply_rbs_overrides(raw, options)
+        raw['rbs'] ||= {}
+        raw['rbs']['enabled'] = true
+        raw['rbs']['sig_dirs'] = Array(raw['rbs']['sig_dirs']) + options[:sig_dirs] if options[:sig_dirs].any?
 
-          if options[:rbs_collection]
-            require 'docscribe/types/rbs/collection_loader'
-            collection_path = Docscribe::Types::RBS::CollectionLoader.resolve
-            if collection_path
-              raw['rbs']['collection_dirs'] = Array(raw['rbs']['collection_dirs']) + [collection_path]
-            else
-              warn 'Docscribe: rbs_collection.lock.yaml not found or collection not installed. ' \
-                   'Run `bundle exec rbs collection install` first.'
-            end
-          end
+        return unless options[:rbs_collection]
+
+        require 'docscribe/types/rbs/collection_loader'
+        collection_path = Docscribe::Types::RBS::CollectionLoader.resolve
+        if collection_path
+          raw['rbs']['collection_dirs'] = Array(raw['rbs']['collection_dirs']) + [collection_path]
+        else
+          warn 'Docscribe: rbs_collection.lock.yaml not found or collection not installed. ' \
+               'Run `bundle exec rbs collection install` first.'
         end
+      end
 
-        if options[:sorbet] || options[:rbi_dirs].any?
-          raw['sorbet'] ||= {}
-          raw['sorbet']['enabled'] = true
-          raw['sorbet']['rbi_dirs'] = Array(raw['sorbet']['rbi_dirs']) + options[:rbi_dirs] if options[:rbi_dirs].any?
-        end
+      # Apply Sorbet-related CLI overrides to the raw config.
+      #
+      # @private
+      # @param [Hash] raw raw config hash
+      # @param [Hash] options parsed CLI options
+      # @return [void]
+      def apply_sorbet_overrides(raw, options)
+        raw['sorbet'] ||= {}
+        raw['sorbet']['enabled'] = true
+        return unless options[:rbi_dirs].any?
 
-        Docscribe::Config.new(raw)
+        raw['sorbet']['rbi_dirs'] = Array(raw['sorbet']['rbi_dirs']) + options[:rbi_dirs]
       end
     end
   end

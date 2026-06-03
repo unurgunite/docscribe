@@ -23,19 +23,27 @@ module Docscribe
 
         case n.type
         when :const
-          scope, name = *n
-          scope_name = const_full_name(scope)
-
-          if scope_name && !scope_name.empty?
-            "#{scope_name}::#{name}"
-          elsif scope_name == '' # leading ::
-            "::#{name}"
-          else
-            name.to_s
-          end
-
+          build_const_full_name(n)
         when :cbase
-          '' # represents leading :: scope
+          ''
+        end
+      end
+
+      # Build the fully qualified name from a `:const` node.
+      #
+      # @private
+      # @param [Parser::AST::Node] n a `:const` node
+      # @return [String]
+      def build_const_full_name(n)
+        scope, name = *n
+        scope_name = const_full_name(scope)
+
+        if scope_name && !scope_name.empty?
+          "#{scope_name}::#{name}"
+        elsif scope_name == ''
+          "::#{name}"
+        else
+          name.to_s
         end
       end
     end
