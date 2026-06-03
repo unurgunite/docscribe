@@ -32,6 +32,7 @@ module Docscribe
 
       # Whether any CLI override is present.
       #
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Hash] options parsed CLI options
       # @return [Boolean]
@@ -49,6 +50,7 @@ module Docscribe
 
       # Apply method and file filter overrides to the raw config.
       #
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Hash] raw raw config hash
       # @param [Hash] options parsed CLI options
@@ -65,6 +67,7 @@ module Docscribe
 
       # Apply RBS-related CLI overrides to the raw config.
       #
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Hash] raw raw config hash
       # @param [Hash] options parsed CLI options
@@ -88,6 +91,7 @@ module Docscribe
 
       # Apply Sorbet-related CLI overrides to the raw config.
       #
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Hash] raw raw config hash
       # @param [Hash] options parsed CLI options

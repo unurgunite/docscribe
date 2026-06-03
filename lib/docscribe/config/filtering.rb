@@ -33,6 +33,7 @@ module Docscribe
     #
     # @private
     # @param [String] path
+    # @raise [StandardError]
     # @return [String]
     def relative_path(path)
       Pathname.new(path).expand_path.relative_path_from(Pathname.pwd).cleanpath.to_s

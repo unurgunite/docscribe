@@ -44,6 +44,7 @@ module Docscribe
         #
         # @private
         # @param [Array<String>] argv
+        # @raise [OptionParser::InvalidOption]
         # @return [Array(Hash, OptionParser)]
         def parse_generate_options(argv)
           opts = { output: nil, stdout: false, help: false }

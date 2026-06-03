@@ -354,6 +354,9 @@ module Docscribe
 
       # Build a human-readable location string for a conflict warning.
       # @private
+      # @param [Object] pos Param documentation.
+      # @param [Object] plugin_items Param documentation.
+      # @return [Object]
       def conflict_location_str(pos, plugin_items)
         line = plugin_insertion_line(plugin_items.first[1])
         loc = +"pos=#{pos}"
@@ -379,12 +382,16 @@ module Docscribe
 
       # Compute max priority among override items.
       # @private
+      # @param [Object] override_items Param documentation.
+      # @return [Object]
       def max_plugin_priority_for(override_items)
         override_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
       end
 
       # Sort override winners deterministically by plugin order.
       # @private
+      # @param [Object] winners Param documentation.
+      # @return [Object]
       def sort_winners_by_order(winners)
         winners.sort_by do |_k, ins|
           order = ins.is_a?(Hash) ? ins[:__docscribe_plugin_order] : nil
@@ -394,6 +401,10 @@ module Docscribe
 
       # Warn about override conflicts in debug mode.
       # @private
+      # @param [Object] winners_sorted Param documentation.
+      # @param [Object] max_prio Param documentation.
+      # @param [Object] pos Param documentation.
+      # @return [Object]
       def warn_override_conflict!(winners_sorted, max_prio, pos)
         return unless Docscribe::Plugin.debug?
 
@@ -523,6 +534,10 @@ module Docscribe
 
       # Find the nearest comment line index above a position.
       # @private
+      # @param [Object] src Param documentation.
+      # @param [Object] lines Param documentation.
+      # @param [Object] bol_pos Param documentation.
+      # @return [Object]
       def nearest_comment_line_index(src, lines, bol_pos)
         def_line_idx = src[0...bol_pos].count("\n")
         i = def_line_idx - 1
@@ -534,6 +549,9 @@ module Docscribe
 
       # Walk upward through contiguous comment block to find the start.
       # @private
+      # @param [Object] lines Param documentation.
+      # @param [Object] i Param documentation.
+      # @return [Object]
       def comment_block_start_index(lines, i)
         start_idx = i
         start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
@@ -542,6 +560,10 @@ module Docscribe
 
       # Skip preserved directive-style lines at the top of the comment block.
       # @private
+      # @param [Object] lines Param documentation.
+      # @param [Object] start_idx Param documentation.
+      # @param [Object] i Param documentation.
+      # @return [Object]
       def skip_preserved_lines(lines, start_idx, i)
         idx = start_idx
         idx += 1 while idx <= i && SourceHelpers.preserved_comment_line?(lines[idx])
@@ -575,6 +597,8 @@ module Docscribe
 
       # Trim trailing blank lines from a doc string.
       # @private
+      # @param [Object] doc Param documentation.
+      # @return [Object]
       def trim_trailing_blank_lines(doc)
         lines = doc.lines
         lines.pop while lines.any? && lines.last.strip.empty?
@@ -584,6 +608,11 @@ module Docscribe
 
       # Prepend default message if the doc block has only tags.
       # @private
+      # @param [Object] doc Param documentation.
+      # @param [Object] anchor_node Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] config Param documentation.
+      # @return [Object]
       def prepend_default_message_if_no_prose(doc, anchor_node, indent, config)
         return doc if doc_has_prose?(doc)
 
@@ -594,6 +623,8 @@ module Docscribe
 
       # Check if a doc block has any prose content.
       # @private
+      # @param [Object] doc Param documentation.
+      # @return [Boolean]
       def doc_has_prose?(doc)
         doc.lines.any? do |l|
           s = l.strip
@@ -830,12 +861,23 @@ module Docscribe
 
       # Filter doc params from options hash.
       # @private
+      # @param [Object] options Param documentation.
+      # @return [Object]
       def filter_doc_params(options)
         options.reject { |k, _| %i[rewriter buffer insertion anchor_bol_range info changes file strategy].include?(k) }
       end
 
       # Handle replacement when doc block content changed.
       # @private
+      # @param [Object] rewriter Param documentation.
+      # @param [Object] buffer Param documentation.
+      # @param [Object] info Param documentation.
+      # @param [Object] new_block Param documentation.
+      # @param [Object] existing_order_changed Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @param [Object] changes Param documentation.
+      # @param [Object] file Param documentation.
+      # @return [Object]
       def handle_doc_replacement(rewriter, buffer, info, new_block, existing_order_changed, insertion, changes, file)
         range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
         rewriter.replace(range, new_block)
@@ -1081,6 +1123,10 @@ module Docscribe
 
       # Merge a single chunk into the output lines array.
       # @private
+      # @param [Object] chunk Param documentation.
+      # @param [Object] out_lines Param documentation.
+      # @param [Object] sep_re Param documentation.
+      # @return [Object]
       def merge_chunk_into_out(chunk, out_lines, sep_re)
         lines = chunk.lines
         seps = extract_separators(lines, sep_re)
@@ -1091,6 +1137,9 @@ module Docscribe
 
       # Extract leading separator lines from a chunk.
       # @private
+      # @param [Object] lines Param documentation.
+      # @param [Object] sep_re Param documentation.
+      # @return [Object]
       def extract_separators(lines, sep_re)
         seps = []
         seps << lines.shift while !lines.empty? && lines.first.match?(sep_re)
@@ -1224,6 +1273,14 @@ module Docscribe
 
       # Build doc lines for a single attribute.
       # @private
+      # @param [Object] ins Param documentation.
+      # @param [Object] name_sym Param documentation.
+      # @param [Object] idx Param documentation.
+      # @param [Object] total Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @return [Object]
       def build_single_attr_lines(ins, name_sym, idx, total, indent:, config:, signature_provider:)
         attr_type = attribute_type(ins, name_sym, config, signature_provider: signature_provider)
         lines = ["#{indent}# @!attribute [#{ins.access}] #{name_sym}"]
@@ -1240,6 +1297,10 @@ module Docscribe
 
       # Build visibility lines for an attribute.
       # @private
+      # @param [Object] indent Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] ins Param documentation.
+      # @return [Object]
       def attr_visibility_lines(indent, config, ins)
         return [] unless config.emit_visibility_tags?
 

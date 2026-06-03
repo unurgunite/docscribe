@@ -267,6 +267,7 @@ module Docscribe
 
       # Resolve RBS return type for an `:lvar` receiver.
       #
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Object] recv
       # @param [Object] meth
@@ -287,6 +288,7 @@ module Docscribe
 
       # Resolve RBS return type for a chained `:send` receiver.
       #
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Object] recv
       # @param [Object] meth

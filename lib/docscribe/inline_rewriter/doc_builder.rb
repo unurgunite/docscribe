@@ -370,6 +370,7 @@ module Docscribe
       end
 
       # Extract args sub-node from a def or defs node.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Parser::AST::Node] node
       # @return [Parser::AST::Node, nil]
@@ -381,7 +382,14 @@ module Docscribe
       end
 
       # Collect param type for a required/keyword argument.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] infer_name Param documentation.
+      # @return [Object]
       def collect_param_type(a, param_types, external_sig, config, infer_name:)
         pname = a.children.first.to_s
         infer_pname = infer_name ? infer_name.call(pname) : pname
@@ -393,7 +401,14 @@ module Docscribe
       end
 
       # Collect param type for an optional/keyword optional argument.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] infer_name Param documentation.
+      # @return [Object]
       def collect_optarg_param_type(a, param_types, external_sig, config, infer_name:)
         pname, default = *a
         pname = pname.to_s
@@ -571,7 +586,13 @@ module Docscribe
       end
 
       # Collect a single param line for build_missing_merge_result.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] pl Param documentation.
+      # @param [Object] lines Param documentation.
+      # @param [Object] reasons Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def collect_param_from_line(pl, lines, reasons, ctx)
         pname = extract_param_name_from_param_line(pl)
         return unless pname
@@ -585,7 +606,14 @@ module Docscribe
       end
 
       # Collect an updated param line.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] pl Param documentation.
+      # @param [Object] pname Param documentation.
+      # @param [Object] lines Param documentation.
+      # @param [Object] reasons Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def collect_updated_param(pl, pname, lines, reasons, ctx)
         new_type = extract_param_type_from_param_line(pl)
         return unless new_type && ctx[:info][:param_types][pname] != new_type
@@ -793,7 +821,17 @@ module Docscribe
       end
 
       # Build a param line for a required argument.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @return [Object]
       def build_arg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
         pname = a.children.first.to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, pname, nil,
@@ -802,7 +840,17 @@ module Docscribe
       end
 
       # Build param lines for an optional argument (including @option lines).
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @return [Object]
       def build_optarg_lines(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
         pname, default = *a
         pname = pname.to_s
@@ -818,8 +866,25 @@ module Docscribe
         lines
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #hash_option_pairs (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @return [Object]
+      def hash_option_pairs(node)
+        return [] unless node&.type == :hash
+
+        node.children.select { |child| child.is_a?(Parser::AST::Node) && child.type == :pair }
+      end
+
       # Build an @option line from a hash pair node.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] pair Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] pname Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @return [Object]
       def build_option_line(pair, indent, pname, fallback_type)
         key_node, value_node = pair.children
         option_key = option_key_name(key_node)
@@ -832,8 +897,41 @@ module Docscribe
         line
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #option_key_name (instance visibility: private)
+      # @param [Object] key_node Param documentation.
+      # @return [Object]
+      def option_key_name(key_node)
+        case key_node&.type
+        when :sym, :str
+          key_node.children.first.to_s
+        else
+          key_node&.loc&.expression&.source.to_s.sub(/\A:/, '')
+        end
+      end
+
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #node_default_literal (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @return [Object]
+      def node_default_literal(node)
+        node&.loc&.expression&.source
+      end
+
       # Build a param line for a keyword argument.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @return [Object]
       def build_kwarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
         pname = a.children.first.to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, "#{pname}:", nil,
@@ -842,7 +940,17 @@ module Docscribe
       end
 
       # Build a param line for an optional keyword argument.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @return [Object]
       def build_kwoptarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
         pname, default = *a
         pname = pname.to_s
@@ -853,7 +961,17 @@ module Docscribe
       end
 
       # Build a param line for a rest argument (*args).
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @return [Object]
       def build_restarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
         pname = (a.children.first || 'args').to_s
         ty = if external_sig&.rest_positional&.element_type
@@ -866,7 +984,17 @@ module Docscribe
       end
 
       # Build a param line for a keyword rest argument (**kwargs).
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @return [Object]
       def build_kwrestarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
         pname = (a.children.first || 'kwargs').to_s
         ty = external_sig&.rest_keywords&.type ||
@@ -876,7 +1004,17 @@ module Docscribe
       end
 
       # Build a param line for a block argument (&block).
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @return [Object]
       def build_blockarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
         pname = (a.children.first || 'block').to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, "&#{pname}", nil,
@@ -884,8 +1022,40 @@ module Docscribe
         format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #format_param_tag (instance visibility: private)
+      # @param [Object] indent Param documentation.
+      # @param [Object] name Param documentation.
+      # @param [Object] type Param documentation.
+      # @param [Object] documentation Param documentation.
+      # @param [Object] style Param documentation.
+      # @return [Object]
+      def format_param_tag(indent, name, type, documentation, style:)
+        doc = documentation.to_s.strip
+        type = type.to_s
+
+        line = case style.to_s
+               when 'name_type'
+                 "#{indent}# @param #{name} [#{type}]"
+               else
+                 "#{indent}# @param [#{type}] #{name}"
+               end
+
+        doc.empty? ? line : "#{line} #{doc}"
+      end
+
       # Three-tier type lookup: external_sig → override → inference.
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] pname Param documentation.
+      # @param [Object] infer_name Param documentation.
+      # @param [Object] infer_default Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @return [Object]
       def lookup_param_type(external_sig, param_types_override, pname, infer_name, infer_default, fallback_type, treat_options_keyword_as_hash)
         external_sig&.param_types&.[](pname) ||
           override_param_type_for(pname, param_types_override) ||
@@ -895,12 +1065,32 @@ module Docscribe
       end
 
       # Two-tier type lookup: override → inference (for rest/kwrest types).
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] pname Param documentation.
+      # @param [Object] infer_name Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @return [Object]
       def lookup_param_type_by_infer(param_types_override, pname, infer_name, fallback_type, treat_options_keyword_as_hash)
         override_param_type_for(pname, param_types_override) ||
           Infer.infer_param_type(infer_name, nil,
                                  fallback_type: fallback_type,
                                  treat_options_keyword_as_hash: treat_options_keyword_as_hash)
+      end
+
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #override_param_type_for (instance visibility: private)
+      # @param [Object] pname Param documentation.
+      # @param [Object] override_map Param documentation.
+      # @return [Object]
+      def override_param_type_for(pname, override_map)
+        return nil unless override_map
+
+        key = pname.to_s
+        override_map[key] || override_map[:"#{key}"] || override_map["#{key}:"] || override_map[:"#{key}:"]
       end
 
       # Extract the parameter name from a `@param` doc line.

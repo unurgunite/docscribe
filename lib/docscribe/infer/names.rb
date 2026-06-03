@@ -31,6 +31,7 @@ module Docscribe
 
       # Build the fully qualified name from a `:const` node.
       #
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Parser::AST::Node] n a `:const` node
       # @return [String]

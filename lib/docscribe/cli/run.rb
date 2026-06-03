@@ -409,6 +409,7 @@ module Docscribe
         # @param [String] display_path
         # @param [Hash] options
         # @param [Hash] state
+        # @param [Object] error Param documentation.
         # @return [void]
         def record_write_error(path, error, display_path:, options:, state:)
           state[:had_errors] = true

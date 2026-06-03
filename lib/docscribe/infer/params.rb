@@ -29,6 +29,7 @@ module Docscribe
 
       # Return type for special parameter prefixes.
       #
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [String] name parameter name
       # @return [String, nil]
@@ -42,6 +43,7 @@ module Docscribe
 
       # Infer type for a regular or keyword parameter with optional default.
       #
+      # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [String] name parameter name
       # @param [String, nil] default_str default expression source

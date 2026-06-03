@@ -203,7 +203,7 @@ Style/IfUnlessModifier:
     - 'lib/docscribe/config/filtering.rb'
     - 'lib/docscribe/inline_rewriter.rb'
 
-# Offense count: 6
+# Offense count: 8
 # Configuration parameters: Max.
 Style/SafeNavigationChainLength:
   Exclude:

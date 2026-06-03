@@ -41,6 +41,7 @@ module Docscribe
     # @private
     # @param [String] source
     # @param [String] file
+    # @raise [LoadError]
     # @return [Docscribe::Types::Sorbet::SourceProvider, nil]
     def sorbet_source_provider(source, file)
       require 'docscribe/types/sorbet/source_provider'
