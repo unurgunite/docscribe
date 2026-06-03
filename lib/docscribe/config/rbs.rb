@@ -34,6 +34,7 @@ module Docscribe
     private
 
     # @private
+    # @raise [LoadError]
     # @return [Docscribe::Types::RBS::Provider, nil]
     def build_rbs_provider
       require 'docscribe/types/rbs/provider'
@@ -47,6 +48,7 @@ module Docscribe
     end
 
     # @private
+    # @raise [LoadError]
     # @return [Docscribe::Types::RBS::Provider, nil]
     def build_core_rbs_provider
       require 'docscribe/types/rbs/provider'
