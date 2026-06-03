@@ -234,7 +234,7 @@ module Docscribe
       # @param [Parser::AST::Node] node a `:casgn` node
       # @return [Parser::AST::Node] the original node
       def on_casgn(node)
-        return node if process_struct_casgn(node)
+        return node if process_struct_casgn?(node)
 
         node.children.each do |child|
           process(child) if child.is_a?(Parser::AST::Node)
@@ -300,7 +300,7 @@ module Docscribe
         when :sclass
           process_sclass_stmt(node, ctx)
         when :casgn
-          if process_struct_casgn(node)
+          if process_struct_casgn?(node)
             # handled
           else
             process(node)
@@ -403,13 +403,13 @@ module Docscribe
       # @param [Parser::AST::Node, nil] pending_sig_anchor
       # @return [void]
       def process_send_stmt(node, ctx, pending_sig_anchor:)
-        if process_attr_send(node, ctx)
+        if process_attr_send?(node, ctx)
           # handled
-        elsif process_extend_self_send(node, ctx)
+        elsif process_extend_self_send?(node, ctx)
           # handled
-        elsif process_module_function_send(node, ctx)
+        elsif process_module_function_send?(node, ctx)
           # handled
-        elsif process_class_method_visibility_send(node, ctx)
+        elsif process_class_method_visibility_send?(node, ctx)
           # handled
         else
           process_visibility_send(node, ctx, pending_sig_anchor: pending_sig_anchor)
@@ -443,7 +443,7 @@ module Docscribe
       # @private
       # @param [Parser::AST::Node] node a `:casgn` node
       # @return [Boolean] true if the node was handled as a struct definition
-      def process_struct_casgn(node)
+      def process_struct_casgn?(node)
         _scope, _name, value = *node
         return false unless struct_new_node?(value)
 
@@ -522,7 +522,7 @@ module Docscribe
       # @param [Parser::AST::Node] node a `:send` node
       # @param [VisibilityCtx] ctx current visibility context
       # @return [Boolean] true if `extend self` was detected
-      def process_extend_self_send(node, ctx)
+      def process_extend_self_send?(node, ctx)
         recv, meth, *args = *node
 
         return false unless ctx.container_is_module
@@ -566,7 +566,7 @@ module Docscribe
       # @param [Parser::AST::Node] node a `:send` node
       # @param [VisibilityCtx] ctx current visibility context
       # @return [Boolean] true if the node was an attr_* call
-      def process_attr_send(node, ctx)
+      def process_attr_send?(node, ctx)
         recv, meth, *args = *node
         return false unless recv.nil? && %i[attr_reader attr_writer attr_accessor].include?(meth)
 
@@ -594,7 +594,7 @@ module Docscribe
       # @param [Parser::AST::Node] node a `:send` node
       # @param [VisibilityCtx] ctx current visibility context
       # @return [Boolean] true if the node was a class visibility modifier
-      def process_class_method_visibility_send(node, ctx)
+      def process_class_method_visibility_send?(node, ctx)
         recv, meth, *args = *node
 
         return false unless %i[private_class_method protected_class_method public_class_method].include?(meth)
@@ -794,7 +794,7 @@ module Docscribe
       # @param [Parser::AST::Node] node a `:send` node
       # @param [VisibilityCtx] ctx current visibility context
       # @return [Boolean] true if the node was a `module_function` call
-      def process_module_function_send(node, ctx)
+      def process_module_function_send?(node, ctx)
         recv, meth, *args = *node
         return false unless recv.nil? && meth == :module_function
         return true if ctx.inside_sclass

@@ -125,8 +125,8 @@ module Docscribe
       #
       # @param [Parser::AST::Node, nil] n
       # @return [String, nil]
-      def const_full_name(n)
-        Names.const_full_name(n)
+      def const_full_name(node)
+        Names.const_full_name(node)
       end
 
       # Infer a YARD-ish type string from a literal AST node.
@@ -140,15 +140,15 @@ module Docscribe
 
       # Unify two inferred type strings conservatively.
       #
-      # @param [String, nil] a
-      # @param [String, nil] b
+      # @param [String, nil] type_a
+      # @param [String, nil] type_b
       # @param [String] fallback_type
       # @param [Boolean] nil_as_optional
       # @return [String]
-      def unify_types(a, b, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
+      def unify_types(type_a, type_b, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         Returns.unify_types(
-          a,
-          b,
+          type_a,
+          type_b,
           fallback_type: fallback_type,
           nil_as_optional: nil_as_optional
         )

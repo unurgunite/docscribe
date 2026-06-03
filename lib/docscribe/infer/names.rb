@@ -16,14 +16,14 @@ module Docscribe
       # Returns nil for unsupported nodes.
       #
       # @note module_function: when included, also defines #const_full_name (instance visibility: private)
-      # @param [Parser::AST::Node, nil] n constant-like AST node
+      # @param [Parser::AST::Node, nil] node constant-like AST node
       # @return [String, nil]
-      def const_full_name(n)
-        return nil unless n.is_a?(Parser::AST::Node)
+      def const_full_name(node)
+        return nil unless node.is_a?(Parser::AST::Node)
 
-        case n.type
+        case node.type
         when :const
-          build_const_full_name(n)
+          build_const_full_name(node)
         when :cbase
           ''
         end
@@ -33,10 +33,10 @@ module Docscribe
       #
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Parser::AST::Node] n a `:const` node
+      # @param [Parser::AST::Node] node a `:const` node
       # @return [String]
-      def build_const_full_name(n)
-        scope, name = *n
+      def build_const_full_name(node)
+        scope, name = *node
         scope_name = const_full_name(scope)
 
         if scope_name && !scope_name.empty?

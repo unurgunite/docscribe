@@ -220,10 +220,10 @@ module Docscribe
         groups = group_by_position(insertions)
 
         groups.each_with_object([]) do |(pos, items), result|
-          plugin_items = items.select { |k, _| k == :plugin }
+          plugin_items = items.select { |pair| pair.first == :plugin }
           next result.concat(items) if plugin_items.empty?
 
-          method_items = items.select { |k, _| k == :method }
+          method_items = items.select { |pair| pair.first == :method }
 
           if (override_items = find_override_items(plugin_items)).any? && method_items.any?
             handle_override_case(result, items, override_items, method_overrides_by_pos, pos)
@@ -450,7 +450,9 @@ module Docscribe
       def plugin_insertion_line(insertion)
         return nil unless insertion.is_a?(Hash)
 
-        insertion[:anchor_node]&.loc&.expression&.line
+        anchor_node = insertion[:anchor_node]
+        expression = anchor_node&.loc&.expression
+        expression&.line
       rescue StandardError
         nil
       end
@@ -495,9 +497,7 @@ module Docscribe
         case strategy
         when :aggressive
           # Will remove ANY comments above the method. Plugin will decide what will be changed.
-          if (range = any_comment_block_removal_range(buffer, bol_range.begin_pos))
-            rewriter.remove(range)
-          end
+          rewriter.remove(range) if any_comment_block_removal_range(buffer, bol_range.begin_pos)
           rewriter.insert_before(bol_range, doc)
 
         when :safe
@@ -552,8 +552,8 @@ module Docscribe
       # @param [Object] lines Param documentation.
       # @param [Object] i Param documentation.
       # @return [Object]
-      def comment_block_start_index(lines, i)
-        start_idx = i
+      def comment_block_start_index(lines, def_line_idx)
+        start_idx = def_line_idx
         start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
         start_idx + 1
       end
@@ -564,9 +564,9 @@ module Docscribe
       # @param [Object] start_idx Param documentation.
       # @param [Object] i Param documentation.
       # @return [Object]
-      def skip_preserved_lines(lines, start_idx, i)
+      def skip_preserved_lines(lines, start_idx, def_line_idx)
         idx = start_idx
-        idx += 1 while idx <= i && SourceHelpers.preserved_comment_line?(lines[idx])
+        idx += 1 while idx <= def_line_idx && SourceHelpers.preserved_comment_line?(lines[idx])
         idx
       end
 
@@ -770,9 +770,7 @@ module Docscribe
         )
         override = options[:override]
 
-        if override[:param_types] && !override[:param_types].empty?
-          param_types = param_types.merge(override[:param_types])
-        end
+        param_types = param_types.merge(override[:param_types]) if override[:param_types] && !override[:param_types].empty?
 
         { param_types: param_types, return_type_override: override[:return_type], override_tags: override[:tags] }
       end

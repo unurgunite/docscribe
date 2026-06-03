@@ -383,13 +383,13 @@ module Docscribe
       # @param [String] fallback_type
       # @param [Boolean] nil_as_optional
       # @return [String, nil]
-      def unify_types(a, b, fallback_type:, nil_as_optional:)
-        a ||= fallback_type
-        b ||= fallback_type
-        return a if a == b
+      def unify_types(type_a, type_b, fallback_type:, nil_as_optional:)
+        type_a ||= fallback_type
+        type_b ||= fallback_type
+        return type_a if type_a == type_b
 
-        if a == 'nil' || b == 'nil'
-          non_nil = (a == 'nil' ? b : a)
+        if type_a == 'nil' || type_b == 'nil'
+          non_nil = (type_a == 'nil' ? type_b : type_a)
           return nil_as_optional ? "#{non_nil}?" : "#{non_nil}, nil"
         end
 

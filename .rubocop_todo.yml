@@ -92,16 +92,7 @@ Metrics/ParameterLists:
 Metrics/PerceivedComplexity:
   Max: 13
 
-# Offense count: 22
-# Configuration parameters: MinNameLength, AllowNamesEndingInNumbers, AllowedNames, ForbiddenNames.
-# AllowedNames: as, at, by, cc, db, id, if, in, io, ip, of, on, os, pp, to
-Naming/MethodParameterName:
-  Exclude:
-    - 'lib/docscribe/infer.rb'
-    - 'lib/docscribe/infer/names.rb'
-    - 'lib/docscribe/infer/returns.rb'
-    - 'lib/docscribe/inline_rewriter.rb'
-    - 'lib/docscribe/inline_rewriter/doc_builder.rb'
+
 
 # Offense count: 5
 # Configuration parameters: Mode, AllowedMethods, AllowedPatterns, AllowBangMethods, WaywardPredicates.

@@ -333,8 +333,8 @@ module Docscribe
       # @note module_function: when included, also defines #parse_raise_bracket_list (instance visibility: private)
       # @param [String] s the `@raise` line text
       # @return [Array<String>, nil] the exception names or nil
-      def parse_raise_bracket_list(s)
-        s.to_s.split(',').map(&:strip).reject(&:empty?)
+      def parse_raise_bracket_list(str)
+        str.to_s.split(',').map(&:strip).reject(&:empty?)
       end
 
       # Build a param name => type map from a method node.
@@ -390,8 +390,8 @@ module Docscribe
       # @param [Object] config Param documentation.
       # @param [Object] infer_name Param documentation.
       # @return [Object]
-      def collect_param_type(a, param_types, external_sig, config, infer_name:)
-        pname = a.children.first.to_s
+      def collect_param_type(arg_node, param_types, external_sig, config, infer_name:)
+        pname = arg_node.children.first.to_s
         infer_pname = infer_name ? infer_name.call(pname) : pname
         ty = external_sig&.param_types&.[](pname) ||
              Infer.infer_param_type(infer_pname, nil,
@@ -409,11 +409,12 @@ module Docscribe
       # @param [Object] config Param documentation.
       # @param [Object] infer_name Param documentation.
       # @return [Object]
-      def collect_optarg_param_type(a, param_types, external_sig, config, infer_name:)
-        pname, default = *a
+      def collect_optarg_param_type(arg_node, param_types, external_sig, config, infer_name:)
+        pname, default = *arg_node
         pname = pname.to_s
         infer_pname = infer_name ? infer_name.call(pname) : pname
-        default_src = default&.loc&.expression&.source
+        loc = default&.loc
+        default_src = loc&.expression&.source
         ty = external_sig&.param_types&.[](pname) ||
              Infer.infer_param_type(infer_pname, default_src,
                                     fallback_type: config.fallback_type,
@@ -593,15 +594,15 @@ module Docscribe
       # @param [Object] reasons Param documentation.
       # @param [Object] ctx Param documentation.
       # @return [Object]
-      def collect_param_from_line(pl, lines, reasons, ctx)
-        pname = extract_param_name_from_param_line(pl)
+      def collect_param_from_line(param_line, lines, reasons, ctx)
+        pname = extract_param_name_from_param_line(param_line)
         return unless pname
 
         if !ctx[:info][:param_names].include?(pname)
-          lines << "#{pl}\n"
+          lines << "#{param_line}\n"
           reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
         elsif ctx[:external_sig] && ctx[:info][:param_types][pname]
-          collect_updated_param(pl, pname, lines, reasons, ctx)
+          collect_updated_param(param_line, pname, lines, reasons, ctx)
         end
       end
 
@@ -614,11 +615,11 @@ module Docscribe
       # @param [Object] reasons Param documentation.
       # @param [Object] ctx Param documentation.
       # @return [Object]
-      def collect_updated_param(pl, pname, lines, reasons, ctx)
-        new_type = extract_param_type_from_param_line(pl)
+      def collect_updated_param(param_line, pname, lines, reasons, ctx)
+        new_type = extract_param_type_from_param_line(param_line)
         return unless new_type && ctx[:info][:param_types][pname] != new_type
 
-        lines << "#{pl}\n" unless ctx[:strategy] == :safe
+        lines << "#{param_line}\n" unless ctx[:strategy] == :safe
         reasons << {
           type: :updated_param,
           message: "updated @param #{pname} from #{ctx[:info][:param_types][pname]} to #{new_type}",
@@ -832,8 +833,8 @@ module Docscribe
       # @param [Object] param_documentation Param documentation.
       # @param [Object] param_tag_style Param documentation.
       # @return [Object]
-      def build_arg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
-        pname = a.children.first.to_s
+      def build_arg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
+        pname = arg_node.children.first.to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, pname, nil,
                                fallback_type, treat_options_keyword_as_hash)
         format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
@@ -851,10 +852,12 @@ module Docscribe
       # @param [Object] param_documentation Param documentation.
       # @param [Object] param_tag_style Param documentation.
       # @return [Object]
-      def build_optarg_lines(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
-        pname, default = *a
+      def build_optarg_lines(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
+                             param_tag_style)
+        pname, default = *arg_node
         pname = pname.to_s
-        default_src = default&.loc&.expression&.source
+        default_loc = default&.loc
+        default_src = default_loc&.expression&.source
         ty = lookup_param_type(external_sig, param_types_override, pname, pname, default_src,
                                fallback_type, treat_options_keyword_as_hash)
         lines = [format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)]
@@ -907,7 +910,8 @@ module Docscribe
         when :sym, :str
           key_node.children.first.to_s
         else
-          key_node&.loc&.expression&.source.to_s.sub(/\A:/, '')
+          expression = key_node&.loc&.expression
+          expression&.source.to_s.sub(/\A:/, '')
         end
       end
 
@@ -917,7 +921,8 @@ module Docscribe
       # @param [Object] node Param documentation.
       # @return [Object]
       def node_default_literal(node)
-        node&.loc&.expression&.source
+        expression = node&.loc&.expression
+        expression&.source
       end
 
       # Build a param line for a keyword argument.
@@ -932,8 +937,8 @@ module Docscribe
       # @param [Object] param_documentation Param documentation.
       # @param [Object] param_tag_style Param documentation.
       # @return [Object]
-      def build_kwarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
-        pname = a.children.first.to_s
+      def build_kwarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
+        pname = arg_node.children.first.to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, "#{pname}:", nil,
                                fallback_type, treat_options_keyword_as_hash)
         format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
@@ -951,10 +956,12 @@ module Docscribe
       # @param [Object] param_documentation Param documentation.
       # @param [Object] param_tag_style Param documentation.
       # @return [Object]
-      def build_kwoptarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
-        pname, default = *a
+      def build_kwoptarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
+                              param_tag_style)
+        pname, default = *arg_node
         pname = pname.to_s
-        default_src = default&.loc&.expression&.source
+        default_loc = default&.loc
+        default_src = default_loc&.expression&.source
         ty = lookup_param_type(external_sig, param_types_override, pname, "#{pname}:", default_src,
                                fallback_type, treat_options_keyword_as_hash)
         format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
@@ -972,8 +979,9 @@ module Docscribe
       # @param [Object] param_documentation Param documentation.
       # @param [Object] param_tag_style Param documentation.
       # @return [Object]
-      def build_restarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
-        pname = (a.children.first || 'args').to_s
+      def build_restarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
+                             param_tag_style)
+        pname = (arg_node.children.first || 'args').to_s
         ty = if external_sig&.rest_positional&.element_type
                "Array<#{external_sig.rest_positional.element_type}>"
              else
@@ -995,8 +1003,9 @@ module Docscribe
       # @param [Object] param_documentation Param documentation.
       # @param [Object] param_tag_style Param documentation.
       # @return [Object]
-      def build_kwrestarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
-        pname = (a.children.first || 'kwargs').to_s
+      def build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
+                               param_tag_style)
+        pname = (arg_node.children.first || 'kwargs').to_s
         ty = external_sig&.rest_keywords&.type ||
              lookup_param_type_by_infer(param_types_override, pname, "**#{pname}",
                                         fallback_type, treat_options_keyword_as_hash)
@@ -1015,8 +1024,9 @@ module Docscribe
       # @param [Object] param_documentation Param documentation.
       # @param [Object] param_tag_style Param documentation.
       # @return [Object]
-      def build_blockarg_line(a, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
-        pname = (a.children.first || 'block').to_s
+      def build_blockarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
+                              param_tag_style)
+        pname = (arg_node.children.first || 'block').to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, "&#{pname}", nil,
                                fallback_type, treat_options_keyword_as_hash)
         format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
@@ -1203,17 +1213,18 @@ module Docscribe
       # Print a debug warning for a failed doc build phase.
       #
       # @note module_function: when included, also defines #debug_warn (instance visibility: private)
-      # @param [StandardError] e the error that occurred
+      # @param [StandardError] error the error that occurred
       # @param [Collector::Insertion] insertion the method insertion being processed
       # @param [String] name the method name
       # @param [String] phase the processing phase
       # @return [void]
-      def debug_warn(e, insertion:, name:, phase:)
+      def debug_warn(error, insertion:, name:, phase:)
         return unless debug?
 
         node = insertion&.node
-        buf_name = node&.loc&.expression&.source_buffer&.name || '(unknown)'
-        line = node&.loc&.expression&.line
+        expression = node&.loc&.expression
+        buf_name = expression&.source_buffer&.name || '(unknown)'
+        line = expression&.line
         scope = insertion&.scope
         method_symbol = scope == :class ? '.' : '#'
         container = insertion&.container || 'Object'
@@ -1222,7 +1233,7 @@ module Docscribe
         where << ":#{line}" if line
         where << " #{container}#{method_symbol}#{name}"
 
-        warn "Docscribe DEBUG: #{phase} failed at #{where}: #{e.class}: #{e.message}"
+        warn "Docscribe DEBUG: #{phase} failed at #{where}: #{error.class}: #{error.message}"
       end
 
       # Check whether debug mode is enabled.
