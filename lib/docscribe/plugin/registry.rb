@@ -52,8 +52,10 @@ module Docscribe
 
       # Parse and validate plugin priority.
       #
+      # @note module_function: when included, also defines #parse_priority (instance visibility: private)
       # @param [Object] priority
       # @raise [ArgumentError]
+      # @raise [StandardError]
       # @return [Integer]
       def parse_priority(priority)
         Integer(priority)
@@ -63,6 +65,7 @@ module Docscribe
 
       # Create a new Entry with the next order number.
       #
+      # @note module_function: when included, also defines #create_entry (instance visibility: private)
       # @param [Object] plugin
       # @param [Integer] priority
       # @return [Entry]
@@ -73,6 +76,7 @@ module Docscribe
 
       # Route entry to tag or collector list.
       #
+      # @note module_function: when included, also defines #route_entry (instance visibility: private)
       # @param [Entry] entry
       # @param [Object] plugin
       # @raise [ArgumentError]

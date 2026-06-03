@@ -91,6 +91,16 @@ module Docscribe
       end
 
       # Process a rescue body node and populate spec with normal + rescue return types.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #process_rescue_body (instance visibility: private)
+      # @param [Object] spec Param documentation.
+      # @param [Object] body Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] nil_as_optional Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @return [Object]
       def process_rescue_body(spec, body, fallback_type:, nil_as_optional:,
                               core_rbs_provider:, param_types:)
         main_body = body.children[0]
@@ -128,6 +138,12 @@ module Docscribe
       end
 
       # Collect a single assignment node's type into the types hash.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #collect_assignment_type (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @param [Object] types Param documentation.
+      # @return [Object]
       def collect_assignment_type(node, types)
         case node.type
         when :lvasgn, :gvasgn, :ivasgn
@@ -147,6 +163,16 @@ module Docscribe
       end
 
       # Handle `:begin` node for last_expr_type.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #handle_begin_node (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] nil_as_optional Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @param [Object] local_var_types Param documentation.
+      # @return [Object]
       def handle_begin_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
         last_expr_type(node.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
                                            core_rbs_provider: core_rbs_provider, param_types: param_types,
@@ -154,6 +180,16 @@ module Docscribe
       end
 
       # Handle `:if` node for last_expr_type.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #handle_if_node (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] nil_as_optional Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @param [Object] local_var_types Param documentation.
+      # @return [Object]
       def handle_if_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
         t = last_expr_type(node.children[1], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
                                              core_rbs_provider: core_rbs_provider, param_types: param_types,
@@ -165,6 +201,16 @@ module Docscribe
       end
 
       # Handle `:case` node for last_expr_type.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #handle_case_node (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] nil_as_optional Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @param [Object] local_var_types Param documentation.
+      # @return [Object]
       def handle_case_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
         branches = node.children[1..].compact.flat_map do |child|
           if child.type == :when
@@ -188,6 +234,16 @@ module Docscribe
       end
 
       # Handle `:block` node for last_expr_type.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #handle_block_node (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] nil_as_optional Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @param [Object] local_var_types Param documentation.
+      # @return [Object]
       def handle_block_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
         send_node = node.children[0]
         if send_node&.type == :send
@@ -203,6 +259,16 @@ module Docscribe
       end
 
       # Handle `:send` node for last_expr_type.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #handle_send_node (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] _nil_as_optional Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @param [Object] local_var_types Param documentation.
+      # @return [Object]
       def handle_send_node(node, fallback_type, _nil_as_optional, core_rbs_provider, param_types, local_var_types)
         recv = node.children[0]
         meth = node.children[1]
@@ -219,6 +285,12 @@ module Docscribe
       #
       # Handles `:lvar` and chained `:send` receivers.
       #
+      # @note module_function: when included, also defines #resolve_rbs_for_send (instance visibility: private)
+      # @param [Object] recv Param documentation.
+      # @param [Object] meth Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @param [Object] local_var_types Param documentation.
+      # @param [Object] param_types Param documentation.
       # @return [String, nil] resolved type or nil if unresolvable
       def resolve_rbs_for_send(recv, meth, core_rbs_provider, local_var_types, param_types)
         return nil unless core_rbs_provider

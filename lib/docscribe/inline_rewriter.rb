@@ -44,6 +44,7 @@ module Docscribe
       # @param [Boolean, nil] merge compatibility alias for safe strategy
       # @param [Docscribe::Config, nil] config config object (defaults to loaded config)
       # @param [String] file source name used for parser locations/debugging
+      # @param [Hash] options Param documentation.
       # @return [String]
       def insert_comments(code, strategy: nil, rewrite: nil, merge: nil, **options)
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
@@ -58,6 +59,7 @@ module Docscribe
       # @param [Boolean, nil] rewrite compatibility alias for aggressive strategy
       # @param [Boolean, nil] merge compatibility alias for safe strategy
       # @param [Hash] **options remaining options (config:, file:, core_rbs_provider:)
+      # @param [Hash] options Param documentation.
       # @raise [Docscribe::ParseError]
       # @raise [StandardError]
       # @return [Hash]
@@ -86,6 +88,11 @@ module Docscribe
       end
 
       # Build the insertion pipeline: collector, plugin insertions, dedup, rewriter, merge_inserts, changes.
+      # Method documentation.
+      #
+      # @param [Object] buffer Param documentation.
+      # @param [Object] ast Param documentation.
+      # @return [Hash]
       def build_rewrite_pipeline(buffer, ast)
         collector = Docscribe::InlineRewriter::Collector.new(buffer)
         collector.process(ast)
@@ -109,6 +116,12 @@ module Docscribe
       end
 
       # Dispatch all insertions to the appropriate handler.
+      # Method documentation.
+      #
+      # @param [Object] pipeline Param documentation.
+      # @param [Object] buffer Param documentation.
+      # @param [Hash] options Param documentation.
+      # @return [Object]
       def dispatch_rewrite_insertions(pipeline, buffer, **options)
         pipeline[:all].sort_by { |(kind, ins)| plugin_insertion_pos(kind, ins) }
                       .reverse_each do |kind, ins|
@@ -142,6 +155,13 @@ module Docscribe
       end
 
       # Load core RBS provider from config with safe fallback.
+      # Method documentation.
+      #
+      # @param [Object] config Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [nil] if StandardError
       def load_core_rbs_provider(config, core_rbs_provider)
         core_rbs_provider || (config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil)
       rescue StandardError => e
@@ -215,6 +235,7 @@ module Docscribe
       # @param [Array<Array(Symbol,Object)>] override_items
       # @param [Hash, nil] method_overrides_by_pos
       # @param [Integer] pos
+      # @return [Object]
       def handle_override_case(result, items, override_items, method_overrides_by_pos, pos)
         if method_overrides_by_pos
           winning_ins = pick_highest_priority_override_insertion(override_items, pos: pos)
@@ -232,6 +253,7 @@ module Docscribe
       # @param [Array<Array(Symbol,Object)>] plugin_items
       # @param [Integer] pos
       # @param [Array<Array(Symbol,Object)>] method_items
+      # @param [Object] _method_items Param documentation.
       # @return [Array<Array(Symbol,Object)>]
       def deduplicate_items(items, plugin_items, pos, _method_items)
         plugin_doc_items = plugin_items.select { |_k, ins| ins.is_a?(Hash) && ins[:doc] && !ins[:doc].empty? }
@@ -289,6 +311,7 @@ module Docscribe
       # @param [Array<Array(Symbol,Object)>] plugin_items
       # @param [Integer] max_prio
       # @param [Integer] pos
+      # @return [Object]
       def warn_plugin_conflict!(dropped, plugin_items, max_prio, pos)
         kept_labels = plugin_items.map { |_k, ins| plugin_insertion_label(ins) }.uniq
         dropped_labels = dropped.map { |_k, ins| plugin_insertion_label(ins) }.uniq
@@ -580,6 +603,7 @@ module Docscribe
       # @param [Array<Hash>] changes
       # @param [String] file
       # @param [Hash] method_override method-level override hash
+      # @param [Hash] options Param documentation.
       # @return [void]
       def apply_method_insertion!(**options)
         rewriter = options[:rewriter]
@@ -790,6 +814,7 @@ module Docscribe
       # @param [String] old_block
       # @param [Array<Hash>] changes
       # @param [String] file
+      # @return [Object]
       def log_method_doc_changes!(insertion:, merge_result:, new_block:, old_block:, changes:, file:)
         reason_specs = merge_result[:reasons] || []
         type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return].include?(r[:type]) }
@@ -836,6 +861,7 @@ module Docscribe
       # @param [String] message
       # @param [Integer, nil] line
       # @param [Hash] extra
+      # @param [Hash] options Param documentation.
       # @return [void]
       def add_change(**options)
         changes = options[:changes]
@@ -868,6 +894,7 @@ module Docscribe
       # @param [Object, nil] signature_provider
       # @param [Symbol] strategy
       # @param [Hash] merge_inserts
+      # @param [Hash] options Param documentation.
       # @return [void]
       def apply_attr_insertion!(**options)
         rewriter = options[:rewriter]
@@ -889,6 +916,14 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @param [Object] bol_range Param documentation.
+      # @return [Hash]
       def attr_insertion_params(insertion, config, signature_provider, bol_range)
         {
           insertion: insertion, config: config,
@@ -896,6 +931,12 @@ module Docscribe
         }
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] params Param documentation.
+      # @param [Object] rewriter Param documentation.
+      # @return [Object]
       def apply_attr_aggressive!(params, rewriter)
         if (range = SourceHelpers.comment_block_removal_range(params[:bol_range].begin_pos))
           rewriter.remove(range)
@@ -908,6 +949,14 @@ module Docscribe
         rewriter.insert_before(params[:bol_range], doc)
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] params Param documentation.
+      # @param [Object] merge_inserts Param documentation.
+      # @param [Object] rewriter Param documentation.
+      # @param [Object] buffer Param documentation.
+      # @return [Object]
       def apply_attr_safe!(params, merge_inserts, rewriter, buffer)
         info = SourceHelpers.doc_comment_block_info(buffer, params[:bol_range].begin_pos)
 
@@ -924,6 +973,15 @@ module Docscribe
         rewriter.insert_before(params[:bol_range], doc)
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @param [Object] info Param documentation.
+      # @param [Object] merge_inserts Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @return [Object]
       def merge_attr_additions!(insertion:, info:, merge_inserts:, config:, signature_provider:)
         additions = build_attr_merge_additions(ins: insertion, existing_lines: info[:lines],
                                                config: config, signature_provider: signature_provider)
@@ -932,6 +990,13 @@ module Docscribe
         merge_inserts[info[:end_pos]] << [insertion.node.loc.expression.begin_pos, additions]
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] rewriter Param documentation.
+      # @param [Object] buffer Param documentation.
+      # @param [Object] merge_inserts Param documentation.
+      # @return [Object]
       def apply_merge_inserts!(rewriter:, buffer:, merge_inserts:)
         merge_inserts.keys.sort.reverse_each do |end_pos|
           text = merge_text_for_pos(merge_inserts[end_pos])
@@ -942,6 +1007,11 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] chunks Param documentation.
+      # @return [Object?]
       def merge_text_for_pos(chunks)
         return nil if chunks.empty?
 
@@ -965,6 +1035,16 @@ module Docscribe
         text.empty? ? nil : text
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] ins Param documentation.
+      # @param [Object] existing_lines Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [nil] if StandardError
       def build_attr_merge_additions(ins:, existing_lines:, config:, signature_provider:)
         missing = missing_attr_names(ins, existing_lines)
         return '' if missing.empty?
@@ -979,11 +1059,22 @@ module Docscribe
         nil
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] ins Param documentation.
+      # @param [Object] existing_lines Param documentation.
+      # @return [Object]
       def missing_attr_names(ins, existing_lines)
         existing = existing_attr_names(existing_lines)
         ins.names.reject { |name_sym| existing[name_sym.to_s] }
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] lines Param documentation.
+      # @return [Object]
       def existing_attr_names(lines)
         names = {}
 
@@ -1008,6 +1099,13 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] config Param documentation.
+      # @param [Object] ins Param documentation.
+      # @param [Object] name_sym Param documentation.
+      # @return [Object]
       def allowed_for_access?(config, ins, name_sym)
         ok = false
 
@@ -1024,6 +1122,15 @@ module Docscribe
         ok
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] ins Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [nil] if StandardError
       def build_attr_doc_for_node(ins, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
         lines = build_attr_doc_lines(ins, indent: indent, config: config, signature_provider: signature_provider)
@@ -1032,6 +1139,15 @@ module Docscribe
         nil
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] ins Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @param [nil] names Param documentation.
+      # @return [Object]
       def build_attr_doc_lines(ins, indent:, config:, signature_provider:, names: nil)
         param_tag_style = config.param_tag_style
         names ||= ins.names
@@ -1132,6 +1248,7 @@ module Docscribe
       # @param [Hash, nil] param_types parameter name -> type map
       # @param [Object] return_type_override return type override string
       # @param [Object] override_tags hash of tags to override
+      # @param [Hash] options Param documentation.
       # @return [String, nil] generated doc block or nil
       def build_method_doc(insertion, **options)
         DocBuilder.build(insertion, **options)
@@ -1149,6 +1266,7 @@ module Docscribe
       # @param [Object] strategy rewrite strategy
       # @param [Object] return_type_override return type override string
       # @param [nil] override_tags hash of tags to override
+      # @param [Hash] options Param documentation.
       # @return [Hash] result with `:lines` and `:reasons` keys
       def build_missing_method_merge_result(insertion, existing_lines:, **options)
         DocBuilder.build_missing_merge_result(insertion, existing_lines: existing_lines, **options)

@@ -27,6 +27,7 @@ module Docscribe
         # nothing to add for this particular method.
         #
         # @param [Docscribe::Plugin::Context] context method context snapshot
+        # @param [Object] _context Param documentation.
         # @return [Array<Docscribe::Plugin::Tag>]
         def call(_context)
           []

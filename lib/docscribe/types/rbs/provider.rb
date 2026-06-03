@@ -90,6 +90,8 @@ module Docscribe
         # @private
         # @param [Array<String>] all_dirs combined sig and collection dirs
         # @param [Array<String>] collection_dirs
+        # @raise [::RBS::BaseError]
+        # @raise [StandardError]
         # @return [::RBS::Environment]
         def try_with_fallback_build_env(all_dirs, collection_dirs)
           build_env(all_dirs)
@@ -269,6 +271,7 @@ module Docscribe
         # @private
         # @param [StandardError] e the raised exception
         # @param [String] context human-readable context label
+        # @param [Object] error Param documentation.
         # @return [void]
         def handle_rbs_error(error, context)
           case error

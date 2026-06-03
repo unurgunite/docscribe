@@ -58,6 +58,7 @@ module Docscribe
     # @param [Entry] entry
     # @param [Parser::AST::Node] ast
     # @param [Parser::Source::Buffer] buffer
+    # @raise [StandardError]
     # @return [Array<Hash>]
     def self.process_single_plugin_result(entry, ast, buffer)
       plugin = entry.plugin
