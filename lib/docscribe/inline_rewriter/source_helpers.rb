@@ -55,40 +55,22 @@ module Docscribe
         src = buffer.source
         lines = src.lines
         def_line_idx = src[0...def_bol_pos].count("\n")
-        i = def_line_idx - 1
 
-        # Skip blank lines directly above def
-        i -= 1 while i >= 0 && lines[i].strip.empty?
+        block_range = find_comment_block_range(lines, def_line_idx)
+        return nil unless block_range
 
-        # Nearest non-blank line must be a comment
-        return nil unless i >= 0 && lines[i] =~ /^\s*#/
+        start_idx = block_range[:start_idx]
+        end_idx = block_range[:end_idx]
+        preserved_start_idx = find_preserved_start_idx(lines, start_idx, end_idx)
+        return nil unless doc_marker?(lines, preserved_start_idx..end_idx)
 
-        # Walk upward to include the entire contiguous comment block
-        end_idx = i
-        start_idx = i
-        start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
-        start_idx += 1
-
-        # Preserve leading directive-style comments
-        removable_start_idx = start_idx
-        removable_start_idx += 1 while removable_start_idx <= end_idx && preserved_comment_line?(lines[removable_start_idx])
-
-        return nil if removable_start_idx > end_idx
-
-        remaining = lines[removable_start_idx..end_idx]
-        return nil unless remaining.any? { |line| doc_marker_line?(line) }
-
-        start_pos = start_idx.positive? ? lines[0...start_idx].join.length : 0
-        doc_start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
-        end_pos = lines[0..end_idx].join.length
+        positions = compute_positions(lines, start_idx, preserved_start_idx, end_idx)
 
         {
           lines: lines[start_idx..end_idx],
-          preserved_lines: lines[start_idx...removable_start_idx],
-          doc_lines: lines[removable_start_idx..end_idx],
-          start_pos: start_pos,
-          doc_start_pos: doc_start_pos,
-          end_pos: end_pos
+          preserved_lines: lines[start_idx...preserved_start_idx],
+          doc_lines: lines[preserved_start_idx..end_idx],
+          **positions
         }
       end
 
@@ -105,32 +87,79 @@ module Docscribe
         src = buffer.source
         lines = src.lines
         def_line_idx = src[0...def_bol_pos].count("\n")
+
+        block_range = find_comment_block_range(lines, def_line_idx)
+        return nil unless block_range
+
+        start_idx = block_range[:start_idx]
+        end_idx = block_range[:end_idx]
+        preserved_start_idx = find_preserved_start_idx(lines, start_idx, end_idx)
+        return nil unless doc_marker?(lines, preserved_start_idx..end_idx)
+
+        start_pos = preserved_start_idx.positive? ? lines[0...preserved_start_idx].join.length : 0
+        Parser::Source::Range.new(buffer, start_pos, def_bol_pos)
+      end
+
+      # Find the range of a contiguous comment block directly above a method definition.
+      #
+      # Walks upward from def_line_idx, skipping blank lines, then includes all
+      # contiguous comment lines.
+      #
+      # @note module_function: when included, also defines #find_comment_block_range (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Integer] def_line_idx
+      # @return [Hash{start_idx: Integer, end_idx: Integer}, nil]
+      def find_comment_block_range(lines, def_line_idx)
         i = def_line_idx - 1
 
-        # Skip blank lines directly above def
         i -= 1 while i >= 0 && lines[i].strip.empty?
-
-        # Nearest non-blank line must be a comment to remove anything
         return nil unless i >= 0 && lines[i] =~ /^\s*#/
 
-        # Walk upward to include the entire contiguous comment block
         start_idx = i
         start_idx -= 1 while start_idx >= 0 && lines[start_idx] =~ /^\s*#/
         start_idx += 1
 
-        # Preserve leading directive-style comments (currently: rubocop directives)
-        removable_start_idx = start_idx
-        removable_start_idx += 1 while removable_start_idx <= i && preserved_comment_line?(lines[removable_start_idx])
+        { start_idx: start_idx, end_idx: i }
+      end
 
-        # If the whole block is preserved directives, there is nothing to remove
-        return nil if removable_start_idx > i
+      # Find the first index in a comment block after preserved directive-style lines.
+      #
+      # Preserved lines include RuboCop directives and Ruby magic comments.
+      #
+      # @note module_function: when included, also defines #find_preserved_start_idx (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Integer] start_idx
+      # @param [Integer] end_idx
+      # @return [Integer]
+      def find_preserved_start_idx(lines, start_idx, end_idx)
+        idx = start_idx
+        idx += 1 while idx <= end_idx && preserved_comment_line?(lines[idx])
+        idx
+      end
 
-        # SAFETY: only remove if the remaining block looks like documentation
-        remaining = lines[removable_start_idx..i]
-        return nil unless remaining.any? { |line| doc_marker_line?(line) }
+      # Whether a comment block range contains documentation markers.
+      #
+      # @note module_function: when included, also defines #doc_marker? (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Range] range line index range
+      # @return [Boolean]
+      def doc_marker?(lines, range)
+        lines[range].any? { |line| doc_marker_line?(line) }
+      end
 
-        start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
-        Parser::Source::Range.new(buffer, start_pos, def_bol_pos)
+      # Compute source positions for a comment block.
+      #
+      # @note module_function: when included, also defines #compute_positions (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Integer] start_idx
+      # @param [Integer] doc_start_idx
+      # @param [Integer] end_pos_idx
+      # @return [Hash{start_pos: Integer, doc_start_pos: Integer, end_pos: Integer}]
+      def compute_positions(lines, start_idx, doc_start_idx, end_pos_idx)
+        start_pos = start_idx.positive? ? lines[0...start_idx].join.length : 0
+        doc_start_pos = doc_start_idx.positive? ? lines[0...doc_start_idx].join.length : 0
+        end_pos = lines[0..end_pos_idx].join.length
+        { start_pos: start_pos, doc_start_pos: doc_start_pos, end_pos: end_pos }
       end
 
       # Whether a comment line should be preserved during aggressive replacement.

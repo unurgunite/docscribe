@@ -77,26 +77,9 @@ module Docscribe
         local_var_types = build_local_variable_types(body)
 
         if body.type == :rescue
-          main_body = body.children[0]
-          rescue_local_var_types = build_local_variable_types(body)
-          all_local_var_types = rescue_local_var_types || local_var_types
-          spec[:normal] =
-            last_expr_type(main_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                      core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                      local_var_types: all_local_var_types) || FALLBACK_TYPE
-
-          body.children.each do |ch|
-            next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody
-
-            exc_list, _asgn, rescue_body = *ch
-            exc_names = Raises.exception_names_from_rescue_list(exc_list)
-            rtype =
-              last_expr_type(rescue_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                          core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                          local_var_types: all_local_var_types) ||
-              fallback_type
-            spec[:rescues] << [exc_names, rtype]
-          end
+          process_rescue_body(spec, body, fallback_type: fallback_type,
+                                          nil_as_optional: nil_as_optional, core_rbs_provider: core_rbs_provider,
+                                          param_types: param_types)
         else
           spec[:normal] =
             last_expr_type(body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
@@ -107,33 +90,159 @@ module Docscribe
         spec
       end
 
-      # Resolve a return type from core RBS for a method call.
+      # Process a rescue body node and populate spec with normal + rescue return types.
+      def process_rescue_body(spec, body, fallback_type:, nil_as_optional:,
+                              core_rbs_provider:, param_types:)
+        main_body = body.children[0]
+        all_local_var_types = build_local_variable_types(body)
+        spec[:normal] =
+          last_expr_type(main_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                    core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                    local_var_types: all_local_var_types) || FALLBACK_TYPE
+
+        body.children.each do |ch|
+          next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody
+
+          exc_list, _asgn, rescue_body = *ch
+          exc_names = Raises.exception_names_from_rescue_list(exc_list)
+          rtype =
+            last_expr_type(rescue_body, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                        core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                        local_var_types: all_local_var_types) ||
+            fallback_type
+          spec[:rescues] << [exc_names, rtype]
+        end
+      end
+
+      # Build a map of local/global/ivar/constant assignments to inferred types.
       #
-      # @note module_function: when included, also defines #resolve_rbs_return_type (instance visibility: private)
-      # @private
+      # @note module_function: when included, also defines #build_local_variable_types (instance visibility: private)
       # @param [Parser::AST::Node] node AST node to walk
-      # @return [String] FALLBACK_TYPE if lookup fails
+      # @return [Hash, nil]
       def build_local_variable_types(node)
         types = {}
         ASTWalk.walk(node) do |n|
-          case n.type
-          when :lvasgn, :gvasgn, :ivasgn
-            name = n.children[0].to_s
-            value = n.children[1]
-            if value
-              inferred = Literals.type_from_literal(value, fallback_type: FALLBACK_TYPE)
-              types[name] = inferred if inferred && inferred != FALLBACK_TYPE
-            end
-          when :casgn
-            name = n.children[0].to_s
-            value = n.children[2]
-            if value
-              inferred = Literals.type_from_literal(value, fallback_type: FALLBACK_TYPE)
-              types[name] = inferred if inferred && inferred != FALLBACK_TYPE
-            end
-          end
+          collect_assignment_type(n, types)
         end
         types.empty? ? nil : types
+      end
+
+      # Collect a single assignment node's type into the types hash.
+      def collect_assignment_type(node, types)
+        case node.type
+        when :lvasgn, :gvasgn, :ivasgn
+          name = node.children[0].to_s
+          value = node.children[1]
+        when :casgn
+          name = node.children[0].to_s
+          value = node.children[2]
+        else
+          return
+        end
+
+        return unless value
+
+        inferred = Literals.type_from_literal(value, fallback_type: FALLBACK_TYPE)
+        types[name] = inferred if inferred && inferred != FALLBACK_TYPE
+      end
+
+      # Handle `:begin` node for last_expr_type.
+      def handle_begin_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
+        last_expr_type(node.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                           core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                           local_var_types: local_var_types)
+      end
+
+      # Handle `:if` node for last_expr_type.
+      def handle_if_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
+        t = last_expr_type(node.children[1], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                             core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                             local_var_types: local_var_types)
+        e = last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                             core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                             local_var_types: local_var_types)
+        unify_types(t, e, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+      end
+
+      # Handle `:case` node for last_expr_type.
+      def handle_case_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
+        branches = node.children[1..].compact.flat_map do |child|
+          if child.type == :when
+            last_expr_type(child.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                                core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                                local_var_types: local_var_types)
+          else
+            last_expr_type(child, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                  core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                  local_var_types: local_var_types)
+          end
+        end.compact
+
+        if branches.empty?
+          fallback_type
+        else
+          branches.reduce do |a, b|
+            unify_types(a, b, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+          end
+        end
+      end
+
+      # Handle `:block` node for last_expr_type.
+      def handle_block_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
+        send_node = node.children[0]
+        if send_node&.type == :send
+          recv = send_node.children[0]
+          meth = send_node.children[1]
+          rbs_type = resolve_rbs_for_send(recv, meth, core_rbs_provider, local_var_types, param_types)
+          return rbs_type if rbs_type
+        end
+
+        last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
+                                         core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                         local_var_types: local_var_types)
+      end
+
+      # Handle `:send` node for last_expr_type.
+      def handle_send_node(node, fallback_type, _nil_as_optional, core_rbs_provider, param_types, local_var_types)
+        recv = node.children[0]
+        meth = node.children[1]
+
+        if core_rbs_provider
+          rbs_type = resolve_rbs_for_send(recv, meth, core_rbs_provider, local_var_types, param_types)
+          return rbs_type if rbs_type
+        end
+
+        Literals.type_from_literal(node, fallback_type: fallback_type)
+      end
+
+      # Resolve RBS return type for a send node's receiver, if possible.
+      #
+      # Handles `:lvar` and chained `:send` receivers.
+      #
+      # @return [String, nil] resolved type or nil if unresolvable
+      def resolve_rbs_for_send(recv, meth, core_rbs_provider, local_var_types, param_types)
+        return nil unless core_rbs_provider
+
+        if recv&.type == :lvar
+          lvar_name = recv.children.first
+          recv_type = nil
+          recv_type = local_var_types[lvar_name.to_s] if local_var_types && lvar_name
+          recv_type = param_types[lvar_name.to_s] if !recv_type && param_types && lvar_name
+          if recv_type
+            rbs_type = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
+            return rbs_type unless rbs_type == FALLBACK_TYPE
+          end
+        elsif recv&.type == :send
+          inner_type = last_expr_type(recv, fallback_type: nil, nil_as_optional: false,
+                                            core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                            local_var_types: local_var_types)
+          if inner_type
+            rbs_type = resolve_rbs_return_type(inner_type, meth, core_rbs_provider)
+            return rbs_type unless rbs_type == FALLBACK_TYPE
+          end
+        end
+
+        nil
       end
 
       # Infer the type of the last expression in a node.
@@ -160,102 +269,17 @@ module Docscribe
 
         case node.type
         when :begin
-          last_expr_type(node.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                             core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                             local_var_types: local_var_types)
-
+          handle_begin_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
         when :if
-          t = last_expr_type(node.children[1], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                               core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                               local_var_types: local_var_types)
-          e = last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                               core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                               local_var_types: local_var_types)
-          unify_types(t, e, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
-
+          handle_if_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
         when :case
-          branches = node.children[1..].compact.flat_map do |child|
-            if child.type == :when
-              last_expr_type(child.children.last, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                                  core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                                  local_var_types: local_var_types)
-            else
-              last_expr_type(child, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                    core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                    local_var_types: local_var_types)
-            end
-          end.compact
-
-          if branches.empty?
-            fallback_type
-          else
-            branches.reduce do |a, b|
-              unify_types(a, b, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
-            end
-          end
-
+          handle_case_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
         when :return
           Literals.type_from_literal(node.children.first, fallback_type: fallback_type)
-
         when :block
-          send_node = node.children[0]
-          if send_node&.type == :send
-            recv = send_node.children[0]
-            meth = send_node.children[1]
-
-            if core_rbs_provider && recv&.type == :lvar
-              lvar_name = recv.children.first
-              recv_type = nil
-              recv_type = local_var_types[lvar_name.to_s] if local_var_types && lvar_name
-              recv_type = param_types[lvar_name.to_s] if !recv_type && param_types && lvar_name
-              if recv_type
-                rbs_type = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
-                return rbs_type unless rbs_type == FALLBACK_TYPE
-              end
-            elsif core_rbs_provider && recv&.type == :send
-              inner_type = last_expr_type(recv, fallback_type: nil, nil_as_optional: false,
-                                                core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                                local_var_types: local_var_types)
-              if inner_type
-                rbs_type = resolve_rbs_return_type(inner_type, meth, core_rbs_provider)
-                return rbs_type unless rbs_type == FALLBACK_TYPE
-              end
-            end
-          end
-
-          last_expr_type(node.children[2], fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                           core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                           local_var_types: local_var_types)
-
+          handle_block_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
         when :send
-          recv = node.children[0]
-          meth = node.children[1]
-
-          # Try to resolve return type from RBS core for method calls
-          if core_rbs_provider && recv&.type == :send
-            # Chained call: arg.to_i.positive?
-            inner_type = last_expr_type(recv, fallback_type: nil, nil_as_optional: false,
-                                              core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                              local_var_types: local_var_types)
-            if inner_type
-              rbs_type = resolve_rbs_return_type(inner_type, meth, core_rbs_provider)
-              return rbs_type unless rbs_type == FALLBACK_TYPE
-            end
-
-          elsif core_rbs_provider && recv&.type == :lvar
-            # Direct call on local variable: p1.positive? or admins.any?
-            lvar_name = recv.children.first
-            recv_type = nil
-            recv_type = local_var_types[lvar_name.to_s] if local_var_types && lvar_name
-            recv_type = param_types[lvar_name.to_s] if !recv_type && param_types && lvar_name
-            if recv_type
-              rbs_type = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
-              return rbs_type unless rbs_type == FALLBACK_TYPE
-            end
-          end
-
-          Literals.type_from_literal(node, fallback_type: fallback_type)
-
+          handle_send_node(node, fallback_type, nil_as_optional, core_rbs_provider, param_types, local_var_types)
         else
           Literals.type_from_literal(node, fallback_type: fallback_type)
         end

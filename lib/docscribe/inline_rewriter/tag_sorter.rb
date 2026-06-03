@@ -124,19 +124,8 @@ module Docscribe
       def consume_entry(lines, start_idx)
         first = lines[start_idx]
         tag = extract_tag_name(first)
-        entry_lines = [first]
-        i = start_idx + 1
-
-        while i < lines.length
-          line = lines[i]
-
-          break if top_level_tag_line?(line)
-          break if blank_comment_line?(line)
-          break unless comment_line?(line)
-
-          entry_lines << line
-          i += 1
-        end
+        entry_lines = collect_continuation_lines(lines, start_idx + 1)
+        i = entry_lines.length + start_idx
 
         entry = Entry.new(
           tag: tag,
@@ -149,11 +138,35 @@ module Docscribe
         [entry, i]
       end
 
+      # Collect continuation lines following a top-level tag entry.
+      #
+      # @note module_function: when included, also defines #collect_continuation_lines (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Integer] start_idx
+      # @return [Array<String>]
+      def collect_continuation_lines(lines, start_idx)
+        result = []
+        i = start_idx
+
+        while i < lines.length
+          line = lines[i]
+          break if top_level_tag_line?(line)
+          break if blank_comment_line?(line)
+          break unless comment_line?(line)
+
+          result << line
+          i += 1
+        end
+
+        result
+      end
+
       # Group entries so `@option` tags remain attached to their owning `@param`.
       #
       # @note module_function: when included, also defines #group_entries (instance visibility: private)
       # @param [Array<Entry>] entries
       # @return [Array<Array<Entry>>]
+      # rubocop:disable Style/ConditionalAssignment
       def group_entries(entries)
         groups = []
         i = 0
@@ -162,25 +175,37 @@ module Docscribe
           entry = entries[i]
 
           if entry.tag == 'param'
-            group = [entry]
-            i += 1
-
-            while i < entries.length &&
-                  entries[i].tag == 'option' &&
-                  entries[i].option_owner &&
-                  entries[i].option_owner == entry.param_name
-              group << entries[i]
-              i += 1
-            end
-
-            groups << group
+            groups << ([entry] + collect_option_entries(entries, i + 1, entry.param_name))
           else
             groups << [entry]
-            i += 1
           end
+          i += 1
         end
 
         groups
+      end
+      # rubocop:enable Style/ConditionalAssignment
+
+      # Collect `@option` entries belonging to the given param name.
+      #
+      # @note module_function: when included, also defines #collect_option_entries (instance visibility: private)
+      # @param [Array<Entry>] entries
+      # @param [Integer] start_idx
+      # @param [String] param_name
+      # @return [Array<Entry>]
+      def collect_option_entries(entries, start_idx, param_name)
+        result = []
+        i = start_idx
+
+        while i < entries.length &&
+              entries[i].tag == 'option' &&
+              entries[i].option_owner &&
+              entries[i].option_owner == param_name
+          result << entries[i]
+          i += 1
+        end
+
+        result
       end
 
       # Whether a line begins a top-level tag entry.

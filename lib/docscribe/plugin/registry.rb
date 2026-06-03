@@ -45,16 +45,39 @@ module Docscribe
       # @raise [StandardError]
       # @return [void]
       def register(plugin, priority: 0)
-        prio =
-          begin
-            Integer(priority)
-          rescue StandardError
-            raise ArgumentError, "priority must be an Integer-like value, got: #{priority.inspect}"
-          end
+        prio = parse_priority(priority)
+        entry = create_entry(plugin, prio)
+        route_entry(entry, plugin)
+      end
 
+      # Parse and validate plugin priority.
+      #
+      # @param [Object] priority
+      # @raise [ArgumentError]
+      # @return [Integer]
+      def parse_priority(priority)
+        Integer(priority)
+      rescue StandardError
+        raise ArgumentError, "priority must be an Integer-like value, got: #{priority.inspect}"
+      end
+
+      # Create a new Entry with the next order number.
+      #
+      # @param [Object] plugin
+      # @param [Integer] priority
+      # @return [Entry]
+      def create_entry(plugin, priority)
         @order_seq += 1
-        entry = Entry.new(plugin: plugin, priority: prio, order: @order_seq)
+        Entry.new(plugin: plugin, priority: priority, order: @order_seq)
+      end
 
+      # Route entry to tag or collector list.
+      #
+      # @param [Entry] entry
+      # @param [Object] plugin
+      # @raise [ArgumentError]
+      # @return [void]
+      def route_entry(entry, plugin)
         if plugin.is_a?(Base::CollectorPlugin) || plugin.respond_to?(:collect)
           @collector_entries << entry
         elsif plugin.is_a?(Base::TagPlugin) || plugin.respond_to?(:call)

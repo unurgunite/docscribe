@@ -29,15 +29,15 @@ module Docscribe
           # RBS is loaded lazily by the provider; constants below exist only when rbs is available.
           case type
           when ::RBS::Types::Bases::Any
-            'Object'
+            format_any
           when ::RBS::Types::Bases::Bool
-            'Boolean'
+            format_bool
           when ::RBS::Types::Bases::Void
-            'void'
+            format_void
           when ::RBS::Types::Bases::Nil
-            'nil'
+            format_nil
           when ::RBS::Types::Optional
-            "#{to_yard(type.type, collapse_generics: collapse_generics)}?"
+            format_optional(type, collapse_generics: collapse_generics)
           when ::RBS::Types::Union
             format_union(type, collapse_generics: collapse_generics)
           when ::RBS::Types::ClassInstance,
@@ -46,12 +46,77 @@ module Docscribe
             ::RBS::Types::Alias
             format_named(type, collapse_generics: collapse_generics)
           when ::RBS::Types::Literal
-            literal_to_yard(type.literal)
+            format_literal(type.literal)
           when ::RBS::Types::Proc
-            'Proc'
+            format_proc
           else
             fallback_string(type)
           end
+        end
+
+        # @note module_function: when included, also defines #format_any (instance visibility: private)
+        # @return [String]
+        def format_any
+          'Object'
+        end
+
+        # @note module_function: when included, also defines #format_bool (instance visibility: private)
+        # @return [String]
+        def format_bool
+          'Boolean'
+        end
+
+        # @note module_function: when included, also defines #format_void (instance visibility: private)
+        # @return [String]
+        def format_void
+          'void'
+        end
+
+        # @note module_function: when included, also defines #format_nil (instance visibility: private)
+        # @return [String]
+        def format_nil
+          'nil'
+        end
+
+        # Format an RBS optional type with a trailing `?`.
+        #
+        # Example:
+        # - `String?` => `"String?"`
+        #
+        # @note module_function: when included, also defines #format_optional (instance visibility: private)
+        # @param [::RBS::Types::Optional] type
+        # @param [Boolean] collapse_generics
+        # @return [String]
+        def format_optional(type, collapse_generics:)
+          "#{to_yard(type.type, collapse_generics: collapse_generics)}?"
+        end
+
+        # Format an RBS literal type into a YARD-ish type name.
+        #
+        # Examples:
+        # - `123` => `"Integer"`
+        # - `'hello'` => `"String"`
+        # - `true` => `"Boolean"`
+        #
+        # @note module_function: when included, also defines #format_literal (instance visibility: private)
+        # @param [Object] lit literal value
+        # @return [String]
+        def format_literal(lit)
+          case lit
+          when Integer then 'Integer'
+          when Float   then 'Float'
+          when String  then 'String'
+          when Symbol  then 'Symbol'
+          when TrueClass, FalseClass then 'Boolean'
+          when NilClass then 'nil'
+          else 'Object'
+          end
+        end
+
+        # @note module_function: when included, also defines #format_proc (instance visibility: private)
+        # @return [String]
+        def format_proc
+          'Proc'
         end
 
         # Format an RBS union type as a comma-separated YARD union.
