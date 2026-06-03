@@ -42,8 +42,6 @@ module Docscribe
       # @param [Symbol, nil] strategy :safe or :aggressive
       # @param [Boolean, nil] rewrite compatibility alias for aggressive strategy
       # @param [Boolean, nil] merge compatibility alias for safe strategy
-      # @param [Docscribe::Config, nil] config config object (defaults to loaded config)
-      # @param [String] file source name used for parser locations/debugging
       # @param [Hash] options Param documentation.
       # @return [String]
       def insert_comments(code, strategy: nil, rewrite: nil, merge: nil, **options)
@@ -252,7 +250,6 @@ module Docscribe
       # @param [Array<Array(Symbol,Object)>] items
       # @param [Array<Array(Symbol,Object)>] plugin_items
       # @param [Integer] pos
-      # @param [Array<Array(Symbol,Object)>] method_items
       # @param [Object] _method_items Param documentation.
       # @return [Array<Array(Symbol,Object)>]
       def deduplicate_items(items, plugin_items, pos, _method_items)
@@ -593,16 +590,6 @@ module Docscribe
       # - insert a fresh regenerated block
       #
       # @private
-      # @param [Parser::Source::TreeRewriter] rewriter
-      # @param [Parser::Source::Buffer] buffer
-      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
-      # @param [Docscribe::Config] config
-      # @param [Object, nil] signature_provider
-      # @param [Object, nil] core_rbs_provider
-      # @param [Symbol] strategy
-      # @param [Array<Hash>] changes
-      # @param [String] file
-      # @param [Hash] method_override method-level override hash
       # @param [Hash] options Param documentation.
       # @return [void]
       def apply_method_insertion!(**options)
@@ -725,7 +712,7 @@ module Docscribe
         buffer         = options[:buffer]
         insertion      = options[:insertion]
         anchor_bol_range = options[:anchor_bol_range]
-        doc_params = options.except(:rewriter, :buffer, :insertion, :anchor_bol_range)
+        doc_params = options.reject { |k, _| [:rewriter, :buffer, :insertion, :anchor_bol_range].include?(k) }
 
         info = method_doc_comment_info(buffer, insertion)
 
@@ -753,8 +740,8 @@ module Docscribe
         changes        = options[:changes]
         file           = options[:file]
         strategy       = options[:strategy]
-        doc_params     = options.except(:rewriter, :buffer, :insertion,
-                                        :anchor_bol_range, :info, :changes, :file, :strategy)
+        doc_params     = options.reject { |k, _| [:rewriter, :buffer, :insertion,
+                                         :anchor_bol_range, :info, :changes, :file, :strategy].include?(k) }
 
         merge_result = build_missing_method_merge_result(insertion, existing_lines: info[:doc_lines],
                                                                     strategy: strategy, **doc_params)
@@ -839,8 +826,8 @@ module Docscribe
         anchor_bol_range = options[:anchor_bol_range]
         changes          = options[:changes]
         file             = options[:file]
-        doc_params       = options.except(:rewriter, :buffer, :insertion,
-                                          :anchor_bol_range, :changes, :file, :strategy)
+        doc_params       = options.reject { |k, _| [:rewriter, :buffer, :insertion,
+                                           :anchor_bol_range, :changes, :file, :strategy].include?(k) }
 
         doc = build_method_doc(insertion, **doc_params)
         return if doc.nil? || doc.empty?
@@ -854,13 +841,6 @@ module Docscribe
       # Append a structured change record.
       #
       # @private
-      # @param [Array<Hash>] changes
-      # @param [Symbol] type
-      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
-      # @param [String] file
-      # @param [String] message
-      # @param [Integer, nil] line
-      # @param [Hash] extra
       # @param [Hash] options Param documentation.
       # @return [void]
       def add_change(**options)
@@ -887,13 +867,6 @@ module Docscribe
       # Apply one attribute insertion according to the selected strategy.
       #
       # @private
-      # @param [Parser::Source::TreeRewriter] rewriter
-      # @param [Parser::Source::Buffer] buffer
-      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] insertion
-      # @param [Docscribe::Config] config
-      # @param [Object, nil] signature_provider
-      # @param [Symbol] strategy
-      # @param [Hash] merge_inserts
       # @param [Hash] options Param documentation.
       # @return [void]
       def apply_attr_insertion!(**options)
@@ -1011,7 +984,7 @@ module Docscribe
       #
       # @private
       # @param [Object] chunks Param documentation.
-      # @return [Object?]
+      # @return [Object, nil]
       def merge_text_for_pos(chunks)
         return nil if chunks.empty?
 
@@ -1242,12 +1215,6 @@ module Docscribe
       #
       # @private
       # @param [Collector::Insertion] insertion the collected method insertion
-      # @param [Docscribe::Config] config the active configuration
-      # @param [Object, nil] signature_provider external signature provider
-      # @param [Object, nil] core_rbs_provider RBS core type provider
-      # @param [Hash, nil] param_types parameter name -> type map
-      # @param [Object] return_type_override return type override string
-      # @param [Object] override_tags hash of tags to override
       # @param [Hash] options Param documentation.
       # @return [String, nil] generated doc block or nil
       def build_method_doc(insertion, **options)
@@ -1259,13 +1226,6 @@ module Docscribe
       # @private
       # @param [Collector::Insertion] insertion the collected method insertion
       # @param [Array<String>] existing_lines existing doc-like lines
-      # @param [Docscribe::Config] config the active configuration
-      # @param [Object, nil] signature_provider external signature provider
-      # @param [Object, nil] core_rbs_provider RBS core type provider
-      # @param [Hash, nil] param_types parameter name -> type map
-      # @param [Object] strategy rewrite strategy
-      # @param [Object] return_type_override return type override string
-      # @param [nil] override_tags hash of tags to override
       # @param [Hash] options Param documentation.
       # @return [Hash] result with `:lines` and `:reasons` keys
       def build_missing_method_merge_result(insertion, existing_lines:, **options)
