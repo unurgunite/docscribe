@@ -34,6 +34,17 @@ module DocscribePlugins
   #   require 'examples/plugins/collector_plugin/model_attributes/plugin'
   #   Docscribe::Plugin::Registry.register(DocscribePlugins::ModelAttributes.new)
   class ModelAttributes < Docscribe::Plugin::Base::CollectorPlugin
+    LITERAL_TYPES = {
+      str: 'String',
+      dstr: 'String',
+      int: 'Integer',
+      float: 'Integer',
+      nil: 'nil',
+      array: 'Array',
+      hash: 'Hash',
+      regexp: 'Regexp'
+    }.freeze
+
     # @!attribute [r] root
     #   @return [String] Rails application root directory
     attr_reader :root
@@ -80,25 +91,33 @@ module DocscribePlugins
     # @param [Parser::AST::Node] ast
     # @return [Boolean]
     def active_record_model?(ast)
-      found = false
       Docscribe::Infer::ASTWalk.walk(ast) do |node|
         next unless node.type == :class
 
         _name, parent = *node
         next unless parent
 
-        if parent.type == :const && parent.children[1] == :ApplicationRecord
-          found = true
-          break
-        elsif parent.type == :const &&
-              parent.children[0]&.type == :const &&
-              parent.children[0].children[1] == :ActiveRecord &&
-              parent.children[1] == :Base
-          found = true
-          break
-        end
+        return true if active_record_parent?(parent)
       end
-      found
+
+      false
+    end
+
+    def active_record_parent?(parent)
+      application_record_parent?(parent) ||
+        active_record_base_parent?(parent)
+    end
+
+    def application_record_parent?(parent)
+      parent.type == :const &&
+        parent.children[1] == :ApplicationRecord
+    end
+
+    def active_record_base_parent?(parent)
+      parent.type == :const &&
+        parent.children[0]&.type == :const &&
+        parent.children[0].children[1] == :ActiveRecord &&
+        parent.children[1] == :Base
     end
 
     # Extract the model class name from the AST.
@@ -195,42 +214,61 @@ module DocscribePlugins
       results = []
 
       Docscribe::Infer::ASTWalk.walk(ast) do |node|
-        next unless node.type == :class
-
-        model_name = resolve_const_name(node.children[0])
-        next unless model_name
-
-        table_name = model_name_to_table_name(model_name)
-        columns = tables[table_name]
-        next unless columns
-
-        _name, _parent, body = *node
-        next unless body
-
-        stmts = body.type == :begin ? body.children : [body]
-
-        # Find all method definitions in the class
-        method_nodes = stmts.select { |s| %i[def defs].include?(s.type) }
-        method_nodes.each do |meth_node|
-          meth_name =
-            case meth_node.type
-            when :def
-              meth_node.children[0]
-            when :defs
-              meth_node.children[1]
-            else
-              next
-            end
-          next if reserved_method?(meth_name.to_s)
-
-          inferred_type = infer_method_return_type(meth_node, columns)
-          next if inferred_type.nil?
-
-          results << { anchor_node: meth_node, method_override: { return_type: inferred_type } }
-        end
+        collect_class_method_docs(node, tables, results)
       end
 
       results
+    end
+
+    def collect_class_method_docs(node, tables, results)
+      return unless node.type == :class
+
+      columns = model_columns_for(node, tables)
+      return unless columns
+
+      method_nodes_for(node).each do |meth_node|
+        doc = build_method_doc(meth_node, columns)
+        results << doc if doc
+      end
+    end
+
+    def model_columns_for(node, tables)
+      model_name = resolve_const_name(node.children[0])
+      return unless model_name
+
+      tables[model_name_to_table_name(model_name)]
+    end
+
+    def method_nodes_for(node)
+      _name, _parent, body = *node
+      return [] unless body
+
+      stmts = body.type == :begin ? body.children : [body]
+      stmts.select { |stmt| %i[def defs].include?(stmt.type) }
+    end
+
+    def build_method_doc(meth_node, columns)
+      meth_name = method_name(meth_node)
+      return if reserved_method?(meth_name.to_s)
+
+      inferred_type = infer_method_return_type(meth_node, columns)
+      return unless inferred_type
+
+      {
+        anchor_node: meth_node,
+        method_override: {
+          return_type: inferred_type
+        }
+      }
+    end
+
+    def method_name(node)
+      case node.type
+      when :def
+        node.children[0]
+      when :defs
+        node.children[1]
+      end
     end
 
     # Check if a method name should be skipped.
@@ -253,19 +291,22 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_method_return_type(meth_node, columns)
-      body =
-        case meth_node.type
-        when :def
-          meth_node.children[2]
-        when :defs
-          meth_node.children[3]
-        end
-      return nil unless body
+      body = method_body_node(meth_node)
+      return unless body
 
       last_expr = extract_last_expression(body)
-      return nil unless last_expr
+      return unless last_expr
 
       infer_type_from_node(last_expr, columns)
+    end
+
+    def method_body_node(meth_node)
+      case meth_node.type
+      when :def
+        meth_node.children[2]
+      when :defs
+        meth_node.children[3]
+      end
     end
 
     # Extract the last expression from a body node.
@@ -287,30 +328,21 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_type_from_node(node, columns)
-      case node.type
-      when :send
-        infer_send_type(node, columns)
-      when :lvar, :ivasgn, :ivar
-        infer_variable_type(node, columns)
-      when :str, :dstr
-        'String'
-      when :int, :float
-        'Integer'
-      when true, false
-        'Boolean'
-      when :nil
-        'nil'
-      when :array
-        'Array'
-      when :hash
-        'Hash'
-      when :regexp
-        'Regexp'
-      when :const
-        resolve_const_name(node)
-      else
-        'Object'
-      end
+      return infer_send_type(node, columns) if node.type == :send
+      return infer_variable_type(node, columns) if variable_node?(node)
+      return resolve_const_name(node) if node.type == :const
+
+      literal_type(node) || 'Object'
+    end
+
+    def variable_node?(node)
+      %i[lvar ivasgn ivar].include?(node.type)
+    end
+
+    def literal_type(node)
+      return 'Boolean' if [true, false].include?(node.type)
+
+      LITERAL_TYPES[node.type]
     end
 
     # Infer return type for a send node (method call).
@@ -347,19 +379,17 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_variable_type(node, columns)
+      column_yard_type(variable_column_name(node), columns)
+    end
+
+    def variable_column_name(node)
       case node.type
       when :lvar
-        name = node.children[0].to_s
-        column_yard_type(name, columns)
+        node.children[0].to_s
       when :ivar
-        name = node.children[0].to_s
-        # @attribute -> attribute
-        column_name = name.sub(/^@/, '')
-        column_yard_type(column_name, columns)
+        node.children[0].to_s.sub(/^@/, '')
       when :ivasgn
-        name = node.children[0].to_s
-        column_name = name.sub(/=$/, '')
-        column_yard_type(column_name, columns)
+        node.children[0].to_s.sub(/=$/, '')
       end
     end
 
