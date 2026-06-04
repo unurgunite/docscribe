@@ -64,24 +64,12 @@ module Docscribe
       def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, **options)
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
         validate_strategy!(strategy)
-
-        config = options[:config] || Docscribe::Config.load
-        file = options[:file] || '(inline)'
-        core_rbs_provider = options[:core_rbs_provider]
-
-        buffer = Parser::Source::Buffer.new(file.to_s, source: code)
-        ast = Docscribe::Parsing.parse_buffer(buffer)
-        raise Docscribe::ParseError, "Failed to parse #{file}" unless ast
-
-        signature_provider = build_signature_provider(config, code, file.to_s)
-        core_rbs_provider = load_core_rbs_provider(config, core_rbs_provider)
-
-        pipeline = build_rewrite_pipeline(buffer, ast)
-        dispatch_rewrite_insertions(pipeline, buffer,
-                                    config: config, signature_provider: signature_provider,
-                                    core_rbs_provider: core_rbs_provider, strategy: strategy,
-                                    file: file.to_s)
-
+        parsed = setup_rewrite_env(code, options)
+        pipeline = build_rewrite_pipeline(parsed[:buffer], parsed[:ast])
+        dispatch_rewrite_insertions(pipeline, parsed[:buffer],
+                                    config: parsed[:config], signature_provider: parsed[:signature_provider],
+                                    core_rbs_provider: parsed[:core_rbs_provider], strategy: strategy,
+                                    file: parsed[:file])
         { output: pipeline[:rewriter].process, changes: pipeline[:changes] }
       end
 
@@ -92,25 +80,15 @@ module Docscribe
       # @param [Object] ast Param documentation.
       # @return [Hash]
       def build_rewrite_pipeline(buffer, ast)
-        collector = Docscribe::InlineRewriter::Collector.new(buffer)
-        collector.process(ast)
-
-        plugin_insertions = Docscribe::Plugin.run_collector_plugins(ast, buffer)
-
-        method_insertions = collector.insertions
-        attr_insertions = collector.respond_to?(:attr_insertions) ? collector.attr_insertions : []
-
-        all = method_insertions.map { |i| [:method, i] } +
-              attr_insertions.map { |i| [:attr, i] } +
-              plugin_insertions.map { |i| [:plugin, i] }
-
+        all = collect_insertions(buffer, ast)
         method_overrides_by_pos = {}
         all = deduplicate_insertions(all, method_overrides_by_pos: method_overrides_by_pos)
         rewriter = Parser::Source::TreeRewriter.new(buffer)
         merge_inserts = Hash.new { |h, k| h[k] = [] }
         changes = []
 
-        { all: all, method_overrides_by_pos: method_overrides_by_pos, rewriter: rewriter, merge_inserts: merge_inserts, changes: changes }
+        { all: all, method_overrides_by_pos: method_overrides_by_pos, rewriter: rewriter,
+          merge_inserts: merge_inserts, changes: changes }
       end
 
       # Dispatch all insertions to the appropriate handler.
@@ -202,6 +180,41 @@ module Docscribe
 
       private
 
+      # Setup the parsing environment for rewrite_with_report.
+      # @private
+      # @param [Object] code Param documentation.
+      # @param [Object] options Param documentation.
+      # @raise [Docscribe::ParseError]
+      # @return [Hash]
+      def setup_rewrite_env(code, options)
+        config = options[:config] || Docscribe::Config.load
+        file = (options[:file] || '(inline)').to_s
+        core_rbs_provider = options[:core_rbs_provider]
+        buffer = Parser::Source::Buffer.new(file, source: code)
+        ast = Docscribe::Parsing.parse_buffer(buffer)
+        raise Docscribe::ParseError, "Failed to parse #{file}" unless ast
+
+        { config: config, file: file, buffer: buffer, ast: ast,
+          signature_provider: build_signature_provider(config, code, file),
+          core_rbs_provider: load_core_rbs_provider(config, core_rbs_provider) }
+      end
+
+      # Collect insertions from collector and plugins into a combined list.
+      # @private
+      # @param [Object] buffer Param documentation.
+      # @param [Object] ast Param documentation.
+      # @return [Object]
+      def collect_insertions(buffer, ast)
+        collector = Docscribe::InlineRewriter::Collector.new(buffer)
+        collector.process(ast)
+        plugin_insertions = Docscribe::Plugin.run_collector_plugins(ast, buffer)
+        method_insertions = collector.insertions
+        attr_insertions = collector.respond_to?(:attr_insertions) ? collector.attr_insertions : []
+        method_insertions.map { |i| [:method, i] } +
+          attr_insertions.map { |i| [:attr, i] } +
+          plugin_insertions.map { |i| [:plugin, i] }
+      end
+
       # Deduplicate insertions by source position.
       #
       # Rules:
@@ -217,19 +230,28 @@ module Docscribe
       # @param [nil] method_overrides_by_pos method-level overrides keyed by insertion position
       # @return [Array<Array(Symbol,Object)>]
       def deduplicate_insertions(insertions, method_overrides_by_pos: nil)
-        groups = group_by_position(insertions)
+        group_by_position(insertions).each_with_object([]) do |(pos, items), result|
+          process_dedup_group(pos, items, result, method_overrides_by_pos)
+        end
+      end
 
-        groups.each_with_object([]) do |(pos, items), result|
-          plugin_items = items.select { |pair| pair.first == :plugin }
-          next result.concat(items) if plugin_items.empty?
+      # Process one group of deduplication at a given position.
+      # @private
+      # @param [Object] pos Param documentation.
+      # @param [Object] items Param documentation.
+      # @param [Object] result Param documentation.
+      # @param [Object] method_overrides_by_pos Param documentation.
+      # @return [Object]
+      def process_dedup_group(pos, items, result, method_overrides_by_pos)
+        plugin_items = items.select { |pair| pair.first == :plugin }
+        return result.concat(items) if plugin_items.empty?
 
-          method_items = items.select { |pair| pair.first == :method }
-
-          if (override_items = find_override_items(plugin_items)).any? && method_items.any?
-            handle_override_case(result, items, override_items, method_overrides_by_pos, pos)
-          else
-            result.concat(deduplicate_items(items, plugin_items, pos, method_items))
-          end
+        method_items = items.select { |pair| pair.first == :method }
+        override_items = find_override_items(plugin_items)
+        if override_items.any? && method_items.any?
+          handle_override_case(result, items, override_items, method_overrides_by_pos, pos)
+        else
+          result.concat(deduplicate_items(items, plugin_items, pos, method_items))
         end
       end
 
@@ -277,6 +299,24 @@ module Docscribe
         result.concat(items)
       end
 
+      # Predicate: insertion pair has a doc key with non-empty content.
+      # @private
+      # @param [Object] pair Param documentation.
+      # @return [Object]
+      def plugin_doc_item?(pair)
+        _k, ins = pair
+        ins.is_a?(Hash) && ins[:doc] && !ins[:doc].empty?
+      end
+
+      # Predicate: insertion pair is a plugin with method_override.
+      # @private
+      # @param [Object] pair Param documentation.
+      # @return [Object]
+      def override_or_plugin_method?(pair)
+        k, ins = pair
+        k == :plugin && ins.is_a?(Hash) && ins.key?(:method_override)
+      end
+
       # Handle items where no method_override applies (plugin-doc case or fallback).
       #
       # @private
@@ -286,12 +326,12 @@ module Docscribe
       # @param [Object] _method_items Param documentation.
       # @return [Array<Array(Symbol,Object)>]
       def deduplicate_items(items, plugin_items, pos, _method_items)
-        plugin_doc_items = plugin_items.select { |_k, ins| ins.is_a?(Hash) && ins[:doc] && !ins[:doc].empty? }
+        plugin_doc_items = plugin_items.select { |pair| plugin_doc_item?(pair) }
 
         if plugin_doc_items.any?
           deduplicate_plugin_doc_case(items, plugin_doc_items, pos)
         else
-          items.reject { |k, ins| k == :plugin && ins.is_a?(Hash) && ins.key?(:method_override) }
+          items.reject { |pair| override_or_plugin_method?(pair) }
         end
       end
 
@@ -304,7 +344,7 @@ module Docscribe
       # @return [Array<Array(Symbol,Object)>]
       def deduplicate_plugin_doc_case(items, plugin_doc_items, pos)
         items = items.reject { |k, _| k == :method }
-        items = items.reject { |k, ins| k == :plugin && ins.is_a?(Hash) && ins.key?(:method_override) }
+        items = items.reject { |pair| override_or_plugin_method?(pair) }
 
         max_prio = max_plugin_priority(plugin_doc_items)
         dropped = filter_lower_priority_plugins(items, max_prio)
@@ -331,7 +371,9 @@ module Docscribe
       # @param [Integer] threshold
       # @return [Array<Array(Symbol,Object)>]
       def filter_lower_priority_plugins(items, threshold)
-        items.select { |k, ins| k == :plugin && ins.is_a?(Hash) && ins[:doc] && plugin_insertion_priority(ins) < threshold }
+        items.select do |k, ins|
+          k == :plugin && ins.is_a?(Hash) && ins[:doc] && plugin_insertion_priority(ins) < threshold
+        end
       end
 
       # Warn about conflicting collector plugins at a given position.
@@ -365,7 +407,8 @@ module Docscribe
       end
 
       # @private
-      # @param override_items [Array<Array(Symbol, Hash)>] list of [:plugin, insertion_hash] that include :method_override
+      # @param override_items [Array<Array(Symbol, Hash)>] list of [:plugin, insertion_hash]
+      #   that include :method_override
       # @param pos [Integer] begin_pos (used only for debug output)
       # @return [Hash, nil] winning insertion hash (the one whose override will be applied)
       def pick_highest_priority_override_insertion(override_items, pos:)
@@ -486,20 +529,29 @@ module Docscribe
       # @param [Docscribe::Config] config
       # @return [void]
       def apply_plugin_insertion!(rewriter:, buffer:, insertion:, strategy:, config:)
-        anchor_node = insertion[:anchor_node]
-        doc         = insertion[:doc]
+        anchor_node, doc = insertion.values_at(:anchor_node, :doc)
         return unless anchor_node && doc && !doc.empty?
 
         indent = SourceHelpers.line_indent(anchor_node)
-        doc    = normalize_plugin_doc(doc, indent, config: config, anchor_node: anchor_node)
+        doc = normalize_plugin_doc(doc, indent, config: config, anchor_node: anchor_node)
         bol_range = SourceHelpers.line_start_range(buffer, anchor_node)
+        insert_plugin_doc(rewriter, buffer, bol_range, doc, strategy)
+      end
 
+      # Insert plugin doc according to strategy, handling comment removal.
+      # @private
+      # @param [Object] rewriter Param documentation.
+      # @param [Object] buffer Param documentation.
+      # @param [Object] bol_range Param documentation.
+      # @param [Object] doc Param documentation.
+      # @param [Object] strategy Param documentation.
+      # @return [Object]
+      def insert_plugin_doc(rewriter, buffer, bol_range, doc, strategy)
         case strategy
         when :aggressive
-          # Will remove ANY comments above the method. Plugin will decide what will be changed.
-          rewriter.remove(range) if any_comment_block_removal_range(buffer, bol_range.begin_pos)
+          range = any_comment_block_removal_range(buffer, bol_range.begin_pos)
+          rewriter.remove(range) if range
           rewriter.insert_before(bol_range, doc)
-
         when :safe
           return if SourceHelpers.already_has_doc_immediately_above?(buffer, bol_range.begin_pos)
 
@@ -703,25 +755,30 @@ module Docscribe
       # @return [void]
       def apply_method_insertion!(**options)
         insertion = options[:insertion]
-        config    = options[:config]
-
+        config = options[:config]
         return unless method_insertion_allowed?(insertion, config)
 
         anchor_bol_range, = method_bol_ranges(options[:buffer], insertion)
         params = build_method_insertion_params(insertion, config, options[:signature_provider],
                                                options[:core_rbs_provider], options[:method_override])
         doc = build_method_doc(insertion, **params)
+        dispatch_method_insertion_by_strategy!(anchor_bol_range, options, params, doc)
+      end
 
+      # Dispatch method insertion to the aggressive or safe handler.
+      # @private
+      # @param [Object] anchor_bol_range Param documentation.
+      # @param [Object] options Param documentation.
+      # @param [Object] params Param documentation.
+      # @param [Object] doc Param documentation.
+      # @return [Object]
+      def dispatch_method_insertion_by_strategy!(anchor_bol_range, options, params, doc)
+        base = { anchor_bol_range: anchor_bol_range, insertion: options[:insertion],
+                 rewriter: options[:rewriter], buffer: options[:buffer],
+                 changes: options[:changes], file: options[:file] }
         case options[:strategy]
-        when :aggressive
-          apply_method_insertion_aggressive!(anchor_bol_range: anchor_bol_range, insertion: insertion,
-                                             rewriter: options[:rewriter], buffer: options[:buffer],
-                                             changes: options[:changes], file: options[:file], doc: doc)
-        when :safe
-          apply_method_insertion_safe!(anchor_bol_range: anchor_bol_range, insertion: insertion,
-                                       rewriter: options[:rewriter], buffer: options[:buffer],
-                                       strategy: options[:strategy], changes: options[:changes],
-                                       file: options[:file], **params)
+        when :aggressive then apply_method_insertion_aggressive!(**base, doc: doc)
+        when :safe then apply_method_insertion_safe!(**base, strategy: options[:strategy], **params)
         end
       end
 
@@ -761,20 +818,38 @@ module Docscribe
       # @param [Hash] options keyword options
       # @return [Hash{Symbol => Object}]
       def build_effective_params(insertion, **options)
-        signature_provider = options[:signature_provider]
-        external_sig = signature_provider&.signature_for(
+        external_sig = resolve_external_signature(insertion, options[:signature_provider])
+        param_types = resolve_param_types(insertion, external_sig, options[:config])
+        override = options[:override]
+
+        param_types = param_types.merge(override[:param_types]) if override[:param_types]&.any?
+
+        { param_types: param_types, return_type_override: override[:return_type], override_tags: override[:tags] }
+      end
+
+      # Resolve external signature for an insertion.
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @param [Object] signature_provider Param documentation.
+      # @return [Object]
+      def resolve_external_signature(insertion, signature_provider)
+        signature_provider&.signature_for(
           container: insertion.container,
           scope: insertion.scope,
           name: SourceHelpers.node_name(insertion.node)
         )
-        param_types = external_sig&.param_types || DocBuilder.build_param_types_from_node(
-          insertion.node, external_sig: external_sig, config: options[:config]
+      end
+
+      # Resolve param types from signature or fall back to node parsing.
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] config Param documentation.
+      # @return [Object]
+      def resolve_param_types(insertion, external_sig, config)
+        external_sig&.param_types || DocBuilder.build_param_types_from_node(
+          insertion.node, external_sig: external_sig, config: config
         )
-        override = options[:override]
-
-        param_types = param_types.merge(override[:param_types]) if override[:param_types] && !override[:param_types].empty?
-
-        { param_types: param_types, return_type_override: override[:return_type], override_tags: override[:tags] }
       end
 
       # Apply method insertion in aggressive strategy mode.
@@ -783,24 +858,28 @@ module Docscribe
       # @param [Hash] options keyword options
       # @return [void]
       def apply_method_insertion_aggressive!(**options)
-        rewriter           = options[:rewriter]
-        buffer             = options[:buffer]
-        insertion          = options[:insertion]
-        anchor_bol_range   = options[:anchor_bol_range]
-        doc                = options[:doc]
-        changes            = options[:changes]
-        file               = options[:file]
+        rewriter = options[:rewriter]
+        buffer = options[:buffer]
+        insertion = options[:insertion]
+        doc = options[:doc]
 
-        if (range = method_comment_block_removal_range(buffer, insertion))
-          rewriter.remove(range)
-        end
-
+        remove_method_comment_block(rewriter, buffer, insertion)
         return if doc.nil? || doc.empty?
 
-        rewriter.insert_before(anchor_bol_range, doc)
+        rewriter.insert_before(options[:anchor_bol_range], doc)
+        add_change(changes: options[:changes], type: :insert_full_doc_block,
+                   insertion: insertion, file: options[:file], message: 'missing docs')
+      end
 
-        add_change(changes: changes, type: :insert_full_doc_block, insertion: insertion, file: file,
-                   message: 'missing docs')
+      # Remove the comment block above a method when present.
+      # @private
+      # @param [Object] rewriter Param documentation.
+      # @param [Object] buffer Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @return [Object]
+      def remove_method_comment_block(rewriter, buffer, insertion)
+        range = method_comment_block_removal_range(buffer, insertion)
+        rewriter.remove(range) if range
       end
 
       # Apply method insertion in safe strategy mode.
@@ -809,22 +888,12 @@ module Docscribe
       # @param [Hash] options keyword options
       # @return [void]
       def apply_method_insertion_safe!(**options)
-        rewriter = options[:rewriter]
-        buffer         = options[:buffer]
-        insertion      = options[:insertion]
-        anchor_bol_range = options[:anchor_bol_range]
-        doc_params = options.reject { |k, _| [:rewriter, :buffer, :insertion, :anchor_bol_range].include?(k) }
-
-        info = method_doc_comment_info(buffer, insertion)
+        info = method_doc_comment_info(options[:buffer], options[:insertion])
 
         if info
-          apply_method_insertion_safe_with_info!(rewriter: rewriter, buffer: buffer,
-                                                 insertion: insertion, anchor_bol_range: anchor_bol_range,
-                                                 info: info, **doc_params)
+          apply_method_insertion_safe_with_info!(**options, info: info)
         else
-          apply_method_insertion_safe_without_info!(rewriter: rewriter, buffer: buffer,
-                                                    insertion: insertion, anchor_bol_range: anchor_bol_range,
-                                                    **doc_params)
+          apply_method_insertion_safe_without_info!(**options)
         end
       end
 
@@ -834,29 +903,33 @@ module Docscribe
       # @param [Hash] options keyword options
       # @return [void]
       def apply_method_insertion_safe_with_info!(**options)
-        rewriter = options[:rewriter]
-        buffer         = options[:buffer]
-        insertion      = options[:insertion]
-        info           = options[:info]
-        changes        = options[:changes]
-        file           = options[:file]
-        strategy       = options[:strategy]
-        doc_params     = filter_doc_params(options)
+        dp = filter_doc_params(options)
+        i = options[:info]
+        mr = build_missing_method_merge_result(options[:insertion], existing_lines: i[:doc_lines],
+                                                                    strategy: options[:strategy], **dp)
+        changed, n, ob = compute_doc_replacement(i, mr[:lines], strategy: options[:strategy], **dp)
+        commit_safe_doc_outcome(options[:rewriter], options[:buffer], i, n, old_block: ob,
+                                                                            merge_result: mr, existing_order_changed: changed,
+                                                                            insertion: options[:insertion], changes: options[:changes],
+                                                                            file: options[:file])
+      end
 
-        merge_result = build_missing_method_merge_result(insertion, existing_lines: info[:doc_lines],
-                                                                    strategy: strategy, **doc_params)
-        existing_order_changed, new_block, old_block = compute_doc_replacement(
-          info, merge_result[:lines], strategy: strategy, **doc_params
-        )
-
-        if new_block != old_block
-          handle_doc_replacement(rewriter, buffer, info, new_block, existing_order_changed,
-                                 insertion: insertion, changes: changes, file: file)
-        end
-
-        log_method_doc_changes!(insertion: insertion, merge_result: merge_result,
-                                new_block: new_block, old_block: old_block,
-                                changes: changes, file: file)
+      # Commit doc replacement and log changes for safe mode.
+      # @private
+      # @param [Object] rewriter Param documentation.
+      # @param [Object] buffer Param documentation.
+      # @param [Object] info Param documentation.
+      # @param [Object] new_block Param documentation.
+      # @param [Hash] rest Param documentation.
+      # @return [Object]
+      def commit_safe_doc_outcome(rewriter, buffer, info, new_block, **rest)
+        handle_doc_replacement(rewriter, buffer, info, new_block,
+                               insertion: rest[:insertion], changes: rest[:changes],
+                               file: rest[:file],
+                               existing_order_changed: rest[:existing_order_changed])
+        log_method_doc_changes!(insertion: rest[:insertion], merge_result: rest[:merge_result],
+                                new_block: new_block, old_block: rest[:old_block],
+                                changes: rest[:changes], file: rest[:file])
       end
 
       # Filter doc params from options hash.
@@ -865,6 +938,14 @@ module Docscribe
       # @return [Object]
       def filter_doc_params(options)
         options.reject { |k, _| %i[rewriter buffer insertion anchor_bol_range info changes file strategy].include?(k) }
+      end
+
+      # Filter options to keep only doc-building params for safe-without-info mode.
+      # @private
+      # @param [Object] options Param documentation.
+      # @return [Object]
+      def filter_method_doc_params(options)
+        options.reject { |k, _| %i[rewriter buffer insertion anchor_bol_range changes file strategy].include?(k) }
       end
 
       # Handle replacement when doc block content changed.
@@ -879,13 +960,14 @@ module Docscribe
       # @param [Object] file Param documentation.
       # @param [Hash] log_opts Param documentation.
       # @return [Object]
-      def handle_doc_replacement(rewriter, buffer, info, new_block, existing_order_changed, **log_opts)
+      def handle_doc_replacement(rewriter, buffer, info, new_block, **log_opts)
         range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
         rewriter.replace(range, new_block)
 
-        return unless existing_order_changed
+        return unless log_opts[:existing_order_changed]
 
-        add_change(changes: log_opts[:changes], type: :unsorted_tags, insertion: log_opts[:insertion], file: log_opts[:file],
+        add_change(changes: log_opts[:changes], type: :unsorted_tags,
+                   insertion: log_opts[:insertion], file: log_opts[:file],
                    message: 'unsorted tags')
       end
 
@@ -897,19 +979,14 @@ module Docscribe
       # @param [Hash] options keyword options
       # @return [Array] [existing_order_changed, new_block, old_block]
       def compute_doc_replacement(info, missing_lines, **options)
-        config = options[:config]
-        sorted_existing_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
-          info[:doc_lines], missing_lines: [], sort_tags: config.sort_tags?, tag_order: config.tag_order
+        dc = options[:config]
+        sorted = Docscribe::InlineRewriter::DocBlock.merge(
+          info[:doc_lines], missing_lines: [], sort_tags: dc.sort_tags?, tag_order: dc.tag_order
         )
-
-        merged_doc_lines = Docscribe::InlineRewriter::DocBlock.merge(
-          info[:doc_lines], missing_lines: missing_lines, sort_tags: config.sort_tags?, tag_order: config.tag_order
+        merged = Docscribe::InlineRewriter::DocBlock.merge(
+          info[:doc_lines], missing_lines: missing_lines, sort_tags: dc.sort_tags?, tag_order: dc.tag_order
         )
-
-        existing_order_changed = sorted_existing_doc_lines != info[:doc_lines]
-        new_block = (info[:preserved_lines] + merged_doc_lines).join
-        old_block = info[:lines].join
-        [existing_order_changed, new_block, old_block]
+        [sorted != info[:doc_lines], (info[:preserved_lines] + merged).join, info[:lines].join]
       end
 
       # Log changes for method doc updates.
@@ -921,16 +998,17 @@ module Docscribe
       # @param [String] old_block
       # @param [Array<Hash>] changes
       # @param [String] file
+      # @param [Hash] rest Param documentation.
       # @return [Object]
-      def log_method_doc_changes!(insertion:, merge_result:, new_block:, old_block:, changes:, file:)
+      def log_method_doc_changes!(insertion:, merge_result:, **rest)
         reason_specs = merge_result[:reasons] || []
         type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return].include?(r[:type]) }
 
-        return unless new_block != old_block || type_mismatch_reasons.any?
+        return unless rest[:new_block] != rest[:old_block] || type_mismatch_reasons.any?
 
         reason_specs.each do |reason|
-          add_change(changes: changes, type: reason[:type], insertion: insertion, file: file,
-                     message: reason[:message], extra: reason[:extra] || {})
+          add_change(changes: rest[:changes], type: reason[:type], insertion: insertion,
+                     file: rest[:file], message: reason[:message], extra: reason[:extra] || {})
         end
       end
 
@@ -941,21 +1019,14 @@ module Docscribe
       # @return [void]
       def apply_method_insertion_safe_without_info!(**options)
         rewriter = options[:rewriter]
-        options[:buffer]
-        insertion        = options[:insertion]
+        insertion = options[:insertion]
         anchor_bol_range = options[:anchor_bol_range]
-        changes          = options[:changes]
-        file             = options[:file]
-        doc_params       = options.reject { |k, _| [:rewriter, :buffer, :insertion,
-                                           :anchor_bol_range, :changes, :file, :strategy].include?(k) }
-
-        doc = build_method_doc(insertion, **doc_params)
+        doc = build_method_doc(insertion, **filter_method_doc_params(options))
         return if doc.nil? || doc.empty?
 
         rewriter.insert_before(anchor_bol_range, doc)
-
-        add_change(changes: changes, type: :insert_full_doc_block, insertion: insertion, file: file,
-                   message: 'missing docs')
+        add_change(changes: options[:changes], type: :insert_full_doc_block,
+                   insertion: insertion, file: options[:file], message: 'missing docs')
       end
 
       # Append a structured change record.
@@ -990,23 +1061,13 @@ module Docscribe
       # @param [Hash] options Param documentation.
       # @return [void]
       def apply_attr_insertion!(**options)
-        rewriter = options[:rewriter]
-        buffer         = options[:buffer]
-        insertion      = options[:insertion]
-        config         = options[:config]
-        strategy       = options[:strategy]
-        merge_inserts  = options[:merge_inserts]
-
+        config = options[:config]
         return unless config.respond_to?(:emit_attributes?) && config.emit_attributes?
-        return unless attribute_allowed?(config, insertion)
+        return unless attribute_allowed?(config, options[:insertion])
 
-        bol_range = SourceHelpers.line_start_range(buffer, insertion.node)
-        params = attr_insertion_params(insertion, config, options[:signature_provider], bol_range)
-
-        case strategy
-        when :aggressive then apply_attr_aggressive!(params, rewriter)
-        when :safe then apply_attr_safe!(params, merge_inserts, rewriter, buffer)
-        end
+        bol_range = SourceHelpers.line_start_range(options[:buffer], options[:insertion].node)
+        params = attr_insertion_params(options[:insertion], config, options[:signature_provider], bol_range)
+        dispatch_attr_strategy(params, options)
       end
 
       # Method documentation.
@@ -1022,6 +1083,18 @@ module Docscribe
           insertion: insertion, config: config,
           signature_provider: signature_provider, bol_range: bol_range
         }
+      end
+
+      # Dispatch attr insertion to the aggressive or safe handler.
+      # @private
+      # @param [Object] params Param documentation.
+      # @param [Object] options Param documentation.
+      # @return [Object]
+      def dispatch_attr_strategy(params, options)
+        case options[:strategy]
+        when :aggressive then apply_attr_aggressive!(params, options[:rewriter])
+        when :safe then apply_attr_safe!(params, options[:merge_inserts], options[:rewriter], options[:buffer])
+        end
       end
 
       # Method documentation.
@@ -1265,8 +1338,9 @@ module Docscribe
         lines = []
 
         names.each_with_index do |name_sym, idx|
-          lines.concat(build_single_attr_lines(ins, name_sym, idx, names.length,
-                                               indent: indent, config: config, signature_provider: signature_provider))
+          lines.concat(build_single_attr_lines(ins, name_sym, indent: indent,
+                                                              config: config, signature_provider: signature_provider,
+                                                              idx: idx, total: names.length))
         end
 
         lines
@@ -1283,19 +1357,40 @@ module Docscribe
       # @param [Object] signature_provider Param documentation.
       # @param [Hash] opts Param documentation.
       # @return [Object]
-      def build_single_attr_lines(ins, name_sym, idx, total, indent:, **opts)
+      def build_single_attr_lines(ins, name_sym, indent:, **opts)
         cfg = opts[:config]
         attr_type = attribute_type(ins, name_sym, cfg, signature_provider: opts[:signature_provider])
         lines = ["#{indent}# @!attribute [#{ins.access}] #{name_sym}"]
-
         lines.concat(attr_visibility_lines(indent, cfg, ins))
-        lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
-        if %i[w rw].include?(ins.access)
-          lines << format_attribute_param_tag(indent, 'value', attr_type, style: cfg.param_tag_style)
-        end
-
-        lines << "#{indent}#" if idx < total - 1
+        append_attr_return_tag(lines, indent, attr_type, ins.access)
+        append_attr_param_tag(lines, indent, attr_type, ins.access, cfg)
+        lines << "#{indent}#" if opts[:idx] < opts[:total] - 1
         lines
+      end
+
+      # Append @return tag for readable attribute.
+      # @private
+      # @param [Object] lines Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] attr_type Param documentation.
+      # @param [Object] access Param documentation.
+      # @return [Object]
+      def append_attr_return_tag(lines, indent, attr_type, access)
+        lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(access)
+      end
+
+      # Append @param tag for writable attribute.
+      # @private
+      # @param [Object] lines Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] attr_type Param documentation.
+      # @param [Object] access Param documentation.
+      # @param [Object] cfg Param documentation.
+      # @return [Object]
+      def append_attr_param_tag(lines, indent, attr_type, access, cfg)
+        return unless %i[w rw].include?(access)
+
+        lines << format_attribute_param_tag(indent, 'value', attr_type, style: cfg.param_tag_style)
       end
 
       # Build visibility lines for an attribute.

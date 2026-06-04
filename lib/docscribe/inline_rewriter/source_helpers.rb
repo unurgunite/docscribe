@@ -52,10 +52,8 @@ module Docscribe
       # @param [Integer] def_bol_pos beginning-of-line position of the target def
       # @return [Hash, nil]
       def doc_comment_block_info(buffer, def_bol_pos)
-        src = buffer.source
-        lines = src.lines
-        def_line_idx = src[0...def_bol_pos].count("\n")
-
+        lines = buffer.source.lines
+        def_line_idx = buffer.source[0...def_bol_pos].count("\n")
         block_range = find_comment_block_range(lines, def_line_idx)
         return nil unless block_range
 
@@ -64,14 +62,7 @@ module Docscribe
         preserved_start_idx = find_preserved_start_idx(lines, start_idx, end_idx)
         return nil unless doc_marker?(lines, preserved_start_idx..end_idx)
 
-        positions = compute_positions(lines, start_idx, preserved_start_idx, end_idx)
-
-        {
-          lines: lines[start_idx..end_idx],
-          preserved_lines: lines[start_idx...preserved_start_idx],
-          doc_lines: lines[preserved_start_idx..end_idx],
-          **positions
-        }
+        build_block_info(lines, start_idx, preserved_start_idx, end_idx)
       end
 
       # Compute the removable range for an existing doc-like block above a method.
@@ -87,17 +78,13 @@ module Docscribe
         src = buffer.source
         lines = src.lines
         def_line_idx = src[0...def_bol_pos].count("\n")
-
         block_range = find_comment_block_range(lines, def_line_idx)
         return nil unless block_range
 
-        start_idx = block_range[:start_idx]
-        end_idx = block_range[:end_idx]
-        preserved_start_idx = find_preserved_start_idx(lines, start_idx, end_idx)
-        return nil unless doc_marker?(lines, preserved_start_idx..end_idx)
+        preserved_start_idx = find_preserved_start_idx(lines, block_range[:start_idx], block_range[:end_idx])
+        return nil unless doc_marker?(lines, preserved_start_idx..block_range[:end_idx])
 
-        start_pos = preserved_start_idx.positive? ? lines[0...preserved_start_idx].join.length : 0
-        Parser::Source::Range.new(buffer, start_pos, def_bol_pos)
+        compute_removal_range(buffer, lines, preserved_start_idx, def_bol_pos)
       end
 
       # Find the range of a contiguous comment block directly above a method definition.
@@ -145,6 +132,37 @@ module Docscribe
       # @return [Boolean]
       def doc_marker?(lines, range)
         lines[range].any? { |line| doc_marker_line?(line) }
+      end
+
+      # Build block info hash from computed line ranges.
+      #
+      # @note module_function: when included, also defines #build_block_info (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Integer] start_idx
+      # @param [Integer] preserved_start_idx
+      # @param [Integer] end_idx
+      # @return [Hash]
+      def build_block_info(lines, start_idx, preserved_start_idx, end_idx)
+        positions = compute_positions(lines, start_idx, preserved_start_idx, end_idx)
+        {
+          lines: lines[start_idx..end_idx],
+          preserved_lines: lines[start_idx...preserved_start_idx],
+          doc_lines: lines[preserved_start_idx..end_idx],
+          **positions
+        }
+      end
+
+      # Compute the removal range for preserved start position.
+      #
+      # @note module_function: when included, also defines #compute_removal_range (instance visibility: private)
+      # @param [Parser::Source::Buffer] buffer
+      # @param [Array<String>] lines
+      # @param [Integer] preserved_start_idx
+      # @param [Integer] def_bol_pos
+      # @return [Parser::Source::Range]
+      def compute_removal_range(buffer, lines, preserved_start_idx, def_bol_pos)
+        start_pos = preserved_start_idx.positive? ? lines[0...preserved_start_idx].join.length : 0
+        Parser::Source::Range.new(buffer, start_pos, def_bol_pos)
       end
 
       # Compute source positions for a comment block.
@@ -220,7 +238,8 @@ module Docscribe
       #
       # This helper is retained for compatibility/legacy behavior checks.
       #
-      # @note module_function: when included, also defines #already_has_doc_immediately_above? (instance visibility: private)
+      # @note module_function: when included, also defines #already_has_doc_immediately_above?
+      #   (instance visibility: private)
       # @param [Parser::Source::Buffer] buffer
       # @param [Integer] insert_pos
       # @return [Boolean]

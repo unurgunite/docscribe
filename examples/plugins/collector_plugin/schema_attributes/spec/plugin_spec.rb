@@ -16,7 +16,8 @@ RSpec.describe DocscribePlugins::SchemaAttributes do
   describe 'collect' do
     it 'documents columns for ApplicationRecord models' do
       plugin.instance_variable_set(:@schema,
-                                   { 'users' => [{ name: 'email', type: 'string' }, { name: 'is_admin', type: 'boolean' }] })
+                                   { 'users' => [{ name: 'email', type: 'string' },
+                                                 { name: 'is_admin', type: 'boolean' }] })
 
       code = <<~RUBY
         class User < ApplicationRecord

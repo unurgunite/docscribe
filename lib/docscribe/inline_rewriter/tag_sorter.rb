@@ -68,22 +68,32 @@ module Docscribe
         i = 0
 
         while i < lines.length
-          line = lines[i]
-
-          if top_level_tag_line?(line)
-            entries = []
-            while i < lines.length && top_level_tag_line?(lines[i])
-              entry, i = consume_entry(lines, i)
-              entries << entry
-            end
-            segments << { type: :tag_run, entries: entries }
+          if top_level_tag_line?(lines[i])
+            i = consume_tag_run(lines, i, segments)
           else
-            segments << { type: :other, lines: [line] }
+            segments << { type: :other, lines: [lines[i]] }
             i += 1
           end
         end
 
         segments
+      end
+
+      # Consume a contiguous tag run and append to segments.
+      #
+      # @note module_function: when included, also defines #consume_tag_run (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Integer] i current index
+      # @param [Array<Hash>] segments accumulated segments
+      # @return [Integer] new index after consuming the run
+      def consume_tag_run(lines, i, segments)
+        entries = []
+        while i < lines.length && top_level_tag_line?(lines[i])
+          entry, i = consume_entry(lines, i)
+          entries << entry
+        end
+        segments << { type: :tag_run, entries: entries }
+        i
       end
 
       # Sort one parsed segment if it is a tag run.

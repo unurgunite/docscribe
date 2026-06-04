@@ -33,6 +33,20 @@ module Docscribe
 
     private
 
+    # Method documentation.
+    #
+    # @private
+    # @return [Boolean]
+    def ruby_supports_rbs?
+      return true if RUBY_VERSION >= '3.0'
+
+      @rbs_warning_emitted ||= begin
+        warn 'Docscribe: RBS requires Ruby 3.0+. Falling back to inference.'
+        true
+      end
+      false
+    end
+
     # @private
     # @raise [LoadError]
     # @return [Docscribe::Types::RBS::Provider, nil]
@@ -58,20 +72,6 @@ module Docscribe
       )
     rescue LoadError
       nil
-    end
-
-    # Method documentation.
-    #
-    # @private
-    # @return [Boolean]
-    def ruby_supports_rbs?
-      return true if RUBY_VERSION >= '3.0'
-
-      @rbs_warning_emitted ||= begin
-        warn 'Docscribe: RBS requires Ruby 3.0+. Falling back to inference.'
-        true
-      end
-      false
     end
 
     # Signature directories used by the RBS provider.

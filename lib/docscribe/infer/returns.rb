@@ -219,7 +219,8 @@ module Docscribe
         if send_node&.type == :send
           recv = send_node.children[0]
           meth = send_node.children[1]
-          rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types], opts[:param_types])
+          rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types],
+                                          opts[:param_types])
           return rbs_type if rbs_type
         end
 
@@ -237,7 +238,8 @@ module Docscribe
         meth = node.children[1]
 
         if opts[:core_rbs_provider]
-          rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types], opts[:param_types])
+          rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types],
+                                          opts[:param_types])
           return rbs_type if rbs_type
         end
 
