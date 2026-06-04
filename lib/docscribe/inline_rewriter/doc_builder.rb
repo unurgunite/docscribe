@@ -299,6 +299,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #merge_dest_lines (instance visibility: private)
       # @param [Object] existing_lines Param documentation.
+      # @param [Hash] ctx Param documentation.
       # @return [Object]
       def merge_dest_lines(existing_lines, **ctx)
         merge_lines_with_context(existing_lines, **ctx)
@@ -391,6 +392,8 @@ module Docscribe
       # @param [Array<String>] line_ary
       # @param [Object] config
       # @param [Object] info
+      # @param [Object] indent Param documentation.
+      # @param [Object] setup Param documentation.
       # @return [void]
       def merge_return_line(line_ary, indent, setup, config, info)
         emit_ret = config.emit_return_tag?(setup[:scope], setup[:visibility])
@@ -925,9 +928,9 @@ module Docscribe
       #
       # @note module_function: when included, also defines #append_assemble_body_lines (instance visibility: private)
       # @param [Array<String>] line_ary
-      # @param [String] i
-      # @param [Hash] s
       # @param [Hash] ctx
+      # @param [Object] indent Param documentation.
+      # @param [Object] setup Param documentation.
       # @return [void]
       def append_assemble_body_lines(line_ary, indent, setup, ctx)
         line_ary.concat(build_all_body_tags(indent, setup, ctx))
@@ -936,9 +939,9 @@ module Docscribe
       # Build all body tag lines for a doc block.
       #
       # @note module_function: when included, also defines #build_all_body_tags (instance visibility: private)
-      # @param [String] i
-      # @param [Hash] s
       # @param [Hash] ctx
+      # @param [Object] indent Param documentation.
+      # @param [Object] setup Param documentation.
       # @return [Array<String>]
       def build_all_body_tags(indent, setup, ctx)
         result = core_body_tags(indent, setup, ctx)
@@ -949,9 +952,9 @@ module Docscribe
       # Core body tags without optional params_lines.
       #
       # @note module_function: when included, also defines #core_body_tags (instance visibility: private)
-      # @param [String] i
-      # @param [Hash] s
       # @param [Hash] ctx
+      # @param [Object] indent Param documentation.
+      # @param [Object] setup Param documentation.
       # @return [Array]
       def core_body_tags(indent, setup, ctx)
         config = ctx[:config]
@@ -968,10 +971,10 @@ module Docscribe
       # Build default msg and visibility tags.
       #
       # @note module_function: when included, also defines #defaults_and_visibility (instance visibility: private)
-      # @param [String] i
       # @param [Object] config
       # @param [Symbol] scope
       # @param [Symbol] visibility
+      # @param [Object] indent Param documentation.
       # @return [Array<String>]
       def defaults_and_visibility(indent, config, scope, visibility)
         [
@@ -983,9 +986,9 @@ module Docscribe
       # Build return tag line if emit condition is met.
       #
       # @note module_function: when included, also defines #build_return_line_if_needed (instance visibility: private)
-      # @param [String] i
-      # @param [Hash] s
       # @param [Docscribe::Config] config
+      # @param [Object] indent Param documentation.
+      # @param [Object] setup Param documentation.
       # @return [Array<String>]
       def build_return_line_if_needed(indent, setup, config)
         emit_ret = config.emit_return_tag?(setup[:scope], setup[:visibility])
