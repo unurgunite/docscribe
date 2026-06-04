@@ -18,6 +18,73 @@ module Docscribe
     module DocBuilder
       module_function
 
+      PARAM_TYPE_COLLECTORS = {
+        arg: lambda { |arg_node, param_types, external_sig, config|
+          collect_param_type(
+            arg_node,
+            param_types,
+            external_sig,
+            config,
+            infer_name: nil
+          )
+        },
+
+        optarg: lambda { |arg_node, param_types, external_sig, config|
+          collect_optarg_param_type(
+            arg_node,
+            param_types,
+            external_sig,
+            config,
+            infer_name: nil
+          )
+        },
+
+        kwarg: lambda { |arg_node, param_types, external_sig, config|
+          collect_param_type(
+            arg_node,
+            param_types,
+            external_sig,
+            config,
+            infer_name: ->(param_name) { "#{param_name}:" }
+          )
+        },
+
+        kwoptarg: lambda { |arg_node, param_types, external_sig, config|
+          collect_optarg_param_type(
+            arg_node,
+            param_types,
+            external_sig,
+            config,
+            infer_name: ->(param_name) { "#{param_name}:" }
+          )
+        }
+      }.freeze
+
+      PARAM_BUILDERS = {
+        arg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_arg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        optarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          build_optarg_lines(arg_node, indent, external_sig, param_types_override, **opts)
+        },
+        kwarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_kwarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        kwoptarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_kwoptarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        restarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_restarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        kwrestarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        blockarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        forward_arg: ->(*) { [] }
+      }.freeze
+
       # Build a complete doc block for one collected method insertion.
       #
       # External signatures, when available, override inferred param and return
@@ -26,12 +93,6 @@ module Docscribe
       # @note module_function: when included, also defines #build (instance visibility: private)
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
       # @param [Docscribe::Config] config
-      # @param [Object, nil] signature_provider provider responding to
-      #   `signature_for(container:, scope:, name:)`
-      # @param [nil] core_rbs_provider core RBS type lookup provider
-      # @param [nil] param_types parameter name -> type map
-      # @param [nil] return_type_override return type override string
-      # @param [nil] override_tags hash of tags to override
       # @param [Hash] opts Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
@@ -54,10 +115,6 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
-      # @param [Object, nil] signature_provider
-      # @param [nil] core_rbs_provider core RBS type lookup provider
-      # @param [nil] param_types parameter name -> type map
-      # @param [nil] return_type_override return type override string
       # @param [Hash] options Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
@@ -84,12 +141,6 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
       # @param [Array<String>] existing_lines
       # @param [Docscribe::Config] config
-      # @param [Object, nil] signature_provider
-      # @param [nil] core_rbs_provider core RBS type lookup provider
-      # @param [nil] param_types parameter name -> type map
-      # @param [nil] strategy rewrite strategy (:safe or :aggressive)
-      # @param [nil] return_type_override return type override string
-      # @param [nil] override_tags hash of tags to override
       # @param [Hash] options Param documentation.
       # @raise [StandardError]
       # @return [Hash]
@@ -248,12 +299,6 @@ module Docscribe
       #
       # @note module_function: when included, also defines #merge_dest_lines (instance visibility: private)
       # @param [Object] existing_lines Param documentation.
-      # @param [Object] setup Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @param [Object] config Param documentation.
-      # @param [Object] info Param documentation.
-      # @param [Object] param_types Param documentation.
-      # @param [Hash] ctx Param documentation.
       # @return [Object]
       def merge_dest_lines(existing_lines, **ctx)
         merge_lines_with_context(existing_lines, **ctx)
@@ -293,12 +338,6 @@ module Docscribe
       #
       # @note module_function: when included, also defines #merge_all_tag_lines (instance visibility: private)
       # @param [Array<String>] base_ary
-      # @param [Hash] s setup hash
-      # @param [String] i indent
-      # @param [Object] config
-      # @param [Object] info
-      # @param [Object] insertion
-      # @param [Object] param_types
       # @param [Hash] ctx Param documentation.
       # @return [Array<String>]
       def merge_all_tag_lines(base_ary, **ctx)
@@ -350,15 +389,14 @@ module Docscribe
       #
       # @note module_function: when included, also defines #merge_return_line (instance visibility: private)
       # @param [Array<String>] line_ary
-      # @param [String] i
-      # @param [Hash] s
       # @param [Object] config
       # @param [Object] info
       # @return [void]
-      def merge_return_line(line_ary, i, s, config, info)
-        emit_ret = config.emit_return_tag?(s[:scope], s[:visibility])
-        ret_line = merge_return_tag_line(i, s[:normal_type], config: config, scope: s[:scope],
-                                                             visibility: s[:visibility], info: info)
+      def merge_return_line(line_ary, indent, setup, config, info)
+        emit_ret = config.emit_return_tag?(setup[:scope], setup[:visibility])
+        ret_line = merge_return_tag_line(indent, setup[:normal_type], config: config, scope: setup[:scope],
+                                                                      visibility: setup[:visibility], info: info)
+
         line_ary << ret_line if emit_ret && ret_line
       end
 
@@ -495,7 +533,6 @@ module Docscribe
       # Parse exception names from a `@raise [ExceptionA, ExceptionB]` line.
       #
       # @note module_function: when included, also defines #parse_raise_bracket_list (instance visibility: private)
-      # @param [String] s the `@raise` line text
       # @param [Object] str Param documentation.
       # @return [Array<String>, nil] the exception names or nil
       def parse_raise_bracket_list(str)
@@ -539,7 +576,6 @@ module Docscribe
       # Collect param type for a required/keyword argument.
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] a Param documentation.
       # @param [Object] param_types Param documentation.
       # @param [Object] external_sig Param documentation.
       # @param [Object] config Param documentation.
@@ -559,7 +595,6 @@ module Docscribe
       # Collect param type for an optional/keyword optional argument.
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] a Param documentation.
       # @param [Object] param_types Param documentation.
       # @param [Object] external_sig Param documentation.
       # @param [Object] config Param documentation.
@@ -576,16 +611,6 @@ module Docscribe
                                     fallback_type: config.fallback_type,
                                     treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?)
         param_types[pname] = ty
-      end
-
-      # Resolve the infer name string from a param name and infer_name lambda.
-      #
-      # @note module_function: when included, also defines #resolve_infer_name (instance visibility: private)
-      # @param [String] pname
-      # @param [Proc, nil] infer_name
-      # @return [String]
-      def resolve_infer_name(pname, infer_name)
-        infer_name ? infer_name.call(pname) : pname
       end
 
       # Merge visibility tag lines for safe merge mode.
@@ -633,9 +658,6 @@ module Docscribe
       # @param [Parser::AST::Node] node
       # @param [String] indent
       # @param [Docscribe::Config] config
-      # @param [Object, nil] external_sig
-      # @param [Hash, nil] param_types
-      # @param [Hash] info
       # @param [Hash] opts Param documentation.
       # @return [Array<String>]
       def merge_param_lines(node, indent, config:, **opts)
@@ -677,9 +699,6 @@ module Docscribe
       # @param [String] indent
       # @param [String] normal_type
       # @param [Docscribe::Config] config
-      # @param [Symbol] scope
-      # @param [Symbol] visibility
-      # @param [Hash] info
       # @param [Hash] opts Param documentation.
       # @return [String, nil]
       def merge_return_tag_line(indent, normal_type, config:, **opts)
@@ -790,7 +809,6 @@ module Docscribe
       # Collect a single param line for build_missing_merge_result.
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] pl Param documentation.
       # @param [Object] lines Param documentation.
       # @param [Object] reasons Param documentation.
       # @param [Object] ctx Param documentation.
@@ -811,7 +829,6 @@ module Docscribe
       # Collect an updated param line.
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] pl Param documentation.
       # @param [Object] pname Param documentation.
       # @param [Object] lines Param documentation.
       # @param [Object] reasons Param documentation.
@@ -876,37 +893,31 @@ module Docscribe
       # @note module_function: when included, also defines #build_doc_lines (instance visibility: private)
       # @param [Object] setup Param documentation.
       # @param [Object] config Param documentation.
-      # @param [Object] insertion Param documentation.
-      # @param [Object] params_lines Param documentation.
-      # @param [Object] raise_types Param documentation.
-      # @param [Object] override_tags Param documentation.
-      # @param [Hash] kw Param documentation.
+      # @param [Hash] kwargs Param documentation.
       # @return [Object]
-      def build_doc_lines(setup, config:, **kw)
-        s = setup
-        i = s[:indent]
-        assemble_doc_lines(i, s, config: config, insertion: kw[:insertion],
-                                 params_lines: kw[:params_lines], raise_types: kw[:raise_types],
-                                 override_tags: kw[:override_tags])
+      def build_doc_lines(setup, config:, **kwargs)
+        i = setup[:indent]
+        assemble_doc_lines(i, setup, config: config, insertion: kwargs[:insertion],
+                                     params_lines: kwargs[:params_lines],
+                                     raise_types: kwargs[:raise_types], override_tags: kwargs[:override_tags])
       end
 
       # Assemble all doc lines into a single array.
       #
       # @note module_function: when included, also defines #assemble_doc_lines (instance visibility: private)
-      # @param [String] i indent
-      # @param [Hash] s setup
-      # @param [Docscribe::Config] config
-      # @param [Object] insertion
-      # @param [Object] params_lines
-      # @param [Object] raise_types
-      # @param [Object] override_tags
+      # @param [String] indent indent
+      # @param [Hash] setup setup
       # @param [Hash] ctx Param documentation.
       # @return [Array<String>]
-      def assemble_doc_lines(i, s, **ctx)
-        line_ary = build_header_lines(i, config: ctx[:config], container: s[:container],
-                                         method_symbol: s[:method_symbol], name: s[:name],
-                                         normal_type: s[:normal_type])
-        append_assemble_body_lines(line_ary, i, s, ctx)
+      def assemble_doc_lines(indent, setup, **ctx)
+        line_ary = build_header_lines(
+          indent,
+          config: ctx[:config],
+          container: setup[:container], method_symbol: setup[:method_symbol], name: setup[:name],
+          normal_type: setup[:normal_type]
+        )
+
+        append_assemble_body_lines(line_ary, indent, setup, ctx)
         line_ary
       end
 
@@ -918,8 +929,8 @@ module Docscribe
       # @param [Hash] s
       # @param [Hash] ctx
       # @return [void]
-      def append_assemble_body_lines(line_ary, i, s, ctx)
-        line_ary.concat(build_all_body_tags(i, s, ctx))
+      def append_assemble_body_lines(line_ary, indent, setup, ctx)
+        line_ary.concat(build_all_body_tags(indent, setup, ctx))
       end
 
       # Build all body tag lines for a doc block.
@@ -929,8 +940,8 @@ module Docscribe
       # @param [Hash] s
       # @param [Hash] ctx
       # @return [Array<String>]
-      def build_all_body_tags(i, s, ctx)
-        result = core_body_tags(i, s, ctx)
+      def build_all_body_tags(indent, setup, ctx)
+        result = core_body_tags(indent, setup, ctx)
         result.insert(3, ctx[:params_lines]) if ctx[:params_lines]
         result.flatten
       end
@@ -942,15 +953,15 @@ module Docscribe
       # @param [Hash] s
       # @param [Hash] ctx
       # @return [Array]
-      def core_body_tags(i, s, ctx)
+      def core_body_tags(indent, setup, ctx)
         config = ctx[:config]
         [
-          defaults_and_visibility(i, config, s[:scope], s[:visibility]),
-          build_module_function_note_lines(i, ctx[:insertion], s[:name]),
-          build_raise_tag_lines(i, ctx[:raise_types], config),
-          build_return_line_if_needed(i, s, config),
-          build_rescue_return_lines(i, s[:rescue_specs], config),
-          build_plugin_tag_lines(ctx[:insertion], i, s[:normal_type], ctx[:override_tags])
+          defaults_and_visibility(indent, config, setup[:scope], setup[:visibility]),
+          build_module_function_note_lines(indent, ctx[:insertion], setup[:name]),
+          build_raise_tag_lines(indent, ctx[:raise_types], config),
+          build_return_line_if_needed(indent, setup, config),
+          build_rescue_return_lines(indent, setup[:rescue_specs], config),
+          build_plugin_tag_lines(ctx[:insertion], indent, setup[:normal_type], ctx[:override_tags])
         ]
       end
 
@@ -962,10 +973,10 @@ module Docscribe
       # @param [Symbol] scope
       # @param [Symbol] visibility
       # @return [Array<String>]
-      def defaults_and_visibility(i, config, scope, visibility)
+      def defaults_and_visibility(indent, config, scope, visibility)
         [
-          build_default_msg_lines(i, config, scope, visibility),
-          build_visibility_tag_lines(i, visibility, config)
+          build_default_msg_lines(indent, config, scope, visibility),
+          build_visibility_tag_lines(indent, visibility, config)
         ].flatten
       end
 
@@ -976,9 +987,9 @@ module Docscribe
       # @param [Hash] s
       # @param [Docscribe::Config] config
       # @return [Array<String>]
-      def build_return_line_if_needed(i, s, config)
-        emit_ret = config.emit_return_tag?(s[:scope], s[:visibility])
-        ret_line = build_return_tag_line(i, s[:normal_type], config, s[:scope], s[:visibility])
+      def build_return_line_if_needed(indent, setup, config)
+        emit_ret = config.emit_return_tag?(setup[:scope], setup[:visibility])
+        ret_line = build_return_tag_line(indent, setup[:normal_type], config, setup[:scope], setup[:visibility])
         emit_ret && ret_line ? [ret_line] : []
       end
 
@@ -993,40 +1004,6 @@ module Docscribe
         when :defs then node.children[2]
         end
       end
-
-      PARAM_TYPE_COLLECTORS = {
-        arg: ->(a, pt, ext_sig, config) { collect_param_type(a, pt, ext_sig, config, infer_name: nil) },
-        optarg: ->(a, pt, ext_sig, config) { collect_optarg_param_type(a, pt, ext_sig, config, infer_name: nil) },
-        kwarg: ->(a, pt, ext_sig, config) { collect_param_type(a, pt, ext_sig, config, infer_name: ->(p) { "#{p}:" }) },
-        kwoptarg: lambda { |a, pt, ext_sig, config|
-          collect_optarg_param_type(a, pt, ext_sig, config, infer_name: ->(p) { "#{p}:" })
-        }
-      }.freeze
-
-      PARAM_BUILDERS = {
-        arg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_arg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        optarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          build_optarg_lines(arg_node, indent, external_sig, param_types_override, **opts)
-        },
-        kwarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_kwarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        kwoptarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_kwoptarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        restarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_restarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        kwrestarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        blockarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        forward_arg: ->(*) { [] }
-      }.freeze
 
       # Build a param line for a single argument node.
       # Method documentation.
@@ -1048,10 +1025,6 @@ module Docscribe
       #
       # @note module_function: when included, also defines #build_header_lines (instance visibility: private)
       # @param [String] indent
-      # @param [String] container
-      # @param [String] method_symbol
-      # @param [String] name
-      # @param [String] normal_type
       # @param [Docscribe::Config] config
       # @param [Hash] opts Param documentation.
       # @return [Array<String>]
@@ -1182,14 +1155,9 @@ module Docscribe
       # Build a param line for a required argument.
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] a Param documentation.
       # @param [Object] indent Param documentation.
       # @param [Object] external_sig Param documentation.
       # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
       # @param [Object] arg_node Param documentation.
       # @param [Hash] opts Param documentation.
       # @return [Object]
@@ -1205,14 +1173,9 @@ module Docscribe
       # Build param lines for an optional argument (including @option lines).
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] a Param documentation.
       # @param [Object] indent Param documentation.
       # @param [Object] external_sig Param documentation.
       # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
       # @param [Object] arg_node Param documentation.
       # @param [Hash] opts Param documentation.
       # @return [Object]
@@ -1243,21 +1206,6 @@ module Docscribe
                           treat_options_keyword_as_hash: opts[:treat_options_keyword_as_hash])
       end
 
-      # Append @option lines for hash defaults.
-      #
-      # @note module_function: when included, also defines #append_option_lines (instance visibility: private)
-      # @param [Array] lines
-      # @param [Object] default
-      # @param [String] indent
-      # @param [String] pname
-      # @param [Object] fallback_type
-      # @return [void]
-      def append_option_lines(lines, default, indent, pname, fallback_type)
-        hash_option_pairs(default).each do |pair|
-          lines << build_option_line(pair, indent, pname, fallback_type)
-        end
-      end
-
       # Extract source text from an AST node.
       #
       # @note module_function: when included, also defines #source_from_node (instance visibility: private)
@@ -1268,17 +1216,22 @@ module Docscribe
         loc&.expression&.source
       end
 
+      # Resolve the infer name string from a param name and infer_name lambda.
+      #
+      # @note module_function: when included, also defines #resolve_infer_name (instance visibility: private)
+      # @param [String] pname
+      # @param [Proc, nil] infer_name
+      # @return [String]
+      def resolve_infer_name(pname, infer_name)
+        infer_name ? infer_name.call(pname) : pname
+      end
+
       # Build a param line for a keyword argument.
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] a Param documentation.
       # @param [Object] indent Param documentation.
       # @param [Object] external_sig Param documentation.
       # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
       # @param [Object] arg_node Param documentation.
       # @param [Hash] opts Param documentation.
       # @return [Object]
@@ -1294,14 +1247,9 @@ module Docscribe
       # Build a param line for an optional keyword argument.
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] a Param documentation.
       # @param [Object] indent Param documentation.
       # @param [Object] external_sig Param documentation.
       # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
       # @param [Object] arg_node Param documentation.
       # @param [Hash] opts Param documentation.
       # @return [Object]
@@ -1320,14 +1268,9 @@ module Docscribe
       # Build a param line for a rest argument (*args).
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] a Param documentation.
       # @param [Object] indent Param documentation.
       # @param [Object] external_sig Param documentation.
       # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
       # @param [Object] arg_node Param documentation.
       # @param [Hash] opts Param documentation.
       # @return [Object]
@@ -1345,14 +1288,9 @@ module Docscribe
       # Build a param line for a keyword rest argument (**kwargs).
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] a Param documentation.
       # @param [Object] indent Param documentation.
       # @param [Object] external_sig Param documentation.
       # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
       # @param [Object] arg_node Param documentation.
       # @param [Hash] opts Param documentation.
       # @return [Object]
@@ -1367,14 +1305,9 @@ module Docscribe
       # Build a param line for a block argument (&block).
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] a Param documentation.
       # @param [Object] indent Param documentation.
       # @param [Object] external_sig Param documentation.
       # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
       # @param [Object] arg_node Param documentation.
       # @param [Hash] opts Param documentation.
       # @return [Object]
@@ -1394,9 +1327,6 @@ module Docscribe
       # @param [Object] param_types_override Param documentation.
       # @param [Object] pname Param documentation.
       # @param [Object] infer_name Param documentation.
-      # @param [Object] infer_default Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
       # @param [Hash] opts Param documentation.
       # @return [Object]
       def lookup_param_type(external_sig, param_types_override, pname, infer_name, **opts)
@@ -1445,6 +1375,21 @@ module Docscribe
                end
 
         doc.empty? ? line : "#{line} #{doc}"
+      end
+
+      # Append @option lines for hash defaults.
+      #
+      # @note module_function: when included, also defines #append_option_lines (instance visibility: private)
+      # @param [Array] lines
+      # @param [Object] default
+      # @param [String] indent
+      # @param [String] pname
+      # @param [Object] fallback_type
+      # @return [void]
+      def append_option_lines(lines, default, indent, pname, fallback_type)
+        hash_option_pairs(default).each do |pair|
+          lines << build_option_line(pair, indent, pname, fallback_type)
+        end
       end
 
       # Method documentation.
