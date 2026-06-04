@@ -113,25 +113,31 @@ module DocscribePlugins
     # @param [Parser::AST::Node] ast
     # @return [Boolean]
     def active_record_model?(ast)
-      found = false
       Docscribe::Infer::ASTWalk.walk(ast) do |node|
         next unless node.type == :class
 
         _name, parent = *node
         next unless parent
 
-        if parent.type == :const && parent.children[1] == :ApplicationRecord
-          found = true
-          break
-        elsif parent.type == :const &&
-              parent.children[0]&.type == :const &&
-              parent.children[0].children[1] == :ActiveRecord &&
-              parent.children[1] == :Base
-          found = true
-          break
-        end
+        return true if active_record_parent?(parent)
       end
-      found
+
+      false
+    end
+
+    def active_record_parent?(parent)
+      application_record_parent?(parent) || active_record_base_parent?(parent)
+    end
+
+    def application_record_parent?(parent)
+      parent.type == :const && parent.children[1] == :ApplicationRecord
+    end
+
+    def active_record_base_parent?(parent)
+      parent.type == :const &&
+        parent.children[0]&.type == :const &&
+        parent.children[0].children[1] == :ActiveRecord &&
+        parent.children[1] == :Base
     end
 
     # Load schema.rb from the project root and parse it.
@@ -230,24 +236,46 @@ module DocscribePlugins
       current_table = nil
 
       source.each_line do |line|
-        # Match create_table "table_name"
-        case line
-        when /\A\s*create_table\s+["'](\w+)["']/
-          current_table = ::Regexp.last_match(1)
-          tables[current_table] ||= []
-        when /\A\s*t\.(\w+)\s+["'](\w+)["']/
-          col_type = ::Regexp.last_match(1)
-          col_name = ::Regexp.last_match(2)
-          next unless RECOGNIZED_COLUMNS.include?(col_type.to_sym)
-          next if SKIPPED_COLUMNS.include?(col_name)
-
-          tables[current_table] << { name: col_name, type: col_type }
-        when /\A\s*end\s*\Z/
-          current_table = nil unless line.match?(/\A\s*end\s*\Z/) || current_table.nil?
-        end
+        current_table = parse_table_line(line, tables, current_table)
       end
 
       tables
+    end
+
+    def parse_table_line(line, tables, current_table)
+      case line
+      when /\A\s*create_table\s+["'](\w+)["']/
+        table_name = ::Regexp.last_match(1)
+        tables[table_name] ||= []
+        table_name
+      when /\A\s*t\.(\w+)\s+["'](\w+)["']/
+        add_column_from_line(line, tables, current_table)
+        current_table
+      when /\A\s*end\s*\Z/
+        nil
+      else
+        current_table
+      end
+    end
+
+    def add_column_from_line(tables, current_table)
+      col_type = ::Regexp.last_match(1)
+      col_name = ::Regexp.last_match(2)
+
+      return unless recognized_column?(col_type, col_name)
+
+      tables[current_table] << {
+        name: col_name,
+        type: col_type
+      }
+    end
+
+    def recognized_column?(col_type, col_name)
+      RECOGNIZED_COLUMNS.include?(col_type.to_sym) &&
+        !SKIPPED_COLUMNS.include?(col_name)
+      enddef recognized_column?(col_type, col_name)
+      RECOGNIZED_COLUMNS.include?(col_type.to_sym) &&
+        !SKIPPED_COLUMNS.include?(col_name)
     end
 
     # Build @!attribute doc blocks for all columns of a table.
@@ -261,30 +289,41 @@ module DocscribePlugins
       results = []
 
       Docscribe::Infer::ASTWalk.walk(ast) do |node|
-        next unless node.type == :class
-
-        _name, _parent, body = *node
-
-        anchor = node
-
-        indent =
-          if body
-            stmts = body.type == :begin ? body.children : [body]
-            extract_indent(stmts.first || node)
-          else
-            ''
-          end
-
-        columns.each do |col|
-          next if SKIPPED_COLUMNS.include?(col[:name])
-
-          yard_type = COLUMN_TYPE_MAP[col[:type]] || 'Object'
-          doc = build_doc(col[:name], yard_type, indent)
-          results << { anchor_node: anchor, doc: doc }
-        end
+        collect_class_attributes(node, columns, results)
       end
 
       results
+    end
+
+    def collect_class_attributes(node, columns, results)
+      return unless node.type == :class
+
+      indent = attribute_indent(node)
+
+      columns.each do |column|
+        doc = build_attribute_doc(column, indent)
+        results << doc if doc
+      end
+    end
+
+    def attribute_indent(node)
+      _name, _parent, body = *node
+
+      return '' unless body
+
+      stmts = body.type == :begin ? body.children : [body]
+      extract_indent(stmts.first || node)
+    end
+
+    def build_attribute_doc(column, indent)
+      return if SKIPPED_COLUMNS.include?(column[:name])
+
+      yard_type = COLUMN_TYPE_MAP[column[:type]] || 'Object'
+
+      {
+        anchor_node: column[:anchor_node],
+        doc: build_doc(column[:name], yard_type, indent)
+      }
     end
 
     # Build a single @!attribute doc block for one column.
