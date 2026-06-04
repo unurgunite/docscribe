@@ -324,17 +324,12 @@ module Docscribe
         anchor_node = pending_sig_anchor || node
 
         if module_function_applies?(ctx, name)
-          scope = :class
-          vis = ctx.explicit_class[name] || ctx.default_class_vis
-          included_vis = ctx.explicit_instance[name] || :private
-
-          @insertions << Insertion.new(node, scope, vis, container_for(ctx), true, included_vis, anchor_node)
+          process_module_function_def(node, name, ctx, anchor_node)
           return
         end
 
         if extend_self_applies?(ctx)
-          @insertions << Insertion.new(node, :class, ctx.explicit_instance[name] || ctx.default_instance_vis,
-                                       container_for(ctx), nil, nil, anchor_node)
+          process_extend_self_def(node, name, ctx, anchor_node)
           return
         end
 
@@ -347,6 +342,35 @@ module Docscribe
         end
 
         @insertions << Insertion.new(node, scope, vis, container_for(ctx), nil, nil, anchor_node)
+      end
+
+      # Handle a def where module_function applies.
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] name Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @param [Object] anchor_node Param documentation.
+      # @return [Object]
+      def process_module_function_def(node, name, ctx, anchor_node)
+        @insertions << Insertion.new(node, :class, ctx.explicit_class[name] || ctx.default_class_vis,
+                                     container_for(ctx), true,
+                                     ctx.explicit_instance[name] || :private, anchor_node)
+      end
+
+      # Handle a def where extend_self applies.
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] name Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @param [Object] anchor_node Param documentation.
+      # @return [Object]
+      def process_extend_self_def(node, name, ctx, anchor_node)
+        @insertions << Insertion.new(node, :class, ctx.explicit_instance[name] || ctx.default_instance_vis,
+                                     container_for(ctx), nil, nil, anchor_node)
       end
 
       # Process a `:defs` node for documentation insertion.

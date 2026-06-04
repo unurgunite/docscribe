@@ -32,48 +32,24 @@ module Docscribe
       # @param [nil] param_types parameter name -> type map
       # @param [nil] return_type_override return type override string
       # @param [nil] override_tags hash of tags to override
+      # @param [Hash] opts Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build(insertion, config:, signature_provider: nil, core_rbs_provider: nil, param_types: nil, return_type_override: nil, override_tags: nil)
-        setup = doc_setup(insertion, config: config, signature_provider: signature_provider,
-                                     core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                     return_type_override: return_type_override)
+      def build(insertion, config:, **opts)
+        setup = doc_setup(insertion, config: config, **opts)
         return nil unless setup
 
-        node = setup[:node]
-        name = setup[:name]
-        indent = setup[:indent]
-        scope = setup[:scope]
-        visibility = setup[:visibility]
-        container = setup[:container]
-        method_symbol = setup[:method_symbol]
-        external_sig = setup[:external_sig]
-        normal_type = setup[:normal_type]
-        rescue_specs = setup[:rescue_specs]
+        pt = opts[:param_types] || build_param_types_from_node(setup[:node], external_sig: setup[:external_sig], config: config)
+        pl = if config.emit_param_tags?
+               build_params_lines(setup[:node], setup[:indent], external_sig: setup[:external_sig], config: config,
+                                                                param_types_override: pt)
+             end
+        rt = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(setup[:node]) : []
 
-        effective_param_types = param_types || build_param_types_from_node(node, external_sig: external_sig, config: config)
-        params_lines = if config.emit_param_tags?
-                         build_params_lines(node, indent, external_sig: external_sig, config: config,
-                                                          param_types_override: effective_param_types)
-                       end
-        raise_types = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(node) : []
-
-        lines = []
-        lines.concat(build_header_lines(indent, container, method_symbol, name, normal_type, config))
-        lines.concat(build_default_msg_lines(indent, config, scope, visibility))
-        lines.concat(build_visibility_tag_lines(indent, visibility, config))
-        lines.concat(build_module_function_note_lines(indent, insertion, name))
-        lines.concat(params_lines) if params_lines
-        lines.concat(build_raise_tag_lines(indent, raise_types, config))
-
-        ret_line = build_return_tag_line(indent, normal_type, config, scope, visibility)
-        lines << ret_line if ret_line
-        lines.concat(build_rescue_return_lines(indent, rescue_specs, config))
-        lines.concat(build_plugin_tag_lines(insertion, indent, normal_type, override_tags))
-
+        lines = build_doc_lines(setup, config: config, insertion: insertion, params_lines: pl, raise_types: rt, override_tags: opts[:override_tags])
         lines.map { |l| "#{l}\n" }.join
       rescue StandardError => e
-        debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build')
+        debug_warn(e, insertion: insertion, name: '(unknown)', phase: 'DocBuilder.build')
         nil
       end
 
@@ -90,43 +66,17 @@ module Docscribe
       # @param [nil] core_rbs_provider core RBS type lookup provider
       # @param [nil] param_types parameter name -> type map
       # @param [nil] return_type_override return type override string
+      # @param [Hash] options Param documentation.
       # @raise [StandardError]
       # @return [String, nil]
-      def build_merge_additions(insertion, existing_lines:, config:, signature_provider: nil, core_rbs_provider: nil,
-                                param_types: nil, return_type_override: nil)
-        setup = doc_setup(insertion, config: config, signature_provider: signature_provider,
-                                     core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                     return_type_override: return_type_override)
+      def build_merge_additions(insertion, existing_lines:, config:, **options)
+        setup = doc_setup(insertion, config: config, **options)
         return '' unless setup
 
-        name = setup[:name]
-        indent = setup[:indent]
-        scope = setup[:scope]
-        visibility = setup[:visibility]
-        external_sig = setup[:external_sig]
-        normal_type = setup[:normal_type]
-        rescue_specs = setup[:rescue_specs]
-        node = setup[:node]
-
         info = parse_existing_doc_tags(existing_lines)
-
-        lines = []
-        lines << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#'
-        lines.concat(merge_visibility_tag_lines(indent, visibility, config, info))
-        lines.concat(merge_module_function_note_lines(indent, insertion, name, info))
-        lines.concat(merge_param_lines(node, indent, config, external_sig, param_types, info))
-        lines.concat(merge_raise_tag_lines(node, indent, config, info))
-
-        ret_line = merge_return_tag_line(indent, normal_type, config, scope, visibility, info)
-        lines << ret_line if ret_line
-        lines.concat(merge_rescue_return_lines(indent, rescue_specs, config, info))
-
-        useful = lines.reject { |l| l.strip == '#' }
-        return '' if useful.empty?
-
-        lines.map { |l| "#{l}\n" }.join
+        merge_dest_lines(existing_lines, setup, insertion, config, info, options[:param_types])
       rescue StandardError => e
-        debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build_merge_additions')
+        debug_warn(e, insertion: insertion, name: setup&.dig(:name) || '(unknown)', phase: 'DocBuilder.build_merge_additions')
         nil
       end
 
@@ -146,44 +96,17 @@ module Docscribe
       # @param [nil] strategy rewrite strategy (:safe or :aggressive)
       # @param [nil] return_type_override return type override string
       # @param [nil] override_tags hash of tags to override
+      # @param [Hash] options Param documentation.
       # @raise [StandardError]
       # @return [Hash]
-      def build_missing_merge_result(insertion, existing_lines:, config:, signature_provider: nil,
-                                     core_rbs_provider: nil, param_types: nil, strategy: nil, return_type_override: nil, override_tags: nil)
-        setup = doc_setup(insertion, config: config, signature_provider: signature_provider,
-                                     core_rbs_provider: core_rbs_provider, param_types: param_types,
-                                     return_type_override: return_type_override)
+      def build_missing_merge_result(insertion, existing_lines:, config:, **options)
+        setup = doc_setup(insertion, config: config, **options)
         return { lines: [], reasons: [] } unless setup
 
-        name = setup[:name]
-        indent = setup[:indent]
-        scope = setup[:scope]
-        visibility = setup[:visibility]
-        external_sig = setup[:external_sig]
-        normal_type = setup[:normal_type]
-        rescue_specs = setup[:rescue_specs]
-        node = setup[:node]
-
         info = parse_existing_doc_tags(existing_lines)
-
-        lines = []
-        reasons = []
-
-        ctx = { node: node, indent: indent, config: config, external_sig: external_sig,
-                info: info, strategy: strategy, scope: scope, visibility: visibility,
-                normal_type: normal_type, rescue_specs: rescue_specs, insertion: insertion,
-                param_types: param_types, override_tags: override_tags }
-        collect_missing_visibility!(lines, reasons, **ctx)
-        collect_missing_module_function_note!(lines, reasons, **ctx)
-        collect_missing_params!(lines, reasons, **ctx)
-        collect_missing_raises!(lines, reasons, **ctx)
-        collect_missing_return!(lines, reasons, **ctx)
-        collect_missing_rescue_returns!(lines, reasons, **ctx)
-        collect_missing_plugin_tags!(lines, reasons, **ctx)
-
-        { lines: lines, reasons: reasons }
+        collect_all_missing(setup, info, insertion, config, options)
       rescue StandardError => e
-        debug_warn(e, insertion: insertion, name: name || '(unknown)', phase: 'DocBuilder.build_missing_merge_result')
+        debug_warn(e, insertion: insertion, name: setup[:name] || '(unknown)', phase: 'DocBuilder.build_missing_merge_result')
         { lines: [], reasons: [] }
       end
 
@@ -262,49 +185,160 @@ module Docscribe
       def parse_existing_doc_tags(lines)
         param_names = {}
         param_types = {}
-        has_return = false
-        return_type = nil
-        has_private = false
-        has_protected = false
-        has_module_function_note = false
+        ret_info = {}
+        vis_info = {}
         raise_types = {}
         plugin_tags = {}
 
         Array(lines).each do |line|
-          if (m = line.match(/^\s*#\s*@(\w+)\b/))
-            plugin_tags[m[1]] = true
-          end
-          if (pname = extract_param_name_from_param_line(line))
-            param_names[pname] = true
-            if (type_match = line.match(/@param\s+\[([^\]]+)\]\s+\S+/) || line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
-              param_types[pname] = type_match[1]
-            end
-          end
-
-          if line.match?(/^\s*#\s*@return\b/)
-            has_return = true
-            if (m = line.match(/@return\s+\[([^\]]+)\]/))
-              return_type = m[1]
-            end
-          end
-          has_private ||= line.match?(/^\s*#\s*@private\b/)
-          has_protected ||= line.match?(/^\s*#\s*@protected\b/)
-          has_module_function_note ||= line.match?(/^\s*#\s*@note\s+module_function:/)
-
-          extract_raise_types_from_line(line).each { |t| raise_types[t] = true }
+          extract_param_info(line, param_names, param_types)
+          extract_return_info(line, ret_info)
+          extract_visibility_info(line, vis_info)
+          extract_raise_info(line, raise_types)
+          extract_plugin_info(line, plugin_tags)
         end
 
         {
           param_names: param_names,
           param_types: param_types,
-          has_return: has_return,
-          return_type: return_type,
+          has_return: ret_info[:has_return] || false,
+          return_type: ret_info[:return_type],
           raise_types: raise_types,
-          has_private: has_private,
-          has_protected: has_protected,
-          has_module_function_note: has_module_function_note,
+          has_private: vis_info[:has_private] || false,
+          has_protected: vis_info[:has_protected] || false,
+          has_module_function_note: vis_info[:has_module_function_note] || false,
           plugin_tags: plugin_tags
         }
+      end
+
+      # Build merged destination lines for safe merge mode.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #merge_dest_lines (instance visibility: private)
+      # @param [Object] existing_lines Param documentation.
+      # @param [Object] setup Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] info Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @return [Object]
+      def merge_dest_lines(existing_lines, setup, insertion, config, info, param_types)
+        s = setup
+        i = s[:indent]
+        line_ary = existing_lines.any? && existing_lines.last.strip != '#' ? ["#{i}#"] : []
+        line_ary.concat(merge_visibility_tag_lines(i, s[:visibility], config, info))
+        line_ary.concat(merge_module_function_note_lines(i, insertion, s[:name], info))
+        line_ary.concat(merge_param_lines(s[:node], i, config, s[:external_sig], param_types, info))
+        line_ary.concat(merge_raise_tag_lines(s[:node], i, config, info))
+
+        emit_ret = config.emit_return_tag?(s[:scope], s[:visibility])
+        ret_line = merge_return_tag_line(i, s[:normal_type], config, s[:scope], s[:visibility], info)
+        line_ary << ret_line if emit_ret && ret_line
+
+        line_ary.concat(merge_rescue_return_lines(i, s[:rescue_specs], config, info))
+
+        useful = line_ary.reject { |l| l.strip == '#' }
+        return '' if useful.empty?
+
+        line_ary.map { |l| "#{l}\n" }.join
+      end
+
+      # Collect all missing doc elements and return { lines:, reasons: }.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #collect_all_missing (instance visibility: private)
+      # @param [Object] setup Param documentation.
+      # @param [Object] info Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] options Param documentation.
+      # @return [Hash]
+      def collect_all_missing(setup, info, insertion, config, options)
+        lines = []
+        reasons = []
+        s = setup
+        ctx = { node: s[:node], indent: s[:indent], config: config, external_sig: s[:external_sig],
+                info: info, strategy: options[:strategy], scope: s[:scope], visibility: s[:visibility],
+                normal_type: s[:normal_type], rescue_specs: s[:rescue_specs], insertion: insertion,
+                param_types: options[:param_types], override_tags: options[:override_tags] }
+        collect_missing_visibility!(lines, reasons, **ctx)
+        collect_missing_module_function_note!(lines, reasons, **ctx)
+        collect_missing_params!(lines, reasons, **ctx)
+        collect_missing_raises!(lines, reasons, **ctx)
+        collect_missing_return!(lines, reasons, **ctx)
+        collect_missing_rescue_returns!(lines, reasons, **ctx)
+        collect_missing_plugin_tags!(lines, reasons, **ctx)
+        { lines: lines, reasons: reasons }
+      end
+
+      # Extract param info from a doc line.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_param_info (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @param [Object] param_names Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @return [Object]
+      def extract_param_info(line, param_names, param_types)
+        return unless (pname = extract_param_name_from_param_line(line))
+
+        param_names[pname] = true
+        return unless (type_match = line.match(/@param\s+\[([^\]]+)\]\s+\S+/) || line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
+
+        param_types[pname] = type_match[1]
+      end
+
+      # Extract return info from a doc line.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_return_info (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @param [Object] info Param documentation.
+      # @return [Object]
+      def extract_return_info(line, info)
+        return unless line.match?(/^\s*#\s*@return\b/)
+
+        info[:has_return] = true
+        return unless (m = line.match(/@return\s+\[([^\]]+)\]/))
+
+        info[:return_type] = m[1]
+      end
+
+      # Extract visibility info from a doc line.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_visibility_info (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @param [Object] info Param documentation.
+      # @return [Object]
+      def extract_visibility_info(line, info)
+        info[:has_private] ||= line.match?(/^\s*#\s*@private\b/)
+        info[:has_protected] ||= line.match?(/^\s*#\s*@protected\b/)
+        info[:has_module_function_note] ||= line.match?(/^\s*#\s*@note\s+module_function:/)
+      end
+
+      # Extract raise info from a doc line.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_raise_info (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @param [Object] raise_types Param documentation.
+      # @return [Object]
+      def extract_raise_info(line, raise_types)
+        extract_raise_types_from_line(line).each { |t| raise_types[t] = true }
+      end
+
+      # Extract plugin tag info from a doc line.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_plugin_info (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @param [Object] plugin_tags Param documentation.
+      # @return [Object]
+      def extract_plugin_info(line, plugin_tags)
+        return unless (m = line.match(/^\s*#\s*@(\w+)\b/))
+
+        plugin_tags[m[1]] = true
       end
 
       # Extract exception names from a `@raise` doc line.
@@ -332,6 +366,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #parse_raise_bracket_list (instance visibility: private)
       # @param [String] s the `@raise` line text
+      # @param [Object] str Param documentation.
       # @return [Array<String>, nil] the exception names or nil
       def parse_raise_bracket_list(str)
         str.to_s.split(',').map(&:strip).reject(&:empty?)
@@ -369,18 +404,6 @@ module Docscribe
         param_types.empty? ? nil : param_types
       end
 
-      # Extract args sub-node from a def or defs node.
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Parser::AST::Node] node
-      # @return [Parser::AST::Node, nil]
-      def extract_args_from_node(node)
-        case node.type
-        when :def then node.children[1]
-        when :defs then node.children[2]
-        end
-      end
-
       # Collect param type for a required/keyword argument.
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
@@ -389,6 +412,7 @@ module Docscribe
       # @param [Object] external_sig Param documentation.
       # @param [Object] config Param documentation.
       # @param [Object] infer_name Param documentation.
+      # @param [Object] arg_node Param documentation.
       # @return [Object]
       def collect_param_type(arg_node, param_types, external_sig, config, infer_name:)
         pname = arg_node.children.first.to_s
@@ -408,6 +432,7 @@ module Docscribe
       # @param [Object] external_sig Param documentation.
       # @param [Object] config Param documentation.
       # @param [Object] infer_name Param documentation.
+      # @param [Object] arg_node Param documentation.
       # @return [Object]
       def collect_optarg_param_type(arg_node, param_types, external_sig, config, infer_name:)
         pname, default = *arg_node
@@ -593,6 +618,7 @@ module Docscribe
       # @param [Object] lines Param documentation.
       # @param [Object] reasons Param documentation.
       # @param [Object] ctx Param documentation.
+      # @param [Object] param_line Param documentation.
       # @return [Object]
       def collect_param_from_line(param_line, lines, reasons, ctx)
         pname = extract_param_name_from_param_line(param_line)
@@ -614,6 +640,7 @@ module Docscribe
       # @param [Object] lines Param documentation.
       # @param [Object] reasons Param documentation.
       # @param [Object] ctx Param documentation.
+      # @param [Object] param_line Param documentation.
       # @return [Object]
       def collect_updated_param(param_line, pname, lines, reasons, ctx)
         new_type = extract_param_type_from_param_line(param_line)
@@ -639,57 +666,96 @@ module Docscribe
       # @param [nil] param_types_override parameter name -> type map override
       # @return [Array<String>, nil]
       def build_params_lines(node, indent, external_sig:, config:, param_types_override: nil)
-        fallback_type = config.fallback_type
-        treat_options_keyword_as_hash = config.treat_options_keyword_as_hash?
-        param_tag_style = config.param_tag_style
-        param_documentation = config.include_param_documentation? ? config.param_documentation : ''
-
-        args =
-          case node.type
-          when :def then node.children[1]
-          when :defs then node.children[2]
-          end
-
+        fb = config.fallback_type
+        tk = config.treat_options_keyword_as_hash?
+        ts = config.param_tag_style
+        pd = config.include_param_documentation? ? config.param_documentation : ''
+        args = extract_args_from_node(node)
         return nil unless args
 
-        params = []
-
-        (args.children || []).each do |a|
-          case a.type
-          when :arg
-            params << build_arg_line(a, indent, external_sig, param_types_override,
-                                     fallback_type, treat_options_keyword_as_hash,
-                                     param_documentation, param_tag_style)
-          when :optarg
-            params.concat(build_optarg_lines(a, indent, external_sig, param_types_override,
-                                             fallback_type, treat_options_keyword_as_hash,
-                                             param_documentation, param_tag_style))
-          when :kwarg
-            params << build_kwarg_line(a, indent, external_sig, param_types_override,
-                                       fallback_type, treat_options_keyword_as_hash,
-                                       param_documentation, param_tag_style)
-          when :kwoptarg
-            params << build_kwoptarg_line(a, indent, external_sig, param_types_override,
-                                          fallback_type, treat_options_keyword_as_hash,
-                                          param_documentation, param_tag_style)
-          when :restarg
-            params << build_restarg_line(a, indent, external_sig, param_types_override,
-                                         fallback_type, treat_options_keyword_as_hash,
-                                         param_documentation, param_tag_style)
-          when :kwrestarg
-            params << build_kwrestarg_line(a, indent, external_sig, param_types_override,
-                                           fallback_type, treat_options_keyword_as_hash,
-                                           param_documentation, param_tag_style)
-          when :blockarg
-            params << build_blockarg_line(a, indent, external_sig, param_types_override,
-                                          fallback_type, treat_options_keyword_as_hash,
-                                          param_documentation, param_tag_style)
-          when :forward_arg
-            # skip
-          end
+        params = (args.children || []).each_with_object([]) do |a, p|
+          p.concat(build_param_line(a, indent, external_sig, param_types_override, fallback_type: fb, treat_options_keyword_as_hash: tk, param_documentation: pd,
+                                                                                   param_tag_style: ts))
         end
-
         params.empty? ? nil : params
+      end
+
+      # Build doc lines for a full doc block.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_doc_lines (instance visibility: private)
+      # @param [Object] setup Param documentation.
+      # @param [Object] config Param documentation.
+      # @param [Object] insertion Param documentation.
+      # @param [Object] params_lines Param documentation.
+      # @param [Object] raise_types Param documentation.
+      # @param [Object] override_tags Param documentation.
+      # @return [Object]
+      def build_doc_lines(setup, config:, insertion:, params_lines:, raise_types:, override_tags:)
+        s = setup
+        i = s[:indent]
+        emit_ret = config.emit_return_tag?(s[:scope], s[:visibility])
+        ret_line = build_return_tag_line(i, s[:normal_type], config, s[:scope], s[:visibility])
+
+        line_ary = build_header_lines(i, s[:container], s[:method_symbol], s[:name], s[:normal_type], config)
+        line_ary.concat(build_default_msg_lines(i, config, s[:scope], s[:visibility]))
+        line_ary.concat(build_visibility_tag_lines(i, s[:visibility], config))
+        line_ary.concat(build_module_function_note_lines(i, insertion, s[:name]))
+        line_ary.concat(params_lines) if params_lines
+        line_ary.concat(build_raise_tag_lines(i, raise_types, config))
+        line_ary << ret_line if emit_ret && ret_line
+        line_ary.concat(build_rescue_return_lines(i, s[:rescue_specs], config))
+        line_ary.concat(build_plugin_tag_lines(insertion, i, s[:normal_type], override_tags))
+        line_ary
+      end
+
+      # Extract args sub-node from a def or defs node.
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Parser::AST::Node] node
+      # @return [Parser::AST::Node, nil]
+      def extract_args_from_node(node)
+        case node.type
+        when :def then node.children[1]
+        when :defs then node.children[2]
+        end
+      end
+
+      PARAM_BUILDERS = {
+        arg: ->(arg_node, indent, external_sig, param_types_override, **opts) { [build_arg_line(arg_node, indent, external_sig, param_types_override, **opts)] },
+        optarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          build_optarg_lines(arg_node, indent, external_sig, param_types_override, **opts)
+        },
+        kwarg: ->(arg_node, indent, external_sig, param_types_override, **opts) { [build_kwarg_line(arg_node, indent, external_sig, param_types_override, **opts)] },
+        kwoptarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_kwoptarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        restarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_restarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        kwrestarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        blockarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
+          [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+        },
+        forward_arg: ->(*) { [] }
+      }.freeze
+
+      # Build a param line for a single argument node.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_param_line (instance visibility: private)
+      # @param [Object] arg_node Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
+      def build_param_line(arg_node, indent, external_sig, param_types_override, **opts)
+        PARAM_BUILDERS.fetch(arg_node.type, lambda { |*|
+          []
+        }).call(arg_node, indent, external_sig, param_types_override, **opts)
       end
 
       # Build header line(s) for a doc block.
@@ -832,12 +898,14 @@ module Docscribe
       # @param [Object] treat_options_keyword_as_hash Param documentation.
       # @param [Object] param_documentation Param documentation.
       # @param [Object] param_tag_style Param documentation.
+      # @param [Object] arg_node Param documentation.
+      # @param [Hash] opts Param documentation.
       # @return [Object]
-      def build_arg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
+      def build_arg_line(arg_node, indent, external_sig, param_types_override, **opts)
         pname = arg_node.children.first.to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, pname, nil,
-                               fallback_type, treat_options_keyword_as_hash)
-        format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
+                               fallback_type: opts[:fallback_type], treat_options_keyword_as_hash: opts[:treat_options_keyword_as_hash])
+        format_param_tag(indent, pname, ty, opts[:param_documentation], style: opts[:param_tag_style])
       end
 
       # Build param lines for an optional argument (including @option lines).
@@ -851,22 +919,195 @@ module Docscribe
       # @param [Object] treat_options_keyword_as_hash Param documentation.
       # @param [Object] param_documentation Param documentation.
       # @param [Object] param_tag_style Param documentation.
+      # @param [Object] arg_node Param documentation.
+      # @param [Hash] opts Param documentation.
       # @return [Object]
-      def build_optarg_lines(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
-                             param_tag_style)
+      def build_optarg_lines(arg_node, indent, external_sig, param_types_override, **opts)
         pname, default = *arg_node
         pname = pname.to_s
         default_loc = default&.loc
         default_src = default_loc&.expression&.source
         ty = lookup_param_type(external_sig, param_types_override, pname, pname, default_src,
-                               fallback_type, treat_options_keyword_as_hash)
-        lines = [format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)]
+                               fallback_type: opts[:fallback_type], treat_options_keyword_as_hash: opts[:treat_options_keyword_as_hash])
+        lines = [format_param_tag(indent, pname, ty, opts[:param_documentation], style: opts[:param_tag_style])]
 
         hash_option_pairs(default).each do |pair|
           lines << build_option_line(pair, indent, pname, fallback_type)
         end
 
         lines
+      end
+
+      # Build a param line for a keyword argument.
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @param [Object] arg_node Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
+      def build_kwarg_line(arg_node, indent, external_sig, param_types_override, **opts)
+        pname = arg_node.children.first.to_s
+        ty = lookup_param_type(external_sig, param_types_override, pname, "#{pname}:", nil,
+                               fallback_type: opts[:fallback_type], treat_options_keyword_as_hash: opts[:treat_options_keyword_as_hash])
+        format_param_tag(indent, pname, ty, opts[:param_documentation], style: opts[:param_tag_style])
+      end
+
+      # Build a param line for an optional keyword argument.
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @param [Object] arg_node Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
+      def build_kwoptarg_line(arg_node, indent, external_sig, param_types_override, **opts)
+        pname, default = *arg_node
+        pname = pname.to_s
+        default_loc = default&.loc
+        default_src = default_loc&.expression&.source
+        ty = lookup_param_type(external_sig, param_types_override, pname, "#{pname}:", default_src,
+                               fallback_type: opts[:fallback_type], treat_options_keyword_as_hash: opts[:treat_options_keyword_as_hash])
+        format_param_tag(indent, pname, ty, opts[:param_documentation], style: opts[:param_tag_style])
+      end
+
+      # Build a param line for a rest argument (*args).
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @param [Object] arg_node Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
+      def build_restarg_line(arg_node, indent, external_sig, param_types_override, **opts)
+        pname = (arg_node.children.first || 'args').to_s
+        ty = if external_sig&.rest_positional&.element_type
+               "Array<#{external_sig.rest_positional.element_type}>"
+             else
+               lookup_param_type_by_infer(param_types_override, pname, "*#{pname}",
+                                          opts[:fallback_type], opts[:treat_options_keyword_as_hash])
+             end
+        format_param_tag(indent, pname, ty, opts[:param_documentation], style: opts[:param_tag_style])
+      end
+
+      # Build a param line for a keyword rest argument (**kwargs).
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @param [Object] arg_node Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
+      def build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, **opts)
+        pname = (arg_node.children.first || 'kwargs').to_s
+        ty = external_sig&.rest_keywords&.type ||
+             lookup_param_type_by_infer(param_types_override, pname, "**#{pname}",
+                                        opts[:fallback_type], opts[:treat_options_keyword_as_hash])
+        format_param_tag(indent, pname, ty, opts[:param_documentation], style: opts[:param_tag_style])
+      end
+
+      # Build a param line for a block argument (&block).
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Object] a Param documentation.
+      # @param [Object] indent Param documentation.
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] param_documentation Param documentation.
+      # @param [Object] param_tag_style Param documentation.
+      # @param [Object] arg_node Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
+      def build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)
+        pname = (arg_node.children.first || 'block').to_s
+        ty = lookup_param_type(external_sig, param_types_override, pname, "&#{pname}", nil,
+                               fallback_type: opts[:fallback_type], treat_options_keyword_as_hash: opts[:treat_options_keyword_as_hash])
+        format_param_tag(indent, pname, ty, opts[:param_documentation], style: opts[:param_tag_style])
+      end
+
+      # Three-tier type lookup: external_sig → override → inference.
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Object] external_sig Param documentation.
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] pname Param documentation.
+      # @param [Object] infer_name Param documentation.
+      # @param [Object] infer_default Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
+      def lookup_param_type(external_sig, param_types_override, pname, infer_name, infer_default, **opts)
+        external_sig&.param_types&.[](pname) ||
+          override_param_type_for(pname, param_types_override) ||
+          Infer.infer_param_type(infer_name, infer_default,
+                                 fallback_type: opts[:fallback_type],
+                                 treat_options_keyword_as_hash: opts[:treat_options_keyword_as_hash])
+      end
+
+      # Two-tier type lookup: override → inference (for rest/kwrest types).
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Object] param_types_override Param documentation.
+      # @param [Object] pname Param documentation.
+      # @param [Object] infer_name Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @return [Object]
+      def lookup_param_type_by_infer(param_types_override, pname, infer_name, fallback_type, treat_options_keyword_as_hash)
+        override_param_type_for(pname, param_types_override) ||
+          Infer.infer_param_type(infer_name, nil,
+                                 fallback_type: fallback_type,
+                                 treat_options_keyword_as_hash: treat_options_keyword_as_hash)
+      end
+
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #format_param_tag (instance visibility: private)
+      # @param [Object] indent Param documentation.
+      # @param [Object] name Param documentation.
+      # @param [Object] type Param documentation.
+      # @param [Object] documentation Param documentation.
+      # @param [Object] style Param documentation.
+      # @return [Object]
+      def format_param_tag(indent, name, type, documentation, style:)
+        doc = documentation.to_s.strip
+        type = type.to_s
+
+        line = case style.to_s
+               when 'name_type'
+                 "#{indent}# @param #{name} [#{type}]"
+               else
+                 "#{indent}# @param [#{type}] #{name}"
+               end
+
+        doc.empty? ? line : "#{line} #{doc}"
       end
 
       # Method documentation.
@@ -923,171 +1164,6 @@ module Docscribe
       def node_default_literal(node)
         expression = node&.loc&.expression
         expression&.source
-      end
-
-      # Build a param line for a keyword argument.
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Object] a Param documentation.
-      # @param [Object] indent Param documentation.
-      # @param [Object] external_sig Param documentation.
-      # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
-      # @return [Object]
-      def build_kwarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation, param_tag_style)
-        pname = arg_node.children.first.to_s
-        ty = lookup_param_type(external_sig, param_types_override, pname, "#{pname}:", nil,
-                               fallback_type, treat_options_keyword_as_hash)
-        format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
-      end
-
-      # Build a param line for an optional keyword argument.
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Object] a Param documentation.
-      # @param [Object] indent Param documentation.
-      # @param [Object] external_sig Param documentation.
-      # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
-      # @return [Object]
-      def build_kwoptarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
-                              param_tag_style)
-        pname, default = *arg_node
-        pname = pname.to_s
-        default_loc = default&.loc
-        default_src = default_loc&.expression&.source
-        ty = lookup_param_type(external_sig, param_types_override, pname, "#{pname}:", default_src,
-                               fallback_type, treat_options_keyword_as_hash)
-        format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
-      end
-
-      # Build a param line for a rest argument (*args).
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Object] a Param documentation.
-      # @param [Object] indent Param documentation.
-      # @param [Object] external_sig Param documentation.
-      # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
-      # @return [Object]
-      def build_restarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
-                             param_tag_style)
-        pname = (arg_node.children.first || 'args').to_s
-        ty = if external_sig&.rest_positional&.element_type
-               "Array<#{external_sig.rest_positional.element_type}>"
-             else
-               lookup_param_type_by_infer(param_types_override, pname, "*#{pname}",
-                                          fallback_type, treat_options_keyword_as_hash)
-             end
-        format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
-      end
-
-      # Build a param line for a keyword rest argument (**kwargs).
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Object] a Param documentation.
-      # @param [Object] indent Param documentation.
-      # @param [Object] external_sig Param documentation.
-      # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
-      # @return [Object]
-      def build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
-                               param_tag_style)
-        pname = (arg_node.children.first || 'kwargs').to_s
-        ty = external_sig&.rest_keywords&.type ||
-             lookup_param_type_by_infer(param_types_override, pname, "**#{pname}",
-                                        fallback_type, treat_options_keyword_as_hash)
-        format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
-      end
-
-      # Build a param line for a block argument (&block).
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Object] a Param documentation.
-      # @param [Object] indent Param documentation.
-      # @param [Object] external_sig Param documentation.
-      # @param [Object] param_types_override Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] param_documentation Param documentation.
-      # @param [Object] param_tag_style Param documentation.
-      # @return [Object]
-      def build_blockarg_line(arg_node, indent, external_sig, param_types_override, fallback_type, treat_options_keyword_as_hash, param_documentation,
-                              param_tag_style)
-        pname = (arg_node.children.first || 'block').to_s
-        ty = lookup_param_type(external_sig, param_types_override, pname, "&#{pname}", nil,
-                               fallback_type, treat_options_keyword_as_hash)
-        format_param_tag(indent, pname, ty, param_documentation, style: param_tag_style)
-      end
-
-      # Method documentation.
-      #
-      # @note module_function: when included, also defines #format_param_tag (instance visibility: private)
-      # @param [Object] indent Param documentation.
-      # @param [Object] name Param documentation.
-      # @param [Object] type Param documentation.
-      # @param [Object] documentation Param documentation.
-      # @param [Object] style Param documentation.
-      # @return [Object]
-      def format_param_tag(indent, name, type, documentation, style:)
-        doc = documentation.to_s.strip
-        type = type.to_s
-
-        line = case style.to_s
-               when 'name_type'
-                 "#{indent}# @param #{name} [#{type}]"
-               else
-                 "#{indent}# @param [#{type}] #{name}"
-               end
-
-        doc.empty? ? line : "#{line} #{doc}"
-      end
-
-      # Three-tier type lookup: external_sig → override → inference.
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Object] external_sig Param documentation.
-      # @param [Object] param_types_override Param documentation.
-      # @param [Object] pname Param documentation.
-      # @param [Object] infer_name Param documentation.
-      # @param [Object] infer_default Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @return [Object]
-      def lookup_param_type(external_sig, param_types_override, pname, infer_name, infer_default, fallback_type, treat_options_keyword_as_hash)
-        external_sig&.param_types&.[](pname) ||
-          override_param_type_for(pname, param_types_override) ||
-          Infer.infer_param_type(infer_name, infer_default,
-                                 fallback_type: fallback_type,
-                                 treat_options_keyword_as_hash: treat_options_keyword_as_hash)
-      end
-
-      # Two-tier type lookup: override → inference (for rest/kwrest types).
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Object] param_types_override Param documentation.
-      # @param [Object] pname Param documentation.
-      # @param [Object] infer_name Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @return [Object]
-      def lookup_param_type_by_infer(param_types_override, pname, infer_name, fallback_type, treat_options_keyword_as_hash)
-        override_param_type_for(pname, param_types_override) ||
-          Infer.infer_param_type(infer_name, nil,
-                                 fallback_type: fallback_type,
-                                 treat_options_keyword_as_hash: treat_options_keyword_as_hash)
       end
 
       # Method documentation.
@@ -1159,15 +1235,44 @@ module Docscribe
         return unless ctx[:config].emit_return_tag?(ctx[:scope], ctx[:visibility])
 
         if !ctx[:info][:has_return]
-          lines << "#{ctx[:indent]}# @return [#{ctx[:normal_type]}]\n"
-          reasons << { type: :missing_return, message: 'missing @return' }
-        elsif ctx[:external_sig] && ctx[:info][:return_type] && ctx[:info][:return_type] != ctx[:normal_type]
-          lines << "#{ctx[:indent]}# @return [#{ctx[:normal_type]}]\n" unless ctx[:strategy] == :safe
-          reasons << {
-            type: :updated_return,
-            message: "updated @return from #{ctx[:info][:return_type]} to #{ctx[:normal_type]}"
-          }
+          record_missing_return(lines, reasons, ctx)
+        elsif return_type_changed?(ctx)
+          record_updated_return(lines, reasons, ctx)
         end
+      end
+
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #record_missing_return (instance visibility: private)
+      # @param [Object] lines Param documentation.
+      # @param [Object] reasons Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
+      def record_missing_return(lines, reasons, ctx)
+        lines << "#{ctx[:indent]}# @return [#{ctx[:normal_type]}]\n"
+        reasons << { type: :missing_return, message: 'missing @return' }
+      end
+
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #record_updated_return (instance visibility: private)
+      # @param [Object] lines Param documentation.
+      # @param [Object] reasons Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
+      def record_updated_return(lines, reasons, ctx)
+        lines << "#{ctx[:indent]}# @return [#{ctx[:normal_type]}]\n" unless ctx[:strategy] == :safe
+        reasons << { type: :updated_return, message: "updated @return from #{ctx[:info][:return_type]} to #{ctx[:normal_type]}" }
+      end
+
+      # Check if the return type changed between existing doc and inferred/signature type.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #return_type_changed? (instance visibility: private)
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
+      def return_type_changed?(ctx)
+        ctx[:external_sig] && ctx[:info][:return_type] && ctx[:info][:return_type] != ctx[:normal_type]
       end
 
       # Collect missing rescue conditional returns for build_missing_merge_result.
@@ -1201,13 +1306,23 @@ module Docscribe
         plugin_tags = Docscribe::Plugin.run_tag_plugins(build_plugin_context(ctx[:insertion], normal_type: ctx[:normal_type]))
         plugin_tags.concat(Array(ctx[:override_tags])) if ctx[:override_tags]
 
-        plugin_tags.each do |tag|
-          next if ctx[:info][:plugin_tags]&.[](tag.name)
+        plugin_tags.each { |tag| record_plugin_tag(tag, lines, reasons, ctx) }
+      end
 
-          rendered = render_plugin_tags([tag], ctx[:indent]).first
-          lines << "#{rendered}\n"
-          reasons << { type: :missing_plugin_tag, message: "missing @#{tag.name}" }
-        end
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #record_plugin_tag (instance visibility: private)
+      # @param [Object] tag Param documentation.
+      # @param [Object] lines Param documentation.
+      # @param [Object] reasons Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
+      def record_plugin_tag(tag, lines, reasons, ctx)
+        return if ctx[:info][:plugin_tags]&.[](tag.name)
+
+        rendered = render_plugin_tags([tag], ctx[:indent]).first
+        lines << "#{rendered}\n"
+        reasons << { type: :missing_plugin_tag, message: "missing @#{tag.name}" }
       end
 
       # Print a debug warning for a failed doc build phase.
@@ -1221,19 +1336,25 @@ module Docscribe
       def debug_warn(error, insertion:, name:, phase:)
         return unless debug?
 
-        node = insertion&.node
-        expression = node&.loc&.expression
-        buf_name = expression&.source_buffer&.name || '(unknown)'
-        line = expression&.line
-        scope = insertion&.scope
-        method_symbol = scope == :class ? '.' : '#'
-        container = insertion&.container || 'Object'
-
-        where = +buf_name.to_s
-        where << ":#{line}" if line
-        where << " #{container}#{method_symbol}#{name}"
-
+        where = build_debug_location(insertion, name)
         warn "Docscribe DEBUG: #{phase} failed at #{where}: #{error.class}: #{error.message}"
+      end
+
+      # Build a human-readable location string for debug output.
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_debug_location (instance visibility: private)
+      # @param [Object] insertion Param documentation.
+      # @param [Object] name Param documentation.
+      # @return [Object]
+      def build_debug_location(insertion, name)
+        return name.to_s unless insertion
+
+        expr = insertion.node.loc.expression
+        buf = expr.source_buffer.name
+        sym = insertion.scope == :class ? '.' : '#'
+        ctr = insertion.container || 'Object'
+        +"#{buf}:#{expr.line} #{ctr}#{sym}#{name}"
       end
 
       # Check whether debug mode is enabled.

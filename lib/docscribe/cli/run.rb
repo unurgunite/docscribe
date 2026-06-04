@@ -173,29 +173,25 @@ module Docscribe
                                                  state: state)
           return unless result
 
-          out = result[:output]
-          file_changes = result[:changes] || []
+          dispatch_file_result(path, src: src, out: result[:output], file_changes: result[:changes] || [],
+                                     display_path: display_path, options: options, state: state)
+        end
 
-          if options[:mode] == :check
-            handle_check_result(
-              path,
-              src: src,
-              out: out,
-              file_changes: file_changes,
-              display_path: display_path,
-              options: options,
-              state: state
-            )
-          elsif options[:mode] == :write
-            handle_write_result(
-              path,
-              src: src,
-              out: out,
-              file_changes: file_changes,
-              display_path: display_path,
-              options: options,
-              state: state
-            )
+        # Dispatch check vs write result.
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] path Param documentation.
+        # @param [Object] src Param documentation.
+        # @param [Object] out Param documentation.
+        # @param [Object] file_changes Param documentation.
+        # @param [Hash] ctx Param documentation.
+        # @return [Object]
+        def dispatch_file_result(path, src:, out:, file_changes:, **ctx)
+          if ctx[:options][:mode] == :check
+            handle_check_result(path, src: src, out: out, file_changes: file_changes, **ctx)
+          elsif ctx[:options][:mode] == :write
+            handle_write_result(path, src: src, out: out, file_changes: file_changes, **ctx)
           end
         end
 
@@ -278,19 +274,20 @@ module Docscribe
         # @param [String] display_path path shown in CLI output
         # @param [Hash] options CLI options
         # @param [Hash] state shared processing state
+        # @param [Hash] ctx Param documentation.
         # @return [void]
-        def handle_check_result(path, src:, out:, file_changes:, display_path:, options:, state:)
+        def handle_check_result(path, src:, out:, file_changes:, **ctx)
           type_mismatches = type_mismatch_changes(file_changes)
           has_real_changes = file_changes.any? { |c| !%i[updated_param updated_return].include?(c[:type]) }
 
           if out == src && !has_real_changes
-            handle_check_no_changes(path, type_mismatches: type_mismatches, display_path: display_path,
-                                          options: options, state: state)
+            handle_check_no_changes(path, type_mismatches: type_mismatches, display_path: ctx[:display_path],
+                                          options: ctx[:options], state: ctx[:state])
             return
           end
 
-          handle_check_failed(path, file_changes: file_changes, display_path: display_path,
-                                    options: options, state: state)
+          handle_check_failed(path, file_changes: file_changes, display_path: ctx[:display_path],
+                                    options: ctx[:options], state: ctx[:state])
         end
 
         # Extract type mismatch changes from file_changes.
@@ -355,19 +352,20 @@ module Docscribe
         # @param [String] display_path path shown in CLI output
         # @param [Hash] options CLI options
         # @param [Hash] state shared processing state
+        # @param [Hash] ctx Param documentation.
         # @raise [StandardError]
         # @return [void]
-        def handle_write_result(path, src:, out:, file_changes:, display_path:, options:, state:)
+        def handle_write_result(path, src:, out:, file_changes:, **ctx)
           if out == src
-            log_check_verdict('OK', display_path, options)
+            log_check_verdict('OK', ctx[:display_path], ctx[:options])
             return
           end
 
           File.write(path, out)
-          log_write_verdict('CHANGED', display_path, file_changes, options)
-          state[:corrected] += 1
+          log_write_verdict('CHANGED', ctx[:display_path], file_changes, ctx[:options])
+          ctx[:state][:corrected] += 1
         rescue StandardError => e
-          record_write_error(path, e, display_path: display_path, options: options, state: state)
+          record_write_error(path, e, display_path: ctx[:display_path], options: ctx[:options], state: ctx[:state])
         end
 
         # Log a write-mode verdict.

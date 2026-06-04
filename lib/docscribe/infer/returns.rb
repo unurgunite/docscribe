@@ -382,6 +382,8 @@ module Docscribe
       # @param [String, nil] b
       # @param [String] fallback_type
       # @param [Boolean] nil_as_optional
+      # @param [Object] type_a Param documentation.
+      # @param [Object] type_b Param documentation.
       # @return [String, nil]
       def unify_types(type_a, type_b, fallback_type:, nil_as_optional:)
         type_a ||= fallback_type

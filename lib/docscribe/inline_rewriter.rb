@@ -551,6 +551,7 @@ module Docscribe
       # @private
       # @param [Object] lines Param documentation.
       # @param [Object] i Param documentation.
+      # @param [Object] def_line_idx Param documentation.
       # @return [Object]
       def comment_block_start_index(lines, def_line_idx)
         start_idx = def_line_idx
@@ -563,6 +564,7 @@ module Docscribe
       # @param [Object] lines Param documentation.
       # @param [Object] start_idx Param documentation.
       # @param [Object] i Param documentation.
+      # @param [Object] def_line_idx Param documentation.
       # @return [Object]
       def skip_preserved_lines(lines, start_idx, def_line_idx)
         idx = start_idx
@@ -849,7 +851,7 @@ module Docscribe
 
         if new_block != old_block
           handle_doc_replacement(rewriter, buffer, info, new_block, existing_order_changed,
-                                 insertion, changes, file)
+                                 insertion: insertion, changes: changes, file: file)
         end
 
         log_method_doc_changes!(insertion: insertion, merge_result: merge_result,
@@ -875,14 +877,15 @@ module Docscribe
       # @param [Object] insertion Param documentation.
       # @param [Object] changes Param documentation.
       # @param [Object] file Param documentation.
+      # @param [Hash] log_opts Param documentation.
       # @return [Object]
-      def handle_doc_replacement(rewriter, buffer, info, new_block, existing_order_changed, insertion, changes, file)
+      def handle_doc_replacement(rewriter, buffer, info, new_block, existing_order_changed, **log_opts)
         range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
         rewriter.replace(range, new_block)
 
         return unless existing_order_changed
 
-        add_change(changes: changes, type: :unsorted_tags, insertion: insertion, file: file,
+        add_change(changes: log_opts[:changes], type: :unsorted_tags, insertion: log_opts[:insertion], file: log_opts[:file],
                    message: 'unsorted tags')
       end
 
@@ -1278,15 +1281,17 @@ module Docscribe
       # @param [Object] indent Param documentation.
       # @param [Object] config Param documentation.
       # @param [Object] signature_provider Param documentation.
+      # @param [Hash] opts Param documentation.
       # @return [Object]
-      def build_single_attr_lines(ins, name_sym, idx, total, indent:, config:, signature_provider:)
-        attr_type = attribute_type(ins, name_sym, config, signature_provider: signature_provider)
+      def build_single_attr_lines(ins, name_sym, idx, total, indent:, **opts)
+        cfg = opts[:config]
+        attr_type = attribute_type(ins, name_sym, cfg, signature_provider: opts[:signature_provider])
         lines = ["#{indent}# @!attribute [#{ins.access}] #{name_sym}"]
 
-        lines.concat(attr_visibility_lines(indent, config, ins))
+        lines.concat(attr_visibility_lines(indent, cfg, ins))
         lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(ins.access)
         if %i[w rw].include?(ins.access)
-          lines << format_attribute_param_tag(indent, 'value', attr_type, style: config.param_tag_style)
+          lines << format_attribute_param_tag(indent, 'value', attr_type, style: cfg.param_tag_style)
         end
 
         lines << "#{indent}#" if idx < total - 1
