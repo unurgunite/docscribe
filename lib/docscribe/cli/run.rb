@@ -17,6 +17,19 @@ module Docscribe
     # - process exit status
     module Run
       class << self
+        INITIAL_RUN_STATE = {
+          changed: false,
+          had_errors: false,
+          checked_ok: 0,
+          checked_fail: 0,
+          corrected: 0,
+          fail_paths: [],
+          fail_changes: {},
+          error_paths: [],
+          error_messages: {},
+          type_mismatch_paths: [],
+          type_mismatch_changes: {}
+        }.freeze
         # Run Docscribe for files or STDIN using the selected mode and strategy.
         #
         # Modes:
@@ -32,21 +45,21 @@ module Docscribe
         # @param [Array<String>] argv remaining path arguments
         # @return [Integer] process exit code
         def run(options:, argv:)
-          conf = Docscribe::Config.load(options[:config])
-          conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
-          conf.load_plugins!
+          conf = build_config(options)
 
           return run_stdin(options: options, conf: conf) if options[:mode] == :stdin
 
-          paths = expand_paths(argv)
-          paths = paths.select { |p| conf.process_file?(p) }
-
-          if paths.empty?
-            warn 'No files found. Pass files or directories (e.g. `docscribe lib`).'
-            return 1
-          end
+          paths = filtered_paths(argv, conf)
+          return no_files_found unless paths.any?
 
           run_files(options: options, conf: conf, paths: paths)
+        end
+
+        def build_config(options)
+          conf = Docscribe::Config.load(options[:config])
+          conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
+          conf.load_plugins!
+          conf
         end
 
         # Rewrite code from STDIN using the selected strategy and print the
@@ -57,18 +70,33 @@ module Docscribe
         # @raise [StandardError]
         # @return [Integer] process exit code
         def run_stdin(options:, conf:)
-          code = $stdin.read
-          result = Docscribe::InlineRewriter.rewrite_with_report(
-            code,
-            strategy: options[:strategy],
-            config: conf,
-            core_rbs_provider: conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil,
-            file: '(stdin)'
-          )
-          puts result[:output]
+          puts stdin_rewrite_result(options, conf)[:output]
           0
         rescue StandardError => e
           warn "Docscribe: Error processing stdin: #{e.class}: #{e.message}"
+          1
+        end
+
+        def stdin_rewrite_result(options, conf)
+          Docscribe::InlineRewriter.rewrite_with_report(
+            $stdin.read,
+            strategy: options[:strategy],
+            config: conf,
+            core_rbs_provider: core_rbs_provider_for(conf),
+            file: '(stdin)'
+          )
+        end
+
+        def core_rbs_provider_for(conf)
+          conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil
+        end
+
+        def filtered_paths(argv, conf)
+          expand_paths(argv).select { |path| conf.process_file?(path) }
+        end
+
+        def no_files_found
+          warn 'No files found. Pass files or directories (e.g. `docscribe lib`).'
           1
         end
 
@@ -84,16 +112,20 @@ module Docscribe
           args = ['.'] if args.empty?
 
           args.each do |path|
-            if File.directory?(path)
-              files.concat(Dir.glob(File.join(path, '**', '*.rb')))
-            elsif File.file?(path)
-              files << path
-            else
-              warn "Skipping missing path: #{path}"
-            end
+            append_expanded_path(files, path)
           end
 
           files.uniq.sort
+        end
+
+        def append_expanded_path(files, path)
+          if File.directory?(path)
+            files.concat(Dir.glob(File.join(path, '**', '*.rb')))
+          elsif File.file?(path)
+            files << path
+          else
+            warn "Skipping missing path: #{path}"
+          end
         end
 
         # Process file paths in inspect or write mode.
@@ -120,38 +152,34 @@ module Docscribe
             process_one_file(path, options: options, conf: conf, pwd: pwd, state: state)
           end
 
+          finalize_run(options, state)
+
+          run_exit_code(options, state)
+        end
+
+        private
+
+        def finalize_run(options, state)
           if options[:mode] == :check
             print_check_summary(state: state, options: options)
           elsif options[:mode] == :write
             print_write_summary(state: state)
           end
+        end
 
+        def run_exit_code(options, state)
           return 1 if state[:had_errors]
           return 1 if options[:mode] == :check && state[:changed]
 
           0
         end
 
-        private
-
         # Initialize the shared state hash used throughout a run.
         #
         # @private
         # @return [Hash] initial state with counters and tracking arrays
         def initial_run_state
-          {
-            changed: false,
-            had_errors: false,
-            checked_ok: 0,
-            checked_fail: 0,
-            corrected: 0,
-            fail_paths: [],
-            fail_changes: {},
-            error_paths: [],
-            error_messages: {},
-            type_mismatch_paths: [],
-            type_mismatch_changes: {}
-          }
+          Marshal.load(Marshal.dump(INITIAL_RUN_STATE))
         end
 
         # Process a single file: read, rewrite, and dispatch to check/write handler.
@@ -247,21 +275,32 @@ module Docscribe
         # @param [Hash] state shared processing state
         # @raise [StandardError]
         # @return [Hash, nil] rewrite result or nil on error
-        def rewrite_result_for_path(path, src:, conf:, display_path:, options:, state:)
-          core_rbs_provider = conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil
+        def rewrite_result_for_path(path, src:, ctx:)
+          conf = ctx[:conf]
+
+          core_rbs_provider =
+            conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil
+
           Docscribe::InlineRewriter.rewrite_with_report(
-            src,
-            strategy: options[:strategy],
-            config: conf,
-            core_rbs_provider: core_rbs_provider,
-            file: path
+            src, strategy: ctx[:options][:strategy], config: conf, core_rbs_provider: core_rbs_provider, file: path
           )
         rescue StandardError => e
+          record_rewrite_error(path, e, ctx)
+          nil
+        end
+
+        def record_rewrite_error(path, error, ctx)
+          state = ctx[:state]
+
           state[:had_errors] = true
           state[:error_paths] << path
-          state[:error_messages][path] = "#{e.class}: #{e.message}"
-          options[:verbose] ? warn("ERR #{display_path}: #{state[:error_messages][path]}") : print('E')
-          nil
+          state[:error_messages][path] = "#{error.class}: #{error.message}"
+
+          if ctx[:options][:verbose]
+            warn "ERR #{ctx[:display_path]}: #{state[:error_messages][path]}"
+          else
+            print('E')
+          end
         end
 
         # Handle the result of an inspect (check) run.
@@ -526,18 +565,32 @@ module Docscribe
         # @param [Hash] change structured change produced by the inline rewriter
         # @return [String] human-readable explanation line
         def format_change_reason(change)
-          line = change[:line] ? " at line #{change[:line]}" : ''
-          method = change[:method] ? " for #{change[:method]}" : ''
+          line = change_line_suffix(change)
+          method = change_method_suffix(change)
 
-          case change[:type]
-          when :unsorted_tags
-            "unsorted tags#{line}"
-          when :missing_param, :missing_return, :missing_raise, :missing_visibility, :missing_module_function_note,
-            :insert_full_doc_block
-            "#{change[:message]}#{method}#{line}"
-          else
-            "#{change[:message] || change[:type].to_s.tr('_', ' ')}#{method}#{line}"
-          end
+          return "unsorted tags#{line}" if change[:type] == :unsorted_tags
+          return "#{change[:message]}#{method}#{line}" if direct_message_change?(change)
+
+          "#{change[:message] || change[:type].to_s.tr('_', ' ')}#{method}#{line}"
+        end
+
+        def change_line_suffix(change)
+          change[:line] ? " at line #{change[:line]}" : ''
+        end
+
+        def change_method_suffix(change)
+          change[:method] ? " for #{change[:method]}" : ''
+        end
+
+        def direct_message_change?(change)
+          %i[
+            missing_param
+            missing_return
+            missing_raise
+            missing_visibility
+            missing_module_function_note
+            insert_full_doc_block
+          ].include?(change[:type])
         end
 
         # Print the write-mode summary (files corrected, errors).
