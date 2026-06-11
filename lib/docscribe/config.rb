@@ -5,6 +5,7 @@ require 'pathname'
 require 'psych'
 
 module Docscribe
+  # Application configuration with deep-merge defaults and overrides.
   class Config
     # Raw config hash after deep-merging user config with defaults.
     #

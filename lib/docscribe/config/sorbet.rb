@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # Sorbet and signature provider configuration.
   class Config
     # Build the effective external signature provider chain for a given source.
     #

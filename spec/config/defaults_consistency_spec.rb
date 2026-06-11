@@ -38,8 +38,8 @@ RSpec.describe 'Config consistency' do
       yaml_normalized = yaml_order.map { |t| t.to_s.sub(/\A@/, '') }
       default_normalized = default_order.map { |t| t.to_s.sub(/\A@/, '') }
 
-      expect(yaml_normalized).to eq(default_normalized),
-                                 "tag_order mismatch: YAML=#{yaml_normalized.inspect}, DEFAULT=#{default_normalized.inspect}"
+      msg = "tag_order mismatch: YAML=#{yaml_normalized.inspect}, DEFAULT=#{default_normalized.inspect}"
+      expect(yaml_normalized).to eq(default_normalized), msg
     end
   end
 

@@ -4,12 +4,8 @@ RSpec.describe 'CollectorPlugin doc normalization' do
   after { Docscribe::Plugin::Registry.clear! }
 
   def build_plugin(anchor_type:, doc:)
-    Class.new(Docscribe::Plugin::Base::CollectorPlugin) do
-      def initialize(anchor_type:, doc:)
-        super()
-        @anchor_type = anchor_type
-        @doc = doc
-      end
+    Class.new(TestCollectorPluginBase) do
+      include TestPlugins::FindFirst
 
       def collect(ast, _buffer)
         node = find_first(ast, @anchor_type)
@@ -17,41 +13,7 @@ RSpec.describe 'CollectorPlugin doc normalization' do
 
         [{ anchor_node: node, doc: @doc }]
       end
-
-      private
-
-      def find_first(node, type)
-        return nil unless node.respond_to?(:type)
-
-        return node if node.type == type
-
-        children = node.respond_to?(:children) ? node.children : []
-        children.each do |child|
-          next unless child.respond_to?(:type)
-
-          found = find_first(child, type)
-          return found if found
-        end
-
-        nil
-      end
     end.new(anchor_type: anchor_type, doc: doc)
-  end
-
-  def find_first(node, type)
-    return nil unless node.respond_to?(:type)
-
-    return node if node.type == type
-
-    children = node.respond_to?(:children) ? node.children : []
-    children.each do |child|
-      next unless child.respond_to?(:type)
-
-      found = find_first(child, type)
-      return found if found
-    end
-
-    nil
   end
 
   context 'when anchor_node is :def and plugin doc is tag-only' do

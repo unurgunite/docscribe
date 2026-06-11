@@ -6,60 +6,16 @@ RSpec.describe 'CollectorPlugin method_override' do
   after { Docscribe::Plugin::Registry.clear! }
 
   def build_override_plugin(return_type:, param_types: {}, tags: [])
-    Class.new(Docscribe::Plugin::Base::CollectorPlugin) do
-      def initialize(return_type:, param_types: {}, tags: [])
-        super()
-        @return_type = return_type
-        @param_types = param_types
-        @tags = tags
-      end
+    Class.new(TestCollectorPluginBase) do
+      include TestPlugins::FindFirst
 
       def collect(ast, _buffer)
         node = find_first(ast, :defs) || find_first(ast, :def)
         return [] unless node
 
-        [{
-          anchor_node: node,
-          method_override: {
-            return_type: @return_type,
-            param_types: @param_types,
-            tags: @tags
-          }
-        }]
-      end
-
-      private
-
-      def find_first(node, type)
-        return nil unless node.respond_to?(:type)
-        return node if node.type == type
-
-        children = node.respond_to?(:children) ? node.children : []
-        children.each do |child|
-          next unless child.respond_to?(:type)
-
-          found = find_first(child, type)
-          return found if found
-        end
-
-        nil
+        [{ anchor_node: node, method_override: { return_type: @return_type, param_types: @param_types, tags: @tags } }]
       end
     end.new(return_type: return_type, param_types: param_types, tags: tags)
-  end
-
-  def find_first(node, type)
-    return nil unless node.respond_to?(:type)
-    return node if node.type == type
-
-    children = node.respond_to?(:children) ? node.children : []
-    children.each do |child|
-      next unless child.respond_to?(:type)
-
-      found = find_first(child, type)
-      return found if found
-    end
-
-    nil
   end
 
   let(:conf) do

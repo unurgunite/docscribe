@@ -6,6 +6,7 @@ require 'docscribe/cli/options'
 require 'docscribe/cli/run'
 
 module Docscribe
+  # CLI entry point and command dispatch.
   module CLI
     class << self
       # Main CLI entry point.

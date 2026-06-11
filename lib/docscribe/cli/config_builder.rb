@@ -4,6 +4,7 @@ require 'docscribe/config'
 
 module Docscribe
   module CLI
+    # Build and override effective config from CLI flags.
     module ConfigBuilder
       module_function
 

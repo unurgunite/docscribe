@@ -4,6 +4,7 @@ require 'optparse'
 
 module Docscribe
   module CLI
+    # CLI option parsing and defaults.
     module Options
       DEFAULT = {
         stdin: false,

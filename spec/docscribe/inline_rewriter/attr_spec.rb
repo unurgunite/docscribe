@@ -26,7 +26,7 @@ RSpec.describe 'attr_* documentation' do
     it 'generates @!attribute docs for attr_accessor (rw) when enabled' do
       expect(out).to include('# @!attribute [rw] name')
       expect(out).to include('#   @return [Object]')
-      expect(out).to include(param_tag('value', 'Object', space_size: 3, struct: true).to_s)
+      expect(out).to include(param_tag('value', 'Object', description: '', indent: 3).to_s)
     end
   end
 

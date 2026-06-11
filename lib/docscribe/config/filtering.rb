@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # File and method include/exclude filtering.
   class Config
     # Decide whether a file path should be processed based on `filter.files`.
     #

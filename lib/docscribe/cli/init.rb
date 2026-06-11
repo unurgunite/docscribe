@@ -5,6 +5,7 @@ require 'docscribe/config'
 
 module Docscribe
   module CLI
+    # Generate starter Docscribe configuration.
     module Init
       class << self
         # Create or print a starter Docscribe configuration file.

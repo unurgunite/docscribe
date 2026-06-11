@@ -13,11 +13,8 @@ RSpec.describe 'CollectorPlugin priority' do
   # may not have `each_node`. So in tests we avoid `each_node` to mimic real-world
   # plugin robustness.
   def build_collector_plugin(doc_line)
-    Class.new(Docscribe::Plugin::Base::CollectorPlugin) do
-      def initialize(doc_line)
-        super()
-        @doc_line = doc_line
-      end
+    Class.new(TestCollectorPluginBase) do
+      include TestPlugins::FindFirstDef
 
       def collect(ast, _buffer)
         node = find_first_def(ast)
@@ -25,25 +22,7 @@ RSpec.describe 'CollectorPlugin priority' do
 
         [{ anchor_node: node, doc: @doc_line }]
       end
-
-      private
-
-      def find_first_def(node)
-        return nil unless node.respond_to?(:type)
-
-        return node if node.type == :def
-
-        children = node.respond_to?(:children) ? node.children : []
-        children.each do |child|
-          next unless child.respond_to?(:type)
-
-          found = find_first_def(child)
-          return found if found
-        end
-
-        nil
-      end
-    end.new(doc_line)
+    end.new(doc_line: doc_line)
   end
 
   context 'when two CollectorPlugins target the same anchor with different priorities' do

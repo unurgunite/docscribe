@@ -197,8 +197,8 @@ module Docscribe
           src = read_source_for_path(path, display_path: display_path, options: options, state: state)
           return unless src
 
-          result = rewrite_result_for_path(path, src: src, conf: conf, display_path: display_path, options: options,
-                                                 state: state)
+          ctx = { conf: conf, display_path: display_path, options: options, state: state }
+          result = rewrite_result_for_path(path, src: src, ctx: ctx)
           return unless result
 
           dispatch_file_result(path, src: src, out: result[:output], file_changes: result[:changes] || [],
@@ -497,21 +497,32 @@ module Docscribe
           checked_error = state[:error_paths].size
           type_mismatch_count = state[:type_mismatch_paths].size
 
-          if state[:checked_fail].zero? && checked_error.zero? && type_mismatch_count.zero?
+          if all_fine?(state, checked_error, type_mismatch_count)
             puts "Docscribe: OK (#{state[:checked_ok]} files checked)"
-            return
-          end
-
-          if state[:checked_fail].zero? && checked_error.zero?
+          elsif mismatch_only?(state, checked_error)
             puts "Docscribe: OK (#{state[:checked_ok]} files checked, #{type_mismatch_count} with type mismatches)"
           else
-            parts = ["#{state[:checked_fail]} need updates"]
-            parts << "#{type_mismatch_count} type mismatches" if type_mismatch_count.positive?
-            parts << "#{checked_error} errors"
-            parts << "#{state[:checked_ok]} ok"
-            puts "Docscribe: FAILED (#{parts.join(', ')})"
+            puts build_failure_line(state, type_mismatch_count, checked_error)
           end
         end
+
+        def all_fine?(state, checked_error, type_mismatch_count)
+          state[:checked_fail].zero? && checked_error.zero? && type_mismatch_count.zero?
+        end
+
+        def mismatch_only?(state, checked_error)
+          state[:checked_fail].zero? && checked_error.zero?
+        end
+
+        def build_failure_line(state, type_mismatch_count, checked_error)
+          parts = ["#{state[:checked_fail]} need updates"]
+          parts << "#{type_mismatch_count} type mismatches" if type_mismatch_count.positive?
+          parts << "#{checked_error} errors"
+          parts << "#{state[:checked_ok]} ok"
+          "Docscribe: FAILED (#{parts.join(', ')})"
+        end
+
+        public
 
         # Print fail paths from check summary.
         #
@@ -544,18 +555,6 @@ module Docscribe
             Array(state[:type_mismatch_changes][p]).each do |change|
               warn "  - #{format_change_reason(change)}"
             end
-          end
-        end
-
-        # Print error paths from check summary.
-        #
-        # @private
-        # @param [Hash] state
-        # @return [void]
-        def print_error_paths(state)
-          state[:error_paths].each do |p|
-            warn "Error processing: #{p}"
-            warn "  #{state[:error_messages][p]}" if state[:error_messages][p]
           end
         end
 
@@ -605,6 +604,15 @@ module Docscribe
           return unless state[:had_errors]
 
           warn "Docscribe: #{state[:error_paths].size} file(s) had errors"
+          print_error_paths(state)
+        end
+
+        # Print error paths from check summary.
+        #
+        # @private
+        # @param [Hash] state
+        # @return [void]
+        def print_error_paths(state)
           state[:error_paths].each do |p|
             warn "Error processing: #{p}"
             warn "  #{state[:error_messages][p]}" if state[:error_messages][p]

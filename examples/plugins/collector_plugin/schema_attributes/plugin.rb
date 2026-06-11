@@ -105,10 +105,6 @@ module DocscribePlugins
       build_attribute_docs(ast, table_name, columns)
     end
 
-    CREATE_TABLE_RE = /\A\s*create_table\s+["'](\w+)["']/.freeze
-    T_COLUMN_RE = /\A\s*t\.(\w+)\s+["'](\w+)["']/.freeze
-    END_RE = /\A\s*end\s*\Z/.freeze
-
     private
 
     # Whether the AST defines an ActiveRecord model class.
@@ -241,25 +237,24 @@ module DocscribePlugins
     end
 
     def parse_table_line(line, tables, current_table)
-      return add_table_name(tables) if line =~ CREATE_TABLE_RE
-
-      if line =~ T_COLUMN_RE
+      case line
+      when /\A\s*create_table\s+["'](\w+)["']/
+        new_table_in_schema(line, tables)
+      when /\A\s*t\.(\w+)\s+["'](\w+)["']/
         add_column_from_line(line, tables, current_table)
-        return current_table
+        current_table
+      when /\A\s*end\s*\Z/ then nil
+      else current_table
       end
-
-      return nil if line =~ END_RE
-
-      current_table
     end
 
-    def add_table_name(tables)
+    def new_table_in_schema(_line, tables)
       table_name = ::Regexp.last_match(1)
       tables[table_name] ||= []
       table_name
     end
 
-    def add_column_from_line(_line, tables, current_table)
+    def add_column_from_line(tables, current_table)
       col_type = ::Regexp.last_match(1)
       col_name = ::Regexp.last_match(2)
 
@@ -272,6 +267,9 @@ module DocscribePlugins
     end
 
     def recognized_column?(col_type, col_name)
+      RECOGNIZED_COLUMNS.include?(col_type.to_sym) &&
+        !SKIPPED_COLUMNS.include?(col_name)
+      enddef recognized_column?(col_type, col_name)
       RECOGNIZED_COLUMNS.include?(col_type.to_sym) &&
         !SKIPPED_COLUMNS.include?(col_name)
     end
@@ -299,7 +297,7 @@ module DocscribePlugins
       indent = attribute_indent(node)
 
       columns.each do |column|
-        doc = build_attribute_doc(column, indent)
+        doc = build_attribute_doc(column, indent, node)
         results << doc if doc
       end
     end
@@ -313,13 +311,13 @@ module DocscribePlugins
       extract_indent(stmts.first || node)
     end
 
-    def build_attribute_doc(column, indent)
+    def build_attribute_doc(column, indent, node)
       return if SKIPPED_COLUMNS.include?(column[:name])
 
       yard_type = COLUMN_TYPE_MAP[column[:type]] || 'Object'
 
       {
-        anchor_node: column[:anchor_node],
+        anchor_node: node,
         doc: build_doc(column[:name], yard_type, indent)
       }
     end

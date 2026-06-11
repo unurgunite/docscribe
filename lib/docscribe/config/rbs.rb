@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # RBS signature provider configuration.
   class Config
     # Return a memoized RBS provider if RBS integration is enabled and available.
     #

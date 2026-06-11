@@ -7,7 +7,6 @@ RSpec.describe 'CollectorPlugin integration' do
     Class.new(Docscribe::Plugin::Base::CollectorPlugin) do
       def collect(ast, _buffer)
         results = []
-
         Docscribe::Infer::ASTWalk.walk(ast) do |node|
           next unless node.type == :send
 
@@ -16,15 +15,18 @@ RSpec.describe 'CollectorPlugin integration' do
           next unless name_node&.type == :sym
 
           meth_name = name_node.children.first
-          indent    = node.loc.expression.source_line[/\A[ \t]*/] || ''
-
-          doc = "#{indent}# Dynamic method: #{meth_name}\n" \
-                "#{indent}# @return [Object]\n"
-
-          results << { anchor_node: node, doc: doc }
+          results << define_method_result(node, meth_name)
         end
-
         results
+      end
+
+      private
+
+      def define_method_result(node, meth_name)
+        indent = node.loc.expression.source_line[/\A[ \t]*/] || ''
+        doc = "#{indent}# Dynamic method: #{meth_name}\n" \
+              "#{indent}# @return [Object]\n"
+        { anchor_node: node, doc: doc }
       end
     end.new
   end

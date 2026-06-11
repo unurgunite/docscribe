@@ -14,7 +14,7 @@ RSpec.describe 'Struct.new documentation' do
       expect(out).to include('# @!attribute [rw] a')
       expect(out).to include('# @!attribute [rw] b')
       expect(out).to include('#   @return [Object]')
-      expect(out).to include(param_tag('value', 'Object', space_size: 3, struct: true).to_s)
+      expect(out).to include(param_tag('value', 'Object', description: '', indent: 3).to_s)
       expect(out).to include('Foo = Struct.new(:a, :b, keyword_init: true)')
     end
   end

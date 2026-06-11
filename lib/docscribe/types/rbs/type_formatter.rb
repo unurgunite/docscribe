@@ -10,18 +10,20 @@ module Docscribe
       module TypeFormatter
         module_function
 
+        # rubocop:disable Metrics/AbcSize, Layout/LineLength
         def to_yard_formatters
           @to_yard_formatters ||= {
             ::RBS::Types::Bases::Any => ->(_, **) { format_any },
             ::RBS::Types::Bases::Bool => ->(_, **) { format_bool },
             ::RBS::Types::Bases::Void => ->(_, **) { format_void },
             ::RBS::Types::Bases::Nil => ->(_, **) { format_nil },
-            ::RBS::Types::Optional => ->(t, cg:) { format_optional(t, collapse_generics: cg) },
-            ::RBS::Types::Union => ->(t, cg:) { format_union(t, collapse_generics: cg) },
+            ::RBS::Types::Optional => ->(t, collapse_generics:) { format_optional(t, collapse_generics: collapse_generics) },
+            ::RBS::Types::Union => ->(t, collapse_generics:) { format_union(t, collapse_generics: collapse_generics) },
             ::RBS::Types::Literal => ->(t, **) { format_literal(t.literal) },
             ::RBS::Types::Proc => ->(_, **) { format_proc }
           }.freeze
         end
+        # rubocop:enable Metrics/AbcSize, Layout/LineLength
 
         def format_any
           'Object'

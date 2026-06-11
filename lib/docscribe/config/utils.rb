@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # Internal config utility methods.
   class Config
     private
 

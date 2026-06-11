@@ -105,9 +105,10 @@ RSpec.describe 'Sorbet-aware doc anchoring' do
       expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
       expect(out).to include('# @return [Integer]')
       expect(out).not_to include('# @return [String]')
-      expect(out).to match(
-        /# \+Demo#foo\+ -> Integer.*?\n\s*sig \{ params\(verbose: T::Boolean\)\.returns\(Integer\) \}\n\s*def foo\(verbose:\)/m
-      )
+      sig_prefix = '# \+Demo\#foo\+ -> Integer.*?\n'
+      sig_part = '\s*sig \{ params\(verbose: T::Boolean\)\.returns\(Integer\) \}\n'
+      sig_pattern = Regexp.new("#{sig_prefix}#{sig_part}\\s*def foo\\(verbose:\\)", Regexp::MULTILINE)
+      expect(out).to match(sig_pattern)
     end
   end
 end
