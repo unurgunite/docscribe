@@ -184,6 +184,7 @@ module Docscribe
 
       # Load core RBS provider from config with safe fallback.
       #
+      # @private
       # @param [Object] config Param documentation.
       # @param [Object] core_rbs_provider Param documentation.
       # @raise [StandardError]

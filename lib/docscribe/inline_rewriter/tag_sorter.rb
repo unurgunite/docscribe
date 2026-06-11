@@ -72,6 +72,13 @@ module Docscribe
         segments
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #advance_parse (instance visibility: private)
+      # @param [Object] lines Param documentation.
+      # @param [Object] idx Param documentation.
+      # @param [Object] segments Param documentation.
+      # @return [Object]
       def advance_parse(lines, idx, segments)
         if top_level_tag_line?(lines[idx])
           consume_tag_run(lines, idx, segments)
@@ -144,6 +151,14 @@ module Docscribe
         [entry, i]
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_entry (instance visibility: private)
+      # @param [Object] tag Param documentation.
+      # @param [Object] entry_lines Param documentation.
+      # @param [Object] first Param documentation.
+      # @param [Object] start_idx Param documentation.
+      # @return [Entry]
       def build_entry(tag, entry_lines, first, start_idx)
         Entry.new(
           tag: tag,
@@ -192,6 +207,12 @@ module Docscribe
         groups
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #group_entry (instance visibility: private)
+      # @param [Object] entries Param documentation.
+      # @param [Object] idx Param documentation.
+      # @return [Object]
       def group_entry(entries, idx)
         entry = entries[idx]
         if entry.tag == 'param'

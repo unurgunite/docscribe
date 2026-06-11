@@ -89,6 +89,12 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #filter_existing_entries (instance visibility: private)
+      # @param [Object] entries Param documentation.
+      # @param [Object] filter_existing Param documentation.
+      # @return [Object]
       def filter_existing_entries(entries, filter_existing)
         filter_param_names = filter_existing[:param_names] || []
         filter_return = !!filter_existing[:return]
@@ -97,10 +103,22 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #filter_param_entry? (instance visibility: private)
+      # @param [Object] entry Param documentation.
+      # @param [Object] param_names Param documentation.
+      # @return [Object]
       def filter_param_entry?(entry, param_names)
         entry.kind == :tag && entry.tag == 'param' && param_names.include?(entry.subject)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #filter_return_entry? (instance visibility: private)
+      # @param [Object] entry Param documentation.
+      # @param [Object] filter_return Param documentation.
+      # @return [Object]
       def filter_return_entry?(entry, filter_return)
         entry.kind == :tag && entry.tag == 'return' && filter_return
       end
@@ -119,6 +137,14 @@ module Docscribe
         parse_lines(lines, sortable_tags, entries: [], index: 0)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #parse_lines (instance visibility: private)
+      # @param [Object] lines Param documentation.
+      # @param [Object] sortable_tags Param documentation.
+      # @param [Object] entries Param documentation.
+      # @param [Object] index Param documentation.
+      # @return [Object]
       def parse_lines(lines, sortable_tags, entries:, index:)
         idx = 0
         while idx < lines.length
@@ -128,6 +154,15 @@ module Docscribe
         entries
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #parse_one_line (instance visibility: private)
+      # @param [Object] lines Param documentation.
+      # @param [Object] idx Param documentation.
+      # @param [Object] sortable_tags Param documentation.
+      # @param [Object] entries Param documentation.
+      # @param [Object] index Param documentation.
+      # @return [Object]
       def parse_one_line(lines, idx, sortable_tags, entries, index)
         if sortable_top_level_tag_line?(lines[idx], sortable_tags)
           entry, idx = consume_tag_entry(lines, idx, index: index, sortable_tags: sortable_tags)
@@ -139,6 +174,12 @@ module Docscribe
         idx
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_other_entry (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @param [Object] index Param documentation.
+      # @return [Entry]
       def build_other_entry(line, index)
         Entry.new(kind: :other, lines: [line], generated: false, index: index)
       end
@@ -156,6 +197,13 @@ module Docscribe
         out
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #sort_loop (instance visibility: private)
+      # @param [Object] entries Param documentation.
+      # @param [Object] out Param documentation.
+      # @param [Object] priority Param documentation.
+      # @return [Object]
       def sort_loop(entries, out, priority)
         idx = 0
 
@@ -170,6 +218,12 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #consume_tag_run (instance visibility: private)
+      # @param [Object] entries Param documentation.
+      # @param [Object] idx Param documentation.
+      # @return [Array]
       def consume_tag_run(entries, idx)
         run = []
         while idx < entries.length && entries[idx].kind == :tag
@@ -215,11 +269,24 @@ module Docscribe
         groups
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #group_entries_loop (instance visibility: private)
+      # @param [Object] entries Param documentation.
+      # @param [Object] groups Param documentation.
+      # @return [Object]
       def group_entries_loop(entries, groups)
         idx = 0
         idx = group_one_entry(entries, idx, groups) while idx < entries.length
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #group_one_entry (instance visibility: private)
+      # @param [Object] entries Param documentation.
+      # @param [Object] idx Param documentation.
+      # @param [Object] groups Param documentation.
+      # @return [Object]
       def group_one_entry(entries, idx, groups)
         entry = entries[idx]
         if entry.tag == 'param'
@@ -232,6 +299,13 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_param_group (instance visibility: private)
+      # @param [Object] entries Param documentation.
+      # @param [Object] idx Param documentation.
+      # @param [Object] entry Param documentation.
+      # @return [Object]
       def build_param_group(entries, idx, entry)
         group = [entry]
         idx += 1
@@ -295,12 +369,28 @@ module Docscribe
         [entry, i]
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #collect_continuation_lines (instance visibility: private)
+      # @param [Object] lines Param documentation.
+      # @param [Object] start_idx Param documentation.
+      # @param [Object] first Param documentation.
+      # @param [Object] sortable_tags Param documentation.
+      # @return [Object]
       def collect_continuation_lines(lines, start_idx, first, sortable_tags)
         result = [first]
         add_continuation_lines(lines, start_idx, result, sortable_tags)
         result
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #add_continuation_lines (instance visibility: private)
+      # @param [Object] lines Param documentation.
+      # @param [Object] start_idx Param documentation.
+      # @param [Object] result Param documentation.
+      # @param [Object] sortable_tags Param documentation.
+      # @return [Object]
       def add_continuation_lines(lines, start_idx, result, sortable_tags)
         i = start_idx
         while i < lines.length
@@ -312,12 +402,26 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #continuation_candidate? (instance visibility: private)
+      # @param [Object] line Param documentation.
+      # @param [Object] sortable_tags Param documentation.
+      # @return [Object]
       def continuation_candidate?(line, sortable_tags)
         !sortable_top_level_tag_line?(line, sortable_tags) &&
           !blank_comment_line?(line) &&
           continuation_comment_line?(line)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_tag_entry (instance visibility: private)
+      # @param [Object] first Param documentation.
+      # @param [Object] tag Param documentation.
+      # @param [Object] entry_lines Param documentation.
+      # @param [Object] index Param documentation.
+      # @return [Entry]
       def build_tag_entry(first, tag, entry_lines, index)
         Entry.new(
           kind: :tag,

@@ -234,6 +234,14 @@ module Docscribe
           RUBY
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] content Param documentation.
+        # @param [Object] plugin_type Param documentation.
+        # @param [Object] class_name Param documentation.
+        # @param [Object] opts Param documentation.
+        # @return [Object]
         def dispatch_output(content, plugin_type, class_name, opts)
           if opts[:stdout]
             puts content
@@ -261,6 +269,11 @@ module Docscribe
           0
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] opts Param documentation.
+        # @return [Object]
         def build_option_parser(opts)
           OptionParser.new do |opt|
             opt.banner = parser_banner
@@ -270,6 +283,10 @@ module Docscribe
           end
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @return [String]
         def parser_banner
           <<~TEXT
             Usage: docscribe generate <type> <PluginName> [options]
@@ -282,20 +299,45 @@ module Docscribe
           TEXT
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] opt Param documentation.
+        # @param [Object] opts Param documentation.
+        # @return [Object]
         def register_output_option(opt, opts)
           opt.on('--output DIR', 'Directory to write the plugin file (default: .)') { |v| opts[:output] = v }
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] opt Param documentation.
+        # @param [Object] opts Param documentation.
+        # @return [Object]
         def register_stdout_option(opt, opts)
           opt.on('--stdout', 'Print the generated plugin to STDOUT instead of writing a file') { opts[:stdout] = true }
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] opt Param documentation.
+        # @param [Object] opts Param documentation.
+        # @return [Object]
         def register_help_option(opt, opts)
           opt.on('-h', '--help', 'Show this help') do
             opts[:help] = true
           end
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] plugin_type Param documentation.
+        # @param [Object] class_name Param documentation.
+        # @param [Object] parser Param documentation.
+        # @return [Boolean]
         def args_provided?(plugin_type, class_name, parser)
           return true if plugin_type && class_name
 
@@ -304,6 +346,11 @@ module Docscribe
           false
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] plugin_type Param documentation.
+        # @return [Boolean]
         def known_type?(plugin_type)
           return true if PLUGIN_TYPES.include?(plugin_type)
 
@@ -311,6 +358,11 @@ module Docscribe
           false
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] class_name Param documentation.
+        # @return [Boolean]
         def valid_name?(class_name)
           return true if valid_constant?(class_name)
 
@@ -327,6 +379,12 @@ module Docscribe
           !!(str =~ /\A[A-Z][A-Za-z0-9]*(?:::[A-Z][A-Za-z0-9]*)*\z/)
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] class_name Param documentation.
+        # @param [Object] output_dir Param documentation.
+        # @return [Object]
         def plugin_path(class_name, output_dir)
           File.join(output_dir, "#{underscore(class_name)}.rb")
         end
@@ -343,6 +401,11 @@ module Docscribe
             .downcase
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] path Param documentation.
+        # @return [Boolean]
         def file_exists?(path)
           return false unless File.exist?(path)
 
@@ -350,12 +413,25 @@ module Docscribe
           true
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] output_dir Param documentation.
+        # @param [Object] path Param documentation.
+        # @param [Object] content Param documentation.
+        # @return [Object]
         def write_to_file(output_dir, path, content)
           require 'fileutils'
           FileUtils.mkdir_p(output_dir)
           File.write(path, content)
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] plugin_type Param documentation.
+        # @param [Object] path Param documentation.
+        # @return [Object]
         def print_created(plugin_type, path)
           puts "Created: #{path}"
           puts
@@ -376,10 +452,20 @@ module Docscribe
                  base_name: plugin_base_name(path))
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] path Param documentation.
+        # @return [Object]
         def plugin_base_name(path)
           File.basename(path, '.rb').split('_').map(&:capitalize).join
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] plugin_type Param documentation.
+        # @return [String]
         def generate_implement_hint(plugin_type)
           case plugin_type
           when 'tag'

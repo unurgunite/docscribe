@@ -88,6 +88,12 @@ module Docscribe
         options
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #build_option_parser (instance visibility: private)
+      # @param [Object] options Param documentation.
+      # @param [Object] autocorrect Param documentation.
+      # @return [Object]
       def build_option_parser(options, autocorrect)
         OptionParser.new do |opts|
           opts.banner = BANNER

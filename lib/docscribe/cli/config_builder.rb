@@ -43,6 +43,11 @@ module Docscribe
           sorbet_overrides?(options)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #filter_overrides? (instance visibility: private)
+      # @param [Object] options Param documentation.
+      # @return [Object]
       def filter_overrides?(options)
         options[:include].any? ||
           options[:exclude].any?      ||
@@ -50,12 +55,22 @@ module Docscribe
           options[:exclude_file].any?
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #rbs_overrides? (instance visibility: private)
+      # @param [Object] options Param documentation.
+      # @return [Object]
       def rbs_overrides?(options)
         options[:rbs] ||
           options[:rbs_collection] ||
           options[:sig_dirs].any?
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #sorbet_overrides? (instance visibility: private)
+      # @param [Object] options Param documentation.
+      # @return [Object]
       def sorbet_overrides?(options)
         options[:sorbet] ||
           options[:rbi_dirs].any?
@@ -73,12 +88,24 @@ module Docscribe
         apply_file_filters(raw, options)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #apply_method_filters (instance visibility: private)
+      # @param [Object] raw Param documentation.
+      # @param [Object] options Param documentation.
+      # @return [Object]
       def apply_method_filters(raw, options)
         raw['filter'] ||= {}
         raw['filter']['include'] = Array(raw['filter']['include']) + options[:include]
         raw['filter']['exclude'] = Array(raw['filter']['exclude']) + options[:exclude]
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #apply_file_filters (instance visibility: private)
+      # @param [Object] raw Param documentation.
+      # @param [Object] options Param documentation.
+      # @return [Object]
       def apply_file_filters(raw, options)
         files = raw['filter']['files'] ||= {}
         files['include'] = Array(files['include']) + options[:include_file]
@@ -102,6 +129,11 @@ module Docscribe
         apply_rbs_collection(raw)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #apply_rbs_collection (instance visibility: private)
+      # @param [Object] raw Param documentation.
+      # @return [Object]
       def apply_rbs_collection(raw)
         require 'docscribe/types/rbs/collection_loader'
         collection_path = Docscribe::Types::RBS::CollectionLoader.resolve

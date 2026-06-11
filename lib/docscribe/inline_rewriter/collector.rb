@@ -470,6 +470,11 @@ module Docscribe
         true
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def persist_extend_self(ctx)
         ctx.extend_self = true
 
@@ -540,6 +545,12 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Boolean]
       def process_module_function_send?(node, ctx)
         recv, meth, *args = *node
 
@@ -553,11 +564,22 @@ module Docscribe
         true
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] ctx Param documentation.
+      # @return [Boolean]
       def enable_default_module_function?(ctx)
         ctx.module_function_default = true
         true
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] args Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def process_named_module_function(args, ctx)
         args.map { |arg| extract_name_sym(arg) }
             .compact
@@ -571,6 +593,12 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] name_sym Param documentation.
+      # @param [Object] container Param documentation.
+      # @return [Object]
       def retroactively_promote_module_function(name_sym, container:)
         @insertions.reverse_each do |ins|
           next unless ins.container == container
@@ -602,6 +630,12 @@ module Docscribe
         true
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] recv Param documentation.
+      # @param [Object] meth Param documentation.
+      # @return [Object]
       def class_visibility_send?(recv, meth)
         %i[
           private_class_method
@@ -611,6 +645,11 @@ module Docscribe
           (recv.nil? || self_node?(recv))
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] meth Param documentation.
+      # @return [Symbol]
       def class_method_visibility(meth)
         case meth
         when :private_class_method
@@ -622,6 +661,14 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] args Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @param [Object] visibility Param documentation.
+      # @param [Object] container Param documentation.
+      # @return [Object]
       def apply_class_method_visibility(args, ctx, visibility, container)
         args.each do |arg|
           sym = extract_name_sym(arg)
@@ -855,15 +902,34 @@ module Docscribe
                                      ctx.explicit_instance[name] || :private, anchor_node)
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] ctx Param documentation.
+      # @return [Object]
       def extend_self_applies?(ctx)
         ctx.container_is_module && ctx.extend_self && !ctx.inside_sclass
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @param [Object] name Param documentation.
+      # @param [Object] ctx Param documentation.
+      # @param [Object] anchor_node Param documentation.
+      # @return [Object]
       def process_extend_self_def(node, name, ctx, anchor_node)
         @insertions << Insertion.new(node, :class, ctx.explicit_instance[name] || ctx.default_instance_vis,
                                      container_for(ctx), nil, nil, anchor_node)
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] ctx Param documentation.
+      # @param [Object] name Param documentation.
+      # @return [Array]
       def def_scope_visibility(ctx, name)
         if ctx.inside_sclass
           [:class, ctx.explicit_class[name] || ctx.default_class_vis]
@@ -890,10 +956,22 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] insertion Param documentation.
+      # @param [Object] scope Param documentation.
+      # @param [Object] container Param documentation.
+      # @return [Object]
       def visibility_target?(insertion, scope, container)
         insertion.container == container && insertion.scope == scope
       end
 
+      # Method documentation.
+      #
+      # @private
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def insertion_method_name(node)
         case node.type
         when :def

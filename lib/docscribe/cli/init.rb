@@ -45,10 +45,19 @@ module Docscribe
           opts
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @return [Hash]
         def default_init_options
           { config: 'docscribe.yml', force: false, stdout: false, help: false }
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] opts Param documentation.
+        # @return [Object]
         def build_init_parser(opts)
           OptionParser.new do |o|
             o.banner = 'Usage: docscribe init [options]'

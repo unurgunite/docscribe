@@ -38,6 +38,11 @@ module Docscribe
         FALLBACK_TYPE
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #parse_method_source (instance visibility: private)
+      # @param [Object] method_source Param documentation.
+      # @return [Object]
       def parse_method_source(method_source)
         buffer = Parser::Source::Buffer.new('(method)')
         buffer.source = method_source
@@ -88,6 +93,11 @@ module Docscribe
         spec
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #extract_def_body (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @return [Object]
       def extract_def_body(node)
         case node.type
         when :def then node.children[2]
@@ -95,6 +105,14 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #populate_returns_spec (instance visibility: private)
+      # @param [Object] spec Param documentation.
+      # @param [Object] body Param documentation.
+      # @param [Object] local_var_types Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
       def populate_returns_spec(spec, body, local_var_types, **opts)
         if body.type == :rescue
           process_rescue_body(spec, body, **opts)
@@ -103,6 +121,12 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #infer_normal_return_type (instance visibility: private)
+      # @param [Object] body Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
       def infer_normal_return_type(body, **opts)
         run_last_expr_type(body, **opts) || FALLBACK_TYPE
       end
@@ -117,6 +141,7 @@ module Docscribe
       # @param [Object] nil_as_optional Param documentation.
       # @param [Object] core_rbs_provider Param documentation.
       # @param [Object] param_types Param documentation.
+      # @param [Hash] opts Param documentation.
       # @return [Object]
       def process_rescue_body(spec, body, **opts)
         main_body = body.children[0]
@@ -126,6 +151,13 @@ module Docscribe
         process_rescue_branches(spec, body, **rescue_opts)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #process_rescue_branches (instance visibility: private)
+      # @param [Object] spec Param documentation.
+      # @param [Object] body Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
       def process_rescue_branches(spec, body, **opts)
         body.children.each do |ch|
           next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody
@@ -165,6 +197,11 @@ module Docscribe
         types[name] = inferred if inferred && inferred != FALLBACK_TYPE
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #assignment_name_and_value (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @return [Array]
       def assignment_name_and_value(node)
         case node.type
         when :lvasgn, :gvasgn, :ivasgn
@@ -213,6 +250,12 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #process_case_branches (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
       def process_case_branches(node, **opts)
         node.children[1..].compact.flat_map do |child|
           if child.type == :when
@@ -301,6 +344,13 @@ module Docscribe
         rbs_type unless rbs_type == FALLBACK_TYPE
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #lookup_lvar_type (instance visibility: private)
+      # @param [Object] lvar_name Param documentation.
+      # @param [Object] local_var_types Param documentation.
+      # @param [Object] param_types Param documentation.
+      # @return [nil]
       def lookup_lvar_type(lvar_name, local_var_types, param_types)
         return local_var_types[lvar_name.to_s] if local_var_types&.key?(lvar_name.to_s)
         return param_types[lvar_name.to_s] if param_types&.key?(lvar_name.to_s)
@@ -345,6 +395,7 @@ module Docscribe
       # @param [Object, nil] core_rbs_provider optional RBS provider for core type lookup
       # @param [Hash, nil] param_types parameter name -> type map for lvar resolution
       # @param [nil] local_var_types pre-built local variable types map
+      # @param [Hash] opts Param documentation.
       # @return [String, nil]
       def last_expr_type(node, **opts)
         run_last_expr_type(node, **opts)
@@ -367,6 +418,12 @@ module Docscribe
         end
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #handle_return_node (instance visibility: private)
+      # @param [Object] node Param documentation.
+      # @param [Hash] opts Param documentation.
+      # @return [Object]
       def handle_return_node(node, **opts)
         Literals.type_from_literal(node.children.first, fallback_type: opts[:fallback_type])
       end
@@ -413,6 +470,14 @@ module Docscribe
         unify_nil_types(type_a, type_b, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #unify_nil_types (instance visibility: private)
+      # @param [Object] type_a Param documentation.
+      # @param [Object] type_b Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @param [Object] nil_as_optional Param documentation.
+      # @return [Object]
       def unify_nil_types(type_a, type_b, fallback_type:, nil_as_optional:)
         if type_a == 'nil' || type_b == 'nil'
           non_nil = (type_a == 'nil' ? type_b : type_a)

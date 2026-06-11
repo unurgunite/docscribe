@@ -63,10 +63,25 @@ module Docscribe
         ty
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #options_keyword_type (instance visibility: private)
+      # @param [Object] name Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @param [Object] fallback_type Param documentation.
+      # @return [Object]
       def options_keyword_type(name, treat_options_keyword_as_hash, fallback_type)
         treat_options_keyword_as_hash && name == 'options:' ? 'Hash' : fallback_type
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #options_hash_keyword? (instance visibility: private)
+      # @param [Object] name Param documentation.
+      # @param [Object] default_str Param documentation.
+      # @param [Object] type Param documentation.
+      # @param [Object] treat_options_keyword_as_hash Param documentation.
+      # @return [Object]
       def options_hash_keyword?(name, default_str, type, treat_options_keyword_as_hash)
         treat_options_keyword_as_hash && name == 'options:' && (default_str == '{}' || type == 'Hash')
       end

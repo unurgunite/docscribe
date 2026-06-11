@@ -55,6 +55,10 @@ module Docscribe
           run_files(options: options, conf: conf, paths: paths)
         end
 
+        # Method documentation.
+        #
+        # @param [Object] options Param documentation.
+        # @return [Object]
         def build_config(options)
           conf = Docscribe::Config.load(options[:config])
           conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
@@ -77,6 +81,11 @@ module Docscribe
           1
         end
 
+        # Method documentation.
+        #
+        # @param [Object] options Param documentation.
+        # @param [Object] conf Param documentation.
+        # @return [Object]
         def stdin_rewrite_result(options, conf)
           Docscribe::InlineRewriter.rewrite_with_report(
             $stdin.read,
@@ -87,14 +96,26 @@ module Docscribe
           )
         end
 
+        # Method documentation.
+        #
+        # @param [Object] conf Param documentation.
+        # @return [Object?]
         def core_rbs_provider_for(conf)
           conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil
         end
 
+        # Method documentation.
+        #
+        # @param [Object] argv Param documentation.
+        # @param [Object] conf Param documentation.
+        # @return [Object]
         def filtered_paths(argv, conf)
           expand_paths(argv).select { |path| conf.process_file?(path) }
         end
 
+        # Method documentation.
+        #
+        # @return [Integer]
         def no_files_found
           warn 'No files found. Pass files or directories (e.g. `docscribe lib`).'
           1
@@ -118,6 +139,11 @@ module Docscribe
           files.uniq.sort
         end
 
+        # Method documentation.
+        #
+        # @param [Object] files Param documentation.
+        # @param [Object] path Param documentation.
+        # @return [Object]
         def append_expanded_path(files, path)
           if File.directory?(path)
             files.concat(Dir.glob(File.join(path, '**', '*.rb')))
@@ -159,6 +185,12 @@ module Docscribe
 
         private
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] options Param documentation.
+        # @param [Object] state Param documentation.
+        # @return [Object]
         def finalize_run(options, state)
           if options[:mode] == :check
             print_check_summary(state: state, options: options)
@@ -167,6 +199,12 @@ module Docscribe
           end
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] options Param documentation.
+        # @param [Object] state Param documentation.
+        # @return [Integer]
         def run_exit_code(options, state)
           return 1 if state[:had_errors]
           return 1 if options[:mode] == :check && state[:changed]
@@ -273,6 +311,7 @@ module Docscribe
         # @param [String] display_path path shown in CLI output
         # @param [Hash] options CLI options
         # @param [Hash] state shared processing state
+        # @param [Object] ctx Param documentation.
         # @raise [StandardError]
         # @return [Hash, nil] rewrite result or nil on error
         def rewrite_result_for_path(path, src:, ctx:)
@@ -289,6 +328,13 @@ module Docscribe
           nil
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] path Param documentation.
+        # @param [Object] error Param documentation.
+        # @param [Object] ctx Param documentation.
+        # @return [Object]
         def record_rewrite_error(path, error, ctx)
           state = ctx[:state]
 
@@ -506,14 +552,34 @@ module Docscribe
           end
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] state Param documentation.
+        # @param [Object] checked_error Param documentation.
+        # @param [Object] type_mismatch_count Param documentation.
+        # @return [Object]
         def all_fine?(state, checked_error, type_mismatch_count)
           state[:checked_fail].zero? && checked_error.zero? && type_mismatch_count.zero?
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] state Param documentation.
+        # @param [Object] checked_error Param documentation.
+        # @return [Object]
         def mismatch_only?(state, checked_error)
           state[:checked_fail].zero? && checked_error.zero?
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] state Param documentation.
+        # @param [Object] type_mismatch_count Param documentation.
+        # @param [Object] checked_error Param documentation.
+        # @return [String]
         def build_failure_line(state, type_mismatch_count, checked_error)
           parts = ["#{state[:checked_fail]} need updates"]
           parts << "#{type_mismatch_count} type mismatches" if type_mismatch_count.positive?
@@ -573,14 +639,26 @@ module Docscribe
           "#{change[:message] || change[:type].to_s.tr('_', ' ')}#{method}#{line}"
         end
 
+        # Method documentation.
+        #
+        # @param [Object] change Param documentation.
+        # @return [String]
         def change_line_suffix(change)
           change[:line] ? " at line #{change[:line]}" : ''
         end
 
+        # Method documentation.
+        #
+        # @param [Object] change Param documentation.
+        # @return [String]
         def change_method_suffix(change)
           change[:method] ? " for #{change[:method]}" : ''
         end
 
+        # Method documentation.
+        #
+        # @param [Object] change Param documentation.
+        # @return [Object]
         def direct_message_change?(change)
           %i[
             missing_param

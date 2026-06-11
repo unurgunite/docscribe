@@ -69,6 +69,12 @@ module Docscribe
       []
     end
 
+    # Method documentation.
+    #
+    # @param [Object] results Param documentation.
+    # @param [Object] entry Param documentation.
+    # @param [Object] plugin Param documentation.
+    # @return [Object]
     def self.process_plugin_insertions(results, entry, plugin)
       results.map do |insertion|
         next nil unless valid_plugin_result?(insertion, plugin)

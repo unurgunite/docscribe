@@ -75,6 +75,13 @@ module Docscribe
           )
         end
 
+        # Method documentation.
+        #
+        # @private
+        # @param [Object] container Param documentation.
+        # @param [Object] scope Param documentation.
+        # @param [Object] name Param documentation.
+        # @return [Object]
         def lookup_signature(container, scope, name)
           definition = definition_for(container: container, scope: scope)
           method_def = definition.methods[name.to_sym]
