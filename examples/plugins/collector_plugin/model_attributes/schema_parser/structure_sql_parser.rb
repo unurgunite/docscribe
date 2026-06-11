@@ -70,7 +70,7 @@ class StructureSqlParser
 
   # Parse the structure.sql file and return a table -> column map.
   #
-  # @param [Object] root Param documentation.
+  # @param [String] root the application root directory path
   # @return [Hash{String => Hash{String => String}}]
   def initialize(root:)
     @root = root

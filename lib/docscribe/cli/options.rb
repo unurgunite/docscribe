@@ -88,12 +88,12 @@ module Docscribe
         options
       end
 
-      # Method documentation.
+      # Build the OptionParser instance and register all CLI option groups.
       #
       # @note module_function: when included, also defines #build_option_parser (instance visibility: private)
-      # @param [Object] options Param documentation.
-      # @param [Object] autocorrect Param documentation.
-      # @return [Object]
+      # @param [Hash] options mutable parsed options hash
+      # @param [Hash{Symbol => Symbol,nil}] autocorrect mutable container for autocorrect mode
+      # @return [OptionParser]
       def build_option_parser(options, autocorrect)
         OptionParser.new do |opts|
           opts.banner = BANNER
@@ -133,9 +133,9 @@ module Docscribe
 
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] opts Param documentation.
-      # @param [Object] options Param documentation.
-      # @return [Object]
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
       def define_stdin_option(opts, options)
         opts.on('--stdin', 'Read code from STDIN and print rewritten output') do
           options[:stdin] = true
@@ -144,9 +144,9 @@ module Docscribe
 
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] opts Param documentation.
-      # @param [Object] options Param documentation.
-      # @return [Object]
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
       def define_config_option(opts, options)
         opts.on('-C', '--config PATH', 'Path to config YAML (default: docscribe.yml)') do |v|
           options[:config] = v
@@ -238,9 +238,9 @@ module Docscribe
 
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] opts Param documentation.
-      # @param [Object] options Param documentation.
-      # @return [Object]
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
       def define_include_option(opts, options)
         opts.on('--include PATTERN', 'Include PATTERN (method id or file path; glob or /regex/)') do |v|
           route_include_exclude(options, :include, v)
@@ -249,9 +249,9 @@ module Docscribe
 
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] opts Param documentation.
-      # @param [Object] options Param documentation.
-      # @return [Object]
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
       def define_exclude_option(opts, options)
         opts.on('--exclude PATTERN',
                 'Exclude PATTERN (method id or file path; glob or /regex/). Exclude wins.') do |v|
@@ -261,9 +261,9 @@ module Docscribe
 
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] opts Param documentation.
-      # @param [Object] options Param documentation.
-      # @return [Object]
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
       def define_include_file_option(opts, options)
         opts.on('--include-file PATTERN', 'Only process files matching PATTERN (glob or /regex/)') do |v|
           options[:include_file] << v
@@ -272,9 +272,9 @@ module Docscribe
 
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] opts Param documentation.
-      # @param [Object] options Param documentation.
-      # @return [Object]
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
       def define_exclude_file_option(opts, options)
         opts.on('--exclude-file PATTERN', 'Skip files matching PATTERN (glob or /regex/). Exclude wins.') do |v|
           options[:exclude_file] << v
@@ -293,9 +293,9 @@ module Docscribe
 
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] opts Param documentation.
-      # @param [Object] options Param documentation.
-      # @return [Object]
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
       def define_verbose_option(opts, options)
         opts.on('--verbose', 'Print per-file actions') do
           options[:verbose] = true
@@ -304,9 +304,9 @@ module Docscribe
 
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
-      # @param [Object] opts Param documentation.
-      # @param [Object] options Param documentation.
-      # @return [Object]
+      # @param [OptionParser] opts
+      # @param [Hash] options mutable parsed options hash
+      # @return [void]
       def define_explain_option(opts, options)
         opts.on('-e', '--explain', 'Show detailed reasons for changes') do
           options[:explain] = true

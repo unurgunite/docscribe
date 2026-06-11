@@ -75,13 +75,13 @@ module Docscribe
           )
         end
 
-        # Method documentation.
+        # Look up a method signature from the loaded RBS definition builder.
         #
         # @private
-        # @param [Object] container Param documentation.
-        # @param [Object] scope Param documentation.
-        # @param [Object] name Param documentation.
-        # @return [Object]
+        # @param [String] container fully qualified class/module name
+        # @param [Symbol] scope :instance or :class
+        # @param [Symbol, String] name method name to look up
+        # @return [Docscribe::Types::MethodSignature, nil]
         def lookup_signature(container, scope, name)
           definition = definition_for(container: container, scope: scope)
           method_def = definition.methods[name.to_sym]
@@ -280,7 +280,7 @@ module Docscribe
         # @private
         # @param [StandardError] e the raised exception
         # @param [String] context human-readable context label
-        # @param [Object] error Param documentation.
+        # @param [StandardError] error the raised exception
         # @return [void]
         def handle_rbs_error(error, context)
           case error

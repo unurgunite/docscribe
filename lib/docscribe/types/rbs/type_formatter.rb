@@ -11,10 +11,10 @@ module Docscribe
         module_function
 
         # rubocop:disable Metrics/AbcSize, Layout/LineLength
-        # Method documentation.
+        # Return or memoize the dispatch hash mapping RBS type classes to formatter lambdas.
         #
         # @note module_function: when included, also defines #to_yard_formatters (instance visibility: private)
-        # @return [Object]
+        # @return [Hash{Class=>Proc}]
         def to_yard_formatters
           @to_yard_formatters ||= {
             ::RBS::Types::Bases::Any => ->(_, **) { format_any },
@@ -29,7 +29,7 @@ module Docscribe
         end
         # rubocop:enable Metrics/AbcSize, Layout/LineLength
 
-        # Method documentation.
+        # Format RBS `any` type as the YARD-equivalent `Object`.
         #
         # @note module_function: when included, also defines #format_any (instance visibility: private)
         # @return [String]
@@ -37,7 +37,7 @@ module Docscribe
           'Object'
         end
 
-        # Method documentation.
+        # Format RBS `bool` type as the YARD `Boolean`.
         #
         # @note module_function: when included, also defines #format_bool (instance visibility: private)
         # @return [String]
@@ -45,7 +45,7 @@ module Docscribe
           'Boolean'
         end
 
-        # Method documentation.
+        # Format RBS `void` type as the YARD `void`.
         #
         # @note module_function: when included, also defines #format_void (instance visibility: private)
         # @return [String]
@@ -53,7 +53,7 @@ module Docscribe
           'void'
         end
 
-        # Method documentation.
+        # Format RBS `nil` type as the YARD `nil`.
         #
         # @note module_function: when included, also defines #format_nil (instance visibility: private)
         # @return [String]
@@ -61,20 +61,20 @@ module Docscribe
           'nil'
         end
 
-        # Method documentation.
+        # Format an RBS Optional type as a YARD optional type with `?` suffix.
         #
         # @note module_function: when included, also defines #format_optional (instance visibility: private)
-        # @param [Object] type Param documentation.
-        # @param [Object] collapse_generics Param documentation.
+        # @param [::RBS::Types::Optional] type the optional type to format
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
         # @return [String]
         def format_optional(type, collapse_generics:)
           "#{to_yard(type.type, collapse_generics: collapse_generics)}?"
         end
 
-        # Method documentation.
+        # Map a Ruby literal value to its corresponding YARD type name.
         #
         # @note module_function: when included, also defines #format_literal (instance visibility: private)
-        # @param [Object] lit Param documentation.
+        # @param [Object] lit a Ruby literal value
         # @return [String]
         def format_literal(lit)
           case lit
@@ -88,7 +88,7 @@ module Docscribe
           end
         end
 
-        # Method documentation.
+        # Format RBS Proc type as the YARD `Proc`.
         #
         # @note module_function: when included, also defines #format_proc (instance visibility: private)
         # @return [String]
@@ -96,24 +96,24 @@ module Docscribe
           'Proc'
         end
 
-        # Method documentation.
+        # Format an RBS Union type as a comma-separated list of YARD types.
         #
         # @note module_function: when included, also defines #format_union (instance visibility: private)
-        # @param [Object] type Param documentation.
-        # @param [Object] collapse_generics Param documentation.
-        # @return [Object]
+        # @param [::RBS::Types::Union] type the union type to format
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @return [String]
         def format_union(type, collapse_generics:)
           type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }
               .uniq
               .join(', ')
         end
 
-        # Method documentation.
+        # Format an RBS named type (class, interface, alias) with optional generic arguments.
         #
         # @note module_function: when included, also defines #format_named (instance visibility: private)
-        # @param [Object] type Param documentation.
-        # @param [Object] collapse_generics Param documentation.
-        # @return [Object]
+        # @param [::RBS::Types::ClassInstance, ::RBS::Types::Interface, ::RBS::Types::Alias] type
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @return [String]
         def format_named(type, collapse_generics:)
           name = type.name.to_s.delete_prefix('::')
           args = type.respond_to?(:args) ? type.args : []
@@ -127,10 +127,10 @@ module Docscribe
           end
         end
 
-        # Method documentation.
+        # Convert a Ruby literal value to its YARD type name string.
         #
         # @note module_function: when included, also defines #literal_to_yard (instance visibility: private)
-        # @param [Object] lit Param documentation.
+        # @param [Object] lit a Ruby literal value
         # @return [String]
         def literal_to_yard(lit)
           case lit
@@ -144,12 +144,12 @@ module Docscribe
           end
         end
 
-        # Method documentation.
+        # Dispatch an RBS type object to the appropriate YARD formatter.
         #
         # @note module_function: when included, also defines #to_yard (instance visibility: private)
-        # @param [Object] type Param documentation.
-        # @param [Boolean] collapse_generics Param documentation.
-        # @return [Object]
+        # @param [::RBS::Type] type the RBS type object to convert
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @return [String]
         def to_yard(type, collapse_generics: false)
           return 'Object' unless type
 
@@ -161,19 +161,19 @@ module Docscribe
           fallback_string(type)
         end
 
-        # Method documentation.
+        # Check if the given type object is a named RBS type (class, singleton, interface, or alias).
         #
         # @note module_function: when included, also defines #named_type? (instance visibility: private)
-        # @param [Object] type Param documentation.
+        # @param [::RBS::Type] type the RBS type object to check
         # @return [Boolean]
         def named_type?(type)
           named_type_classes.any? { |klass| type.is_a?(klass) }
         end
 
-        # Method documentation.
+        # Return or memoize the list of RBS type classes considered named types.
         #
         # @note module_function: when included, also defines #named_type_classes (instance visibility: private)
-        # @return [Object]
+        # @return [Array<Class>]
         def named_type_classes
           @named_type_classes ||= [
             ::RBS::Types::ClassInstance,
@@ -183,10 +183,10 @@ module Docscribe
           ].freeze
         end
 
-        # Method documentation.
+        # Fallback conversion of an unrecognized RBS type to a cleaned string representation.
         #
         # @note module_function: when included, also defines #fallback_string (instance visibility: private)
-        # @param [Object] type Param documentation.
+        # @param [::RBS::Type] type the unrecognized RBS type object
         # @return [String]
         def fallback_string(type)
           type.to_s

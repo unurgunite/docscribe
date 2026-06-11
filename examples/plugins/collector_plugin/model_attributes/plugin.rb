@@ -114,7 +114,7 @@ module DocscribePlugins
     # Walk the AST and return doc insertion targets for model methods.
     #
     # @param [Parser::AST::Node] ast
-    # @param [Parser::Source::Buffer] _buffer Param documentation.
+    # @param [Parser::Source::Buffer] _buffer the source buffer (unused, required by collector interface)
     # @return [Array<Hash>]
     def collect(ast, _buffer)
       return [] unless active_record_model?(ast)

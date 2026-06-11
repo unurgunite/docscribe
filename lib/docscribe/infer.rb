@@ -124,7 +124,7 @@ module Docscribe
       # Convert a constant AST node into its fully qualified name.
       #
       # @param [Parser::AST::Node, nil] n
-      # @param [Object] node Param documentation.
+      # @param [Parser::AST::Node, nil] node constant AST node to resolve
       # @return [String, nil]
       def const_full_name(node)
         Names.const_full_name(node)

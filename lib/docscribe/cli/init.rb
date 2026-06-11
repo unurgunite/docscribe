@@ -45,7 +45,7 @@ module Docscribe
           opts
         end
 
-        # Method documentation.
+        # Return the default options hash for the init command.
         #
         # @private
         # @return [Hash]
@@ -53,11 +53,11 @@ module Docscribe
           { config: 'docscribe.yml', force: false, stdout: false, help: false }
         end
 
-        # Method documentation.
+        # Build and return an OptionParser for the init command.
         #
         # @private
-        # @param [Object] opts Param documentation.
-        # @return [Object]
+        # @param [Hash] opts options hash that the parser populates
+        # @return [OptionParser]
         def build_init_parser(opts)
           OptionParser.new do |o|
             o.banner = 'Usage: docscribe init [options]'

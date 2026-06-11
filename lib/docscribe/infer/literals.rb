@@ -44,7 +44,7 @@ module Docscribe
       # @private
       # @param [Parser::AST::Node] node
       # @param [String] fallback_type
-      # @param [Object] _fallback_type Param documentation.
+      # @param [String] _fallback_type fallback type string (unused here)
       # @return [String, nil]
       def const_type_for(node, _fallback_type)
         return unless node.type == :const
@@ -58,7 +58,7 @@ module Docscribe
       # @private
       # @param [Parser::AST::Node] node
       # @param [String] fallback_type
-      # @param [Object] _fallback_type Param documentation.
+      # @param [String] _fallback_type fallback type string (unused here)
       # @return [String, nil]
       def send_new_type_for(node, _fallback_type)
         return unless node.type == :send

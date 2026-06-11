@@ -55,10 +55,10 @@ module Docscribe
           run_files(options: options, conf: conf, paths: paths)
         end
 
-        # Method documentation.
+        # Load and build the effective config from CLI options.
         #
-        # @param [Object] options Param documentation.
-        # @return [Object]
+        # @param [Hash] options parsed CLI options
+        # @return [Docscribe::Config] effective config with plugins loaded
         def build_config(options)
           conf = Docscribe::Config.load(options[:config])
           conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
@@ -81,11 +81,11 @@ module Docscribe
           1
         end
 
-        # Method documentation.
+        # Rewrite STDIN input and return the result report.
         #
-        # @param [Object] options Param documentation.
-        # @param [Object] conf Param documentation.
-        # @return [Object]
+        # @param [Hash] options parsed CLI options
+        # @param [Docscribe::Config] conf effective config
+        # @return [Hash] rewrite result with :output key
         def stdin_rewrite_result(options, conf)
           Docscribe::InlineRewriter.rewrite_with_report(
             $stdin.read,
@@ -96,26 +96,26 @@ module Docscribe
           )
         end
 
-        # Method documentation.
+        # Return the core RBS provider from the config if available.
         #
-        # @param [Object] conf Param documentation.
-        # @return [Object?]
+        # @param [Docscribe::Config] conf effective config
+        # @return [Object, nil] core RBS provider or nil
         def core_rbs_provider_for(conf)
           conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil
         end
 
-        # Method documentation.
+        # Expand CLI path arguments and filter through config file patterns.
         #
-        # @param [Object] argv Param documentation.
-        # @param [Object] conf Param documentation.
-        # @return [Object]
+        # @param [Array<String>] argv CLI path arguments
+        # @param [Docscribe::Config] conf effective config
+        # @return [Array<String>] filtered Ruby file paths
         def filtered_paths(argv, conf)
           expand_paths(argv).select { |path| conf.process_file?(path) }
         end
 
-        # Method documentation.
+        # Warn and return exit code when no matching files were found.
         #
-        # @return [Integer]
+        # @return [Integer] exit code 1
         def no_files_found
           warn 'No files found. Pass files or directories (e.g. `docscribe lib`).'
           1
@@ -139,11 +139,11 @@ module Docscribe
           files.uniq.sort
         end
 
-        # Method documentation.
+        # Append a file or recursively expand a directory into the files array.
         #
-        # @param [Object] files Param documentation.
-        # @param [Object] path Param documentation.
-        # @return [Object]
+        # @param [Array<String>] files mutable file path accumulator
+        # @param [String] path file or directory path to expand
+        # @return [void]
         def append_expanded_path(files, path)
           if File.directory?(path)
             files.concat(Dir.glob(File.join(path, '**', '*.rb')))
@@ -185,12 +185,12 @@ module Docscribe
 
         private
 
-        # Method documentation.
+        # Print the check or write summary at the end of a run.
         #
         # @private
-        # @param [Object] options Param documentation.
-        # @param [Object] state Param documentation.
-        # @return [Object]
+        # @param [Hash] options CLI options
+        # @param [Hash] state shared processing state
+        # @return [void]
         def finalize_run(options, state)
           if options[:mode] == :check
             print_check_summary(state: state, options: options)
@@ -199,12 +199,12 @@ module Docscribe
           end
         end
 
-        # Method documentation.
+        # Determine the process exit code based on run state and mode.
         #
         # @private
-        # @param [Object] options Param documentation.
-        # @param [Object] state Param documentation.
-        # @return [Integer]
+        # @param [Hash] options CLI options
+        # @param [Hash] state shared processing state
+        # @return [Integer] exit code 0 or 1
         def run_exit_code(options, state)
           return 1 if state[:had_errors]
           return 1 if options[:mode] == :check && state[:changed]
@@ -243,16 +243,15 @@ module Docscribe
                                      display_path: display_path, options: options, state: state)
         end
 
-        # Dispatch check vs write result.
-        # Method documentation.
+        # Dispatch the rewrite result to the check or write handler based on mode.
         #
         # @private
-        # @param [Object] path Param documentation.
-        # @param [Object] src Param documentation.
-        # @param [Object] out Param documentation.
-        # @param [Object] file_changes Param documentation.
-        # @param [Hash] ctx Param documentation.
-        # @return [Object]
+        # @param [String] path file path
+        # @param [String] src original source code
+        # @param [String] out rewritten source code
+        # @param [Array<Hash>] file_changes structured change records
+        # @param [Hash] ctx context hash with :options, :state, :display_path, :conf
+        # @return [void]
         def dispatch_file_result(path, src:, out:, file_changes:, **ctx)
           if ctx[:options][:mode] == :check
             handle_check_result(path, src: src, out: out, file_changes: file_changes, **ctx)
@@ -311,7 +310,7 @@ module Docscribe
         # @param [String] display_path path shown in CLI output
         # @param [Hash] options CLI options
         # @param [Hash] state shared processing state
-        # @param [Object] ctx Param documentation.
+        # @param [Hash] ctx context hash with :conf, :display_path, :options, :state keys
         # @raise [StandardError]
         # @return [Hash, nil] rewrite result or nil on error
         def rewrite_result_for_path(path, src:, ctx:)
@@ -328,13 +327,13 @@ module Docscribe
           nil
         end
 
-        # Method documentation.
+        # Record a rewrite error in the shared state and print an error indicator.
         #
         # @private
-        # @param [Object] path Param documentation.
-        # @param [Object] error Param documentation.
-        # @param [Object] ctx Param documentation.
-        # @return [Object]
+        # @param [String] path file path that caused the error
+        # @param [StandardError] error the exception raised during rewriting
+        # @param [Hash] ctx context hash with :state, :options, :display_path
+        # @return [void]
         def record_rewrite_error(path, error, ctx)
           state = ctx[:state]
 
@@ -359,7 +358,7 @@ module Docscribe
         # @param [String] display_path path shown in CLI output
         # @param [Hash] options CLI options
         # @param [Hash] state shared processing state
-        # @param [Hash] ctx Param documentation.
+        # @param [Hash] ctx context hash with :display_path, :options, :state keys
         # @return [void]
         def handle_check_result(path, src:, out:, file_changes:, **ctx)
           type_mismatches = type_mismatch_changes(file_changes)
@@ -437,7 +436,7 @@ module Docscribe
         # @param [String] display_path path shown in CLI output
         # @param [Hash] options CLI options
         # @param [Hash] state shared processing state
-        # @param [Hash] ctx Param documentation.
+        # @param [Hash] ctx context hash with :display_path, :options, :state keys
         # @raise [StandardError]
         # @return [void]
         def handle_write_result(path, src:, out:, file_changes:, **ctx)
@@ -492,7 +491,7 @@ module Docscribe
         # @param [String] display_path
         # @param [Hash] options
         # @param [Hash] state
-        # @param [Object] error Param documentation.
+        # @param [StandardError] error the exception raised during file write
         # @return [void]
         def record_write_error(path, error, display_path:, options:, state:)
           state[:had_errors] = true
@@ -552,33 +551,33 @@ module Docscribe
           end
         end
 
-        # Method documentation.
+        # Whether no failures, errors, or type mismatches occurred.
         #
         # @private
-        # @param [Object] state Param documentation.
-        # @param [Object] checked_error Param documentation.
-        # @param [Object] type_mismatch_count Param documentation.
-        # @return [Object]
+        # @param [Hash] state shared processing state
+        # @param [Integer] checked_error number of files with errors
+        # @param [Integer] type_mismatch_count number of files with type mismatches
+        # @return [Boolean]
         def all_fine?(state, checked_error, type_mismatch_count)
           state[:checked_fail].zero? && checked_error.zero? && type_mismatch_count.zero?
         end
 
-        # Method documentation.
+        # Whether type mismatches exist but no failures or errors.
         #
         # @private
-        # @param [Object] state Param documentation.
-        # @param [Object] checked_error Param documentation.
-        # @return [Object]
+        # @param [Hash] state shared processing state
+        # @param [Integer] checked_error number of files with errors
+        # @return [Boolean]
         def mismatch_only?(state, checked_error)
           state[:checked_fail].zero? && checked_error.zero?
         end
 
-        # Method documentation.
+        # Build the human-readable failure summary line for check output.
         #
         # @private
-        # @param [Object] state Param documentation.
-        # @param [Object] type_mismatch_count Param documentation.
-        # @param [Object] checked_error Param documentation.
+        # @param [Hash] state shared processing state
+        # @param [Integer] type_mismatch_count number of files with type mismatches
+        # @param [Integer] checked_error number of files with errors
         # @return [String]
         def build_failure_line(state, type_mismatch_count, checked_error)
           parts = ["#{state[:checked_fail]} need updates"]
@@ -639,26 +638,26 @@ module Docscribe
           "#{change[:message] || change[:type].to_s.tr('_', ' ')}#{method}#{line}"
         end
 
-        # Method documentation.
+        # Format the line number suffix for a change reason string.
         #
-        # @param [Object] change Param documentation.
-        # @return [String]
+        # @param [Hash] change structured change record
+        # @return [String] " at line N" or empty
         def change_line_suffix(change)
           change[:line] ? " at line #{change[:line]}" : ''
         end
 
-        # Method documentation.
+        # Format the method name suffix for a change reason string.
         #
-        # @param [Object] change Param documentation.
-        # @return [String]
+        # @param [Hash] change structured change record
+        # @return [String] " for method_name" or empty
         def change_method_suffix(change)
           change[:method] ? " for #{change[:method]}" : ''
         end
 
-        # Method documentation.
+        # Whether a change type uses its own :message field directly as the reason.
         #
-        # @param [Object] change Param documentation.
-        # @return [Object]
+        # @param [Hash] change structured change record
+        # @return [Boolean]
         def direct_message_change?(change)
           %i[
             missing_param

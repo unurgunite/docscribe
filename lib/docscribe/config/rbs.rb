@@ -34,7 +34,7 @@ module Docscribe
 
     private
 
-    # Method documentation.
+    # Check whether the current Ruby version supports RBS (requires 3.0+).
     #
     # @private
     # @return [Boolean]

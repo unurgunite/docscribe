@@ -69,12 +69,12 @@ module Docscribe
       []
     end
 
-    # Method documentation.
+    # Merge plugin metadata into collector results and filter invalid ones.
     #
-    # @param [Object] results Param documentation.
-    # @param [Object] entry Param documentation.
-    # @param [Object] plugin Param documentation.
-    # @return [Object]
+    # @param [Array] results collector plugin results to process
+    # @param [Entry] entry registry entry with priority and order metadata
+    # @param [Base::CollectorPlugin] plugin the collector plugin instance
+    # @return [Array<Hash>]
     def self.process_plugin_insertions(results, entry, plugin)
       results.map do |insertion|
         next nil unless valid_plugin_result?(insertion, plugin)

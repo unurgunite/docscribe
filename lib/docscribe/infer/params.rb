@@ -63,25 +63,25 @@ module Docscribe
         ty
       end
 
-      # Method documentation.
+      # Return 'Hash' for a keyword parameter named 'options:' when special-cased, else fallback.
       #
       # @note module_function: when included, also defines #options_keyword_type (instance visibility: private)
-      # @param [Object] name Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @param [Object] fallback_type Param documentation.
-      # @return [Object]
+      # @param [String] name parameter name
+      # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
+      # @param [String] fallback_type type returned when not special-cased
+      # @return [String]
       def options_keyword_type(name, treat_options_keyword_as_hash, fallback_type)
         treat_options_keyword_as_hash && name == 'options:' ? 'Hash' : fallback_type
       end
 
-      # Method documentation.
+      # Whether a keyword parameter named 'options:' with a hash default should be typed as Hash.
       #
       # @note module_function: when included, also defines #options_hash_keyword? (instance visibility: private)
-      # @param [Object] name Param documentation.
-      # @param [Object] default_str Param documentation.
-      # @param [Object] type Param documentation.
-      # @param [Object] treat_options_keyword_as_hash Param documentation.
-      # @return [Object]
+      # @param [String] name parameter name
+      # @param [String, nil] default_str default expression source
+      # @param [String] type inferred type
+      # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
+      # @return [Boolean]
       def options_hash_keyword?(name, default_str, type, treat_options_keyword_as_hash)
         treat_options_keyword_as_hash && name == 'options:' && (default_str == '{}' || type == 'Hash')
       end

@@ -72,13 +72,13 @@ module Docscribe
         segments
       end
 
-      # Method documentation.
+      # Parse the next line as either a tag run or non-tag content, appending to segments.
       #
       # @note module_function: when included, also defines #advance_parse (instance visibility: private)
-      # @param [Object] lines Param documentation.
-      # @param [Object] idx Param documentation.
-      # @param [Object] segments Param documentation.
-      # @return [Object]
+      # @param [Array<String>] lines comment block lines
+      # @param [Integer] idx current parse index
+      # @param [Array<Hash>] segments accumulated parsed segments
+      # @return [Integer] new index after processing
       def advance_parse(lines, idx, segments)
         if top_level_tag_line?(lines[idx])
           consume_tag_run(lines, idx, segments)
@@ -151,13 +151,13 @@ module Docscribe
         [entry, i]
       end
 
-      # Method documentation.
+      # Build an Entry struct from parsed tag name, lines, and source line metadata.
       #
       # @note module_function: when included, also defines #build_entry (instance visibility: private)
-      # @param [Object] tag Param documentation.
-      # @param [Object] entry_lines Param documentation.
-      # @param [Object] first Param documentation.
-      # @param [Object] start_idx Param documentation.
+      # @param [String, nil] tag the extracted tag name
+      # @param [Array<String>] entry_lines all lines belonging to this entry
+      # @param [String] first the first (tag) line
+      # @param [Integer] start_idx original index of the first line
       # @return [Entry]
       def build_entry(tag, entry_lines, first, start_idx)
         Entry.new(
@@ -207,12 +207,12 @@ module Docscribe
         groups
       end
 
-      # Method documentation.
+      # Group a single entry, attaching any subsequent @option entries if it is a @param.
       #
       # @note module_function: when included, also defines #group_entry (instance visibility: private)
-      # @param [Object] entries Param documentation.
-      # @param [Object] idx Param documentation.
-      # @return [Object]
+      # @param [Array<Entry>] entries parsed tag entries
+      # @param [Integer] idx index of the entry to group
+      # @return [Array<Entry>] the entry group
       def group_entry(entries, idx)
         entry = entries[idx]
         if entry.tag == 'param'
