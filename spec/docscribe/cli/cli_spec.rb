@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require 'open3'
+require 'docscribe/cli'
 
-RSpec.describe 'CLI docscribe' do
+RSpec.describe Docscribe::CLI do
   subject(:out) { inline(code) }
 
   let(:code) do
@@ -13,7 +14,7 @@ RSpec.describe 'CLI docscribe' do
 
   let(:conf) { Docscribe::Config.new({ 'emit' => { 'return_tag' => false } }) }
 
-  it 'reads from --stdin and outputs docs' do
+  it 'reads from --stdin and outputs docs', :aggregate_failures do
     Dir.mktmpdir do |dir|
       stdout, status = Open3.capture2('ruby', exe, '--stdin', stdin_data: code, chdir: dir)
       expect(status.success?).to be true

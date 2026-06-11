@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Inline rewriter respects existing tags' do
+RSpec.describe Docscribe::InlineRewriter do
   describe 'existing @param/@option above the method' do
     subject(:out) { inline(code) }
 
@@ -11,7 +11,7 @@ RSpec.describe 'Inline rewriter respects existing tags' do
       end
     RUBY
 
-    it 'does not insert when user provided @param/@option above the method' do
+    it 'does not insert when user provided @param/@option above the method', :aggregate_failures do
       expect(out).not_to include('# +A#foo+')
       expect(out).to include('@param [String] name The name') # original stays
     end
@@ -27,7 +27,7 @@ RSpec.describe 'Inline rewriter respects existing tags' do
       end
     RUBY
 
-    it 'does not insert when user provided @return' do
+    it 'does not insert when user provided @return', :aggregate_failures do
       expect(out).not_to include('# +A#bar+')
       expect(out).to include('@return [String] pre-documented')
     end

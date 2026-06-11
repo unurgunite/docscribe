@@ -4,53 +4,67 @@ require 'open3'
 require 'tmpdir'
 require 'fileutils'
 require 'rbconfig'
+require 'docscribe/cli'
 
-RSpec.describe 'CLI Sorbet support' do
+RSpec.describe Docscribe::CLI do
   before { skip_unless_sorbet_bridge_available! }
 
   describe '--rbi-dir' do
-    it 'loads Sorbet RBI signatures and uses them for @param/@return' do
-      Dir.mktmpdir do |dir|
-        FileUtils.mkdir_p(File.join(dir, 'sorbet/rbi'))
+    subject(:result) do
+      Open3.capture3(RbConfig.ruby, exe, '--stdin', '--rbi-dir', 'sorbet/rbi', stdin_data: code, chdir: dir)
+    end
 
-        File.write(File.join(dir, 'sorbet/rbi', 'demo.rbi'), <<~RBI)
-          # typed: strict
-          class Demo
-            extend T::Sig
-
-            sig { params(verbose: T::Boolean).returns(Integer) }
-            def foo(verbose:)
-            end
+    let(:dir) { Dir.mktmpdir }
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo(verbose:)
+            "a"
           end
-        RBI
+        end
+      RUBY
+    end
 
-        code = <<~RUBY
-          class Demo
-            def foo(verbose:)
-              "a"
-            end
+    after { FileUtils.rm_rf(dir) }
+
+    before do
+      FileUtils.mkdir_p(File.join(dir, 'sorbet/rbi'))
+      File.write(File.join(dir, 'sorbet/rbi', 'demo.rbi'), <<~RBI)
+        # typed: strict
+        class Demo
+          extend T::Sig
+
+          sig { params(verbose: T::Boolean).returns(Integer) }
+          def foo(verbose:)
           end
-        RUBY
+        end
+      RBI
+    end
 
-        stdout, stderr, status = Open3.capture3(
-          RbConfig.ruby,
-          exe,
-          '--stdin',
-          '--rbi-dir',
-          'sorbet/rbi',
-          stdin_data: code,
-          chdir: dir
-        )
+    it 'exits successfully' do
+      _, stderr, status = result
+      expect(status.success?).to be(true), stderr
+    end
 
-        expect(status.success?).to be(true), stderr
-        expect(stdout).to include('# @return [Integer]')
-        expect(stdout).to include(param_tag('verbose', 'Boolean'))
-        expect(stdout).not_to include('# @return [String]')
-      end
+    it 'uses RBI @return' do
+      expect(result[0]).to include('# @return [Integer]')
+    end
+
+    it 'uses RBI @param' do
+      expect(result[0]).to include(param_tag('verbose', 'Boolean'))
+    end
+
+    it 'ignores Ruby @return override' do
+      expect(result[0]).not_to include('# @return [String]')
     end
   end
 
   describe '--sorbet with inline sigs' do
+    subject(:result) do
+      Open3.capture3(RbConfig.ruby, exe, '--stdin', '--sorbet', stdin_data: code, chdir: dir)
+    end
+
+    let(:dir) { Dir.mktmpdir }
     let(:code) do
       <<~RUBY
         class Demo
@@ -64,22 +78,23 @@ RSpec.describe 'CLI Sorbet support' do
       RUBY
     end
 
-    it 'uses inline sigs from stdin when --sorbet is enabled' do
-      Dir.mktmpdir do |dir|
-        stdout, stderr, status = Open3.capture3(
-          RbConfig.ruby,
-          exe,
-          '--stdin',
-          '--sorbet',
-          stdin_data: code,
-          chdir: dir
-        )
+    after { FileUtils.rm_rf(dir) }
 
-        expect(status.success?).to be(true), stderr
-        expect(stdout).to include('# @return [Integer]')
-        expect(stdout).to include(param_tag('verbose', 'Boolean'))
-        expect(stdout).not_to include('# @return [String]')
-      end
+    it 'exits successfully' do
+      _, stderr, status = result
+      expect(status.success?).to be(true), stderr
+    end
+
+    it 'uses sig @return' do
+      expect(result[0]).to include('# @return [Integer]')
+    end
+
+    it 'uses sig @param' do
+      expect(result[0]).to include(param_tag('verbose', 'Boolean'))
+    end
+
+    it 'ignores Ruby @return override' do
+      expect(result[0]).not_to include('# @return [String]')
     end
   end
 end

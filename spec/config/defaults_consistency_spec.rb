@@ -2,22 +2,19 @@
 
 require 'yaml'
 
-RSpec.describe 'Config consistency' do
+RSpec.describe Docscribe::Config do
   let(:default) { Docscribe::Config::DEFAULT }
-  let(:yaml) { YAML.safe_load(Docscribe::Config.default_yaml) }
+  let(:yaml) { YAML.safe_load(described_class.default_yaml) }
 
   describe 'defaults' do
     it { expect(default).to eq(yaml) }
   end
 
   describe 'emit section' do
-    it 'matches between DEFAULT hash and template YAML' do
-      %w[header param_tags return_tag visibility_tags raise_tags
-         rescue_conditional_returns attributes].each do |key|
-        expect(yaml.dig('emit', key))
-          .to eq(default.dig('emit', key)),
-              "Mismatch for emit.#{key}: YAML=#{yaml.dig('emit',
-                                                         key).inspect}, DEFAULT=#{default.dig('emit', key).inspect}"
+    %w[header param_tags return_tag visibility_tags raise_tags
+       rescue_conditional_returns attributes].each do |key|
+      it "matches emit.#{key}" do
+        expect(yaml.dig('emit', key)).to eq(default.dig('emit', key))
       end
     end
   end
@@ -32,29 +29,22 @@ RSpec.describe 'Config consistency' do
     end
 
     it 'has matching tag_order arrays' do
-      yaml_order = yaml.dig('doc', 'tag_order') || []
-      default_order = default.dig('doc', 'tag_order') || []
-
-      yaml_normalized = yaml_order.map { |t| t.to_s.sub(/\A@/, '') }
-      default_normalized = default_order.map { |t| t.to_s.sub(/\A@/, '') }
-
-      msg = "tag_order mismatch: YAML=#{yaml_normalized.inspect}, DEFAULT=#{default_normalized.inspect}"
-      expect(yaml_normalized).to eq(default_normalized), msg
+      yaml_order = (yaml.dig('doc', 'tag_order') || []).map { |t| t.to_s.sub(/\A@/, '') }
+      default_order = (default.dig('doc', 'tag_order') || []).map { |t| t.to_s.sub(/\A@/, '') }
+      expect(yaml_order).to eq(default_order)
     end
   end
 
   describe 'inference section' do
-    it 'matches between DEFAULT hash and template YAML' do
-      %w[fallback_type nil_as_optional treat_options_keyword_as_hash].each do |key|
-        expect(yaml.dig('inference', key))
-          .to eq(default.dig('inference', key)),
-              "Mismatch for inference.#{key}"
+    %w[fallback_type nil_as_optional treat_options_keyword_as_hash].each do |key|
+      it "matches inference.#{key}" do
+        expect(yaml.dig('inference', key)).to eq(default.dig('inference', key))
       end
     end
   end
 
   describe 'filter section' do
-    it 'has matching visibilities and scopes' do
+    it 'has matching visibilities and scopes', :aggregate_failures do
       expect(yaml.dig('filter', 'visibilities'))
         .to match_array(default.dig('filter', 'visibilities'))
       expect(yaml.dig('filter', 'scopes'))
@@ -63,7 +53,7 @@ RSpec.describe 'Config consistency' do
   end
 
   describe 'rbs section' do
-    it 'has matching enabled and collapse_generics' do
+    it 'has matching enabled and collapse_generics', :aggregate_failures do
       expect(yaml.dig('rbs', 'enabled')).to eq(default.dig('rbs', 'enabled'))
       expect(yaml.dig('rbs', 'collapse_generics')).to eq(default.dig('rbs', 'collapse_generics'))
       expect(yaml.dig('rbs', 'sig_dirs')).to match_array(default.dig('rbs', 'sig_dirs'))
@@ -71,7 +61,7 @@ RSpec.describe 'Config consistency' do
   end
 
   describe 'sorbet section' do
-    it 'has matching enabled and collapse_generics' do
+    it 'has matching enabled and collapse_generics', :aggregate_failures do
       expect(yaml.dig('sorbet', 'enabled')).to eq(default.dig('sorbet', 'enabled'))
       expect(yaml.dig('sorbet', 'collapse_generics')).to eq(default.dig('sorbet', 'collapse_generics'))
       expect(yaml.dig('sorbet', 'rbi_dirs')).to match_array(default.dig('sorbet', 'rbi_dirs'))

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'CollectorPlugin doc normalization' do
+RSpec.describe Docscribe::Plugin::Base::CollectorPlugin do
   after { Docscribe::Plugin::Registry.clear! }
 
   def build_plugin(anchor_type:, doc:)
@@ -41,20 +41,18 @@ RSpec.describe 'CollectorPlugin doc normalization' do
       Docscribe::Plugin::Registry.register(plugin)
     end
 
-    it 'prepends configured default message before tag-only plugin docs' do
+    it { expect(out).to include('# PLUGIN DEFAULT.') }
+    it { expect(out).to include('# @return [Boolean]') }
+
+    it 'has all parts present', :aggregate_failures do
       expect(out).to include('# PLUGIN DEFAULT.')
       expect(out).to include('# @return [Boolean]')
+      expect(out).to include("def foo\n")
+    end
 
-      msg_idx = out.index('# PLUGIN DEFAULT.')
-      tag_idx = out.index('# @return [Boolean]')
-      def_idx = out.index("def foo\n")
-
-      expect(msg_idx).not_to be_nil
-      expect(tag_idx).not_to be_nil
-      expect(def_idx).not_to be_nil
-
-      expect(msg_idx).to be < tag_idx
-      expect(tag_idx).to be < def_idx
+    it 'orders default message before tag before def', :aggregate_failures do
+      expect(out.index('# PLUGIN DEFAULT.')).to be < out.index('# @return [Boolean]')
+      expect(out.index('# @return [Boolean]')).to be < out.index("def foo\n")
     end
   end
 
@@ -83,7 +81,7 @@ RSpec.describe 'CollectorPlugin doc normalization' do
       Docscribe::Plugin::Registry.register(plugin)
     end
 
-    it 'does not prepend default message' do
+    it 'does not prepend default message', :aggregate_failures do
       expect(out).not_to include('# PLUGIN DEFAULT.')
       expect(out).to include('# @return [Boolean]')
     end
@@ -117,7 +115,7 @@ RSpec.describe 'CollectorPlugin doc normalization' do
       Docscribe::Plugin::Registry.register(plugin)
     end
 
-    it 'does not prepend default message when plugin doc has prose' do
+    it 'does not prepend default message when plugin doc has prose', :aggregate_failures do
       expect(out).to include('# Custom prose line.')
       expect(out).to include('# @return [Boolean]')
       expect(out).not_to include('# PLUGIN DEFAULT.')
@@ -149,7 +147,7 @@ RSpec.describe 'CollectorPlugin doc normalization' do
       Docscribe::Plugin::Registry.register(plugin)
     end
 
-    it 'prepends default message for tag-only docs on :defs as well' do
+    it 'prepends default message for tag-only docs on :defs as well', :aggregate_failures do
       expect(out).to include('# PLUGIN DEFAULT.')
       expect(out).to include('# @return [Boolean]')
       expect(out).to include('def self.foo')
@@ -179,7 +177,7 @@ RSpec.describe 'CollectorPlugin doc normalization' do
       Docscribe::Plugin::Registry.register(plugin)
     end
 
-    it 'does not prepend default message for non-def anchors' do
+    it 'does not prepend default message for non-def anchors', :aggregate_failures do
       expect(out).to include('# @return [Boolean]')
       expect(out).not_to include('# PLUGIN DEFAULT.')
     end

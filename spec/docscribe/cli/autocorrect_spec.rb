@@ -3,36 +3,54 @@
 require 'open3'
 require 'tmpdir'
 require 'rbconfig'
+require 'docscribe/cli'
 
-RSpec.describe 'CLI -a' do
-  it 'applies safe doc updates in place' do
-    Dir.mktmpdir do |dir|
-      path = File.join(dir, 'abc.rb')
+RSpec.describe Docscribe::CLI do
+  let(:dir) { Dir.mktmpdir }
+  let(:path) { File.join(dir, 'abc.rb') }
 
-      File.write(path, <<~RUBY)
-        class A
-          # @todo docs (keep this line!)
-          # @return [String] already documented
-          def foo(x, y: 1)
-            "ok"
-          end
+  let(:code) do
+    <<~RUBY
+      class A
+        # @todo docs (keep this line!)
+        # @return [String] already documented
+        def foo(x, y: 1)
+          "ok"
         end
-      RUBY
+      end
+    RUBY
+  end
 
-      _stdout, stderr, status = Open3.capture3(
-        RbConfig.ruby, exe,
-        '-a',
-        'abc.rb',
-        chdir: dir
-      )
+  before { File.write(path, code) }
 
+  describe 'result' do
+    subject(:result) { Open3.capture3(RbConfig.ruby, exe, '-a', 'abc.rb', chdir: dir) }
+
+    after { FileUtils.rm_rf(dir) }
+
+    it 'exits successfully' do
+      _stdout, stderr, status = result
       expect(status.success?).to be(true), stderr
+    end
 
-      out = File.read(path)
-      expect(out).to include('# @todo docs (keep this line!)')
-      expect(out).to include('# @return [String] already documented')
-      expect(out).to include(param_tag('x', 'Object'))
-      expect(out).to include(param_tag('y', 'Integer'))
+    it 'keeps @todo docs' do
+      result
+      expect(File.read(path)).to include('# @todo docs (keep this line!)')
+    end
+
+    it 'keeps existing @return' do
+      result
+      expect(File.read(path)).to include('# @return [String] already documented')
+    end
+
+    it 'adds @param for x' do
+      result
+      expect(File.read(path)).to include(param_tag('x', 'Object'))
+    end
+
+    it 'adds @param for y' do
+      result
+      expect(File.read(path)).to include(param_tag('y', 'Integer'))
     end
   end
 end

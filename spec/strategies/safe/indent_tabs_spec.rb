@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy indentation' do
+RSpec.describe Docscribe::InlineRewriter do
   it 'preserves tab indentation in merged additions' do
     code = "class A\n\t# @todo docs\n\tdef foo(x)\n\t  x\n\tend\nend\n"
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Sorbet-aware doc anchoring' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline_with_sorbet(code, strategy: strategy, config_overrides: { 'emit' => { 'header' => true } }) }
 
   let(:code) do
@@ -33,7 +33,7 @@ RSpec.describe 'Sorbet-aware doc anchoring' do
       RUBY
     end
 
-    it 'merges into an existing doc block above sig instead of inserting a second block' do
+    it 'merges into an existing doc block above sig instead of inserting a second block', :aggregate_failures do
       expect(out).to include('# Existing docs')
       expect(out).to include('# @return [Integer]')
       expect(out).to include(param_tag('verbose', 'Boolean'))
@@ -58,7 +58,7 @@ RSpec.describe 'Sorbet-aware doc anchoring' do
       RUBY
     end
 
-    it 'does not duplicate the existing doc block' do
+    it 'does not duplicate the existing doc block', :aggregate_failures do
       expect(out).to include('# Existing docs')
       expect(out).to include(param_tag('verbose', 'Boolean'))
       expect(out).to include('# @return [Integer]')
@@ -68,18 +68,20 @@ RSpec.describe 'Sorbet-aware doc anchoring' do
   end
 
   describe 'inserting docs for undocumented Sorbet methods' do
+    let(:pattern) do
+      Regexp.new(<<~'RX', Regexp::EXTENDED)
+        ^\s*\#\s+\+Demo\#foo\+\s+->\s+Integer.*\n
+        (?:^\s*\#.*\n)*?
+        ^\s*\#\s+@param\s+\[Boolean\]\s+verbose\s+Param\s+documentation\.\n
+        (?:^\s*\#\s*\n)*?
+        ^\s*\#\s+@return\s+\[Integer\]\s*\n
+        ^\s*sig\s+\{\s*params\(verbose:\s*T::Boolean\)\.returns\(Integer\)\s*\}\s*\n
+        ^\s*def\s+foo\(verbose:\)
+      RX
+    end
+
     it 'inserts generated docs above sig' do
-      expect(out).to match(
-        Regexp.new(<<~'RX', Regexp::EXTENDED)
-          ^\s*\#\s+\+Demo\#foo\+\s+->\s+Integer.*\n
-          (?:^\s*\#.*\n)*?
-          ^\s*\#\s+@param\s+\[Boolean\]\s+verbose\s+Param\s+documentation\.\n
-          (?:^\s*\#\s*\n)*?
-          ^\s*\#\s+@return\s+\[Integer\]\s*\n
-          ^\s*sig\s+\{\s*params\(verbose:\s*T::Boolean\)\.returns\(Integer\)\s*\}\s*\n
-          ^\s*def\s+foo\(verbose:\)
-        RX
-      )
+      expect(out).to match(pattern)
     end
   end
 
@@ -101,10 +103,19 @@ RSpec.describe 'Sorbet-aware doc anchoring' do
 
     let(:strategy) { :aggressive }
 
-    it 'removes and rebuilds the doc block above sig' do
+    it 'includes header section' do
       expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
+    end
+
+    it 'includes correct @return tag' do
       expect(out).to include('# @return [Integer]')
+    end
+
+    it 'does not include wrong @return tag' do
       expect(out).not_to include('# @return [String]')
+    end
+
+    it 'places doc before sig' do
       sig_prefix = '# \+Demo\#foo\+ -> Integer.*?\n'
       sig_part = '\s*sig \{ params\(verbose: T::Boolean\)\.returns\(Integer\) \}\n'
       sig_pattern = Regexp.new("#{sig_prefix}#{sig_part}\\s*def foo\\(verbose:\\)", Regexp::MULTILINE)

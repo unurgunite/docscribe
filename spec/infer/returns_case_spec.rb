@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'return inference for case expressions' do
+RSpec.describe Docscribe::Infer do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -17,7 +17,7 @@ RSpec.describe 'return inference for case expressions' do
     RUBY
   end
 
-  it 'does not crash on methods whose body is a case expression' do
+  it 'does not crash on methods whose body is a case expression', :aggregate_failures do
     expect(out).to match(header_regex('A', 'foo', 'Integer'))
     expect(out).to include('# @return [Integer]')
   end

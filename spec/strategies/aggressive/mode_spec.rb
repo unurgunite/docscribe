@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'aggressive strategy behavior' do
+RSpec.describe Docscribe::InlineRewriter do
   describe 'aggressive strategy' do
     let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 

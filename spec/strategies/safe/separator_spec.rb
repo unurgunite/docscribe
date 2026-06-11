@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy separator behavior' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code) }
 
   let(:code) do
@@ -13,7 +13,7 @@ RSpec.describe 'safe strategy separator behavior' do
     RUBY
   end
 
-  it 'does not add a second blank-comment separator if one already exists' do
+  it 'does not add a second blank-comment separator if one already exists', :aggregate_failures do
     # Must merge @param
     expect(out).to include(param_tag('x', 'Object'))
 

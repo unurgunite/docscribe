@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'CollectorPlugin priority' do
+RSpec.describe Docscribe::Plugin::Base::CollectorPlugin do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -44,7 +44,7 @@ RSpec.describe 'CollectorPlugin priority' do
       RUBY
     end
 
-    it 'keeps only the highest priority CollectorPlugin insertion at the same anchor' do
+    it 'keeps only the highest priority CollectorPlugin insertion at the same anchor', :aggregate_failures do
       expect(out).to include('# HIGH')
       expect(out).not_to include('# LOW')
     end
@@ -69,7 +69,7 @@ RSpec.describe 'CollectorPlugin priority' do
       RUBY
     end
 
-    it 'keeps all plugin insertions on a tie (same max priority)' do
+    it 'keeps all plugin insertions on a tie (same max priority)', :aggregate_failures do
       expect(out).to include('# A')
       expect(out).to include('# B')
     end

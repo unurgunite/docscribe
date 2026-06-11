@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy respects filters' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('filter' => { 'exclude' => ['A#foo'] }) }

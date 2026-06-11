@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
+RSpec.describe Docscribe::Infer do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -18,7 +18,7 @@ RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
       RUBY
     end
 
-    it 'adds @raise tags and conditional @return for the rescue branch' do
+    it 'adds @raise tags and conditional @return for the rescue branch', :aggregate_failures do
       expect(out).to match(header_regex('X', 'a', 'Integer'))
       expect(out).to include('@raise [Foo]')
       expect(out).to include('@raise [Bar]')
@@ -40,7 +40,7 @@ RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
       RUBY
     end
 
-    it 'adds @raise [StandardError] and conditional @return' do
+    it 'adds @raise [StandardError] and conditional @return', :aggregate_failures do
       expect(out).to match(header_regex('X', 'b', 'Object'))
       expect(out).to include('@raise [StandardError]')
       expect(out).to include('# @return [Object]')
@@ -59,7 +59,7 @@ RSpec.describe 'Inline rewriter @raise and conditional @return with rescue' do
       RUBY
     end
 
-    it 'does not add @raise nor conditional return' do
+    it 'does not add @raise nor conditional return', :aggregate_failures do
       expect(out).to match(header_regex('X', 'c', 'Symbol'))
       expect(out).not_to match(/^\s*# @raise \[/)
       expect(out).not_to match(/^\s*# @return \[.*\]\s+if /)

@@ -4,37 +4,45 @@ require 'open3'
 require 'tmpdir'
 require 'fileutils'
 require 'rbconfig'
+require 'docscribe/cli'
 
-RSpec.describe 'CLI parse error handling' do
-  it 'continues when one file has a syntax error and exits non-zero' do
-    Dir.mktmpdir do |dir|
-      File.write(File.join(dir, 'a_bad.rb'), <<~RUBY)
-        class A
-          def x
-            1 + )
-          end
+RSpec.describe Docscribe::CLI do
+  subject(:result) { Open3.capture3(RbConfig.ruby, exe, dir, chdir: dir) }
+
+  let(:dir) { Dir.mktmpdir }
+
+  after { FileUtils.rm_rf(dir) }
+
+  before do
+    File.write(File.join(dir, 'a_bad.rb'), <<~RUBY)
+      class A
+        def x
+          1 + )
         end
-      RUBY
+      end
+    RUBY
 
-      File.write(File.join(dir, 'b_good.rb'), <<~RUBY)
-        class B
-          # @return [Integer]
-          def y; 1; end
-        end
-      RUBY
+    File.write(File.join(dir, 'b_good.rb'), <<~RUBY)
+      class B
+        # @return [Integer]
+        def y; 1; end
+      end
+    RUBY
+  end
 
-      stdout, stderr, status = Open3.capture3(
-        RbConfig.ruby, exe, dir,
-        chdir: dir
-      )
+  it 'exits non-zero' do
+    expect(result[2].success?).to be(false)
+  end
 
-      expect(status.success?).to be(false)
+  it 'shows progress with E.' do
+    expect(result[0].lines.first&.strip).to eq('E.')
+  end
 
-      progress = stdout.lines.first&.strip
-      expect(progress).to eq('E.')
+  it 'reports error processing' do
+    expect(result[1]).to include('Error processing:')
+  end
 
-      expect(stderr).to include('Error processing:')
-      expect(stderr).to include('a_bad.rb')
-    end
+  it 'reports bad file' do
+    expect(result[1]).to include('a_bad.rb')
   end
 end

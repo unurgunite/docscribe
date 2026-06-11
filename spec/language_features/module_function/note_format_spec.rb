@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'module_function note formatting' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code) }
 
   let(:code) do
@@ -14,7 +14,7 @@ RSpec.describe 'module_function note formatting' do
     RUBY
   end
 
-  it 'does not insert an extra blank line between @note and @param' do
+  it 'does not insert an extra blank line between @note and @param', :aggregate_failures do
     # Must have note
     expect(out).to include('# @note module_function:')
 

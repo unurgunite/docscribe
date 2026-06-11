@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'CollectorPlugin integration' do
+RSpec.describe Docscribe::Plugin::Base::CollectorPlugin do
   after { Docscribe::Plugin::Registry.clear! }
 
   let(:define_method_plugin) do
@@ -42,14 +42,12 @@ RSpec.describe 'CollectorPlugin integration' do
   describe 'in safe mode' do
     subject(:out) { inline(code) }
 
-    it 'inserts docs for define_method' do
-      Docscribe::Plugin::Registry.register(define_method_plugin)
-      expect(out).to include('# Dynamic method: hello')
-      expect(out).to include('# @return [Object]')
-    end
+    before { Docscribe::Plugin::Registry.register(define_method_plugin) }
+
+    it { expect(out).to include('# Dynamic method: hello') }
+    it { expect(out).to include('# @return [Object]') }
 
     it 'is idempotent' do
-      Docscribe::Plugin::Registry.register(define_method_plugin)
       second = inline(out)
       expect(second.scan('# Dynamic method: hello').length).to eq(1)
     end
@@ -58,24 +56,22 @@ RSpec.describe 'CollectorPlugin integration' do
   describe 'in aggressive mode' do
     subject(:out) { inline(code, strategy: :aggressive) }
 
-    it 'replaces existing doc' do
-      Docscribe::Plugin::Registry.register(define_method_plugin)
-      expect(out).to include('# Dynamic method: hello')
-      expect(out).not_to include('# old doc')
-    end
+    before { Docscribe::Plugin::Registry.register(define_method_plugin) }
 
-    it 'isolates broken collector plugins and continues' do
-      broken = Class.new(Docscribe::Plugin::Base::CollectorPlugin) do
+    let(:broken_plugin) do
+      Class.new(Docscribe::Plugin::Base::CollectorPlugin) do
         def collect(_ast, _buffer)
           raise 'boom'
         end
       end.new
+    end
 
-      Docscribe::Plugin::Registry.register(broken)
+    it { expect(out).to include('# Dynamic method: hello') }
+    it { expect(out).not_to include('# old doc') }
 
-      expect do
-        out
-      end.not_to raise_error
+    it 'isolates broken collector plugins and continues' do
+      Docscribe::Plugin::Registry.register(broken_plugin)
+      expect { out }.not_to raise_error
     end
   end
 end

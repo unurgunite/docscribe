@@ -21,3 +21,6 @@ Lint/BooleanSymbol:
 
 Style/RedundantFetchBlock:
   Enabled: false
+
+RSpec/SpecFilePathFormat:
+  Enabled: false

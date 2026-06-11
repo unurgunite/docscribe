@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'extend self handling' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -18,7 +18,7 @@ RSpec.describe 'extend self handling' do
       RUBY
     end
 
-    it 'documents methods as module methods (M.foo)' do
+    it 'documents methods as module methods (M.foo)', :aggregate_failures do
       expect(out).to include('# +M.foo+')
       expect(out).to include(param_tag('x', 'Object'))
       expect(out).not_to include('# +M#foo+')
@@ -36,7 +36,7 @@ RSpec.describe 'extend self handling' do
       RUBY
     end
 
-    it 'promotes earlier defs when `extend self` appears after them' do
+    it 'promotes earlier defs when `extend self` appears after them', :aggregate_failures do
       expect(out).to include('# +M.foo+')
       expect(out).not_to include('# +M#foo+')
       expect(out).not_to include('@note module_function:')
@@ -57,7 +57,7 @@ RSpec.describe 'extend self handling' do
       RUBY
     end
 
-    it 'private methods become private module methods too' do
+    it 'private methods become private module methods too', :aggregate_failures do
       expect(out).to include('# +M.secret+')
       expect(out).to match(/# \+M\.secret\+.*?\n.*?# @private/m)
     end

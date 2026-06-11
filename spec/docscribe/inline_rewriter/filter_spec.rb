@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Inline rewriter filter' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: config) }
 
   let(:filter_overrides) { { 'exclude' => ['*#initialize'] } }
@@ -13,7 +13,7 @@ RSpec.describe 'Inline rewriter filter' do
     end
   RUBY
 
-  it 'excludes initialize by glob pattern' do
+  it 'excludes initialize by glob pattern', :aggregate_failures do
     expect(out).not_to include('+A#initialize+')
     expect(out).to include('+A#foo+')
   end
@@ -31,7 +31,7 @@ RSpec.describe 'Inline rewriter filter' do
       end
     RUBY
 
-    it 'includes only matching methods when include is non-empty' do
+    it 'includes only matching methods when include is non-empty', :aggregate_failures do
       expect(out).to include('+A#foo+')
       expect(out).not_to include('+A#bar+')
     end

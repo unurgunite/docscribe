@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'aggressive strategy safety' do
+RSpec.describe Docscribe::InlineRewriter do
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
   describe 'does not delete non-doc comment blocks (no YARD tags / header)' do

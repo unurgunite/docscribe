@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy visibility tags toggle' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'visibility_tags' => false }) }
@@ -14,7 +14,7 @@ RSpec.describe 'safe strategy visibility tags toggle' do
     RUBY
   end
 
-  it 'does not add @private when emit.visibility_tags is false' do
+  it 'does not add @private when emit.visibility_tags is false', :aggregate_failures do
     expect(out).to include(param_tag('x', 'Object'))
     expect(out).not_to include('# @private')
   end

@@ -1323,7 +1323,7 @@ module Docscribe
         format_param_tag(indent, pname, ty, opts[:param_documentation], style: opts[:param_tag_style])
       end
 
-      # Three-tier type lookup: external_sig → override → inference.
+      # Three-tier type lookup: external_sig -> override -> inference.
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Object] external_sig Param documentation.
@@ -1340,7 +1340,7 @@ module Docscribe
                                  treat_options_keyword_as_hash: opts[:treat_options_keyword_as_hash])
       end
 
-      # Two-tier type lookup: override → inference (for rest/kwrest types).
+      # Two-tier type lookup: override -> inference (for rest/kwrest types).
       # @note module_function: when included, also defines # (instance visibility: private)
       # @private
       # @param [Object] param_types_override Param documentation.
