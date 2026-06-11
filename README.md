@@ -44,6 +44,8 @@ Common workflows:
     * [Contents](#contents)
     * [Installation](#installation)
     * [Quick start](#quick-start)
+    * [Architecture](#architecture)
+        * [Data flow](#data-flow)
     * [CLI](#cli)
         * [Options](#options)
         * [Examples](#examples)
@@ -86,6 +88,8 @@ Common workflows:
         * [Generate a plugin skeleton](#generate-a-plugin-skeleton)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
+    * [Mermaid Architecture Reference](#mermaid-architecture-reference)
+        * [Data flow](#data-flow)
     * [Limitations](#limitations)
     * [Roadmap](#roadmap)
     * [Contributing](#contributing)
@@ -203,6 +207,151 @@ end
 > - For methods with a leading Sorbet `sig`, docs are inserted above the first `sig`.
 > - Class methods show with a dot (`+Demo.bump+`, `+Demo.internal+`).
 > - Methods inside `class << self` under `private` are marked `@private`.
+
+## Architecture
+
+Docscribe is organized into seven subsystems. The CLI layer receives user input and orchestrates configuration loading,
+then delegates to the core engine which parses source code, collects methods (using an AST walker), builds YARD doc
+lines — combining heuristic type inference, external RBS/Sorbet signatures, and plugin output — and finally rewrites the
+source via a strategy (safe merge or aggressive replace).
+
+```mermaid
+flowchart TB
+    subgraph CLI["CLI Layer"]
+        Exe["exe/docscribe\nEntry point"]
+        Run["CLI::Run\nMain execution\n· expand paths\n· iterate files\n· report results"]
+        Options["CLI::Options\nARGV parsing\n(mode, strategy,\nfilters, flags)"]
+        InitCmd["CLI::Init\ndocscribe init\nGenerate config"]
+        GenCmd["CLI::Generate\ndocscribe generate\nScaffold plugins"]
+        ConfigBuilder["CLI::ConfigBuilder\nApply CLI overrides\nto config"]
+    end
+
+    subgraph Config["Configuration"]
+        ConfigClass["Config\nCentral config object\n· raw hash\n· query methods"]
+        Defaults["config/defaults.rb\nDEFAULT hash"]
+        Loader["config/loader.rb\nYAML loading\n+ deep merge"]
+        Emit["config/emit.rb\nEmission toggles\n(header, tags, etc.)"]
+        Filtering["config/filtering.rb\nFile/method\ninclude/exclude"]
+        RBSConfig["config/rbs.rb\nRBS provider\nfactory"]
+        SorbetConfig["config/sorbet.rb\nSorbet provider\nchain factory"]
+        PluginConfig["config/plugin.rb\nPlugin loading\nfrom YAML"]
+    end
+
+    subgraph Parsing["Parsing"]
+        ParsingModule["Parsing\nBackend selection\n(:parser / :prism)"]
+        ParserGem["Parser gem\n(whitequark/parser)"]
+        Prism["Prism translator\n(Ruby 3.4+)"]
+    end
+
+    subgraph Core["Core Engine"]
+        InlineRewriter["InlineRewriter\n· parse → collect\n· deduplicate → dispatch\n· rewrite"]
+        Collector["Collector\n< Parser::AST::Processor\nAST walker\n· find methods/attrs\n· track visibility\n· track containers"]
+        DocBuilder["DocBuilder\nGenerate YARD doc lines\n· combine inference\n· external signatures\n· plugin tags"]
+        DocBlock["DocBlock\nSafe strategy:\nparse → merge → sort\nexisting doc blocks"]
+        SourceHelpers["SourceHelpers\nPosition/range\nutilities"]
+    end
+
+    subgraph Infer["Inference Engine"]
+        InferModule["Infer\nEntry point"]
+        Params["Infer::Params\nParameter type\nfrom name + default"]
+        Returns["Infer::Returns\nReturn type\nfrom method body"]
+        Raises["Infer::Raises\n@raise tags\nfrom raise/rescue"]
+        Literals["Infer::Literals\nAST literal →\ntype string"]
+        Names["Infer::Names\n:const node →\nFQN string"]
+        ASTWalk["Infer::ASTWalk\nRecursive DFS\nAST traversal"]
+    end
+
+    subgraph Plugins["Plugin System"]
+        PluginModule["Plugin\nTag/Collector\ndispatch"]
+        Registry["Plugin::Registry\nGlobal registry\n· register → route\n· tag_entries\n· collector_entries"]
+        TagPlugin["Base::TagPlugin\nOverride #call(context)\n→ Array<Tag>"]
+        CollectorPlugin["Base::CollectorPlugin\nOverride #collect(ast, buffer)\n→ Array<Hash>"]
+        TagValue["Plugin::Tag\nStruct (name, text, types)"]
+        Context["Plugin::Context\nMethod snapshot struct"]
+    end
+
+    subgraph Types["External Type System"]
+        ProviderChain["ProviderChain\nComposite:\nquery in order\nfirst match wins"]
+        RBSProvider["RBS::Provider\n.rbs files\n→ RBS lib"]
+        RBSFormatter["RBS::TypeFormatter\nRBS type →\nYARD type string"]
+        RBSCollection["RBS::CollectionLoader\nrbs_collection\n.lock.yaml"]
+        SorbetBase["Sorbet::BaseProvider\nRBS::Prototype::RBI\nbridge"]
+        SorbetSource["Sorbet::SourceProvider\nInline sig{}\ndeclarations"]
+        SorbetRBI["Sorbet::RBIProvider\n.rbi files\ndirectories"]
+    end
+
+    Exe --> Run
+    Run --> Options
+    Run --> InitCmd
+    Run --> GenCmd
+    Run --> ConfigBuilder
+    ConfigBuilder --> ConfigClass
+    ConfigClass --> Defaults
+    ConfigClass --> Loader
+    ConfigClass --> Emit
+    ConfigClass --> Filtering
+    ConfigClass --> RBSConfig
+    ConfigClass --> SorbetConfig
+    ConfigClass --> PluginConfig
+    Run --> InlineRewriter
+    InlineRewriter --> ParsingModule
+    ParsingModule --> ParserGem
+    ParsingModule --> Prism
+    InlineRewriter --> Collector
+    Collector --> PluginModule
+    PluginModule --> Registry
+    Registry --> CollectorPlugin
+    InlineRewriter --> DocBuilder
+    DocBuilder --> InferModule
+    InferModule --> Params
+    InferModule --> Returns
+    InferModule --> Raises
+    Params --> Literals
+    Returns --> Literals
+    Raises --> ASTWalk
+    Raises --> Names
+    DocBuilder --> ProviderChain
+    ProviderChain --> SorbetSource
+    ProviderChain --> SorbetRBI
+    ProviderChain --> RBSProvider
+    SorbetSource --> SorbetBase
+    SorbetRBI --> SorbetBase
+    RBSProvider --> RBSFormatter
+    RBSProvider --> RBSCollection
+    DocBuilder --> PluginModule
+    PluginModule --> Registry
+    Registry --> TagPlugin
+    TagPlugin --> TagValue
+    TagPlugin --> Context
+    InlineRewriter --> DocBlock
+    InlineRewriter --> SourceHelpers
+```
+
+### Data flow
+
+```mermaid
+flowchart LR
+    Input["Source files\n(.rb)"] --> Parse["Parsing.parse_buffer\nParser gem / Prism"]
+    Parse --> AST["AST + Comments"]
+    AST --> Collect["Collector.process\n· Find methods\n· Track visibility\n· Find attr_*"]
+    AST --> CollectPlugins["CollectorPlugin#collect\n· Custom AST walks\n· Non-standard constructs"]
+    Collect --> Insertions["Insertion list\n(sorted by position)"]
+    CollectPlugins --> Insertions
+    Insertions --> Dedup["Deduplicate\n(override by position)"]
+    Dedup --> Build["DocBuilder.build_doc_lines\nper insertion"]
+    Build --> Infer["Infer params / returns / raises\n(heuristic fallback)"]
+    Build --> SigQuery["ProviderChain\nquery external types"]
+    Build --> TagPlugins["TagPlugin#call\n(add extra @tags)"]
+    Infer --> ResultDoc["Generated YARD doc block"]
+    SigQuery --> ResultDoc
+    TagPlugins --> ResultDoc
+    ResultDoc --> Strategy{"Strategy?"}
+    Strategy -->|Safe| Merge["DocBlock.merge\npreserve + append + sort"]
+    Strategy -->|Aggressive| Replace["Replace entirely"]
+    Merge --> Rewritten["Rewriter#process\n→ rewritten source"]
+    Replace --> Rewritten
+    Rewritten --> Output["Modified .rb file\n/ STDOUT"]
+```
 
 ## CLI
 
