@@ -63,7 +63,13 @@ module Docscribe
     def self.process_single_plugin_result(entry, ast, buffer)
       plugin = entry.plugin
       results = Array(plugin.collect(ast, buffer))
+      process_plugin_insertions(results, entry, plugin)
+    rescue StandardError => e
+      warn "Docscribe: CollectorPlugin #{plugin.class} raised #{e.class}: #{e.message}" if debug?
+      []
+    end
 
+    def self.process_plugin_insertions(results, entry, plugin)
       results.map do |insertion|
         next nil unless valid_plugin_result?(insertion, plugin)
 
@@ -73,9 +79,6 @@ module Docscribe
           __docscribe_plugin_order: entry.order
         )
       end.compact
-    rescue StandardError => e
-      warn "Docscribe: CollectorPlugin #{plugin.class} raised #{e.class}: #{e.message}" if debug?
-      []
     end
 
     # Validate a CollectorPlugin result is a Hash.

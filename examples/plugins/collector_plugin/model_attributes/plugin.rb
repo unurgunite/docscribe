@@ -45,6 +45,60 @@ module DocscribePlugins
       regexp: 'Regexp'
     }.freeze
 
+    STRING_RETURN_METHODS = %i[
+      upcase downcase capitalize capitalize_first
+      strip lstrip rstrip
+      trim gsub sub gsub! sub!
+      truncate
+      concat append +
+      split chars each_char each_line
+      include? start_with? end_with?
+      match scan find_index
+      empty? present? blank?
+      to_s to_str
+      prepend reverse reverse!
+      swapcase swapcase!
+      tr tr_s tr_t tr_u
+      slice slice!
+      chars bytes
+    ].freeze
+
+    STRING_INTEGER_RETURN_METHODS = %i[length size count].freeze
+
+    INTEGER_BOOLEAN_METHODS = %i[
+      zero? one? positive? negative?
+      even? odd? finite?
+    ].freeze
+
+    INTEGER_ARITHMETIC_METHODS = %i[+ - * / % **].freeze
+
+    INTEGER_RETURN_METHODS = %i[
+      floor ceil round trunc
+      abs <=>
+    ].freeze
+
+    STRING_METHODS = %i[
+      upcase downcase capitalize
+      strip lstrip rstrip
+      gsub sub
+      truncate
+      concat append +
+      include? start_with? end_with?
+      match scan
+      empty? present? blank?
+      to_s to_str
+      length size count
+      reverse
+    ].freeze
+
+    INTEGER_METHODS = %i[
+      zero? one? positive? negative?
+      even? odd?
+      floor ceil round
+      abs
+      + - * / % **
+    ].freeze
+
     # @!attribute [r] root
     #   @return [String] Rails application root directory
     attr_reader :root
@@ -135,59 +189,6 @@ module DocscribePlugins
       nil
     end
 
-    # Resolve a possibly-namespaced constant name to a string.
-    #
-    # @private
-    # @param [Parser::AST::Node] node
-    # @return [String, nil]
-    def resolve_const_name(node)
-      return nil unless node && node.type == :const
-
-      name = node.children[1]&.to_s
-      return name if node.children[0].nil?
-
-      prefix = resolve_const_name(node.children[0])
-      return name unless prefix
-
-      "#{prefix}::#{name}"
-    end
-
-    # Convert a model class name to a table name.
-    #
-    # @private
-    # @param [String] model_name
-    # @return [String]
-    def model_name_to_table_name(model_name)
-      parts = model_name.split('::')
-      table = parts.map do |p|
-        p.gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
-         .gsub(/([a-z\d])([A-Z])/, '\1_\2')
-         .downcase
-      end.join('_')
-      pluralize(table)
-    end
-
-    # Simple English pluralization (handles most common cases).
-    #
-    # @private
-    # @param [String] word
-    # @return [String]
-    def pluralize(word)
-      return word if word.end_with?('s', 'x', 'z', 'ch', 'sh')
-
-      if word.match?(/[^aeiou]y\Z/)
-        "#{word[0..-2]}ies"
-      elsif word.end_with?('es', 'us') || word.match?(/[^aeiou]o\Z/)
-        "#{word}es"
-      elsif word.end_with?('fe')
-        "#{word[0..-3]}ves"
-      elsif word.end_with?('f')
-        "#{word[0..-2]}ves"
-      else
-        "#{word}s"
-      end
-    end
-
     # Load schema.rb or structure.sql and return table columns.
     #
     # @private
@@ -237,6 +238,36 @@ module DocscribePlugins
       return unless model_name
 
       tables[model_name_to_table_name(model_name)]
+    end
+
+    # Convert a model class name to a table name.
+    #
+    # @private
+    # @param [String] model_name
+    # @return [String]
+    def model_name_to_table_name(model_name)
+      parts = model_name.split('::')
+      table = parts.map do |p|
+        p.gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+         .gsub(/([a-z\d])([A-Z])/, '\1_\2')
+         .downcase
+      end.join('_')
+      pluralize(table)
+    end
+
+    # Simple English pluralization (handles most common cases).
+    #
+    # @private
+    # @param [String] word
+    # @return [String]
+    def pluralize(word)
+      return word if word.end_with?('s', 'x', 'z', 'ch', 'sh')
+      return "#{word[0..-2]}ies" if word.match?(/[^aeiou]y\Z/)
+      return "#{word}es" if word.end_with?('es', 'us') || word.match?(/[^aeiou]o\Z/)
+      return "#{word[0..-3]}ves" if word.end_with?('fe')
+      return "#{word[0..-2]}ves" if word.end_with?('f')
+
+      "#{word}s"
     end
 
     def method_nodes_for(node)
@@ -335,6 +366,23 @@ module DocscribePlugins
       literal_type(node) || 'Object'
     end
 
+    # Resolve a possibly-namespaced constant name to a string.
+    #
+    # @private
+    # @param [Parser::AST::Node] node
+    # @return [String, nil]
+    def resolve_const_name(node)
+      return nil unless node && node.type == :const
+
+      name = node.children[1]&.to_s
+      return name if node.children[0].nil?
+
+      prefix = resolve_const_name(node.children[0])
+      return name unless prefix
+
+      "#{prefix}::#{name}"
+    end
+
     def variable_node?(node)
       %i[lvar ivasgn ivar].include?(node.type)
     end
@@ -417,34 +465,9 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_string_method_type(meth, args, columns)
-      # Methods that return String
-      return 'String' if %i[
-        upcase downcase capitalize capitalize_first
-        strip lstrip rstrip
-        trim gsub sub gsub! sub!
-        truncate
-        concat append +
-        split chars each_char each_line
-        include? start_with? end_with?
-        match scan find_index
-        empty? present? blank?
-        present?
-        to_s to_str to_str
-        prepend
-        reverse reverse!
-        swapcase swapcase!
-        tr tr_s tr_t tr_u
-        slice slice!
-        chars chars
-        bytes bytes
-        chars
-      ].include?(meth)
-
-      # String concatenation: name + surname
+      return 'String' if STRING_RETURN_METHODS.include?(meth)
       return infer_type_from_node(args.first, columns) if meth == :+
-
-      # Methods that return Integer
-      return 'Integer' if %i[length size count].include?(meth)
+      return 'Integer' if STRING_INTEGER_RETURN_METHODS.include?(meth)
 
       'Object'
     end
@@ -457,22 +480,9 @@ module DocscribePlugins
     # @param [Hash{String => String}] _columns
     # @return [String, nil]
     def infer_integer_method_type(meth, _args, _columns)
-      # Methods that return Boolean
-      return 'Boolean' if %i[
-        zero? one? positive? negative?
-        even? odd?
-        finite?
-      ].include?(meth)
-
-      # Arithmetic returns Integer
-      return 'Integer' if %i[+ - * / % **].include?(meth)
-
-      # Methods that return Integer
-      return 'Integer' if %i[
-        floor ceil round trunc
-        abs
-        <=>
-      ].include?(meth)
+      return 'Boolean' if INTEGER_BOOLEAN_METHODS.include?(meth)
+      return 'Integer' if INTEGER_ARITHMETIC_METHODS.include?(meth)
+      return 'Integer' if INTEGER_RETURN_METHODS.include?(meth)
 
       'Object'
     end
@@ -492,19 +502,7 @@ module DocscribePlugins
     # @param [Symbol] meth
     # @return [Boolean]
     def string_method?(meth)
-      %i[
-        upcase downcase capitalize
-        strip lstrip rstrip
-        gsub sub
-        truncate
-        concat append +
-        include? start_with? end_with?
-        match scan
-        empty? present? blank?
-        to_s to_str
-        length size count
-        reverse
-      ].include?(meth)
+      STRING_METHODS.include?(meth)
     end
 
     # Check if a method name is an integer manipulation method.

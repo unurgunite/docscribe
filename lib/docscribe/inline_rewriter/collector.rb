@@ -330,34 +330,6 @@ module Docscribe
       # Method documentation.
       #
       # @private
-      # @param [Object] ctx Param documentation.
-      # @param [Object] name Param documentation.
-      # @return [Array]
-      def def_scope_visibility(ctx, name)
-        if ctx.inside_sclass
-          [:class, ctx.explicit_class[name] || ctx.default_class_vis]
-        else
-          [:instance, ctx.explicit_instance[name] || ctx.default_instance_vis]
-        end
-      end
-
-      # Handle a def where extend_self applies.
-      # Method documentation.
-      #
-      # @private
-      # @param [Object] node Param documentation.
-      # @param [Object] name Param documentation.
-      # @param [Object] ctx Param documentation.
-      # @param [Object] anchor_node Param documentation.
-      # @return [Object]
-      def process_extend_self_def(node, name, ctx, anchor_node)
-        @insertions << Insertion.new(node, :class, ctx.explicit_instance[name] || ctx.default_instance_vis,
-                                     container_for(ctx), nil, nil, anchor_node)
-      end
-
-      # Process a `:defs` node for documentation insertion.
-      #
-      # @private
       # @param [Parser::AST::Node] node
       # @param [VisibilityCtx] ctx
       # @param [Parser::AST::Node, nil] pending_sig_anchor
@@ -460,6 +432,28 @@ module Docscribe
         @attr_insertions << AttrInsertion.new(node, :instance, :public, current_container, :rw, names)
       end
 
+      # Detect `attr_reader` / `attr_writer` / `attr_accessor` calls and record attribute insertions.
+      #
+      # @private
+      # @param [Parser::AST::Node] node a `:send` node
+      # @param [VisibilityCtx] ctx current visibility context
+      # @return [Boolean] true if the node was an attr_* call
+      def process_attr_send?(node, ctx)
+        recv, meth, *args = *node
+
+        return false unless attr_send?(recv, meth)
+
+        names = args.map { |arg| extract_name_sym(arg) }.compact
+        return true if names.empty?
+
+        scope, visibility = attr_scope_visibility(ctx)
+        access = attr_access_type(meth)
+
+        @attr_insertions << AttrInsertion.new(node, scope, visibility, container_for(ctx), access, names)
+
+        true
+      end
+
       # Detect `extend self` calls inside a module and persist the state.
       #
       # @private
@@ -499,15 +493,6 @@ module Docscribe
           args.any? { |arg| self_node?(arg) }
       end
 
-      # Check whether `extend self` semantics apply at the current position.
-      #
-      # @private
-      # @param [VisibilityCtx] ctx current visibility context
-      # @return [Boolean]
-      def extend_self_applies?(ctx)
-        ctx.container_is_module && ctx.extend_self && !ctx.inside_sclass
-      end
-
       # Check if a node is a constant or `::` (cbase) receiver.
       #
       # @private
@@ -517,28 +502,6 @@ module Docscribe
         return false unless node.is_a?(Parser::AST::Node)
 
         %i[const cbase].include?(node.type)
-      end
-
-      # Detect `attr_reader` / `attr_writer` / `attr_accessor` calls and record attribute insertions.
-      #
-      # @private
-      # @param [Parser::AST::Node] node a `:send` node
-      # @param [VisibilityCtx] ctx current visibility context
-      # @return [Boolean] true if the node was an attr_* call
-      def process_attr_send?(node, ctx)
-        recv, meth, *args = *node
-
-        return false unless attr_send?(recv, meth)
-
-        names = args.map { |arg| extract_name_sym(arg) }.compact
-        return true if names.empty?
-
-        scope, visibility = attr_scope_visibility(ctx)
-        access = attr_access_type(meth)
-
-        @attr_insertions << AttrInsertion.new(node, scope, visibility, container_for(ctx), access, names)
-
-        true
       end
 
       # Method documentation.
@@ -577,6 +540,51 @@ module Docscribe
         end
       end
 
+      def process_module_function_send?(node, ctx)
+        recv, meth, *args = *node
+
+        return false unless recv.nil? && meth == :module_function
+        return true if ctx.inside_sclass
+
+        return enable_default_module_function?(ctx) if args.empty?
+
+        process_named_module_function(args, ctx)
+
+        true
+      end
+
+      def enable_default_module_function?(ctx)
+        ctx.module_function_default = true
+        true
+      end
+
+      def process_named_module_function(args, ctx)
+        args.map { |arg| extract_name_sym(arg) }
+            .compact
+            .each do |sym|
+          ctx.module_function_explicit[sym] = true
+
+          retroactively_promote_module_function(
+            sym,
+            container: container_for(ctx)
+          )
+        end
+      end
+
+      def retroactively_promote_module_function(name_sym, container:)
+        @insertions.reverse_each do |ins|
+          next unless ins.container == container
+          next unless ins.node.type == :def
+          next unless ins.node.children[0] == name_sym
+
+          ins.scope = :class
+          ins.visibility = :public
+          ins.module_function = true
+          ins.included_instance_visibility ||= :private
+          break
+        end
+      end
+
       # Detect `private_class_method` / `protected_class_method` / `public_class_method` and update class-level
       # visibility.
       #
@@ -594,12 +602,6 @@ module Docscribe
         true
       end
 
-      # Method documentation.
-      #
-      # @private
-      # @param [Object] recv Param documentation.
-      # @param [Object] meth Param documentation.
-      # @return [Object]
       def class_visibility_send?(recv, meth)
         %i[
           private_class_method
@@ -609,11 +611,6 @@ module Docscribe
           (recv.nil? || self_node?(recv))
       end
 
-      # Method documentation.
-      #
-      # @private
-      # @param [Object] meth Param documentation.
-      # @return [Symbol]
       def class_method_visibility(meth)
         case meth
         when :private_class_method
@@ -625,14 +622,6 @@ module Docscribe
         end
       end
 
-      # Method documentation.
-      #
-      # @private
-      # @param [Object] args Param documentation.
-      # @param [Object] ctx Param documentation.
-      # @param [Object] visibility Param documentation.
-      # @param [Object] container Param documentation.
-      # @return [Object]
       def apply_class_method_visibility(args, ctx, visibility, container)
         args.each do |arg|
           sym = extract_name_sym(arg)
@@ -839,49 +828,6 @@ module Docscribe
         end
       end
 
-      # Retroactively update the visibility of a previously collected method.
-      #
-      # @private
-      # @param [Symbol] name_sym the method name
-      # @param [Symbol] visibility the new visibility
-      # @param [Symbol] scope the method scope (`:instance` or `:class`)
-      # @param [String] container the container name
-      # @return [void]
-      def retroactively_set_visibility(name_sym, visibility, scope:, container:)
-        @insertions.reverse_each do |insertion|
-          next unless visibility_target?(insertion, scope, container)
-          next unless insertion_method_name(insertion.node) == name_sym
-
-          insertion.visibility = visibility
-          break
-        end
-      end
-
-      # Method documentation.
-      #
-      # @private
-      # @param [Object] insertion Param documentation.
-      # @param [Object] scope Param documentation.
-      # @param [Object] container Param documentation.
-      # @return [Object]
-      def visibility_target?(insertion, scope, container)
-        insertion.container == container && insertion.scope == scope
-      end
-
-      # Method documentation.
-      #
-      # @private
-      # @param [Object] node Param documentation.
-      # @return [Object]
-      def insertion_method_name(node)
-        case node.type
-        when :def
-          node.children[0]
-        when :defs
-          node.children[1]
-        end
-      end
-
       # Check if `module_function` semantics apply to a method at the current position.
       #
       # @private
@@ -909,80 +855,51 @@ module Docscribe
                                      ctx.explicit_instance[name] || :private, anchor_node)
       end
 
-      # Detect `module_function` calls (bare or named) and update visibility state.
-      #
-      # @private
-      # @param [Parser::AST::Node] node a `:send` node
-      # @param [VisibilityCtx] ctx current visibility context
-      # @return [Boolean] true if the node was a `module_function` call
-      def process_module_function_send?(node, ctx)
-        recv, meth, *args = *node
-
-        return false unless recv.nil? && meth == :module_function
-        return true if ctx.inside_sclass
-
-        return enable_default_module_function(ctx) if args.empty?
-
-        process_named_module_function(args, ctx)
-
-        true
+      def extend_self_applies?(ctx)
+        ctx.container_is_module && ctx.extend_self && !ctx.inside_sclass
       end
 
-      # Method documentation.
-      #
-      # @private
-      # @param [Object] ctx Param documentation.
-      # @return [Boolean]
-      def enable_default_module_function(ctx)
-        ctx.module_function_default = true
-        true
+      def process_extend_self_def(node, name, ctx, anchor_node)
+        @insertions << Insertion.new(node, :class, ctx.explicit_instance[name] || ctx.default_instance_vis,
+                                     container_for(ctx), nil, nil, anchor_node)
       end
 
-      # Method documentation.
-      #
-      # @private
-      # @param [Object] args Param documentation.
-      # @param [Object] ctx Param documentation.
-      # @return [Object]
-      def process_named_module_function(args, ctx)
-        args.map { |arg| extract_name_sym(arg) }
-            .compact
-            .each do |sym|
-          ctx.module_function_explicit[sym] = true
-
-          retroactively_promote_module_function(
-            sym,
-            container: container_for(ctx)
-          )
+      def def_scope_visibility(ctx, name)
+        if ctx.inside_sclass
+          [:class, ctx.explicit_class[name] || ctx.default_class_vis]
+        else
+          [:instance, ctx.explicit_instance[name] || ctx.default_instance_vis]
         end
       end
 
-      # Get the effective container name, using `container_override` when set.
-      #
-      # @private
-      # @param [VisibilityCtx] ctx current visibility context
-      # @return [String] the container name
-      def container_for(ctx)
-        ctx.container_override || current_container
-      end
-
-      # Retroactively promote a previously collected instance method to a class method under module_function.
+      # Retroactively update the visibility of a previously collected method.
       #
       # @private
       # @param [Symbol] name_sym the method name
+      # @param [Symbol] visibility the new visibility
+      # @param [Symbol] scope the method scope (`:instance` or `:class`)
       # @param [String] container the container name
       # @return [void]
-      def retroactively_promote_module_function(name_sym, container:)
-        @insertions.reverse_each do |ins|
-          next unless ins.container == container
-          next unless ins.node.type == :def
-          next unless ins.node.children[0] == name_sym
+      def retroactively_set_visibility(name_sym, visibility, scope:, container:)
+        @insertions.reverse_each do |insertion|
+          next unless visibility_target?(insertion, scope, container)
+          next unless insertion_method_name(insertion.node) == name_sym
 
-          ins.scope = :class
-          ins.visibility = :public
-          ins.module_function = true
-          ins.included_instance_visibility ||= :private
+          insertion.visibility = visibility
           break
+        end
+      end
+
+      def visibility_target?(insertion, scope, container)
+        insertion.container == container && insertion.scope == scope
+      end
+
+      def insertion_method_name(node)
+        case node.type
+        when :def
+          node.children[0]
+        when :defs
+          node.children[1]
         end
       end
 
@@ -1205,6 +1122,15 @@ module Docscribe
         scope, name = *node
         scope_name = scope ? const_name(scope) : nil
         [scope_name, name].compact.join('::')
+      end
+
+      # Get the effective container name, using `container_override` when set.
+      #
+      # @private
+      # @param [VisibilityCtx] ctx current visibility context
+      # @return [String] the container name
+      def container_for(ctx)
+        ctx.container_override || current_container
       end
 
       # Get the current container name from the name stack.

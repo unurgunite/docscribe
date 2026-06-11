@@ -67,33 +67,35 @@ module Docscribe
         segments = []
         i = 0
 
-        while i < lines.length
-          if top_level_tag_line?(lines[i])
-            i = consume_tag_run(lines, i, segments)
-          else
-            segments << { type: :other, lines: [lines[i]] }
-            i += 1
-          end
-        end
+        i = advance_parse(lines, i, segments) while i < lines.length
 
         segments
+      end
+
+      def advance_parse(lines, idx, segments)
+        if top_level_tag_line?(lines[idx])
+          consume_tag_run(lines, idx, segments)
+        else
+          segments << { type: :other, lines: [lines[idx]] }
+          idx + 1
+        end
       end
 
       # Consume a contiguous tag run and append to segments.
       #
       # @note module_function: when included, also defines #consume_tag_run (instance visibility: private)
       # @param [Array<String>] lines
-      # @param [Integer] i current index
+      # @param [Integer] idx current index
       # @param [Array<Hash>] segments accumulated segments
       # @return [Integer] new index after consuming the run
-      def consume_tag_run(lines, i, segments)
+      def consume_tag_run(lines, idx, segments)
         entries = []
-        while i < lines.length && top_level_tag_line?(lines[i])
-          entry, i = consume_entry(lines, i)
+        while idx < lines.length && top_level_tag_line?(lines[idx])
+          entry, idx = consume_entry(lines, idx)
           entries << entry
         end
         segments << { type: :tag_run, entries: entries }
-        i
+        idx
       end
 
       # Sort one parsed segment if it is a tag run.
@@ -137,15 +139,19 @@ module Docscribe
         entry_lines = collect_continuation_lines(lines, start_idx + 1)
         i = entry_lines.length + start_idx
 
-        entry = Entry.new(
+        entry = build_entry(tag, entry_lines, first, start_idx)
+
+        [entry, i]
+      end
+
+      def build_entry(tag, entry_lines, first, start_idx)
+        Entry.new(
           tag: tag,
           lines: entry_lines,
           param_name: extract_param_name(first),
           option_owner: extract_option_owner(first),
           index: start_idx
         )
-
-        [entry, i]
       end
 
       # Collect continuation lines following a top-level tag entry.
@@ -160,9 +166,7 @@ module Docscribe
 
         while i < lines.length
           line = lines[i]
-          break if top_level_tag_line?(line)
-          break if blank_comment_line?(line)
-          break unless comment_line?(line)
+          break if top_level_tag_line?(line) || blank_comment_line?(line) || !comment_line?(line)
 
           result << line
           i += 1
@@ -176,25 +180,26 @@ module Docscribe
       # @note module_function: when included, also defines #group_entries (instance visibility: private)
       # @param [Array<Entry>] entries
       # @return [Array<Array<Entry>>]
-      # rubocop:disable Style/ConditionalAssignment
       def group_entries(entries)
         groups = []
         i = 0
 
         while i < entries.length
-          entry = entries[i]
-
-          if entry.tag == 'param'
-            groups << ([entry] + collect_option_entries(entries, i + 1, entry.param_name))
-          else
-            groups << [entry]
-          end
+          groups << group_entry(entries, i)
           i += 1
         end
 
         groups
       end
-      # rubocop:enable Style/ConditionalAssignment
+
+      def group_entry(entries, idx)
+        entry = entries[idx]
+        if entry.tag == 'param'
+          [entry] + collect_option_entries(entries, idx + 1, entry.param_name)
+        else
+          [entry]
+        end
+      end
 
       # Collect `@option` entries belonging to the given param name.
       #

@@ -1,4 +1,4 @@
-inherit_from: .rubocop_todo.yml
+#inherit_from: .rubocop_todo.yml
 
 plugins:
   - rubocop-sorted_methods_by_call
@@ -9,10 +9,14 @@ AllCops:
   NewCops: enable
   TargetRubyVersion: 2.7
 
-#Layout/LineLength:
-#  Max: 120
+Gemspec/DevelopmentDependencies:
+  Exclude:
+    - 'docscribe.gemspec'
 
 Style/DoubleNegation:
+  Enabled: false
+
+Lint/BooleanSymbol:
   Enabled: false
 
 Style/RedundantFetchBlock:

@@ -82,7 +82,13 @@ module Docscribe
         options = Marshal.load(Marshal.dump(DEFAULT))
         autocorrect = { mode: nil }
 
-        parser = OptionParser.new do |opts|
+        build_option_parser(options, autocorrect).parse!(argv)
+        resolve_mode_and_strategy!(options, autocorrect[:mode])
+        options
+      end
+
+      def build_option_parser(options, autocorrect)
+        OptionParser.new do |opts|
           opts.banner = BANNER
           define_autocorrect_options(opts, autocorrect)
           define_input_options(opts, options)
@@ -91,10 +97,6 @@ module Docscribe
           define_output_options(opts, options)
           define_misc_options(opts)
         end
-
-        parser.parse!(argv)
-        resolve_mode_and_strategy!(options, autocorrect[:mode])
-        options
       end
 
       # @note module_function: when included, also defines # (instance visibility: private)

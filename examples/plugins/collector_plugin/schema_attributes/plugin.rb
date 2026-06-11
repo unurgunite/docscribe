@@ -105,6 +105,10 @@ module DocscribePlugins
       build_attribute_docs(ast, table_name, columns)
     end
 
+    CREATE_TABLE_RE = /\A\s*create_table\s+["'](\w+)["']/.freeze
+    T_COLUMN_RE = /\A\s*t\.(\w+)\s+["'](\w+)["']/.freeze
+    END_RE = /\A\s*end\s*\Z/.freeze
+
     private
 
     # Whether the AST defines an ActiveRecord model class.
@@ -212,18 +216,12 @@ module DocscribePlugins
     # @return [String]
     def pluralize(word)
       return word if word.end_with?('s', 'x', 'z', 'ch', 'sh')
+      return "#{word[0..-2]}ies" if word.match?(/[^aeiou]y\Z/)
+      return "#{word}es" if word.end_with?('es', 'us') || word.match?(/[^aeiou]o\Z/)
+      return "#{word[0..-3]}ves" if word.end_with?('fe')
+      return "#{word[0..-2]}ves" if word.end_with?('f')
 
-      if word.match?(/[^aeiou]y\Z/)
-        "#{word[0..-2]}ies"
-      elsif word.end_with?('es', 'us') || word.match?(/[^aeiou]o\Z/)
-        "#{word}es"
-      elsif word.end_with?('fe')
-        "#{word[0..-3]}ves"
-      elsif word.end_with?('f')
-        "#{word[0..-2]}ves"
-      else
-        "#{word}s"
-      end
+      "#{word}s"
     end
 
     # Parse schema.rb source into a hash of table_name => columns.
@@ -243,22 +241,25 @@ module DocscribePlugins
     end
 
     def parse_table_line(line, tables, current_table)
-      case line
-      when /\A\s*create_table\s+["'](\w+)["']/
-        table_name = ::Regexp.last_match(1)
-        tables[table_name] ||= []
-        table_name
-      when /\A\s*t\.(\w+)\s+["'](\w+)["']/
+      return add_table_name(tables) if line =~ CREATE_TABLE_RE
+
+      if line =~ T_COLUMN_RE
         add_column_from_line(line, tables, current_table)
-        current_table
-      when /\A\s*end\s*\Z/
-        nil
-      else
-        current_table
+        return current_table
       end
+
+      return nil if line =~ END_RE
+
+      current_table
     end
 
-    def add_column_from_line(tables, current_table)
+    def add_table_name(tables)
+      table_name = ::Regexp.last_match(1)
+      tables[table_name] ||= []
+      table_name
+    end
+
+    def add_column_from_line(_line, tables, current_table)
       col_type = ::Regexp.last_match(1)
       col_name = ::Regexp.last_match(2)
 
@@ -271,9 +272,6 @@ module DocscribePlugins
     end
 
     def recognized_column?(col_type, col_name)
-      RECOGNIZED_COLUMNS.include?(col_type.to_sym) &&
-        !SKIPPED_COLUMNS.include?(col_name)
-      enddef recognized_column?(col_type, col_name)
       RECOGNIZED_COLUMNS.include?(col_type.to_sym) &&
         !SKIPPED_COLUMNS.include?(col_name)
     end

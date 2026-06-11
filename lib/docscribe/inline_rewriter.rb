@@ -74,7 +74,6 @@ module Docscribe
       end
 
       # Build the insertion pipeline: collector, plugin insertions, dedup, rewriter, merge_inserts, changes.
-      # Method documentation.
       #
       # @param [Object] buffer Param documentation.
       # @param [Object] ast Param documentation.
@@ -92,7 +91,6 @@ module Docscribe
       end
 
       # Dispatch all insertions to the appropriate handler.
-      # Method documentation.
       #
       # @param [Object] pipeline Param documentation.
       # @param [Object] buffer Param documentation.
@@ -163,21 +161,6 @@ module Docscribe
         )
       end
 
-      # Load core RBS provider from config with safe fallback.
-      # Method documentation.
-      #
-      # @param [Object] config Param documentation.
-      # @param [Object] core_rbs_provider Param documentation.
-      # @raise [StandardError]
-      # @return [Object]
-      # @return [nil] if StandardError
-      def load_core_rbs_provider(config, core_rbs_provider)
-        core_rbs_provider || (config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil)
-      rescue StandardError => e
-        warn "Docscribe: failed to load core RBS provider: #{e.message}" if ENV.fetch('DOCSCRIBE_DEBUG', false)
-        nil
-      end
-
       private
 
       # Setup the parsing environment for rewrite_with_report.
@@ -197,6 +180,20 @@ module Docscribe
         { config: config, file: file, buffer: buffer, ast: ast,
           signature_provider: build_signature_provider(config, code, file),
           core_rbs_provider: load_core_rbs_provider(config, core_rbs_provider) }
+      end
+
+      # Load core RBS provider from config with safe fallback.
+      #
+      # @param [Object] config Param documentation.
+      # @param [Object] core_rbs_provider Param documentation.
+      # @raise [StandardError]
+      # @return [Object]
+      # @return [nil] if StandardError
+      def load_core_rbs_provider(config, core_rbs_provider)
+        core_rbs_provider || (config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil)
+      rescue StandardError => e
+        warn "Docscribe: failed to load core RBS provider: #{e.message}" if ENV.fetch('DOCSCRIBE_DEBUG', false)
+        nil
       end
 
       # Collect insertions from collector and plugins into a combined list.
@@ -299,24 +296,6 @@ module Docscribe
         result.concat(items)
       end
 
-      # Predicate: insertion pair has a doc key with non-empty content.
-      # @private
-      # @param [Object] pair Param documentation.
-      # @return [Object]
-      def plugin_doc_item?(pair)
-        _k, ins = pair
-        ins.is_a?(Hash) && ins[:doc] && !ins[:doc].empty?
-      end
-
-      # Predicate: insertion pair is a plugin with method_override.
-      # @private
-      # @param [Object] pair Param documentation.
-      # @return [Object]
-      def override_or_plugin_method?(pair)
-        k, ins = pair
-        k == :plugin && ins.is_a?(Hash) && ins.key?(:method_override)
-      end
-
       # Handle items where no method_override applies (plugin-doc case or fallback).
       #
       # @private
@@ -333,6 +312,15 @@ module Docscribe
         else
           items.reject { |pair| override_or_plugin_method?(pair) }
         end
+      end
+
+      # Predicate: insertion pair has a doc key with non-empty content.
+      # @private
+      # @param [Object] pair Param documentation.
+      # @return [Object]
+      def plugin_doc_item?(pair)
+        _k, ins = pair
+        ins.is_a?(Hash) && ins[:doc] && !ins[:doc].empty?
       end
 
       # Deduplicate plugin doc items, keeping only highest-priority entries.
@@ -353,6 +341,15 @@ module Docscribe
         warn_plugin_conflict!(dropped, plugin_doc_items, max_prio, pos) if Docscribe::Plugin.debug? && dropped.any?
 
         items
+      end
+
+      # Predicate: insertion pair is a plugin with method_override.
+      # @private
+      # @param [Object] pair Param documentation.
+      # @return [Object]
+      def override_or_plugin_method?(pair)
+        k, ins = pair
+        k == :plugin && ins.is_a?(Hash) && ins.key?(:method_override)
       end
 
       # Find the maximum priority among plugin doc items.
@@ -903,15 +900,16 @@ module Docscribe
       # @param [Hash] options keyword options
       # @return [void]
       def apply_method_insertion_safe_with_info!(**options)
-        dp = filter_doc_params(options)
         i = options[:info]
+        dp = filter_doc_params(options)
         mr = build_missing_method_merge_result(options[:insertion], existing_lines: i[:doc_lines],
                                                                     strategy: options[:strategy], **dp)
         changed, n, ob = compute_doc_replacement(i, mr[:lines], strategy: options[:strategy], **dp)
-        commit_safe_doc_outcome(options[:rewriter], options[:buffer], i, n, old_block: ob,
-                                                                            merge_result: mr, existing_order_changed: changed,
-                                                                            insertion: options[:insertion], changes: options[:changes],
-                                                                            file: options[:file])
+        commit_safe_doc_outcome(options[:rewriter], options[:buffer], i, n,
+                                old_block: ob, merge_result: mr,
+                                existing_order_changed: changed,
+                                insertion: options[:insertion], changes: options[:changes],
+                                file: options[:file])
       end
 
       # Commit doc replacement and log changes for safe mode.
@@ -938,14 +936,6 @@ module Docscribe
       # @return [Object]
       def filter_doc_params(options)
         options.reject { |k, _| %i[rewriter buffer insertion anchor_bol_range info changes file strategy].include?(k) }
-      end
-
-      # Filter options to keep only doc-building params for safe-without-info mode.
-      # @private
-      # @param [Object] options Param documentation.
-      # @return [Object]
-      def filter_method_doc_params(options)
-        options.reject { |k, _| %i[rewriter buffer insertion anchor_bol_range changes file strategy].include?(k) }
       end
 
       # Handle replacement when doc block content changed.
@@ -1029,6 +1019,14 @@ module Docscribe
                    insertion: insertion, file: options[:file], message: 'missing docs')
       end
 
+      # Filter options to keep only doc-building params for safe-without-info mode.
+      # @private
+      # @param [Object] options Param documentation.
+      # @return [Object]
+      def filter_method_doc_params(options)
+        options.reject { |k, _| %i[rewriter buffer insertion anchor_bol_range changes file strategy].include?(k) }
+      end
+
       # Append a structured change record.
       #
       # @private
@@ -1070,7 +1068,6 @@ module Docscribe
         dispatch_attr_strategy(params, options)
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] insertion Param documentation.
@@ -1097,7 +1094,6 @@ module Docscribe
         end
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] params Param documentation.
@@ -1115,7 +1111,6 @@ module Docscribe
         rewriter.insert_before(params[:bol_range], doc)
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] params Param documentation.
@@ -1139,7 +1134,6 @@ module Docscribe
         rewriter.insert_before(params[:bol_range], doc)
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] insertion Param documentation.
@@ -1156,7 +1150,6 @@ module Docscribe
         merge_inserts[info[:end_pos]] << [insertion.node.loc.expression.begin_pos, additions]
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] rewriter Param documentation.
@@ -1173,7 +1166,6 @@ module Docscribe
         end
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] chunks Param documentation.
@@ -1220,7 +1212,6 @@ module Docscribe
         seps
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] ins Param documentation.
@@ -1244,7 +1235,6 @@ module Docscribe
         nil
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] ins Param documentation.
@@ -1255,7 +1245,6 @@ module Docscribe
         ins.names.reject { |name_sym| existing[name_sym.to_s] }
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] lines Param documentation.
@@ -1284,7 +1273,6 @@ module Docscribe
         end
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] config Param documentation.
@@ -1307,7 +1295,6 @@ module Docscribe
         ok
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] ins Param documentation.
@@ -1324,7 +1311,6 @@ module Docscribe
         nil
       end
 
-      # Method documentation.
       #
       # @private
       # @param [Object] ins Param documentation.

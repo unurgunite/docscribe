@@ -70,18 +70,9 @@ module Docscribe
       def merge(existing_lines, missing_lines:, sort_tags:, tag_order:, filter_existing: {})
         existing_entries = parse(existing_lines, tag_order: tag_order)
         missing_entries = parse_generated(missing_lines, tag_order: tag_order)
-
-        filter_param_names = filter_existing[:param_names] || []
-        filter_return = !!filter_existing[:return]
-
-        existing_entries = existing_entries.reject do |e|
-          (e.kind == :tag && e.tag == 'param' && filter_param_names.include?(e.subject)) ||
-            (e.kind == :tag && e.tag == 'return' && filter_return)
-        end
-
+        existing_entries = filter_existing_entries(existing_entries, filter_existing)
         entries = existing_entries + missing_entries
         entries = sort(entries, tag_order: tag_order) if sort_tags
-
         render(entries)
       end
 
@@ -98,6 +89,22 @@ module Docscribe
         end
       end
 
+      def filter_existing_entries(entries, filter_existing)
+        filter_param_names = filter_existing[:param_names] || []
+        filter_return = !!filter_existing[:return]
+        entries.reject do |entry|
+          filter_param_entry?(entry, filter_param_names) || filter_return_entry?(entry, filter_return)
+        end
+      end
+
+      def filter_param_entry?(entry, param_names)
+        entry.kind == :tag && entry.tag == 'param' && param_names.include?(entry.subject)
+      end
+
+      def filter_return_entry?(entry, filter_return)
+        entry.kind == :tag && entry.tag == 'return' && filter_return
+      end
+
       # Parse a doc block into structured entries.
       #
       # Only tags listed in `tag_order` are treated as sortable tag entries.
@@ -109,30 +116,31 @@ module Docscribe
       # @return [Array<Entry>]
       def parse(lines, tag_order:)
         sortable_tags = normalized_tag_order(tag_order)
-        entries = []
-        i = 0
-        index = 0
+        parse_lines(lines, sortable_tags, entries: [], index: 0)
+      end
 
-        while i < lines.length
-          line = lines[i]
-
-          if sortable_top_level_tag_line?(line, sortable_tags)
-            entry, i = consume_tag_entry(lines, i, index: index, sortable_tags: sortable_tags)
-            entries << entry
-          else
-            entries << Entry.new(
-              kind: :other,
-              lines: [line],
-              generated: false,
-              index: index
-            )
-            i += 1
-          end
-
+      def parse_lines(lines, sortable_tags, entries:, index:)
+        idx = 0
+        while idx < lines.length
+          idx = parse_one_line(lines, idx, sortable_tags, entries, index)
           index += 1
         end
-
         entries
+      end
+
+      def parse_one_line(lines, idx, sortable_tags, entries, index)
+        if sortable_top_level_tag_line?(lines[idx], sortable_tags)
+          entry, idx = consume_tag_entry(lines, idx, index: index, sortable_tags: sortable_tags)
+          entries << entry
+        else
+          entries << build_other_entry(lines[idx], index)
+          idx += 1
+        end
+        idx
+      end
+
+      def build_other_entry(line, index)
+        Entry.new(kind: :other, lines: [line], generated: false, index: index)
       end
 
       # Sort parsed entries by configured tag order, preserving boundaries between tag runs.
@@ -144,23 +152,31 @@ module Docscribe
       def sort(entries, tag_order:)
         out = []
         priority = build_priority(tag_order)
-        i = 0
+        sort_loop(entries, out, priority)
+        out
+      end
 
-        while i < entries.length
-          if entries[i].kind == :tag
-            run = []
-            while i < entries.length && entries[i].kind == :tag
-              run << entries[i]
-              i += 1
-            end
+      def sort_loop(entries, out, priority)
+        idx = 0
+
+        while idx < entries.length
+          if entries[idx].kind == :tag
+            run, idx = consume_tag_run(entries, idx)
             out.concat(sort_run(run, priority: priority))
           else
-            out << entries[i]
-            i += 1
+            out << entries[idx]
+            idx += 1
           end
         end
+      end
 
-        out
+      def consume_tag_run(entries, idx)
+        run = []
+        while idx < entries.length && entries[idx].kind == :tag
+          run << entries[idx]
+          idx += 1
+        end
+        [run, idx]
       end
 
       # Render parsed entries back into comment lines.
@@ -195,31 +211,40 @@ module Docscribe
       # @return [Array<Array<Entry>>]
       def build_groups(entries)
         groups = []
-        i = 0
+        group_entries_loop(entries, groups)
+        groups
+      end
 
-        while i < entries.length
-          entry = entries[i]
+      def group_entries_loop(entries, groups)
+        idx = 0
+        idx = group_one_entry(entries, idx, groups) while idx < entries.length
+      end
 
-          if entry.tag == 'param'
-            group = [entry]
-            i += 1
+      def group_one_entry(entries, idx, groups)
+        entry = entries[idx]
+        if entry.tag == 'param'
+          group = build_param_group(entries, idx, entry)
+          groups << group
+          idx + group.size
+        else
+          groups << [entry]
+          idx + 1
+        end
+      end
 
-            while i < entries.length &&
-                  entries[i].tag == 'option' &&
-                  entries[i].option_owner &&
-                  entries[i].option_owner == entry.subject
-              group << entries[i]
-              i += 1
-            end
+      def build_param_group(entries, idx, entry)
+        group = [entry]
+        idx += 1
 
-            groups << group
-          else
-            groups << [entry]
-            i += 1
-          end
+        while idx < entries.length &&
+              entries[idx].tag == 'option' &&
+              entries[idx].option_owner &&
+              entries[idx].option_owner == entry.subject
+          group << entries[idx]
+          idx += 1
         end
 
-        groups
+        group
       end
 
       # Compute the priority of a grouped sortable unit.
@@ -264,21 +289,37 @@ module Docscribe
       def consume_tag_entry(lines, start_idx, index:, sortable_tags:)
         first = lines[start_idx]
         tag = extract_tag(first)
+        entry_lines = collect_continuation_lines(lines, start_idx + 1, first, sortable_tags)
+        i = entry_lines.length + start_idx
+        entry = build_tag_entry(first, tag, entry_lines, index)
+        [entry, i]
+      end
 
-        entry_lines = [first]
-        i = start_idx + 1
+      def collect_continuation_lines(lines, start_idx, first, sortable_tags)
+        result = [first]
+        add_continuation_lines(lines, start_idx, result, sortable_tags)
+        result
+      end
 
+      def add_continuation_lines(lines, start_idx, result, sortable_tags)
+        i = start_idx
         while i < lines.length
           line = lines[i]
-          break if sortable_top_level_tag_line?(line, sortable_tags)
-          break if blank_comment_line?(line)
-          break unless continuation_comment_line?(line)
+          break unless continuation_candidate?(line, sortable_tags)
 
-          entry_lines << line
+          result << line
           i += 1
         end
+      end
 
-        entry = Entry.new(
+      def continuation_candidate?(line, sortable_tags)
+        !sortable_top_level_tag_line?(line, sortable_tags) &&
+          !blank_comment_line?(line) &&
+          continuation_comment_line?(line)
+      end
+
+      def build_tag_entry(first, tag, entry_lines, index)
+        Entry.new(
           kind: :tag,
           tag: tag,
           lines: entry_lines,
@@ -287,8 +328,6 @@ module Docscribe
           generated: false,
           index: index
         )
-
-        [entry, i]
       end
 
       # Extract the grouping subject for a sortable tag.

@@ -37,14 +37,26 @@ module Docscribe
       # @param [Hash] options parsed CLI options
       # @return [Boolean]
       def needs_override?(options)
+        filter_overrides?(options) ||
+          rbs_overrides?(options) ||
+          sorbet_overrides?(options)
+      end
+
+      def filter_overrides?(options)
         options[:include].any? ||
           options[:exclude].any?      ||
           options[:include_file].any? ||
-          options[:exclude_file].any? ||
-          options[:rbs]               ||
-          options[:rbs_collection]    ||
-          options[:sig_dirs].any?     ||
-          options[:sorbet]            ||
+          options[:exclude_file].any?
+      end
+
+      def rbs_overrides?(options)
+        options[:rbs] ||
+          options[:rbs_collection] ||
+          options[:sig_dirs].any?
+      end
+
+      def sorbet_overrides?(options)
+        options[:sorbet] ||
           options[:rbi_dirs].any?
       end
 
@@ -56,13 +68,20 @@ module Docscribe
       # @param [Hash] options parsed CLI options
       # @return [void]
       def apply_filter_overrides(raw, options)
+        apply_method_filters(raw, options)
+        apply_file_filters(raw, options)
+      end
+
+      def apply_method_filters(raw, options)
         raw['filter'] ||= {}
         raw['filter']['include'] = Array(raw['filter']['include']) + options[:include]
         raw['filter']['exclude'] = Array(raw['filter']['exclude']) + options[:exclude]
+      end
 
-        raw['filter']['files'] ||= {}
-        raw['filter']['files']['include'] = Array(raw['filter']['files']['include']) + options[:include_file]
-        raw['filter']['files']['exclude'] = Array(raw['filter']['files']['exclude']) + options[:exclude_file]
+      def apply_file_filters(raw, options)
+        files = raw['filter']['files'] ||= {}
+        files['include'] = Array(files['include']) + options[:include_file]
+        files['exclude'] = Array(files['exclude']) + options[:exclude_file]
       end
 
       # Apply RBS-related CLI overrides to the raw config.
@@ -79,6 +98,10 @@ module Docscribe
 
         return unless options[:rbs_collection]
 
+        apply_rbs_collection(raw)
+      end
+
+      def apply_rbs_collection(raw)
         require 'docscribe/types/rbs/collection_loader'
         collection_path = Docscribe::Types::RBS::CollectionLoader.resolve
         if collection_path

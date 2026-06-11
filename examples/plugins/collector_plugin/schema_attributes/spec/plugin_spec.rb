@@ -76,8 +76,12 @@ RSpec.describe DocscribePlugins::SchemaAttributes do
 
     it 'skips standard Rails columns' do
       plugin.instance_variable_set(:@schema,
-                                   { 'users' => [{ name: 'id', type: 'integer' }, { name: 'created_at', type: 'datetime' }, { name: 'updated_at', type: 'datetime' },
-                                                 { name: 'email', type: 'string' }] })
+                                   { 'users' => [
+                                     { name: 'id', type: 'integer' },
+                                     { name: 'created_at', type: 'datetime' },
+                                     { name: 'updated_at', type: 'datetime' },
+                                     { name: 'email', type: 'string' }
+                                   ] })
 
       code = <<~RUBY
         class User < ApplicationRecord

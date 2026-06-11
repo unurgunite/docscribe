@@ -39,13 +39,16 @@ module Docscribe
         # @param [Array<String>] argv
         # @return [Hash] parsed options
         def parse_init_options(argv)
-          opts = {
-            config: 'docscribe.yml',
-            force: false,
-            stdout: false,
-            help: false
-          }
+          opts = default_init_options
+          build_init_parser(opts).parse!(argv)
+          opts
+        end
 
+        def default_init_options
+          { config: 'docscribe.yml', force: false, stdout: false, help: false }
+        end
+
+        def build_init_parser(opts)
           OptionParser.new do |o|
             o.banner = 'Usage: docscribe init [options]'
             o.on('--config PATH', 'Where to write the config (default: docscribe.yml)') { |v| opts[:config] = v }
@@ -55,9 +58,7 @@ module Docscribe
               opts[:help] = true
               puts o
             end
-          end.parse!(argv)
-
-          opts
+          end
         end
 
         # Write the config template to a file.

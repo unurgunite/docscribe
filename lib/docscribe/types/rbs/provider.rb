@@ -44,16 +44,7 @@ module Docscribe
         # @return [Docscribe::Types::MethodSignature, nil]
         def signature_for(container:, scope:, name:)
           load_env!
-
-          definition = definition_for(container: container, scope: scope)
-          method_def = definition.methods[name.to_sym]
-          return nil unless method_def
-
-          method_type = method_def.method_types.first
-          return nil unless method_type
-
-          func = method_type.type
-          build_signature(func)
+          lookup_signature(container, scope, name)
         rescue ::RBS::BaseError => e
           handle_rbs_error(e, 'RBS error')
           nil
@@ -82,6 +73,17 @@ module Docscribe
             @sig_dirs + @collection_dirs,
             @collection_dirs
           )
+        end
+
+        def lookup_signature(container, scope, name)
+          definition = definition_for(container: container, scope: scope)
+          method_def = definition.methods[name.to_sym]
+          return nil unless method_def
+
+          method_type = method_def.method_types.first
+          return nil unless method_type
+
+          build_signature(method_type.type)
         end
 
         # Try building an environment from combined dirs, falling back to

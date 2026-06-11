@@ -7,7 +7,8 @@ Gem::Specification.new do |spec|
   spec.version = Docscribe::VERSION
   spec.authors = ['unurgunite']
 
-  spec.summary = 'Auto-generate inline YARD documentation for Ruby by analyzing code AST. Supports RBS and Sorbet type signatures.'
+  spec.summary = 'Auto-generate inline YARD documentation for Ruby by analyzing ' \
+                 'code AST. Supports RBS and Sorbet type signatures.'
   spec.homepage = 'https://github.com/unurgunite/docscribe'
   spec.required_ruby_version = '>= 2.7'
   spec.license = 'MIT'

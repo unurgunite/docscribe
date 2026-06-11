@@ -41,7 +41,8 @@ module Docscribe
       # - `Foo` => `["Foo"]`
       # - `[Foo, Bar]` => `["Foo", "Bar"]`
       #
-      # @note module_function: when included, also defines #exception_names_from_rescue_list (instance visibility: private)
+      # @note module_function: when included, also defines
+      #   #exception_names_from_rescue_list (instance visibility: private)
       # @param [Parser::AST::Node, nil] exc_list rescue exception list node
       # @return [Array<String>]
       def exception_names_from_rescue_list(exc_list)
