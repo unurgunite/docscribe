@@ -1,0 +1,3 @@
+module Docscribe
+  VERSION: String
+end

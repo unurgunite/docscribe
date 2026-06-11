@@ -1,0 +1,140 @@
+module Docscribe
+  module Types
+    module Sorbet
+      # Shared base for Sorbet-backed signature providers.
+      #
+      # This class parses Sorbet-style signatures through the RBS RBI prototype
+      # API and indexes them into Docscribe's normalized signature model.
+      #
+      # Concrete subclasses decide where the Sorbet source comes from:
+      # - SourceProvider => inline `sig` declarations in the current Ruby file
+      # - RBIProvider    => project RBI files
+      class BaseProvider
+        @collapse_generics: untyped
+
+        @index: untyped
+
+        @warned: untyped
+
+        # @param [Boolean] collapse_generics whether generic container details
+        #   should be simplified during formatting
+        # @return [Object]
+        def initialize: (?collapse_generics: bool) -> void
+
+        # Look up a normalized method signature by container, scope, and name.
+        #
+        # @param [String] container e.g. "MyModule::MyClass"
+        # @param [Symbol] scope :instance or :class
+        # @param [Symbol, String] name method name
+        # @return [Docscribe::Types::MethodSignature, nil]
+        def signature_for: (container: untyped, scope: untyped, name: untyped) -> untyped
+
+        private
+
+        # Parse Sorbet-flavored Ruby/RBI source and index any signatures found.
+        #
+        # Parsing failures are treated as non-fatal so Docscribe can fall back to
+        # other providers or plain inference.
+        #
+        # @private
+        # @param [String] source source text to parse
+        # @param [String] label file label used in debug warnings
+        # @raise [LoadError]
+        # @raise [::RBS::BaseError]
+        # @raise [SyntaxError]
+        # @raise [StandardError]
+        # @return [void]
+        def load_from_string: (untyped source, label: untyped) -> untyped
+
+        # Index parsed declarations into the provider lookup table.
+        #
+        # @private
+        # @param [Array<Object>] decls parsed RBS declarations
+        # @return [void]
+        def index_decls: (untyped decls) -> untyped
+
+        # Process a single method definition member into the index.
+        #
+        # @private
+        # @param [String] container normalized container name
+        # @param [Object] member
+        # @return [void]
+        def process_method_member: (untyped container, untyped member) -> (nil | untyped)
+
+        # @private
+        # @param [Object] member
+        # @return [Boolean]
+        def method_definition_member?: (untyped member) -> untyped
+
+        # Convert an RBS function type into Docscribe's simplified signature model.
+        #
+        # @private
+        # @param [::RBS::Types::Function] func
+        # @return [Docscribe::Types::MethodSignature]
+        def build_signature: (untyped func) -> untyped
+
+        # Build a name => type map for ordinary positional/keyword parameters.
+        #
+        # @private
+        # @param [::RBS::Types::Function] func
+        # @return [Hash{String => String}]
+        def build_param_types: (untyped func) -> untyped
+
+        # Add keyword parameters to the normalized parameter map.
+        #
+        # @private
+        # @param [Hash{String => String}] param_types
+        # @param [Hash{Symbol => Object}] keywords
+        # @return [void]
+        def add_keywords!: (untyped param_types, untyped keywords) -> untyped
+
+        # Add positional parameters with names to the normalized param map.
+        #
+        # @private
+        # @param [Hash{String => String}] param_types
+        # @param [Array<Object>] list
+        # @return [void]
+        def add_positionals!: (untyped param_types, untyped list) -> untyped
+
+        # Build normalized `*args` metadata.
+        #
+        # @private
+        # @param [::RBS::Types::Function] func
+        # @return [Docscribe::Types::RestPositional, nil]
+        def build_rest_positional: (untyped func) -> (nil | untyped)
+
+        # Build normalized `**kwargs` metadata.
+        #
+        # Sorbet keyword-rest signatures describe the value type. For generated
+        # YARD output, we expose that as a Hash keyed by Symbol.
+        #
+        # @private
+        # @param [::RBS::Types::Function] func
+        # @return [Docscribe::Types::RestKeywords, nil]
+        def build_rest_keywords: (untyped func) -> (nil | untyped)
+
+        # Format an RBS type object into the YARD-ish type syntax used by
+        # generated comments.
+        #
+        # @private
+        # @param [Object] type
+        # @return [String]
+        def format_type: (untyped type) -> untyped
+
+        # Normalize container names so lookups are consistent.
+        #
+        # @private
+        # @param [String] name
+        # @return [String]
+        def normalize_container: (untyped name) -> untyped
+
+        # Print one debug warning per provider instance when debugging is enabled.
+        #
+        # @private
+        # @param [String] msg
+        # @return [void]
+        def warn_once: (untyped msg) -> (nil | untyped)
+      end
+    end
+  end
+end

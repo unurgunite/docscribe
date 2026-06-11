@@ -1,0 +1,17 @@
+module Docscribe
+  module Infer
+    # AST traversal helpers for parser AST nodes.
+    module ASTWalk
+      # Depth-first walk over a parser AST.
+      #
+      # Yields each node exactly once, descending recursively through child nodes.
+      # Non-AST values are ignored.
+      #
+      # @note module_function: when included, also defines #walk (instance visibility: private)
+      # @param [Parser::AST::Node, nil] node root AST node
+      # @param [Proc] block visitor block
+      # @return [void]
+      def self?.walk: (untyped node) { (untyped) -> untyped } -> (nil | untyped)
+    end
+  end
+end

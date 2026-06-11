@@ -1,8 +1,3 @@
-# frozen_string_literal: true
-
-require 'pathname'
-require 'yaml'
-
 module Docscribe
   module Types
     module RBS
@@ -19,10 +14,9 @@ module Docscribe
       #   path: ".gem_rbs_collection"
       #   gems: [...]
       module CollectionLoader
-        LOCK_FILE = 'rbs_collection.lock.yaml'
-        DEFAULT_COLLECTION_PATH = '.gem_rbs_collection'
+        LOCK_FILE: "rbs_collection.lock.yaml"
 
-        module_function
+        DEFAULT_COLLECTION_PATH: ".gem_rbs_collection"
 
         # Resolve the installed RBS collection directory.
         #
@@ -33,16 +27,7 @@ module Docscribe
         # @note module_function: when included, also defines #resolve (instance visibility: private)
         # @param [String] root project root to search from
         # @return [String, nil] absolute path to the collection directory, or nil
-        def resolve(root: Dir.pwd)
-          lock = Pathname(root).join(LOCK_FILE)
-          return nil unless lock.file?
-
-          data = YAML.safe_load(lock.read, permitted_classes: [Symbol]) || {}
-          rel  = data['path'] || DEFAULT_COLLECTION_PATH
-
-          resolved = Pathname(root).join(rel)
-          resolved.directory? ? resolved.expand_path.to_s : nil
-        end
+        def self?.resolve: (?root: untyped) -> (nil | untyped)
       end
     end
   end
