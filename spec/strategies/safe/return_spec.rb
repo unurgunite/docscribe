@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy return' do
+RSpec.describe Docscribe::InlineRewriter do
   describe 'adds @return when missing' do
     subject(:out) { inline(code) }
 
@@ -13,7 +13,7 @@ RSpec.describe 'safe strategy return' do
       RUBY
     end
 
-    it 'adds @return when missing' do
+    it 'adds @return when missing', :aggregate_failures do
       expect(out).to include('# @todo docs')
       expect(out).to include('# @return [Integer]')
       expect(out).not_to include('# +A#foo+')
@@ -33,7 +33,7 @@ RSpec.describe 'safe strategy return' do
       RUBY
     end
 
-    it 'does not add another @return when one already exists' do
+    it 'does not add another @return when one already exists', :aggregate_failures do
       expect(out).to include('# @return [String] already documented')
       expect(out.scan(/^\s*#\s*@return\b/).size).to eq(1)
     end

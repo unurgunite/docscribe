@@ -3,7 +3,7 @@
 require 'tmpdir'
 require 'fileutils'
 
-RSpec.describe 'Sorbet RBI integration' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline_with_signature_files(code: code, rbi: rbi, config_overrides: conf) }
 
   let(:conf) { { 'emit' => { 'header' => true } } }
@@ -32,12 +32,24 @@ RSpec.describe 'Sorbet RBI integration' do
       RUBY
     end
 
-    it 'uses RBI signatures for params and return types' do
+    it 'includes header section' do
       expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
+    end
+
+    it 'includes @return tag' do
       expect(out).to include('# @return [Integer]')
+    end
+
+    it 'does not include wrong @return tag' do
       expect(out).not_to include('# @return [String]')
+    end
+
+    it 'includes @param tags', :aggregate_failures do
       expect(out).to include(param_tag('verbose', 'Boolean'))
       expect(out).to include(param_tag('count', 'Integer'))
+    end
+
+    it 'does not include default @param tags', :aggregate_failures do
       expect(out).not_to include(param_tag('verbose', 'Object'))
       expect(out).not_to include(param_tag('count', 'Object'))
     end
@@ -75,7 +87,7 @@ RSpec.describe 'Sorbet RBI integration' do
       RUBY
     end
 
-    it 'prefers RBI over RBS when both are present' do
+    it 'prefers RBI over RBS when both are present', :aggregate_failures do
       expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
       expect(out).to include('# @return [Integer]')
       expect(out).not_to include('# @return [Symbol]')
@@ -106,7 +118,7 @@ RSpec.describe 'Sorbet RBI integration' do
       RUBY
     end
 
-    it 'falls back cleanly to inference when an RBI file cannot be parsed' do
+    it 'falls back cleanly to inference when an RBI file cannot be parsed', :aggregate_failures do
       expect(out).to match(header_regex('Demo', 'foo', 'String'))
       expect(out).to include('# @return [String]')
       expect(out).to include(param_tag('x', 'Object'))
@@ -150,7 +162,7 @@ RSpec.describe 'Sorbet RBI integration' do
       RUBY
     end
 
-    it 'prefers inline Sorbet sigs over RBI, RBS, and inference' do
+    it 'prefers inline Sorbet sigs over RBI, RBS, and inference', :aggregate_failures do
       expect(out).to match(header_regex('Demo', 'foo', 'Float'))
       expect(out).to include('# @return [Float]')
       expect(out).not_to include('# @return [Integer]')

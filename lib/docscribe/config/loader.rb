@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # YAML config file loading and resolution.
   class Config
     # Load Docscribe configuration from YAML.
     #

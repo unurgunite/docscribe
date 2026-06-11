@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'TagPlugin integration' do
+RSpec.describe Docscribe::Plugin::Base::TagPlugin do
   after { Docscribe::Plugin::Registry.clear! }
 
   let(:since_plugin) do
@@ -24,22 +24,27 @@ RSpec.describe 'TagPlugin integration' do
   describe 'in aggressive mode' do
     subject(:out) { inline(code, strategy: :aggressive) }
 
-    it 'appends plugin tags' do
-      Docscribe::Plugin::Registry.register(since_plugin)
-      expect(out).to include('# @since 1.3.0')
-    end
+    before { Docscribe::Plugin::Registry.register(since_plugin) }
+
+    it { expect(out).to include('# @since 1.3.0') }
 
     it 'isolates broken plugins and continues' do
-      broken = ->(_ctx) { raise 'boom' }
-      Docscribe::Plugin::Registry.register(broken)
-      Docscribe::Plugin::Registry.register(since_plugin)
-
-      expect do
-        out
-      end.not_to raise_error
+      Docscribe::Plugin::Registry.register(->(_ctx) { raise 'boom' })
+      expect { out }.not_to raise_error
     end
 
     describe 'when passes correct context to plugin' do
+      subject(:result) do
+        received = nil
+        spy = lambda { |ctx|
+          received = ctx
+          []
+        }
+        Docscribe::Plugin::Registry.register(spy)
+        inline(code, strategy: :aggressive)
+        received
+      end
+
       let(:code) do
         <<~RUBY
           class MyClass
@@ -50,37 +55,24 @@ RSpec.describe 'TagPlugin integration' do
         RUBY
       end
 
-      it 'passes correct context to plugin' do
-        received = nil
-        spy = lambda { |ctx|
-          received = ctx
-          []
-        }
-        Docscribe::Plugin::Registry.register(spy)
-
-        inline(code, strategy: :aggressive)
-        expect(received).not_to be_nil
-        expect(received.container).to eq('MyClass')
-        expect(received.method_name).to eq(:greet)
-        expect(received.scope).to eq(:instance)
-        expect(received.visibility).to eq(:public)
-        expect(received.inferred_return).to eq('String')
-      end
+      it { expect(result).not_to be_nil }
+      it { expect(result.container).to eq('MyClass') }
+      it { expect(result.method_name).to eq(:greet) }
+      it { expect(result.scope).to eq(:instance) }
+      it { expect(result.visibility).to eq(:public) }
+      it { expect(result.inferred_return).to eq('String') }
     end
   end
 
   describe 'in safe mode' do
     subject(:out) { inline(code) }
 
-    it 'appends plugin tags when method has no doc block' do
-      Docscribe::Plugin::Registry.register(since_plugin)
-      expect(out).to include('# @since 1.3.0')
-    end
+    before { Docscribe::Plugin::Registry.register(since_plugin) }
+
+    it { expect(out).to include('# @since 1.3.0') }
 
     it 'does not duplicate plugin tags on second safe run' do
-      Docscribe::Plugin::Registry.register(since_plugin)
-      second = inline(out)
-      expect(second.scan('# @since 1.3.0').length).to eq(1)
+      expect(inline(out).scan('# @since 1.3.0').length).to eq(1)
     end
   end
 end

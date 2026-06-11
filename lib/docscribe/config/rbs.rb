@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # RBS signature provider configuration.
   class Config
     # Return a memoized RBS provider if RBS integration is enabled and available.
     #
@@ -13,16 +14,7 @@ module Docscribe
       return nil unless rbs_enabled?
       return nil unless ruby_supports_rbs?
 
-      @rbs_provider ||= begin
-        require 'docscribe/types/rbs/provider'
-        Docscribe::Types::RBS::Provider.new(
-          sig_dirs: rbs_sig_dirs,
-          collection_dirs: rbs_collection_dirs,
-          collapse_generics: rbs_collapse_generics?
-        )
-      rescue LoadError
-        nil
-      end
+      @rbs_provider ||= build_rbs_provider
     end
 
     # Whether RBS integration is enabled.
@@ -32,27 +24,17 @@ module Docscribe
       fetch_bool(%w[rbs enabled], false)
     end
 
-    # Method documentation.
-    #
     # @raise [LoadError]
     # @return [Object]
     def core_rbs_provider
       return nil unless ruby_supports_rbs?
 
-      @core_rbs_provider ||= begin
-        require 'docscribe/types/rbs/provider'
-        Docscribe::Types::RBS::Provider.new(
-          sig_dirs: [],
-          collapse_generics: false
-        )
-      rescue LoadError
-        nil
-      end
+      @core_rbs_provider ||= build_core_rbs_provider
     end
 
     private
 
-    # Method documentation.
+    # Check whether the current Ruby version supports RBS (requires 3.0+).
     #
     # @private
     # @return [Boolean]
@@ -64,6 +46,33 @@ module Docscribe
         true
       end
       false
+    end
+
+    # @private
+    # @raise [LoadError]
+    # @return [Docscribe::Types::RBS::Provider, nil]
+    def build_rbs_provider
+      require 'docscribe/types/rbs/provider'
+      Docscribe::Types::RBS::Provider.new(
+        sig_dirs: rbs_sig_dirs,
+        collection_dirs: rbs_collection_dirs,
+        collapse_generics: rbs_collapse_generics?
+      )
+    rescue LoadError
+      nil
+    end
+
+    # @private
+    # @raise [LoadError]
+    # @return [Docscribe::Types::RBS::Provider, nil]
+    def build_core_rbs_provider
+      require 'docscribe/types/rbs/provider'
+      Docscribe::Types::RBS::Provider.new(
+        sig_dirs: [],
+        collapse_generics: false
+      )
+    rescue LoadError
+      nil
     end
 
     # Signature directories used by the RBS provider.

@@ -9,131 +9,134 @@ RSpec.describe DocscribePlugins::RailsAssociations do
   before { Docscribe::Plugin::Registry.register(plugin) }
   after  { Docscribe::Plugin::Registry.clear! }
 
-  # Method documentation.
-  #
-  # @param [Object] code Param documentation.
-  # @return [Object]
   def rewrite(code)
     Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
   end
 
   describe 'belongs_to' do
-    it 'documents a simple belongs_to' do
-      code = <<~RUBY
-        class Post < ApplicationRecord
-          belongs_to :user
-        end
-      RUBY
+    subject(:out) { rewrite(code) }
 
-      out = rewrite(code)
+    describe 'documents a simple belongs_to' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+            belongs_to :user
+          end
+        RUBY
+      end
 
-      expect(out).to include('# @!attribute [r] user')
-      expect(out).to include('#   @return [User]')
+      it { is_expected.to include('# @!attribute [r] user') }
+      it { is_expected.to include('#   @return [User]') }
     end
 
-    it 'uses ApplicationRecord for polymorphic belongs_to' do
-      code = <<~RUBY
-        class Post < ApplicationRecord
-          belongs_to :requestable, polymorphic: true, optional: true
-        end
-      RUBY
+    describe 'uses ApplicationRecord for polymorphic belongs_to' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+            belongs_to :requestable, polymorphic: true, optional: true
+          end
+        RUBY
+      end
 
-      out = rewrite(code)
-
-      expect(out).to include('# @!attribute [r] requestable')
-      expect(out).to include('#   Associated requestable (polymorphic) object.')
-      expect(out).to include('#   @return [ApplicationRecord]')
+      it { is_expected.to include('# @!attribute [r] requestable') }
+      it { is_expected.to include('#   Associated requestable (polymorphic) object.') }
+      it { is_expected.to include('#   @return [ApplicationRecord]') }
     end
 
-    it 'respects class_name option' do
-      code = <<~RUBY
-        class Post < ApplicationRecord
-          belongs_to :author, class_name: 'User'
-        end
-      RUBY
+    describe 'respects class_name option' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+            belongs_to :author, class_name: 'User'
+          end
+        RUBY
+      end
 
-      out = rewrite(code)
-
-      expect(out).to include('#   @return [User]')
+      it { is_expected.to include('#   @return [User]') }
     end
   end
 
   describe 'has_many' do
-    it 'documents a simple has_many' do
-      code = <<~RUBY
-        class Post < ApplicationRecord
-          has_many :songs, dependent: :destroy
-        end
-      RUBY
+    subject(:out) { rewrite(code) }
 
-      out = rewrite(code)
+    describe 'documents a simple has_many' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+            has_many :songs, dependent: :destroy
+          end
+        RUBY
+      end
 
-      expect(out).to include('# @!attribute [r] songs')
-      expect(out).to include('#   Returns the associated songs.')
-      expect(out).to include('#   @return [Array<Song>]')
+      it { is_expected.to include('# @!attribute [r] songs') }
+      it { is_expected.to include('#   Returns the associated songs.') }
+      it { is_expected.to include('#   @return [Array<Song>]') }
     end
 
-    it 'respects class_name option' do
-      code = <<~RUBY
-        class User < ApplicationRecord
-          has_many :posts, class_name: 'Article'
-        end
-      RUBY
+    describe 'respects class_name option' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            has_many :posts, class_name: 'Article'
+          end
+        RUBY
+      end
 
-      out = rewrite(code)
-
-      expect(out).to include('#   @return [Array<Article>]')
+      it { is_expected.to include('#   @return [Array<Article>]') }
     end
   end
 
   describe 'has_one' do
-    it 'documents has_one' do
-      code = <<~RUBY
+    subject(:out) { rewrite(code) }
+
+    let(:code) do
+      <<~RUBY
         class Post < ApplicationRecord
           has_one :profile
         end
       RUBY
-
-      out = rewrite(code)
-
-      expect(out).to include('# @!attribute [r] profile')
-      expect(out).to include('#   @return [Profile]')
     end
+
+    it { is_expected.to include('# @!attribute [r] profile') }
+    it { is_expected.to include('#   @return [Profile]') }
   end
 
   describe 'has_and_belongs_to_many' do
-    it 'documents habtm' do
-      code = <<~RUBY
+    subject(:out) { rewrite(code) }
+
+    let(:code) do
+      <<~RUBY
         class Post < ApplicationRecord
           has_and_belongs_to_many :tags
         end
       RUBY
-
-      out = rewrite(code)
-
-      expect(out).to include('# @!attribute [r] tags')
-      expect(out).to include('#   @return [Array<Tag>]')
     end
+
+    it { is_expected.to include('# @!attribute [r] tags') }
+    it { is_expected.to include('#   @return [Array<Tag>]') }
   end
 
   describe 'idempotency' do
-    it 'does not duplicate docs on second run in safe mode' do
-      code = <<~RUBY
+    let(:code) do
+      <<~RUBY
         class Post < ApplicationRecord
           belongs_to :user
         end
       RUBY
+    end
 
+    it 'does not duplicate docs on second run in safe mode' do
       first  = rewrite(code)
       second = rewrite(first)
-
       expect(second.scan('# @!attribute [r] user').length).to eq(1)
     end
   end
 
   describe 'mixed file' do
-    it 'documents associations and regular methods independently' do
-      code = <<~RUBY
+    subject(:out) { rewrite(code) }
+
+    let(:code) do
+      <<~RUBY
         class Post < ApplicationRecord
           belongs_to :user
           has_many :songs, dependent: :destroy
@@ -143,12 +146,10 @@ RSpec.describe DocscribePlugins::RailsAssociations do
           end
         end
       RUBY
-
-      out = rewrite(code)
-
-      expect(out).to include('# @!attribute [r] user')
-      expect(out).to include('# @!attribute [r] songs')
-      expect(out).to include('# @return [Boolean]')
     end
+
+    it { is_expected.to include('# @!attribute [r] user') }
+    it { is_expected.to include('# @!attribute [r] songs') }
+    it { is_expected.to include('# @return [Boolean]') }
   end
 end

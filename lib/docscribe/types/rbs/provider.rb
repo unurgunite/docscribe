@@ -44,24 +44,12 @@ module Docscribe
         # @return [Docscribe::Types::MethodSignature, nil]
         def signature_for(container:, scope:, name:)
           load_env!
-
-          definition = definition_for(container: container, scope: scope)
-          method_def = definition.methods[name.to_sym]
-          return nil unless method_def
-
-          method_type = method_def.method_types.first
-          return nil unless method_type
-
-          func = method_type.type
-          build_signature(func)
+          lookup_signature(container, scope, name)
         rescue ::RBS::BaseError => e
-          warn_once("Docscribe: RBS error: #{e.class}: #{e.message}")
+          handle_rbs_error(e, 'RBS error')
           nil
         rescue StandardError => e
-          warn_once(
-            'Docscribe: RBS integration failed (falling back to inference): ' \
-            "#{e.class}: #{e.message}\nFeel free to open an issue on github."
-          )
+          handle_rbs_error(e, 'RBS integration failed (falling back to inference)')
           nil
         end
 
@@ -81,16 +69,50 @@ module Docscribe
         def load_env!
           return if @env && @builder
 
-          @env = build_env(@sig_dirs + @collection_dirs)
+          @env = try_with_fallback_build_env(
+            @sig_dirs + @collection_dirs,
+            @collection_dirs
+          )
+        end
+
+        # Look up a method signature from the loaded RBS definition builder.
+        #
+        # @private
+        # @param [String] container fully qualified class/module name
+        # @param [Symbol] scope :instance or :class
+        # @param [Symbol, String] name method name to look up
+        # @return [Docscribe::Types::MethodSignature, nil]
+        def lookup_signature(container, scope, name)
+          definition = definition_for(container: container, scope: scope)
+          method_def = definition.methods[name.to_sym]
+          return nil unless method_def
+
+          method_type = method_def.method_types.first
+          return nil unless method_type
+
+          build_signature(method_type.type)
+        end
+
+        # Try building an environment from combined dirs, falling back to
+        # user-only dirs on failure when collection dirs are present.
+        #
+        # @private
+        # @param [Array<String>] all_dirs combined sig and collection dirs
+        # @param [Array<String>] collection_dirs
+        # @raise [::RBS::BaseError]
+        # @raise [StandardError]
+        # @return [::RBS::Environment]
+        def try_with_fallback_build_env(all_dirs, collection_dirs)
+          build_env(all_dirs)
         rescue ::RBS::BaseError => e
-          raise unless @collection_dirs.any? && !@collection_dropped
+          raise unless collection_dirs.any? && !@collection_dropped
 
           @collection_dropped = true
           if ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
             warn "Docscribe: RBS collection error (#{e.class}), dropping collection dirs. " \
                  'Set DOCSCRIBE_RBS_DEBUG=1 for details.'
           end
-          @env = build_env(@sig_dirs)
+          build_env(@sig_dirs)
         end
 
         # Build an RBS environment from the given directories.
@@ -178,15 +200,22 @@ module Docscribe
           add_positionals!(param_types, func.optional_positionals)
           add_positionals!(param_types, func.trailing_positionals)
 
-          func.required_keywords.each do |kw, p|
-            param_types[kw.to_s] = format_type(p.type)
-          end
-
-          func.optional_keywords.each do |kw, p|
-            param_types[kw.to_s] = format_type(p.type)
-          end
+          add_keywords!(param_types, func.required_keywords)
+          add_keywords!(param_types, func.optional_keywords)
 
           param_types
+        end
+
+        # Add keyword parameters to the normalized parameter map.
+        #
+        # @private
+        # @param [Hash{String => String}] param_types
+        # @param [Hash{Symbol => Object}] keywords
+        # @return [void]
+        def add_keywords!(param_types, keywords)
+          keywords.each do |kw, p|
+            param_types[kw.to_s] = format_type(p.type)
+          end
         end
 
         # Add named positional parameters to the normalized parameter map.
@@ -244,6 +273,25 @@ module Docscribe
             type,
             collapse_generics: @collapse_generics
           )
+        end
+
+        # Emit a formatted RBS error warning with context-specific messaging.
+        #
+        # @private
+        # @param [StandardError] e the raised exception
+        # @param [String] context human-readable context label
+        # @param [StandardError] error the raised exception
+        # @return [void]
+        def handle_rbs_error(error, context)
+          case error
+          when ::RBS::BaseError
+            warn_once("Docscribe: #{context}: #{error.class}: #{error.message}")
+          else
+            warn_once(
+              "Docscribe: #{context}: #{error.class}: #{error.message}\n" \
+              'Feel free to open an issue on github.'
+            )
+          end
         end
 
         # Print one debug warning per provider instance when debugging is enabled.

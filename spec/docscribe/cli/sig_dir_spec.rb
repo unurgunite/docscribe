@@ -4,43 +4,49 @@ require 'open3'
 require 'tmpdir'
 require 'fileutils'
 require 'rbconfig'
+require 'docscribe/cli'
 
-RSpec.describe 'CLI --sig-dir' do
+RSpec.describe Docscribe::CLI do
   before { skip_unless_rbs_available! }
 
   describe 'RBS signatures from --sig-dir' do
-    it 'loads RBS signatures and uses them for @param/@return' do
-      Dir.mktmpdir do |dir|
-        FileUtils.mkdir_p(File.join(dir, 'sig'))
+    subject(:result) do
+      Open3.capture3(RbConfig.ruby, exe, '--stdin', '--sig-dir', 'sig', stdin_data: code, chdir: dir)
+    end
 
-        # RBS says x returns Integer and verbose is bool.
-        File.write(File.join(dir, 'sig', 'd.rbs'), <<~RBS)
-          class D
-            def x: (verbose: bool) -> Integer
+    let(:dir) { Dir.mktmpdir }
+    let(:code) do
+      <<~RUBY
+        class D
+          def x(verbose:)
+            "a"
           end
-        RBS
+        end
+      RUBY
+    end
 
-        # Ruby returns a String, so inference would produce String unless RBS is used.
-        code = <<~RUBY
-          class D
-            def x(verbose:)
-              "a"
-            end
-          end
-        RUBY
+    after { FileUtils.rm_rf(dir) }
 
-        stdout, stderr, status = Open3.capture3(
-          RbConfig.ruby, exe,
-          '--stdin',
-          '--sig-dir', 'sig', # implies --rbs in your CLI
-          stdin_data: code,
-          chdir: dir
-        )
+    before do
+      FileUtils.mkdir_p(File.join(dir, 'sig'))
+      File.write(File.join(dir, 'sig', 'd.rbs'), <<~RBS)
+        class D
+          def x: (verbose: bool) -> Integer
+        end
+      RBS
+    end
 
-        expect(status.success?).to be(true), stderr
-        expect(stdout).to include('# @return [Integer]')
-        expect(stdout).to include(param_tag('verbose', 'Boolean'))
-      end
+    it 'exits successfully' do
+      _, stderr, status = result
+      expect(status.success?).to be(true), stderr
+    end
+
+    it 'uses RBS @return' do
+      expect(result[0]).to include('# @return [Integer]')
+    end
+
+    it 'uses RBS @param' do
+      expect(result[0]).to include(param_tag('verbose', 'Boolean'))
     end
   end
 end

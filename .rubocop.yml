@@ -9,11 +9,18 @@ AllCops:
   NewCops: enable
   TargetRubyVersion: 2.7
 
-#Layout/LineLength:
-#  Max: 120
+Gemspec/DevelopmentDependencies:
+  Exclude:
+    - 'docscribe.gemspec'
 
 Style/DoubleNegation:
   Enabled: false
 
+Lint/BooleanSymbol:
+  Enabled: false
+
 Style/RedundantFetchBlock:
+  Enabled: false
+
+RSpec/SpecFilePathFormat:
   Enabled: false

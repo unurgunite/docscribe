@@ -23,21 +23,67 @@ module Docscribe
       #   be treated specially as Hash
       # @return [String]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
+        prefix_param_type(name) || inferred_param_type(name, default_str, fallback_type,
+                                                       treat_options_keyword_as_hash: treat_options_keyword_as_hash)
+      end
+
+      # Return type for special parameter prefixes.
+      #
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [String] name parameter name
+      # @return [String, nil]
+      def prefix_param_type(name)
         return 'Array' if name.start_with?('*') && !name.start_with?('**')
         return 'Hash'  if name.start_with?('**')
         return 'Proc'  if name.start_with?('&')
 
-        is_kw = name.end_with?(':')
+        nil
+      end
+
+      # Infer type for a regular or keyword parameter with optional default.
+      #
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [String] name parameter name
+      # @param [String, nil] default_str default expression source
+      # @param [String] fallback_type
+      # @param [Boolean] treat_options_keyword_as_hash
+      # @return [String]
+      def inferred_param_type(name, default_str, fallback_type, treat_options_keyword_as_hash:)
+        if name.end_with?(':') && default_str.nil?
+          return options_keyword_type(name, treat_options_keyword_as_hash, fallback_type)
+        end
+
         node = parse_expr(default_str)
         ty = Literals.type_from_literal(node, fallback_type: fallback_type)
 
-        if is_kw && default_str.nil?
-          return (treat_options_keyword_as_hash && name == 'options:' ? 'Hash' : fallback_type)
-        end
-
-        return 'Hash' if treat_options_keyword_as_hash && name == 'options:' && (default_str == '{}' || ty == 'Hash')
+        return 'Hash' if options_hash_keyword?(name, default_str, ty, treat_options_keyword_as_hash)
 
         ty
+      end
+
+      # Return 'Hash' for a keyword parameter named 'options:' when special-cased, else fallback.
+      #
+      # @note module_function: when included, also defines #options_keyword_type (instance visibility: private)
+      # @param [String] name parameter name
+      # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
+      # @param [String] fallback_type type returned when not special-cased
+      # @return [String]
+      def options_keyword_type(name, treat_options_keyword_as_hash, fallback_type)
+        treat_options_keyword_as_hash && name == 'options:' ? 'Hash' : fallback_type
+      end
+
+      # Whether a keyword parameter named 'options:' with a hash default should be typed as Hash.
+      #
+      # @note module_function: when included, also defines #options_hash_keyword? (instance visibility: private)
+      # @param [String] name parameter name
+      # @param [String, nil] default_str default expression source
+      # @param [String] type inferred type
+      # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
+      # @return [Boolean]
+      def options_hash_keyword?(name, default_str, type, treat_options_keyword_as_hash)
+        treat_options_keyword_as_hash && name == 'options:' && (default_str == '{}' || type == 'Hash')
       end
 
       # Parse a standalone expression for parameter-default inference.

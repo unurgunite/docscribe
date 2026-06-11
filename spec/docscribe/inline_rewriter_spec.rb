@@ -9,34 +9,55 @@ RSpec.describe Docscribe::InlineRewriter do
     expect(out).to include("\t# +A#foo+ -> Integer")
   end
 
-  it 'uses line indentation for inline modifier defs (private def ...)' do
-    code = <<~RUBY
-      class A
-        private def foo; 1; end
-      end
-    RUBY
+  describe 'with inline modifier defs' do
+    subject(:out) { inline(code, config: Docscribe::Config.new('emit' => { 'header' => true })) }
 
-    out = inline(code, config: Docscribe::Config.new('emit' => { 'header' => true }))
-    expect(out).to include('  # +A#foo+ -> Integer')
+    let(:code) do
+      <<~RUBY
+        class A
+          private def foo; 1; end
+        end
+      RUBY
+    end
+
+    it 'uses line indentation for inline modifier defs (private def ...)' do
+      expect(out).to include('  # +A#foo+ -> Integer')
+    end
   end
 
-  it 'does not duplicate existing @!attribute entries without access mode' do
-    conf = Docscribe::Config.new('emit' => { 'attributes' => true })
+  describe 'when not duplicating existing @!attribute entries' do
+    subject(:out) { described_class.insert_comments(code, strategy: :safe, config: conf) }
 
-    code = <<~RUBY
-      # @!attribute node
-      #   @return [Parser::AST::Node]
-      # @!attribute scope
-      #   @return [Symbol]
-      AttrInsertion = Struct.new(:node, :scope)
-    RUBY
+    let(:conf) { Docscribe::Config.new('emit' => { 'attributes' => true }) }
 
-    out = described_class.insert_comments(code, strategy: :safe, config: conf)
+    let(:code) do
+      <<~RUBY
+        # @!attribute node
+        #   @return [Parser::AST::Node]
+        # @!attribute scope
+        #   @return [Symbol]
+        AttrInsertion = Struct.new(:node, :scope)
+      RUBY
+    end
 
-    expect(out.scan(/^\s*#\s*@!attribute\b/).size).to eq(2)
-    expect(out).to include('# @!attribute node')
-    expect(out).to include('# @!attribute scope')
-    expect(out).not_to include('# @!attribute [rw] node')
-    expect(out).not_to include('# @!attribute [rw] scope')
+    it 'does not duplicate existing @!attribute entries' do
+      expect(out.scan(/^\s*#\s*@!attribute\b/).size).to eq(2)
+    end
+
+    it 'preserves existing @!attribute node' do
+      expect(out).to include('# @!attribute node')
+    end
+
+    it 'preserves existing @!attribute scope' do
+      expect(out).to include('# @!attribute scope')
+    end
+
+    it 'does not add [rw] to node' do
+      expect(out).not_to include('# @!attribute [rw] node')
+    end
+
+    it 'does not add [rw] to scope' do
+      expect(out).not_to include('# @!attribute [rw] scope')
+    end
   end
 end

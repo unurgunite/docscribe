@@ -9,49 +9,48 @@ RSpec.describe DocscribePlugins::ApiTagPlugin do
   before { Docscribe::Plugin::Registry.register(plugin) }
   after  { Docscribe::Plugin::Registry.clear! }
 
-  # Method documentation.
-  #
-  # @param [Object] code Param documentation.
-  # @param [Symbol] strategy Param documentation.
-  # @return [Object]
   def rewrite(code, strategy: :safe)
     conf = Docscribe::Config.new({})
     inline(code, strategy: strategy, config: conf)
   end
 
   describe 'public methods' do
-    it 'appends @api public to a public method' do
-      code = <<~RUBY
-        class Demo
-          def greet
-            "Hello"
+    subject(:out) { rewrite(code) }
+
+    describe 'appends @api public to a public method' do
+      let(:code) do
+        <<~RUBY
+          class Demo
+            def greet
+              "Hello"
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-
-      expect(out).to include('# @api public')
+      it { is_expected.to include('# @api public') }
     end
 
-    it 'appends @api public to a public class method' do
-      code = <<~RUBY
-        class Demo
-          def self.build
-            new
+    describe 'appends @api public to a public class method' do
+      let(:code) do
+        <<~RUBY
+          class Demo
+            def self.build
+              new
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-
-      expect(out).to include('# @api public')
+      it { is_expected.to include('# @api public') }
     end
   end
 
   describe 'private methods' do
-    it 'appends @api private to a private method' do
-      code = <<~RUBY
+    subject(:out) { rewrite(code) }
+
+    let(:code) do
+      <<~RUBY
         class Demo
           private
 
@@ -60,17 +59,17 @@ RSpec.describe DocscribePlugins::ApiTagPlugin do
           end
         end
       RUBY
-
-      out = rewrite(code)
-
-      expect(out).to include('# @api private')
-      expect(out).not_to include('# @api public')
     end
+
+    it { is_expected.to include('# @api private') }
+    it { is_expected.not_to include('# @api public') }
   end
 
   describe 'protected methods' do
-    it 'appends @api private to a protected method' do
-      code = <<~RUBY
+    subject(:out) { rewrite(code) }
+
+    let(:code) do
+      <<~RUBY
         class Demo
           protected
 
@@ -79,60 +78,49 @@ RSpec.describe DocscribePlugins::ApiTagPlugin do
           end
         end
       RUBY
-
-      out = rewrite(code)
-
-      expect(out).to include('# @api private')
     end
+
+    it { is_expected.to include('# @api private') }
   end
 
   describe 'idempotency' do
-    it 'does not duplicate @api tag on second safe run' do
-      code = <<~RUBY
+    let(:code) do
+      <<~RUBY
         class Demo
           def foo
             1
           end
         end
       RUBY
+    end
 
+    it 'does not duplicate @api tag on second safe run' do
       first  = rewrite(code)
       second = rewrite(first)
-
       expect(second.scan('# @api public').length).to eq(1)
     end
   end
 
   describe 'aggressive mode' do
-    it 'appends @api public in aggressive mode' do
-      code = <<~RUBY
+    let(:code) do
+      <<~RUBY
         class Demo
           def foo
             1
           end
         end
       RUBY
+    end
 
+    it 'appends @api public in aggressive mode' do
       out = rewrite(code, strategy: :aggressive)
-
       expect(out).to include('# @api public')
     end
   end
 
   describe 'context' do
-    it 'receives correct visibility and container' do
-      received = []
-
-      spy = Class.new(Docscribe::Plugin::Base::TagPlugin) do
-        define_method(:call) do |context|
-          received << context
-          []
-        end
-      end.new
-
-      Docscribe::Plugin::Registry.register(spy)
-
-      code = <<~RUBY
+    let(:code) do
+      <<~RUBY
         class MyService
           def run
             true
@@ -145,14 +133,26 @@ RSpec.describe DocscribePlugins::ApiTagPlugin do
           end
         end
       RUBY
-
-      rewrite(code)
-
-      containers   = received.map(&:container).uniq
-      visibilities = received.map(&:visibility)
-
-      expect(containers).to eq(['MyService'])
-      expect(visibilities).to include(:public, :private)
     end
+
+    let(:received) { [] }
+
+    let(:spy) do
+      target = received
+      Class.new(Docscribe::Plugin::Base::TagPlugin) do
+        define_method(:call) do |context|
+          target << context
+          []
+        end
+      end.new
+    end
+
+    before do
+      Docscribe::Plugin::Registry.register(spy)
+      rewrite(code)
+    end
+
+    it { expect(received.map(&:container).uniq).to eq(['MyService']) }
+    it { expect(received.map(&:visibility)).to include(:public, :private) }
   end
 end

@@ -22,20 +22,26 @@ RSpec.describe Docscribe::InlineRewriter::Collector do
   end
 
   describe 'Struct.new collection' do
-    it 'collects attr insertions for top-level Struct.new constant assignment' do
+    subject(:ins) do
       buffer = Parser::Source::Buffer.new('(inline)')
-      buffer.source = <<~RUBY
-        Foo = Struct.new(:a, :b, keyword_init: true)
-      RUBY
-
+      buffer.source = code
       ast = Docscribe::Parsing.parse_buffer(buffer)
       collector = described_class.new(buffer)
       collector.process(ast)
+      collector.attr_insertions.find { |i| i.container == 'Foo' }
+    end
 
-      ins = collector.attr_insertions.find { |i| i.container == 'Foo' }
+    let(:code) { "Foo = Struct.new(:a, :b, keyword_init: true)\n" }
 
+    it 'finds the attr insertion' do
       expect(ins).not_to be_nil
+    end
+
+    it 'sets access to :rw' do
       expect(ins.access).to eq(:rw)
+    end
+
+    it 'collects the attribute names' do
       expect(ins.names).to eq(%i[a b])
     end
   end

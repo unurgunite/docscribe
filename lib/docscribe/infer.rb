@@ -93,8 +93,8 @@ module Docscribe
       # @param [Parser::AST::Node] node
       # @param [String] fallback_type
       # @param [Boolean] nil_as_optional
-      # @param [nil] core_rbs_provider Param documentation.
-      # @param [nil] param_types Param documentation.
+      # @param [nil] core_rbs_provider core RBS type lookup provider
+      # @param [nil] param_types parameter name -> type map
       # @return [Hash]
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
                                  param_types: nil)
@@ -124,9 +124,10 @@ module Docscribe
       # Convert a constant AST node into its fully qualified name.
       #
       # @param [Parser::AST::Node, nil] n
+      # @param [Parser::AST::Node, nil] node constant AST node to resolve
       # @return [String, nil]
-      def const_full_name(n)
-        Names.const_full_name(n)
+      def const_full_name(node)
+        Names.const_full_name(node)
       end
 
       # Infer a YARD-ish type string from a literal AST node.
@@ -140,15 +141,15 @@ module Docscribe
 
       # Unify two inferred type strings conservatively.
       #
-      # @param [String, nil] a
-      # @param [String, nil] b
+      # @param [String, nil] type_a
+      # @param [String, nil] type_b
       # @param [String] fallback_type
       # @param [Boolean] nil_as_optional
       # @return [String]
-      def unify_types(a, b, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
+      def unify_types(type_a, type_b, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         Returns.unify_types(
-          a,
-          b,
+          type_a,
+          type_b,
           fallback_type: fallback_type,
           nil_as_optional: nil_as_optional
         )

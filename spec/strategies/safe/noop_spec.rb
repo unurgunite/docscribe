@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy no-op' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out2) { inline(out1) }
 
   let(:code) do
@@ -16,7 +16,7 @@ RSpec.describe 'safe strategy no-op' do
 
   let(:out1) { inline(code) }
 
-  it 'does not change output when all relevant tags already exist' do
+  it 'does not change output when all relevant tags already exist', :aggregate_failures do
     expect(out1).to eq(code) # first run should do nothing
     expect(out2).to eq(out1) # second run also no-op
   end

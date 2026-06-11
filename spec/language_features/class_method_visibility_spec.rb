@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'class method visibility helpers' do
+RSpec.describe Docscribe::InlineRewriter do
   let(:conf) { Docscribe::Config.new('emit' => { 'visibility_tags' => true, 'header' => true }) }
 
   describe 'private_class_method' do
@@ -15,7 +15,7 @@ RSpec.describe 'class method visibility helpers' do
       RUBY
     end
 
-    it 'marks def self.foo as private when private_class_method :foo appears after the def' do
+    it 'marks def self.foo as private when private_class_method :foo appears after the def', :aggregate_failures do
       expect(out).to include('# +A.foo+ -> Integer')
       expect(out).to include('# @private')
     end
@@ -33,7 +33,7 @@ RSpec.describe 'class method visibility helpers' do
       RUBY
     end
 
-    it 'marks def self.foo as protected when protected_class_method :foo appears after the def' do
+    it 'marks def self.foo as protected when protected_class_method :foo appears after the def', :aggregate_failures do
       expect(out).to include('# +A.foo+ -> Integer')
       expect(out).to include('# @protected')
     end
@@ -55,7 +55,7 @@ RSpec.describe 'class method visibility helpers' do
       RUBY
     end
 
-    it 'can make a class method public again via public_class_method :foo' do
+    it 'can make a class method public again via public_class_method :foo', :aggregate_failures do
       expect(out).to include('# +A.foo+ -> Integer')
       expect(out).not_to match(/# \+A\.foo\+.*?\n.*?# @private/m)
     end

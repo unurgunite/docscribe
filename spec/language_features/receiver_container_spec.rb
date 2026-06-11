@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'receiver-based containers' do
+RSpec.describe Docscribe::InlineRewriter do
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
   describe 'def Foo.bar' do
@@ -14,7 +14,7 @@ RSpec.describe 'receiver-based containers' do
       RUBY
     end
 
-    it 'documents `def Foo.bar` under Foo (not the lexical container)' do
+    it 'documents `def Foo.bar` under Foo (not the lexical container)', :aggregate_failures do
       expect(out).to include('# +Foo.bar+')
       expect(out).to include('# @return [Integer]')
       expect(out).not_to include('# +A.bar+')
@@ -35,7 +35,8 @@ RSpec.describe 'receiver-based containers' do
       RUBY
     end
 
-    it 'documents methods inside `class << Foo` under Foo and supports private :name retroactively' do
+    it 'documents methods inside `class << Foo` under Foo and supports private :name retroactively',
+       :aggregate_failures do
       expect(out).to include('# +Foo.bar+')
       expect(out).to match(/# \+Foo\.bar\+.*?\n.*?# @private/m)
     end
@@ -56,7 +57,7 @@ RSpec.describe 'receiver-based containers' do
       RUBY
     end
 
-    it 'does not leak the `class << Foo` container into subsequent lexical defs' do
+    it 'does not leak the `class << Foo` container into subsequent lexical defs', :aggregate_failures do
       expect(out).to include('# +Foo.bar+')
       expect(out).to include('# +A#baz+')
     end

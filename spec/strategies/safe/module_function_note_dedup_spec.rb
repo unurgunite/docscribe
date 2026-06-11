@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy module_function note de-dup' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code) }
 
   let(:code) do
@@ -15,7 +15,7 @@ RSpec.describe 'safe strategy module_function note de-dup' do
     RUBY
   end
 
-  it 'does not add a second module_function @note if one already exists' do
+  it 'does not add a second module_function @note if one already exists', :aggregate_failures do
     expect(out.scan(/@note module_function:/).size).to eq(1)
     expect(out).to include(param_tag('x', 'Object'))
   end

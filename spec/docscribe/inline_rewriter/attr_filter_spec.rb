@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'attr_* + filter' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'attributes' => true }, 'filter' => { 'exclude' => ['A#name', 'A#name='] }) }

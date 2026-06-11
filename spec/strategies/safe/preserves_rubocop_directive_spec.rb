@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy preserves rubocop directives' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code) }
 
   let(:code) do
@@ -13,7 +13,7 @@ RSpec.describe 'safe strategy preserves rubocop directives' do
     RUBY
   end
 
-  it 'keeps rubocop:disable lines and merges tags into the same doc block' do
+  it 'keeps rubocop:disable lines and merges tags into the same doc block', :aggregate_failures do
     expect(out).to include('# rubocop:disable Metrics/AbcSize')
     expect(out).to include('# @todo docs')
     expect(out).to include(param_tag('x', 'Object'))

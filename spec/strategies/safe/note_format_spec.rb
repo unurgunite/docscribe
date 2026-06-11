@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy formatting' do
+RSpec.describe Docscribe::InlineRewriter do
   describe 'merges into existing doc block' do
     subject(:out) { inline(code) }
 
@@ -18,16 +18,17 @@ RSpec.describe 'safe strategy formatting' do
       RUBY
     end
 
-    it 'merges into an existing doc-like block without introducing extra blank lines' do
-      # Existing lines preserved
+    it 'preserves existing doc lines', :aggregate_failures do
       expect(out).to include('# @todo keep this')
       expect(out).to include('# @return [String] already documented')
+    end
 
-      # Merge added note + param
+    it 'merges added note and param', :aggregate_failures do
       expect(out).to include('# @note module_function:')
       expect(out).to include(param_tag('x', 'Object'))
+    end
 
-      # Ensure no empty line between @note and @param
+    it 'does not introduce extra blank lines between @note and @param', :aggregate_failures do
       expect(out).to match(/@note module_function:.*\n\s*# @param/m)
       expect(out).not_to match(/@note module_function:.*\n\s*\n\s*# @param/m)
     end

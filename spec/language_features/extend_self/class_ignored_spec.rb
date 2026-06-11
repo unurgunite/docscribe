@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'extend self ignored in classes' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -13,7 +13,7 @@ RSpec.describe 'extend self ignored in classes' do
     RUBY
   end
 
-  it 'does not treat extend self in a class as module-method mode' do
+  it 'does not treat extend self in a class as module-method mode', :aggregate_failures do
     # In a class body, extend self should not change instance defs into class defs for Docscribe.
     expect(out).to include('# +C#foo+')
     expect(out).not_to include('# +C.foo+')

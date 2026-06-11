@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # Tag sorting configuration.
   class Config
     # Whether sortable tag normalization is enabled for doc-like blocks.
     #

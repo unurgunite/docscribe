@@ -3,15 +3,9 @@
 require 'parser/source/buffer'
 require 'parser/source/tree_rewriter'
 
-RSpec.describe 'merge insert aggregation (repeated lines)' do
-  it 'does not delete repeated lines that are meaningful (e.g. attr @return lines)' do
-    src = "class A\nend\n"
-
-    buffer = Parser::Source::Buffer.new('(merge-agg-repeat)')
-    buffer.source = src
-
+RSpec.describe Docscribe::InlineRewriter do
+  subject(:out) do
     rewriter = Parser::Source::TreeRewriter.new(buffer)
-
     merge_inserts = Hash.new { |h, k| h[k] = [] }
     end_pos = src.length
 
@@ -29,22 +23,27 @@ RSpec.describe 'merge insert aggregation (repeated lines)' do
       "#   @return [Object]\n"
     ]
 
-    Docscribe::InlineRewriter.send(
+    described_class.send(
       :apply_merge_inserts!,
       rewriter: rewriter,
       buffer: buffer,
       merge_inserts: merge_inserts
     )
 
-    out = rewriter.process
+    rewriter.process
+  end
 
-    expect(out.scan(/@!attribute \[r\] a/).size).to eq(1)
-    expect(out.scan(/@!attribute \[r\] b/).size).to eq(1)
+  let(:src) { "class A\nend\n" }
+  let(:buffer) { Parser::Source::Buffer.new('(merge-agg-repeat)').tap { |b| b.source = src } }
 
-    # The repeated @return line must appear twice (once per attribute block)
+  it { expect(out.scan(/@!attribute \[r\] a/).size).to eq(1) }
+  it { expect(out.scan(/@!attribute \[r\] b/).size).to eq(1) }
+
+  it 'includes duplicate @return lines (once per attribute)' do
     expect(out.scan(/#\s+@return \[Object\]/).size).to eq(2)
+  end
 
-    # Still: no consecutive separator lines
+  it 'avoids consecutive blank comment separator lines' do
     expect(out).not_to match(/^\s*#\s*$\n^\s*#\s*$/m)
   end
 end

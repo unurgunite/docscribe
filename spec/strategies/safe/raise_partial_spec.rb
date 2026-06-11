@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy partial @raise' do
+RSpec.describe Docscribe::InlineRewriter do
   describe 'keeps existing @raise' do
     subject(:out) { inline(code) }
 
@@ -18,7 +18,7 @@ RSpec.describe 'safe strategy partial @raise' do
       RUBY
     end
 
-    it 'keeps existing @raise and appends missing inferred @raise types' do
+    it 'keeps existing @raise and appends missing inferred @raise types', :aggregate_failures do
       # Existing preserved
       expect(out).to include('# @raise [MyError] already documented')
 
@@ -48,7 +48,7 @@ RSpec.describe 'safe strategy partial @raise' do
       RUBY
     end
 
-    it 'does not append an inferred @raise type that is already documented' do
+    it 'does not append an inferred @raise type that is already documented', :aggregate_failures do
       # Should not create a second FooError line
       expect(out.scan(/@raise \[FooError\]/).size).to eq(1)
 

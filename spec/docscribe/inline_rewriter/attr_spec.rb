@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'attr_* documentation' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'attributes' => true }) }
@@ -11,7 +11,7 @@ RSpec.describe 'attr_* documentation' do
     end
   RUBY
 
-  it 'generates @!attribute docs for attr_reader when enabled' do
+  it 'generates @!attribute docs for attr_reader when enabled', :aggregate_failures do
     expect(out).to include('# @!attribute [r] name')
     expect(out).to include('#   @return [Object]')
   end
@@ -23,10 +23,10 @@ RSpec.describe 'attr_* documentation' do
       end
     RUBY
 
-    it 'generates @!attribute docs for attr_accessor (rw) when enabled' do
+    it 'generates @!attribute docs for attr_accessor (rw) when enabled', :aggregate_failures do
       expect(out).to include('# @!attribute [rw] name')
       expect(out).to include('#   @return [Object]')
-      expect(out).to include(param_tag('value', 'Object', space_size: 3, struct: true).to_s)
+      expect(out).to include(param_tag('value', 'Object', description: '', indent: 3).to_s)
     end
   end
 
@@ -40,7 +40,7 @@ RSpec.describe 'attr_* documentation' do
       end
     RUBY
 
-    it 'adds @private for private attr_reader when emit.visibility_tags is enabled' do
+    it 'adds @private for private attr_reader when emit.visibility_tags is enabled', :aggregate_failures do
       expect(out).to include('# @!attribute [r] secret')
       expect(out).to include('# @private')
     end

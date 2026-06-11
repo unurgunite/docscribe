@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'module_function handling' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -15,7 +15,7 @@ RSpec.describe 'module_function handling' do
       RUBY
     end
 
-    it 'documents methods as module methods' do
+    it 'documents methods as module methods', :aggregate_failures do
       expect(out).to include('# +M.foo+')
       expect(out).to include('# @return [Integer]')
     end
@@ -32,7 +32,7 @@ RSpec.describe 'module_function handling' do
       RUBY
     end
 
-    it 'retroactively documents as a module method' do
+    it 'retroactively documents as a module method', :aggregate_failures do
       expect(out).to include('# +M.foo+')
       expect(out).to include('# +M#bar+')
     end
@@ -49,7 +49,7 @@ RSpec.describe 'module_function handling' do
       RUBY
     end
 
-    it 'handles multiple names' do
+    it 'handles multiple names', :aggregate_failures do
       expect(out).to include('# +M.foo+')
       expect(out).to include('# +M.bar+')
     end

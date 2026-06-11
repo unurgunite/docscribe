@@ -34,22 +34,87 @@ module DocscribePlugins
   #   require 'examples/plugins/collector_plugin/model_attributes/plugin'
   #   Docscribe::Plugin::Registry.register(DocscribePlugins::ModelAttributes.new)
   class ModelAttributes < Docscribe::Plugin::Base::CollectorPlugin
+    LITERAL_TYPES = {
+      str: 'String',
+      dstr: 'String',
+      int: 'Integer',
+      float: 'Integer',
+      nil: 'nil',
+      array: 'Array',
+      hash: 'Hash',
+      regexp: 'Regexp'
+    }.freeze
+
+    STRING_RETURN_METHODS = %i[
+      upcase downcase capitalize capitalize_first
+      strip lstrip rstrip
+      trim gsub sub gsub! sub!
+      truncate
+      concat append +
+      split chars each_char each_line
+      include? start_with? end_with?
+      match scan find_index
+      empty? present? blank?
+      to_s to_str
+      prepend reverse reverse!
+      swapcase swapcase!
+      tr tr_s tr_t tr_u
+      slice slice!
+      chars bytes
+    ].freeze
+
+    STRING_INTEGER_RETURN_METHODS = %i[length size count].freeze
+
+    INTEGER_BOOLEAN_METHODS = %i[
+      zero? one? positive? negative?
+      even? odd? finite?
+    ].freeze
+
+    INTEGER_ARITHMETIC_METHODS = %i[+ - * / % **].freeze
+
+    INTEGER_RETURN_METHODS = %i[
+      floor ceil round trunc
+      abs <=>
+    ].freeze
+
+    STRING_METHODS = %i[
+      upcase downcase capitalize
+      strip lstrip rstrip
+      gsub sub
+      truncate
+      concat append +
+      include? start_with? end_with?
+      match scan
+      empty? present? blank?
+      to_s to_str
+      length size count
+      reverse
+    ].freeze
+
+    INTEGER_METHODS = %i[
+      zero? one? positive? negative?
+      even? odd?
+      floor ceil round
+      abs
+      + - * / % **
+    ].freeze
+
     # @!attribute [r] root
     #   @return [String] Rails application root directory
     attr_reader :root
 
     # @!attribute [r] schema_tables
-    #   @return [Hash{String => Hash{String => String}}] table → column → db_type
+    #   @return [Hash{String => Hash{String => String}}] table -> column -> db_type
     attr_reader :schema_tables
 
     # @!attribute [r] yard_type_map
-    #   @return [Hash{String => String}] db_type → YARD type
+    #   @return [Hash{String => String}] db_type -> YARD type
     attr_reader :yard_type_map
 
     # Walk the AST and return doc insertion targets for model methods.
     #
     # @param [Parser::AST::Node] ast
-    # @param [Parser::Source::Buffer] _buffer Param documentation.
+    # @param [Parser::Source::Buffer] _buffer the source buffer (unused, required by collector interface)
     # @return [Array<Hash>]
     def collect(ast, _buffer)
       return [] unless active_record_model?(ast)
@@ -80,25 +145,33 @@ module DocscribePlugins
     # @param [Parser::AST::Node] ast
     # @return [Boolean]
     def active_record_model?(ast)
-      found = false
       Docscribe::Infer::ASTWalk.walk(ast) do |node|
         next unless node.type == :class
 
         _name, parent = *node
         next unless parent
 
-        if parent.type == :const && parent.children[1] == :ApplicationRecord
-          found = true
-          break
-        elsif parent.type == :const &&
-              parent.children[0]&.type == :const &&
-              parent.children[0].children[1] == :ActiveRecord &&
-              parent.children[1] == :Base
-          found = true
-          break
-        end
+        return true if active_record_parent?(parent)
       end
-      found
+
+      false
+    end
+
+    def active_record_parent?(parent)
+      application_record_parent?(parent) ||
+        active_record_base_parent?(parent)
+    end
+
+    def application_record_parent?(parent)
+      parent.type == :const &&
+        parent.children[1] == :ApplicationRecord
+    end
+
+    def active_record_base_parent?(parent)
+      parent.type == :const &&
+        parent.children[0]&.type == :const &&
+        parent.children[0].children[1] == :ActiveRecord &&
+        parent.children[1] == :Base
     end
 
     # Extract the model class name from the AST.
@@ -114,59 +187,6 @@ module DocscribePlugins
         end
       end
       nil
-    end
-
-    # Resolve a possibly-namespaced constant name to a string.
-    #
-    # @private
-    # @param [Parser::AST::Node] node
-    # @return [String, nil]
-    def resolve_const_name(node)
-      return nil unless node && node.type == :const
-
-      name = node.children[1]&.to_s
-      return name if node.children[0].nil?
-
-      prefix = resolve_const_name(node.children[0])
-      return name unless prefix
-
-      "#{prefix}::#{name}"
-    end
-
-    # Convert a model class name to a table name.
-    #
-    # @private
-    # @param [String] model_name
-    # @return [String]
-    def model_name_to_table_name(model_name)
-      parts = model_name.split('::')
-      table = parts.map do |p|
-        p.gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
-         .gsub(/([a-z\d])([A-Z])/, '\1_\2')
-         .downcase
-      end.join('_')
-      pluralize(table)
-    end
-
-    # Simple English pluralization (handles most common cases).
-    #
-    # @private
-    # @param [String] word
-    # @return [String]
-    def pluralize(word)
-      return word if word.end_with?('s', 'x', 'z', 'ch', 'sh')
-
-      if word.match?(/[^aeiou]y\Z/)
-        "#{word[0..-2]}ies"
-      elsif word.end_with?('es', 'us') || word.match?(/[^aeiou]o\Z/)
-        "#{word}es"
-      elsif word.end_with?('fe')
-        "#{word[0..-3]}ves"
-      elsif word.end_with?('f')
-        "#{word[0..-2]}ves"
-      else
-        "#{word}s"
-      end
     end
 
     # Load schema.rb or structure.sql and return table columns.
@@ -195,42 +215,91 @@ module DocscribePlugins
       results = []
 
       Docscribe::Infer::ASTWalk.walk(ast) do |node|
-        next unless node.type == :class
-
-        model_name = resolve_const_name(node.children[0])
-        next unless model_name
-
-        table_name = model_name_to_table_name(model_name)
-        columns = tables[table_name]
-        next unless columns
-
-        _name, _parent, body = *node
-        next unless body
-
-        stmts = body.type == :begin ? body.children : [body]
-
-        # Find all method definitions in the class
-        method_nodes = stmts.select { |s| %i[def defs].include?(s.type) }
-        method_nodes.each do |meth_node|
-          meth_name =
-            case meth_node.type
-            when :def
-              meth_node.children[0]
-            when :defs
-              meth_node.children[1]
-            else
-              next
-            end
-          next if reserved_method?(meth_name.to_s)
-
-          inferred_type = infer_method_return_type(meth_node, columns)
-          next if inferred_type.nil?
-
-          results << { anchor_node: meth_node, method_override: { return_type: inferred_type } }
-        end
+        collect_class_method_docs(node, tables, results)
       end
 
       results
+    end
+
+    def collect_class_method_docs(node, tables, results)
+      return unless node.type == :class
+
+      columns = model_columns_for(node, tables)
+      return unless columns
+
+      method_nodes_for(node).each do |meth_node|
+        doc = build_method_doc(meth_node, columns)
+        results << doc if doc
+      end
+    end
+
+    def model_columns_for(node, tables)
+      model_name = resolve_const_name(node.children[0])
+      return unless model_name
+
+      tables[model_name_to_table_name(model_name)]
+    end
+
+    # Convert a model class name to a table name.
+    #
+    # @private
+    # @param [String] model_name
+    # @return [String]
+    def model_name_to_table_name(model_name)
+      parts = model_name.split('::')
+      table = parts.map do |p|
+        p.gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+         .gsub(/([a-z\d])([A-Z])/, '\1_\2')
+         .downcase
+      end.join('_')
+      pluralize(table)
+    end
+
+    # Simple English pluralization (handles most common cases).
+    #
+    # @private
+    # @param [String] word
+    # @return [String]
+    def pluralize(word)
+      return word if word.end_with?('s', 'x', 'z', 'ch', 'sh')
+      return "#{word[0..-2]}ies" if word.match?(/[^aeiou]y\Z/)
+      return "#{word}es" if word.end_with?('es', 'us') || word.match?(/[^aeiou]o\Z/)
+      return "#{word[0..-3]}ves" if word.end_with?('fe')
+      return "#{word[0..-2]}ves" if word.end_with?('f')
+
+      "#{word}s"
+    end
+
+    def method_nodes_for(node)
+      _name, _parent, body = *node
+      return [] unless body
+
+      stmts = body.type == :begin ? body.children : [body]
+      stmts.select { |stmt| %i[def defs].include?(stmt.type) }
+    end
+
+    def build_method_doc(meth_node, columns)
+      meth_name = method_name(meth_node)
+      return if reserved_method?(meth_name.to_s)
+
+      inferred_type = infer_method_return_type(meth_node, columns)
+      return unless inferred_type
+
+      {
+        anchor_node: meth_node,
+        method_override: {
+          return_type: inferred_type
+        }
+      }
+    end
+
+    def method_name(node)
+      case node.type
+      when :def
+        node.children[0]
+      when :defs
+        node.children[1]
+      end
     end
 
     # Check if a method name should be skipped.
@@ -253,19 +322,22 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_method_return_type(meth_node, columns)
-      body =
-        case meth_node.type
-        when :def
-          meth_node.children[2]
-        when :defs
-          meth_node.children[3]
-        end
-      return nil unless body
+      body = method_body_node(meth_node)
+      return unless body
 
       last_expr = extract_last_expression(body)
-      return nil unless last_expr
+      return unless last_expr
 
       infer_type_from_node(last_expr, columns)
+    end
+
+    def method_body_node(meth_node)
+      case meth_node.type
+      when :def
+        meth_node.children[2]
+      when :defs
+        meth_node.children[3]
+      end
     end
 
     # Extract the last expression from a body node.
@@ -287,30 +359,38 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_type_from_node(node, columns)
-      case node.type
-      when :send
-        infer_send_type(node, columns)
-      when :lvar, :ivasgn, :ivar
-        infer_variable_type(node, columns)
-      when :str, :dstr
-        'String'
-      when :int, :float
-        'Integer'
-      when true, false
-        'Boolean'
-      when :nil
-        'nil'
-      when :array
-        'Array'
-      when :hash
-        'Hash'
-      when :regexp
-        'Regexp'
-      when :const
-        resolve_const_name(node)
-      else
-        'Object'
-      end
+      return infer_send_type(node, columns) if node.type == :send
+      return infer_variable_type(node, columns) if variable_node?(node)
+      return resolve_const_name(node) if node.type == :const
+
+      literal_type(node) || 'Object'
+    end
+
+    # Resolve a possibly-namespaced constant name to a string.
+    #
+    # @private
+    # @param [Parser::AST::Node] node
+    # @return [String, nil]
+    def resolve_const_name(node)
+      return nil unless node && node.type == :const
+
+      name = node.children[1]&.to_s
+      return name if node.children[0].nil?
+
+      prefix = resolve_const_name(node.children[0])
+      return name unless prefix
+
+      "#{prefix}::#{name}"
+    end
+
+    def variable_node?(node)
+      %i[lvar ivasgn ivar].include?(node.type)
+    end
+
+    def literal_type(node)
+      return 'Boolean' if [true, false].include?(node.type)
+
+      LITERAL_TYPES[node.type]
     end
 
     # Infer return type for a send node (method call).
@@ -347,19 +427,17 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_variable_type(node, columns)
+      column_yard_type(variable_column_name(node), columns)
+    end
+
+    def variable_column_name(node)
       case node.type
       when :lvar
-        name = node.children[0].to_s
-        column_yard_type(name, columns)
+        node.children[0].to_s
       when :ivar
-        name = node.children[0].to_s
-        # @attribute → attribute
-        column_name = name.sub(/^@/, '')
-        column_yard_type(column_name, columns)
+        node.children[0].to_s.sub(/^@/, '')
       when :ivasgn
-        name = node.children[0].to_s
-        column_name = name.sub(/=$/, '')
-        column_yard_type(column_name, columns)
+        node.children[0].to_s.sub(/=$/, '')
       end
     end
 
@@ -387,34 +465,9 @@ module DocscribePlugins
     # @param [Hash{String => String}] columns
     # @return [String, nil]
     def infer_string_method_type(meth, args, columns)
-      # Methods that return String
-      return 'String' if %i[
-        upcase downcase capitalize capitalize_first
-        strip lstrip rstrip
-        trim gsub sub gsub! sub!
-        truncate
-        concat append +
-        split chars each_char each_line
-        include? start_with? end_with?
-        match scan find_index
-        empty? present? blank?
-        present?
-        to_s to_str to_str
-        prepend
-        reverse reverse!
-        swapcase swapcase!
-        tr tr_s tr_t tr_u
-        slice slice!
-        chars chars
-        bytes bytes
-        chars
-      ].include?(meth)
-
-      # String concatenation: name + surname
+      return 'String' if STRING_RETURN_METHODS.include?(meth)
       return infer_type_from_node(args.first, columns) if meth == :+
-
-      # Methods that return Integer
-      return 'Integer' if %i[length size count].include?(meth)
+      return 'Integer' if STRING_INTEGER_RETURN_METHODS.include?(meth)
 
       'Object'
     end
@@ -427,22 +480,9 @@ module DocscribePlugins
     # @param [Hash{String => String}] _columns
     # @return [String, nil]
     def infer_integer_method_type(meth, _args, _columns)
-      # Methods that return Boolean
-      return 'Boolean' if %i[
-        zero? one? positive? negative?
-        even? odd?
-        finite?
-      ].include?(meth)
-
-      # Arithmetic returns Integer
-      return 'Integer' if %i[+ - * / % **].include?(meth)
-
-      # Methods that return Integer
-      return 'Integer' if %i[
-        floor ceil round trunc
-        abs
-        <=>
-      ].include?(meth)
+      return 'Boolean' if INTEGER_BOOLEAN_METHODS.include?(meth)
+      return 'Integer' if INTEGER_ARITHMETIC_METHODS.include?(meth)
+      return 'Integer' if INTEGER_RETURN_METHODS.include?(meth)
 
       'Object'
     end
@@ -462,19 +502,7 @@ module DocscribePlugins
     # @param [Symbol] meth
     # @return [Boolean]
     def string_method?(meth)
-      %i[
-        upcase downcase capitalize
-        strip lstrip rstrip
-        gsub sub
-        truncate
-        concat append +
-        include? start_with? end_with?
-        match scan
-        empty? present? blank?
-        to_s to_str
-        length size count
-        reverse
-      ].include?(meth)
+      STRING_METHODS.include?(meth)
     end
 
     # Check if a method name is an integer manipulation method.

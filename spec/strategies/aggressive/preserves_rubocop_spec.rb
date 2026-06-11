@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'aggressive strategy preserves rubocop directives' do
+RSpec.describe Docscribe::InlineRewriter do
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
   describe 'preserves leading rubocop directives but replaces doc blocks' do

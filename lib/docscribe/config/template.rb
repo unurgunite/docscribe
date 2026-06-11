@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # Default YAML config template for `docscribe init`.
   class Config
     # Return the default YAML template used by `docscribe init`.
     #

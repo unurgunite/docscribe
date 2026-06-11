@@ -3,7 +3,7 @@
 require 'tmpdir'
 require 'fileutils'
 
-RSpec.describe 'RBS core types in Docscribe' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: config) }
 
   before { skip_unless_rbs_available! }
@@ -27,7 +27,7 @@ RSpec.describe 'RBS core types in Docscribe' do
         RUBY
       end
 
-      it 'infers Boolean' do
+      it 'infers Boolean', :aggregate_failures do
         # With core RBS, positive? returns bool.
         expect(out).to include('# @return [Boolean]')
         expect(out).not_to include('# @return [Object]')
@@ -45,7 +45,7 @@ RSpec.describe 'RBS core types in Docscribe' do
         RUBY
       end
 
-      it 'infers Integer' do
+      it 'infers Integer', :aggregate_failures do
         expect(out).to include('# @return [Integer]')
         expect(out).not_to include('# @return [Object]')
       end
@@ -62,7 +62,7 @@ RSpec.describe 'RBS core types in Docscribe' do
         RUBY
       end
 
-      it 'infers Integer' do
+      it 'infers Integer', :aggregate_failures do
         expect(out).to include('# @return [Integer]')
         expect(out).not_to include('# @return [Object]')
       end
@@ -79,7 +79,7 @@ RSpec.describe 'RBS core types in Docscribe' do
         RUBY
       end
 
-      it 'infers String' do
+      it 'infers String', :aggregate_failures do
         expect(out).to include('# @return [String]')
         expect(out).not_to include('# @return [Object]')
       end
