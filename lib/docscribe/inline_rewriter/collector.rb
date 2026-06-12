@@ -1138,7 +1138,11 @@ module Docscribe
         args.map { |arg| extract_name_sym(arg) }.compact
       end
 
-      # Drop the first argument if it looks like a struct name string.
+      # Drop the first argument if it is a string (e.g. Struct.new("Name", ...)).
+      #
+      # @private
+      # @param [Array] args the destructured arguments from Struct.new
+      # @return [void]
       def drop_first_if_str!(args)
         return unless args.first.is_a?(Parser::AST::Node)
         return unless args.first.type == :str
