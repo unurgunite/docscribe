@@ -1,0 +1,4 @@
+module Docscribe
+  class Error < StandardError
+  end
+end

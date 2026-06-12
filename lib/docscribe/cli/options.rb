@@ -13,14 +13,14 @@ module Docscribe
         verbose: false,
         explain: false,
         config: nil,
-        include: [],
-        exclude: [],
-        include_file: [],
-        exclude_file: [],
+        include: [], #: Array[String]
+        exclude: [], #: Array[String]
+        include_file: [], #: Array[String]
+        exclude_file: [], #: Array[String]
         rbs: false,
-        sig_dirs: [],
+        sig_dirs: [], #: Array[String]
         sorbet: false,
-        rbi_dirs: [],
+        rbi_dirs: [], #: Array[String]
         rbs_collection: false
       }.freeze
 

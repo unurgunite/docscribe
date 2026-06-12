@@ -1,0 +1,13 @@
+module Docscribe
+  module Types
+    module RBS
+      module CollectionLoader
+        LOCK_FILE: "rbs_collection.lock.yaml"
+
+        DEFAULT_COLLECTION_PATH: ".gem_rbs_collection"
+
+        def self?.resolve: (?root: String) -> (String | nil)
+      end
+    end
+  end
+end

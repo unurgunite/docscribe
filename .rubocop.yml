@@ -24,3 +24,9 @@ Style/RedundantFetchBlock:
 
 RSpec/SpecFilePathFormat:
   Enabled: false
+
+Layout/LeadingCommentSpace:
+  Enabled: false
+
+Layout/CommentIndentation:
+  AllowForAlignment: true

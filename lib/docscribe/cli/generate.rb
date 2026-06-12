@@ -386,7 +386,7 @@ module Docscribe
         # @param [String] output_dir output directory
         # @return [String] full file path
         def plugin_path(class_name, output_dir)
-          File.join(output_dir, "#{underscore(class_name)}.rb")
+          File.join(output_dir || '.', "#{underscore(class_name || '')}.rb")
         end
 
         # Convert CamelCase to snake_case for file naming.
@@ -422,7 +422,7 @@ module Docscribe
         # @return [void]
         def write_to_file(output_dir, path, content)
           require 'fileutils'
-          FileUtils.mkdir_p(output_dir)
+          FileUtils.mkdir_p(output_dir || '.')
           File.write(path, content)
         end
 

@@ -46,6 +46,8 @@ module Docscribe
         when 'generate'
           argv.shift
           Docscribe::CLI::Generate.run(argv)
+        else
+          0
         end
       end
     end

@@ -79,7 +79,7 @@ module Docscribe
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
                                  param_types: nil)
         body = extract_def_body(node)
-        spec = { normal: FALLBACK_TYPE, rescues: [] }
+        spec = { normal: FALLBACK_TYPE, rescues: [] } #: Hash[Symbol, untyped]
         return spec unless body
 
         local_var_types = build_local_variable_types(body)
@@ -174,7 +174,7 @@ module Docscribe
       # @param [Parser::AST::Node] node AST node to walk
       # @return [Hash, nil]
       def build_local_variable_types(node)
-        types = {}
+        types = {} #: Hash[String, String]
         ASTWalk.walk(node) do |n|
           collect_assignment_type(n, types)
         end
@@ -230,7 +230,8 @@ module Docscribe
       def handle_if_node(node, **opts)
         t = run_last_expr_type(node.children[1], **opts)
         e = run_last_expr_type(node.children[2], **opts)
-        unify_types(t, e, **opts.slice(:fallback_type, :nil_as_optional))
+        unify_types(t, e, fallback_type: opts[:fallback_type] || 'untyped',
+                          nil_as_optional: opts.fetch(:nil_as_optional, true))
       end
 
       # Handle `:case` node for last_expr_type.
@@ -244,7 +245,10 @@ module Docscribe
         if branches.empty?
           opts[:fallback_type]
         else
-          branches.reduce { |a, b| unify_types(a, b, **opts.slice(:fallback_type, :nil_as_optional)) }
+          branches.reduce do |a, b|
+            unify_types(a, b, fallback_type: opts[:fallback_type] || 'untyped',
+                              nil_as_optional: opts.fetch(:nil_as_optional, true))
+          end
         end
       end
 
@@ -255,7 +259,7 @@ module Docscribe
       # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [Array<String>] list of inferred types from each branch
       def process_case_branches(node, **opts)
-        node.children[1..].compact.flat_map do |child|
+        (node.children[1..] || []).compact.flat_map do |child|
           if child.type == :when
             run_last_expr_type(child.children.last, **opts)
           else
@@ -334,7 +338,7 @@ module Docscribe
       # @param [Object] param_types
       # @return [String, nil]
       def resolve_lvar_rbs(recv, meth, core_rbs_provider, local_var_types, param_types)
-        lvar_name = recv.children.first
+        lvar_name = recv&.children&.first
         recv_type = lookup_lvar_type(lvar_name, local_var_types, param_types)
         return nil unless recv_type
 

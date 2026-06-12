@@ -20,7 +20,7 @@ module Docscribe
       # @param [Parser::AST::Node] node method or expression node to inspect
       # @return [Array<String>]
       def infer_raises_from_node(node)
-        raises = []
+        raises = [] #: Array[String]
 
         ASTWalk.walk(node) do |n|
           case n.type

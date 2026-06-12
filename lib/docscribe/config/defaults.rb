@@ -33,14 +33,14 @@ module Docscribe
       },
       'methods' => {
         'instance' => {
-          'public' => {},
-          'protected' => {},
-          'private' => {}
+          'public' => {}, #: Hash[String, untyped]
+          'protected' => {}, #: Hash[String, untyped]
+          'private' => {} #: Hash[String, untyped]
         },
         'class' => {
-          'public' => {},
-          'protected' => {},
-          'private' => {}
+          'public' => {}, #: Hash[String, untyped]
+          'protected' => {}, #: Hash[String, untyped]
+          'private' => {} #: Hash[String, untyped]
         }
       },
       'inference' => {
@@ -51,10 +51,10 @@ module Docscribe
       'filter' => {
         'visibilities' => %w[public protected private],
         'scopes' => %w[instance class],
-        'include' => [],
-        'exclude' => [],
+        'include' => [], #: Array[String]
+        'exclude' => [], #: Array[String]
         'files' => {
-          'include' => [],
+          'include' => [], #: Array[String]
           'exclude' => ['spec']
         }
       },
@@ -62,7 +62,7 @@ module Docscribe
         'enabled' => false,
         'collection' => false,
         'sig_dirs' => ['sig'],
-        'collection_dirs' => [],
+        'collection_dirs' => [], #: Array[String]
         'collapse_generics' => false
       },
       'sorbet' => {
@@ -71,7 +71,7 @@ module Docscribe
         'collapse_generics' => false
       },
       'plugins' => {
-        'require' => []
+        'require' => [] #: Array[String]
       }
     }.freeze
   end

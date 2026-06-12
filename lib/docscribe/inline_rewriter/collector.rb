@@ -986,7 +986,7 @@ module Docscribe
       # @param [Parser::AST::Node, nil] node an AST node
       # @return [Boolean]
       def self_node?(node)
-        node && node.type == :self
+        !!(node && node.type == :self)
       end
 
       # Process all nodes in a class/module body for documentation insertion targets.
@@ -1002,7 +1002,7 @@ module Docscribe
         return unless body
 
         nodes = body.type == :begin ? body.children : [body]
-        pending_sig_nodes = []
+        pending_sig_nodes = [] #: Array[Parser::AST::Node]
 
         nodes.each do |child|
           process_body_child(child, ctx, pending_sig_nodes)
@@ -1129,14 +1129,25 @@ module Docscribe
       # @return [Array<Symbol>] extracted member names
       def extract_struct_member_names(struct_new_node)
         _recv, _meth, *args = *struct_new_node
+        args ||= []
 
-        # Drop trailing keyword/options hash, e.g. keyword_init: true
-        args = args.reject { |arg| arg.is_a?(Parser::AST::Node) && arg.type == :hash }
+        args.reject! { |arg| arg.is_a?(Parser::AST::Node) && arg.type == :hash }
 
-        # Support Struct.new("Foo", :a, :b)
-        args = args.drop(1) if args.length >= 2 && args.first.is_a?(Parser::AST::Node) && args.first.type == :str
+        drop_first_if_str!(args) if args.length >= 2
 
         args.map { |arg| extract_name_sym(arg) }.compact
+      end
+
+      # Drop the first argument if it is a string (e.g. Struct.new("Name", ...)).
+      #
+      # @private
+      # @param [Array] args the destructured arguments from Struct.new
+      # @return [void]
+      def drop_first_if_str!(args)
+        return unless args.first.is_a?(Parser::AST::Node)
+        return unless args.first.type == :str
+
+        args.shift
       end
 
       # Build the container name for a struct constant assignment.

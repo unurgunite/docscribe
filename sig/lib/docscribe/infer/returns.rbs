@@ -1,0 +1,63 @@
+module Docscribe
+  module Infer
+    module Returns
+      LAST_EXPR_TYPE_HANDLERS: { begin: :handle_begin_node, if: :handle_if_node, case: :handle_case_node, return: :handle_return_node, block: :handle_block_node, send: :handle_send_node }
+
+      def self?.infer_return_type: (String? method_source) -> String
+
+      def self?.parse_method_source: (String method_source) -> (Parser::AST::Node | nil)
+
+      def self?.infer_return_type_from_node: (Parser::AST::Node node) -> String
+
+      def self?.returns_spec_from_node: (Parser::AST::Node node, ?fallback_type: String, ?nil_as_optional: bool, ?core_rbs_provider: untyped?, ?param_types: Hash[String, String]?) -> untyped
+
+      def self?.extract_def_body: (Parser::AST::Node node) -> (Parser::AST::Node | nil)
+
+      def self?.populate_returns_spec: (untyped spec, Parser::AST::Node body, (Hash[untyped, untyped] | nil) local_var_types, **untyped opts) -> untyped
+
+      def self?.infer_normal_return_type: (Parser::AST::Node body, **untyped opts) -> String
+
+      def self?.process_rescue_body: (untyped spec, Parser::AST::Node body, **untyped opts) -> untyped
+
+      def self?.process_rescue_branches: (untyped spec, Parser::AST::Node body, **untyped opts) -> Array[untyped]
+
+      def self?.build_local_variable_types: (Parser::AST::Node node) -> (Hash[String, String] | nil)
+
+      def self?.collect_assignment_type: (Parser::AST::Node node, Hash[String, String] types) -> void
+
+      def self?.assignment_name_and_value: (Parser::AST::Node node) -> [ (String | nil), (Parser::AST::Node | nil) ]
+
+      def self?.handle_begin_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_if_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_case_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.process_case_branches: (Parser::AST::Node node, **untyped opts) -> Array[String]
+
+      def self?.handle_block_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_send_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.resolve_rbs_for_send: ((Parser::AST::Node | nil) recv, Symbol meth, (untyped | nil) core_rbs_provider, (Hash[untyped, untyped] | nil) local_var_types, (Hash[String, String] | nil) param_types) -> (String | nil)
+
+      def self?.resolve_lvar_rbs: (Parser::AST::Node? recv, Symbol meth, (untyped | nil) core_rbs_provider, (Hash[untyped, untyped] | nil) local_var_types, (Hash[String, String] | nil) param_types) -> (String | nil)
+
+      def self?.lookup_lvar_type: (Symbol lvar_name, (Hash[untyped, untyped] | nil) local_var_types, (Hash[String, String] | nil) param_types) -> (String | nil)
+
+      def self?.resolve_chained_send_rbs: (Parser::AST::Node? recv, Symbol meth, (untyped | nil) core_rbs_provider, (Hash[untyped, untyped] | nil) local_var_types, (Hash[String, String] | nil) param_types) -> (String | nil)
+
+      def self?.last_expr_type: ((Parser::AST::Node | nil) node, **untyped opts) -> (String | nil)
+
+      def self?.run_last_expr_type: ((Parser::AST::Node | nil) node, **untyped opts) -> (String | nil)
+
+      def self?.handle_return_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.resolve_rbs_return_type: (String container_type, (String | Symbol) method_name, (untyped | nil) core_rbs_provider) -> String
+
+      def self?.unify_types: ((String | nil) type_a, (String | nil) type_b, fallback_type: String, nil_as_optional: bool) -> String
+
+      def self?.unify_nil_types: (String type_a, String type_b, fallback_type: String, nil_as_optional: bool) -> String
+    end
+  end
+end

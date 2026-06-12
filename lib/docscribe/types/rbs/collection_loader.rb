@@ -1,4 +1,3 @@
-# lib/docscribe/types/rbs/collection_loader.rb
 # frozen_string_literal: true
 
 require 'pathname'

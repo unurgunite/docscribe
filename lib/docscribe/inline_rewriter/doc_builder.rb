@@ -82,7 +82,7 @@ module Docscribe
         blockarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
           [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
         },
-        forward_arg: ->(*) { [] }
+        forward_arg: ->(*) { [] } #: Array[String]
       }.freeze
 
       # Build a complete doc block for one collected method insertion.
@@ -151,7 +151,7 @@ module Docscribe
         info = parse_existing_doc_tags(existing_lines)
         collect_all_missing(setup, info, insertion, config, options)
       rescue StandardError => e
-        debug_warn(e, insertion: insertion, name: setup[:name] || '(unknown)',
+        debug_warn(e, insertion: insertion, name: setup&.dig(:name) || '(unknown)',
                       phase: 'DocBuilder.build_missing_merge_result')
         { lines: [], reasons: [] }
       end
@@ -199,7 +199,7 @@ module Docscribe
                build_params_lines(setup[:node], setup[:indent], external_sig: setup[:external_sig], config: config,
                                                                 param_types_override: pt)
              end
-        rt = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(setup[:node]) : []
+        rt = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(setup[:node]) : [] #: Array[String]
         [pt, pl, rt]
       end
 
@@ -428,8 +428,8 @@ module Docscribe
       # @param [Hash] ctx
       # @return [Hash]
       def collect_missing_all(ctx)
-        lines = []
-        reasons = []
+        lines = [] #: Array[String]
+        reasons = [] #: Array[Hash]
         collect_missing_visibility!(lines, reasons, **ctx)
         collect_missing_module_function_note!(lines, reasons, **ctx)
         collect_missing_params!(lines, reasons, **ctx)
@@ -456,7 +456,7 @@ module Docscribe
           return
         end
 
-        param_types[pname] = type_match[1]
+        param_types[pname] = type_match[1] || 'untyped'
       end
 
       # Extract return info from a doc line.
@@ -496,7 +496,7 @@ module Docscribe
       # @param [Object] raise_types hash tracking existing @raise types
       # @return [Object]
       def extract_raise_info(line, raise_types)
-        extract_raise_types_from_line(line).each { |t| raise_types[t] = true }
+        extract_raise_types_from_line(line).each { |t| raise_types[t || ''] = true }
       end
 
       # Extract plugin tag info from a doc line.
@@ -509,7 +509,7 @@ module Docscribe
       def extract_plugin_info(line, plugin_tags)
         return unless (m = line.match(/^\s*#\s*@(\w+)\b/))
 
-        plugin_tags[m[1]] = true
+        plugin_tags[m[1] || ''] = true
       end
 
       # Extract exception names from a `@raise` doc line.
@@ -556,7 +556,7 @@ module Docscribe
         args = extract_args_from_node(node)
         return unless args
 
-        param_types = {}
+        param_types = {} #: Hash[String, String]
         collect_all_param_types(args, param_types, external_sig, config)
         param_types.empty? ? nil : param_types
       end
@@ -1020,7 +1020,7 @@ module Docscribe
       # @return [Object]
       def build_param_line(arg_node, indent, external_sig, param_types_override, **opts)
         PARAM_BUILDERS.fetch(arg_node.type, lambda { |*|
-          []
+          [] #: Array[String]
         }).call(arg_node, indent, external_sig, param_types_override, **opts)
       end
 
@@ -1354,7 +1354,7 @@ module Docscribe
         override_param_type_for(pname, param_types_override) ||
           Infer.infer_param_type(infer_name, nil,
                                  fallback_type: fallback_type,
-                                 treat_options_keyword_as_hash: treat_options_keyword_as_hash)
+                                 treat_options_keyword_as_hash: treat_options_keyword_as_hash || false)
       end
 
       # Format a YARD @param tag line with optional documentation text.

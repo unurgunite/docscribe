@@ -1,0 +1,19 @@
+module Docscribe
+  class Config
+    private
+
+    def method_override_bool: (Symbol scope, Symbol vis, String key, default: bool) -> bool
+
+    def method_override_str: (Symbol scope, Symbol vis, String key, default: String) -> String
+
+    def fetch_bool: (Array[String] path, bool default) -> bool
+
+    def scope_to_key: (Symbol scope) -> String
+
+    def matches_any?: (Array[String] patterns, String text) -> bool
+
+    def match_pattern?: (String pattern, String text) -> bool
+
+    def deep_merge: (Hash[untyped, untyped] hash1, (Hash[untyped, untyped] | nil) hash2) -> Hash[untyped, untyped]
+  end
+end

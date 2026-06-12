@@ -191,7 +191,7 @@ module Docscribe
       # @param [Array<String>] tag_order configured sortable tag order
       # @return [Array<Entry>]
       def sort(entries, tag_order:)
-        out = []
+        out = [] #: Array[untyped]
         priority = build_priority(tag_order)
         sort_loop(entries, out, priority)
         out
@@ -225,7 +225,7 @@ module Docscribe
       # @param [Integer] idx start index
       # @return [Array<(Array<Entry>, Integer)>] the tag run and next index
       def consume_tag_run(entries, idx)
-        run = []
+        run = [] #: Array[untyped]
         while idx < entries.length && entries[idx].kind == :tag
           run << entries[idx]
           idx += 1
@@ -264,7 +264,7 @@ module Docscribe
       # @param [Array<Entry>] entries
       # @return [Array<Array<Entry>>]
       def build_groups(entries)
-        groups = []
+        groups = [] #: Array[untyped]
         group_entries_loop(entries, groups)
         groups
       end

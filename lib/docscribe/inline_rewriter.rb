@@ -80,11 +80,11 @@ module Docscribe
       # @return [Hash]
       def build_rewrite_pipeline(buffer, ast)
         all = collect_insertions(buffer, ast)
-        method_overrides_by_pos = {}
+        method_overrides_by_pos = {} #: Hash[Integer, untyped]
         all = deduplicate_insertions(all, method_overrides_by_pos: method_overrides_by_pos)
         rewriter = Parser::Source::TreeRewriter.new(buffer)
-        merge_inserts = Hash.new { |h, k| h[k] = [] }
-        changes = []
+        merge_inserts = Hash.new { |h, k| h[k] = [] } #: Hash[Integer, untyped]
+        changes = [] #: Array[untyped]
 
         { all: all, method_overrides_by_pos: method_overrides_by_pos, rewriter: rewriter,
           merge_inserts: merge_inserts, changes: changes }
@@ -207,7 +207,7 @@ module Docscribe
         collector.process(ast)
         plugin_insertions = Docscribe::Plugin.run_collector_plugins(ast, buffer)
         method_insertions = collector.insertions
-        attr_insertions = collector.respond_to?(:attr_insertions) ? collector.attr_insertions : []
+        attr_insertions = collector.respond_to?(:attr_insertions) ? collector.attr_insertions : [] #: Array[untyped]
         method_insertions.map { |i| [:method, i] } +
           attr_insertions.map { |i| [:attr, i] } +
           plugin_insertions.map { |i| [:plugin, i] }
@@ -259,7 +259,7 @@ module Docscribe
       # @param [Array<Array(Symbol,Object)>] insertions
       # @return [Hash{Integer => Array<Array(Symbol,Object)>}]
       def group_by_position(insertions)
-        groups = {}
+        groups = {} #: Hash[Integer, untyped]
         insertions.each do |kind, ins|
           pos = plugin_insertion_pos(kind, ins)
           (groups[pos] ||= []) << [kind, ins]
@@ -436,7 +436,7 @@ module Docscribe
       def sort_winners_by_order(winners)
         winners.sort_by do |_k, ins|
           order = ins.is_a?(Hash) ? ins[:__docscribe_plugin_order] : nil
-          order.nil? ? 0 : order
+          order || 0
         end
       end
 
@@ -578,7 +578,7 @@ module Docscribe
         removable_start_idx = skip_preserved_lines(lines, start_idx, i)
         return nil if removable_start_idx > i
 
-        start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
+        start_pos = removable_start_idx.positive? ? (lines[0...removable_start_idx] || []).join.length : 0
         Parser::Source::Range.new(buffer, start_pos, bol_pos)
       end
 
@@ -589,7 +589,7 @@ module Docscribe
       # @param [Object] bol_pos character position of the beginning of the anchor line
       # @return [Object]
       def nearest_comment_line_index(src, lines, bol_pos)
-        def_line_idx = src[0...bol_pos].count("\n")
+        def_line_idx = (src[0...bol_pos] || '').count("\n")
         i = def_line_idx - 1
         i -= 1 while i >= 0 && lines[i].strip.empty?
         return nil unless i >= 0 && lines[i] =~ /^\s*#/
@@ -640,7 +640,7 @@ module Docscribe
         doc = normalize_plugin_doc_indent(doc, indent)
         doc = trim_trailing_blank_lines(doc)
 
-        if %i[def defs].include?(anchor_node&.type) && config.include_default_message?
+        if anchor_node && %i[def defs].include?(anchor_node.type) && config.include_default_message?
           doc = prepend_default_message_if_no_prose(doc, anchor_node, indent, config)
         end
 
@@ -789,7 +789,7 @@ module Docscribe
       def method_insertion_allowed?(insertion, config)
         name = SourceHelpers.node_name(insertion.node)
         config.process_method?(container: insertion.container, scope: insertion.scope,
-                               visibility: insertion.visibility, name: name)
+                               visibility: insertion.visibility || :public, name: name)
       end
 
       # Build all parameters needed for method insertion.
@@ -820,7 +820,7 @@ module Docscribe
         param_types = resolve_param_types(insertion, external_sig, options[:config])
         override = options[:override]
 
-        param_types = param_types.merge(override[:param_types]) if override[:param_types]&.any?
+        param_types = (param_types || {}).merge(override[:param_types]) if override[:param_types]&.any?
 
         { param_types: param_types, return_type_override: override[:return_type], override_tags: override[:tags] }
       end
@@ -1175,7 +1175,7 @@ module Docscribe
         return nil if chunks.empty?
 
         chunks = chunks.sort_by { |(sort_key, _s)| sort_key }
-        out_lines = []
+        out_lines = [] #: Array[String]
         sep_re = /^\s*#\s*\r?\n$/
 
         chunks.each do |(_k, chunk)|
@@ -1208,7 +1208,7 @@ module Docscribe
       # @param [Object] sep_re regex matching separator comment lines
       # @return [Object]
       def extract_separators(lines, sep_re)
-        seps = []
+        seps = [] #: Array[String]
         seps << lines.shift while !lines.empty? && lines.first.match?(sep_re)
         seps
       end
@@ -1227,7 +1227,7 @@ module Docscribe
         return '' if missing.empty?
 
         indent = SourceHelpers.line_indent(ins.node)
-        lines = []
+        lines = [] #: Array[String]
         lines << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#'
         lines.concat(build_attr_doc_lines(ins, indent: indent, config: config,
                                                signature_provider: signature_provider, names: missing))
@@ -1251,7 +1251,7 @@ module Docscribe
       # @param [Object] lines array of existing doc comment lines
       # @return [Object]
       def existing_attr_names(lines)
-        names = {}
+        names = {} #: Hash[String, bool]
 
         Array(lines).each do |line|
           if (m = line.match(/^\s*#\s*@!attribute\b(?:\s+\[[^\]]+\])?\s+(\S+)/))
@@ -1322,7 +1322,7 @@ module Docscribe
       # @return [Object]
       def build_attr_doc_lines(ins, indent:, config:, signature_provider:, names: nil)
         names ||= ins.names
-        lines = []
+        lines = [] #: Array[untyped]
 
         names.each_with_index do |name_sym, idx|
           lines.concat(build_single_attr_lines(ins, name_sym, indent: indent,
@@ -1389,7 +1389,7 @@ module Docscribe
       def attr_visibility_lines(indent, config, ins)
         return [] unless config.emit_visibility_tags?
 
-        lines = []
+        lines = [] #: Array[String]
         lines << "#{indent}# @private" if ins.visibility == :private
         lines << "#{indent}# @protected" if ins.visibility == :protected
         lines

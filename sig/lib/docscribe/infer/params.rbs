@@ -1,0 +1,17 @@
+module Docscribe
+  module Infer
+    module Params
+      def self?.infer_param_type: (String name, String? default_str, ?fallback_type: String, ?treat_options_keyword_as_hash: bool) -> String
+
+      def self?.prefix_param_type: (String name) -> (String | nil)
+
+      def self?.inferred_param_type: (String name, String? default_str, String fallback_type, treat_options_keyword_as_hash: bool) -> String
+
+      def self?.options_keyword_type: (String name, bool treat_options_keyword_as_hash, String fallback_type) -> String
+
+      def self?.options_hash_keyword?: (String name, String? default_str, String type, bool treat_options_keyword_as_hash) -> bool
+
+      def self?.parse_expr: (String? src) -> (Parser::AST::Node | nil)
+    end
+  end
+end

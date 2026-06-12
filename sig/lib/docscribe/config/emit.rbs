@@ -1,0 +1,33 @@
+module Docscribe
+  class Config
+    def emit_header?: () -> bool
+
+    def emit_param_tags?: () -> bool
+
+    def emit_visibility_tags?: () -> bool
+
+    def emit_raise_tags?: () -> bool
+
+    def emit_rescue_conditional_returns?: () -> bool
+
+    def emit_attributes?: () -> bool
+
+    def emit_return_tag?: (Symbol scope, Symbol visibility) -> bool
+
+    def default_message: (Symbol scope, Symbol visibility) -> String
+
+    def fallback_type: () -> String
+
+    def nil_as_optional?: () -> bool
+
+    def treat_options_keyword_as_hash?: () -> bool
+
+    def param_tag_style: () -> String
+
+    def param_documentation: () -> String
+
+    def include_default_message?: () -> bool
+
+    def include_param_documentation?: () -> bool
+  end
+end

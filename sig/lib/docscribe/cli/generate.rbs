@@ -1,0 +1,63 @@
+module Docscribe
+  module CLI
+    module Generate
+      PLUGIN_TYPES: Array["tag" | "collector"]
+
+      NEXT_STEPS_TEMPLATE: String
+
+      def self.run: (Array[String] argv) -> (0 | 1)
+
+      private
+
+      def self.parse_generate_options: (Array[String] argv) -> [ Hash[Symbol, untyped], OptionParser ]
+
+      def self.extract_generate_args: (Array[String] argv) -> [ String?, String? ]
+
+      def self.validate_generate_args: (String? plugin_type, String? class_name, OptionParser parser) -> (1 | nil)
+
+      def self.render: (String? plugin_type, String? class_name) -> String?
+
+      def self.tag_template: (String? class_name) -> String
+
+      def self.collector_template: (String? class_name) -> String
+
+      def self.dispatch_output: (String? content, String? plugin_type, String? class_name, Hash[Symbol, untyped] opts) -> (0 | 1)
+
+      def self.write_plugin: (String? content, plugin_type: String?, class_name: String?, output_dir: String?) -> (1 | 0)
+
+      def self.build_option_parser: (Hash[Symbol, untyped] opts) -> OptionParser
+
+      def self.parser_banner: () -> String
+
+      def self.register_output_option: (OptionParser opt, Hash[Symbol, untyped] opts) -> void
+
+      def self.register_stdout_option: (OptionParser opt, Hash[Symbol, untyped] opts) -> void
+
+      def self.register_help_option: (OptionParser opt, Hash[Symbol, untyped] opts) -> void
+
+      def self.args_provided?: (String? plugin_type, String? class_name, OptionParser parser) -> bool
+
+      def self.known_type?: (String? plugin_type) -> bool
+
+      def self.valid_name?: (String? class_name) -> bool
+
+      def self.valid_constant?: (String? str) -> bool
+
+      def self.plugin_path: (String? class_name, String? output_dir) -> String
+
+      def self.underscore: (String str) -> String
+
+      def self.file_exists?: (String path) -> bool
+
+      def self.write_to_file: (String? output_dir, String path, String? content) -> void
+
+      def self.print_created: (String? plugin_type, String path) -> void
+
+      def self.next_steps: (String? plugin_type, String path) -> String
+
+      def self.plugin_base_name: (String path) -> String
+
+      def self.generate_implement_hint: (String? plugin_type) -> (String | nil)
+    end
+  end
+end

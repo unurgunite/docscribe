@@ -53,7 +53,7 @@ module Docscribe
       # @return [Hash, nil]
       def doc_comment_block_info(buffer, def_bol_pos)
         lines = buffer.source.lines
-        def_line_idx = buffer.source[0...def_bol_pos].count("\n")
+        def_line_idx = (buffer.source[0...def_bol_pos] || '').count("\n")
         block_range = find_comment_block_range(lines, def_line_idx)
         return nil unless block_range
 
@@ -77,7 +77,7 @@ module Docscribe
       def comment_block_removal_range(buffer, def_bol_pos)
         src = buffer.source
         lines = src.lines
-        def_line_idx = src[0...def_bol_pos].count("\n")
+        def_line_idx = (src[0...def_bol_pos] || '').count("\n")
         block_range = find_comment_block_range(lines, def_line_idx)
         return nil unless block_range
 
@@ -131,7 +131,7 @@ module Docscribe
       # @param [Range] range line index range
       # @return [Boolean]
       def doc_marker?(lines, range)
-        lines[range].any? { |line| doc_marker_line?(line) }
+        (lines[range] || []).any? { |line| doc_marker_line?(line) }
       end
 
       # Build block info hash from computed line ranges.
@@ -161,7 +161,7 @@ module Docscribe
       # @param [Integer] def_bol_pos
       # @return [Parser::Source::Range]
       def compute_removal_range(buffer, lines, preserved_start_idx, def_bol_pos)
-        start_pos = preserved_start_idx.positive? ? lines[0...preserved_start_idx].join.length : 0
+        start_pos = preserved_start_idx.positive? ? (lines[0...preserved_start_idx] || []).join.length : 0
         Parser::Source::Range.new(buffer, start_pos, def_bol_pos)
       end
 
@@ -174,9 +174,9 @@ module Docscribe
       # @param [Integer] end_pos_idx
       # @return [Hash{start_pos: Integer, doc_start_pos: Integer, end_pos: Integer}]
       def compute_positions(lines, start_idx, doc_start_idx, end_pos_idx)
-        start_pos = start_idx.positive? ? lines[0...start_idx].join.length : 0
-        doc_start_pos = doc_start_idx.positive? ? lines[0...doc_start_idx].join.length : 0
-        end_pos = lines[0..end_pos_idx].join.length
+        start_pos = start_idx.positive? ? (lines[0...start_idx] || []).join.length : 0
+        doc_start_pos = doc_start_idx.positive? ? (lines[0...doc_start_idx] || []).join.length : 0
+        end_pos = (lines[0..end_pos_idx] || []).join.length
         { start_pos: start_pos, doc_start_pos: doc_start_pos, end_pos: end_pos }
       end
 
@@ -246,7 +246,7 @@ module Docscribe
       def already_has_doc_immediately_above?(buffer, insert_pos)
         src = buffer.source
         lines = src.lines
-        current_line_index = src[0...insert_pos].count("\n")
+        current_line_index = (src[0...insert_pos] || '').count("\n")
         i = current_line_index - 1
         i -= 1 while i >= 0 && lines[i].strip.empty?
         return false if i.negative?

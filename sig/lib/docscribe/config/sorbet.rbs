@@ -1,0 +1,21 @@
+module Docscribe
+  class Config
+    @sorbet_rbi_provider: (Docscribe::Types::Sorbet::RBIProvider | nil)
+
+    def signature_provider_for: (source: String, file: String) -> (Docscribe::Types::ProviderChain | nil)
+
+    def append_sorbet_providers: (Array[untyped] providers, source: String, file: String) -> void
+
+    def sorbet_source_provider: (String source, String file) -> (Docscribe::Types::Sorbet::SourceProvider | nil)
+
+    def build_provider_chain: (Array[untyped] providers) -> (Docscribe::Types::ProviderChain | nil)
+
+    def sorbet_rbi_provider: () -> (Docscribe::Types::Sorbet::RBIProvider | nil)
+
+    def sorbet_enabled?: () -> bool
+
+    def sorbet_rbi_dirs: () -> Array[String]
+
+    def sorbet_collapse_generics?: () -> bool
+  end
+end

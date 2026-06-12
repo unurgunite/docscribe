@@ -23,12 +23,12 @@ module Docscribe
           checked_ok: 0,
           checked_fail: 0,
           corrected: 0,
-          fail_paths: [],
-          fail_changes: {},
-          error_paths: [],
-          error_messages: {},
-          type_mismatch_paths: [],
-          type_mismatch_changes: {}
+          fail_paths: [], #: Array[String]
+          fail_changes: {}, #: Hash[String, untyped]
+          error_paths: [], #: Array[String]
+          error_messages: {}, #: Hash[String, String]
+          type_mismatch_paths: [], #: Array[String]
+          type_mismatch_changes: {} #: Hash[String, untyped]
         }.freeze
         # Run Docscribe for files or STDIN using the selected mode and strategy.
         #
@@ -129,7 +129,7 @@ module Docscribe
         # @param [Array<String>] args file and/or directory arguments
         # @return [Array<String>] unique sorted Ruby file paths
         def expand_paths(args)
-          files = []
+          files = [] #: Array[String]
           args = ['.'] if args.empty?
 
           args.each do |path|
