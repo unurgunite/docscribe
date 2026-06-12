@@ -5,10 +5,4 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          if [[ ! "${{ github.head_ref }}" =~ ^v ]]; then
-            echo "PRs in master allowed only from v* branches"
-            exit 1
-          fi
+    uses: FlorexLabs/shared-workflows/.github/workflows/check-source-branch.yml@master
