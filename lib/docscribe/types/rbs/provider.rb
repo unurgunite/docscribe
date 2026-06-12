@@ -143,7 +143,7 @@ module Docscribe
         # @return [Object]
         def definition_for(container:, scope:)
           type_name = parse_type_name(absolute_const(container))
-          scope == :class ? @builder.build_singleton(type_name) : @builder.build_instance(type_name)
+          scope == :class ? @builder&.build_singleton(type_name) : @builder&.build_instance(type_name)
         end
 
         # Parse a fully-qualified constant string into an RBS TypeName.
@@ -157,6 +157,7 @@ module Docscribe
         def parse_type_name(string)
           absolute = string.start_with?('::')
           *path, name = string.delete_prefix('::').split('::').map(&:to_sym)
+          name ||= :Object
           ::RBS::TypeName.new(
             name: name,
             namespace: ::RBS::Namespace.new(path: path, absolute: absolute)

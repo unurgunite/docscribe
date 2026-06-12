@@ -436,7 +436,7 @@ module Docscribe
       def sort_winners_by_order(winners)
         winners.sort_by do |_k, ins|
           order = ins.is_a?(Hash) ? ins[:__docscribe_plugin_order] : nil
-          order.nil? ? 0 : order
+          order || 0
         end
       end
 
@@ -578,7 +578,7 @@ module Docscribe
         removable_start_idx = skip_preserved_lines(lines, start_idx, i)
         return nil if removable_start_idx > i
 
-        start_pos = removable_start_idx.positive? ? lines[0...removable_start_idx].join.length : 0
+        start_pos = removable_start_idx.positive? ? (lines[0...removable_start_idx] || []).join.length : 0
         Parser::Source::Range.new(buffer, start_pos, bol_pos)
       end
 
@@ -589,7 +589,7 @@ module Docscribe
       # @param [Object] bol_pos character position of the beginning of the anchor line
       # @return [Object]
       def nearest_comment_line_index(src, lines, bol_pos)
-        def_line_idx = src[0...bol_pos].count("\n")
+        def_line_idx = (src[0...bol_pos] || '').count("\n")
         i = def_line_idx - 1
         i -= 1 while i >= 0 && lines[i].strip.empty?
         return nil unless i >= 0 && lines[i] =~ /^\s*#/
@@ -640,7 +640,7 @@ module Docscribe
         doc = normalize_plugin_doc_indent(doc, indent)
         doc = trim_trailing_blank_lines(doc)
 
-        if %i[def defs].include?(anchor_node&.type) && config.include_default_message?
+        if anchor_node && %i[def defs].include?(anchor_node.type) && config.include_default_message?
           doc = prepend_default_message_if_no_prose(doc, anchor_node, indent, config)
         end
 
@@ -789,7 +789,7 @@ module Docscribe
       def method_insertion_allowed?(insertion, config)
         name = SourceHelpers.node_name(insertion.node)
         config.process_method?(container: insertion.container, scope: insertion.scope,
-                               visibility: insertion.visibility, name: name)
+                               visibility: insertion.visibility || :public, name: name)
       end
 
       # Build all parameters needed for method insertion.
@@ -820,7 +820,7 @@ module Docscribe
         param_types = resolve_param_types(insertion, external_sig, options[:config])
         override = options[:override]
 
-        param_types = param_types.merge(override[:param_types]) if override[:param_types]&.any?
+        param_types = (param_types || {}).merge(override[:param_types]) if override[:param_types]&.any?
 
         { param_types: param_types, return_type_override: override[:return_type], override_tags: override[:tags] }
       end

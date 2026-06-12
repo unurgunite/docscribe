@@ -139,7 +139,7 @@ module Docscribe
 
     def self.dispatch_attr_strategy: (Hash[Symbol, untyped] params, Hash[Symbol, untyped] options) -> void
 
-    def self.apply_attr_aggressive!: (Hash[Symbol, untyped] params, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
+    def self.apply_attr_aggressive!: (Hash[Symbol, untyped] params, Parser::Source::TreeRewriter rewriter) -> void
 
     def self.apply_attr_safe!: (Hash[Symbol, untyped] params, Hash[Integer, Array[ [Integer, String] ]] merge_inserts, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
 

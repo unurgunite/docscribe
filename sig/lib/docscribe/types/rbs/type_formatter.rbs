@@ -2,11 +2,11 @@ module Docscribe
   module Types
     module RBS
       module TypeFormatter
-        @to_yard_formatters: Hash[Class, ^(untyped, collapse_generics: bool) -> String]
+        @to_yard_formatters: Hash[Class, ^(untyped, ?collapse_generics: bool) -> String]
 
         @named_type_classes: Array[Class]
 
-        def self?.to_yard_formatters: () -> Hash[Class, ^(untyped, collapse_generics: bool) -> String]
+        def self?.to_yard_formatters: () -> Hash[Class, ^(untyped, ?collapse_generics: bool) -> String]
 
         def self?.format_any: () -> "Object"
 

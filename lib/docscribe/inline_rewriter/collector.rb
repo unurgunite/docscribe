@@ -986,7 +986,7 @@ module Docscribe
       # @param [Parser::AST::Node, nil] node an AST node
       # @return [Boolean]
       def self_node?(node)
-        node && node.type == :self
+        !!(node && node.type == :self)
       end
 
       # Process all nodes in a class/module body for documentation insertion targets.
@@ -1131,7 +1131,7 @@ module Docscribe
         _recv, _meth, *args = *struct_new_node
 
         # Drop trailing keyword/options hash, e.g. keyword_init: true
-        args = args.reject { |arg| arg.is_a?(Parser::AST::Node) && arg.type == :hash }
+        args = (args || []).reject { |arg| arg.is_a?(Parser::AST::Node) && arg.type == :hash }
 
         # Support Struct.new("Foo", :a, :b)
         args = args.drop(1) if args.length >= 2 && args.first.is_a?(Parser::AST::Node) && args.first.type == :str
