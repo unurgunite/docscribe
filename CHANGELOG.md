@@ -1,3 +1,35 @@
+## 1.4.2
+
+### Added
+
+- Architecture module-flow and data-flow diagrams to README.md
+- RBS signatures are now split per-file alongside their `lib/` sources (was monolithic `sig/lib/docscribe.rbs`)
+- `Steepfile` for `steep check` with `#:` type annotations on safe trailing-comment positions
+- `SECURITY.md`, `CONTRIBUTING.md`, issue templates, and PR template for GitHub community standards
+
+### Fixed
+
+- Nilable type warnings in steep (89→57):
+  - `source_helpers.rb`: guard `src[...]`, `lines[...]` with `|| ""` / `|| []`
+  - `inline_rewriter.rb`: guard `src`/`lines`, `anchor_node`, `param_types`, `visibility`
+  - `doc_builder.rb`: guard `type_match[1]`, `m[1]`, `treat_options_keyword_as_hash`, `setup`
+  - `collector.rb`: `!!(node && .type)` for `self_node?`, guard `args`
+  - `returns.rb`: guard `node.children[]`, `recv`, default kwargs to `unify_types`
+  - `provider.rb`: guard `@builder`, fallback `name || :Object`
+  - `generate.rb`: guard `output_dir`/`class_name` with `|| '.'` / `|| ''`
+- RBS signature fixes: `?collapse_generics` as optional keyword arg, `apply_attr_aggressive!` 2-arg signature
+- CLI `dispatch_subcommand` now guarantees `Integer` return (`else 0`)
+- CI compatibility for Ruby 3.0/3.1: rbs 4.x requires Ruby ≥ 3.2, excluded via `BUNDLE_WITHOUT`
+
+### Changed
+
+- Major RuboCop compliance sweep across `lib/`, `spec/`, `examples/`
+- CLI layer refactored (`options.rb`, `run.rb`, `generate.rb`, `init.rb`, `config_builder.rb`)
+- Core rewriter engine refactored (`inline_rewriter.rb`, `collector.rb`, `doc_builder.rb`, `doc_block.rb`, `tag_sorter.rb`)
+- Type system helpers refactored (`rbs/provider.rb`, `rbs/type_formatter.rb`, `sorbet/base_provider.rb`, `infer/returns.rb`)
+- Plugin system dispatch simplified (`plugin.rb`, `registry.rb`, `base/collector_plugin.rb`)
+- `.rubocop.yml` / `.rubocop_todo.yml` updated with tighter thresholds
+
 ## 1.4.1
 
 ### Added
