@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy attrs' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'attributes' => true }) }
@@ -17,7 +17,7 @@ RSpec.describe 'safe strategy attrs' do
       RUBY
     end
 
-    it 'appends missing @!attribute blocks into an existing doc-like block' do
+    it 'appends missing @!attribute blocks into an existing doc-like block', :aggregate_failures do
       expect(out).to include('# @todo docs')
       expect(out).to include('# @!attribute [r] a')
       expect(out).to include('# @!attribute [r] b')
@@ -35,7 +35,7 @@ RSpec.describe 'safe strategy attrs' do
       RUBY
     end
 
-    it 'inserts full attr docs (even if a normal comment exists)' do
+    it 'inserts full attr docs (even if a normal comment exists)', :aggregate_failures do
       expect(out).to include('# NOTE: keep this')
       expect(out).to include('# @!attribute [r] name')
     end

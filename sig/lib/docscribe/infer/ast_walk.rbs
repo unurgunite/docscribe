@@ -1,0 +1,7 @@
+module Docscribe
+  module Infer
+    module ASTWalk
+      def self?.walk: ((Parser::AST::Node | nil) node) { (Parser::AST::Node) -> void } -> void
+    end
+  end
+end

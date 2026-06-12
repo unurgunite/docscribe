@@ -9,18 +9,8 @@ module RbsHelper
   # @return [String] rewritten source
   def inline_with_sorbet(code, strategy: :safe, config_overrides: {})
     skip_unless_sorbet_bridge_available!
-
-    raw = {
-      'sorbet' => {
-        'enabled' => true
-      }
-    }.merge(config_overrides)
-
-    inline(
-      code,
-      strategy: strategy,
-      config: Docscribe::Config.new(raw)
-    )
+    raw = { 'sorbet' => { 'enabled' => true } }.merge(config_overrides)
+    inline(code, strategy: strategy, config: Docscribe::Config.new(raw))
   end
 
   # Rewrite +code+ with both Sorbet RBI and optionally RBS signature files.
@@ -31,40 +21,19 @@ module RbsHelper
   # @param [String] code Ruby source to rewrite
   # @param [String] rbi RBI file content
   # @param [String, nil] rbs RBS file content (optional)
-  # @param [String] rbi_dir_name relative path for the RBI directory
-  # @param [String] sig_dir_name relative path for the RBS sig directory
+  # @param [Hash] dir_names directory names for RBI and sig
+  # @param [Hash] config_overrides additional raw config keys merged on top
   # @return [String] rewritten source
-  def inline_with_signature_files(code:, rbi:, rbs: nil, rbi_dir_name: 'sorbet/rbi', sig_dir_name: 'sig',
+  def inline_with_signature_files(code:, rbi:, rbs: nil, dir_names: { rbi: 'sorbet/rbi', sig: 'sig' },
                                   config_overrides: {})
     skip_unless_sorbet_bridge_available!
-
     Dir.mktmpdir do |dir|
-      rbi_dir = File.join(dir, rbi_dir_name)
+      rbi_dir = File.join(dir, dir_names[:rbi])
       FileUtils.mkdir_p(rbi_dir)
       File.write(File.join(rbi_dir, 'demo.rbi'), rbi)
-
-      raw = {
-        'sorbet' => {
-          'enabled' => true,
-          'rbi_dirs' => [rbi_dir]
-        }
-      }.merge(config_overrides)
-
-      if rbs
-        sig_dir = File.join(dir, sig_dir_name)
-        FileUtils.mkdir_p(sig_dir)
-        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
-
-        raw['rbs'] = {
-          'enabled' => true,
-          'sig_dirs' => [sig_dir]
-        }
-      end
-
-      inline(
-        code,
-        config: Docscribe::Config.new(raw)
-      )
+      raw = { 'sorbet' => { 'enabled' => true, 'rbi_dirs' => [rbi_dir] } }.merge(config_overrides)
+      raw.merge!(rbs_config(dir, dir_names[:sig], rbs)) if rbs
+      inline(code, config: Docscribe::Config.new(raw))
     end
   end
 
@@ -114,5 +83,12 @@ module RbsHelper
     end
 
     skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
+  end
+
+  def rbs_config(dir, sig_dir_name, rbs_content)
+    sig_dir = File.join(dir, sig_dir_name)
+    FileUtils.mkdir_p(sig_dir)
+    File.write(File.join(sig_dir, 'demo.rbs'), rbs_content)
+    { 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] } }
   end
 end

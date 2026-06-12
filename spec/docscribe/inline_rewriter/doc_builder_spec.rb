@@ -28,7 +28,7 @@ RSpec.describe Docscribe::InlineRewriter::DocBuilder do
       end
     RUBY
 
-    it 'omits the default method message when doc.include_default_message is false' do
+    it 'omits the default method message when doc.include_default_message is false', :aggregate_failures do
       expect(out).not_to include('Method documentation.')
       expect(out).to include('# @param [Object] foo Param documentation.')
     end
@@ -47,7 +47,7 @@ RSpec.describe Docscribe::InlineRewriter::DocBuilder do
       end
     RUBY
 
-    it 'omits param placeholder text when doc.include_param_documentation is false' do
+    it 'omits param placeholder text when doc.include_param_documentation is false', :aggregate_failures do
       expect(out).to include('# @param [Object] foo')
       expect(out).not_to include('Param documentation.')
     end
@@ -66,7 +66,7 @@ RSpec.describe Docscribe::InlineRewriter::DocBuilder do
       end
     RUBY
 
-    it 'omits both method and param placeholder text when both flags are false' do
+    it 'omits both method and param placeholder text when both flags are false', :aggregate_failures do
       expect(out).not_to include('Method documentation.')
       expect(out).not_to include('Param documentation.')
       expect(out).to include('# @param [Object] foo')

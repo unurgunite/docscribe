@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'DOCSCRIBE_DEBUG' do
+RSpec.describe Docscribe do
   subject(:out) { inline(code, file: 'spec_debug.rb') }
 
   let(:code) do
@@ -11,33 +11,34 @@ RSpec.describe 'DOCSCRIBE_DEBUG' do
     RUBY
   end
 
-  it 'prints a warning to stderr when DOCSCRIBE_DEBUG=1 and doc building raises' do
-    old = ENV.fetch('DOCSCRIBE_DEBUG', nil)
-    ENV['DOCSCRIBE_DEBUG'] = '1'
+  describe 'when DOCSCRIBE_DEBUG=1' do
+    let(:old) { ENV.fetch('DOCSCRIBE_DEBUG', nil) }
 
-    # Force an exception inside DocBuilder by breaking returns inference
-    allow(Docscribe::Infer).to receive(:returns_spec_from_node).and_raise(StandardError, 'boom')
+    before do
+      ENV['DOCSCRIBE_DEBUG'] = '1'
+      allow(Docscribe::Infer).to receive(:returns_spec_from_node).and_raise(StandardError, 'boom')
+    end
 
-    expect do
-      # file: makes the debug output more meaningful
-      out
-    end.to output(/Docscribe DEBUG: DocBuilder\.build failed at spec_debug\.rb:/).to_stderr
-  ensure
-    ENV['DOCSCRIBE_DEBUG'] = old
+    after { ENV['DOCSCRIBE_DEBUG'] = old }
+
+    it 'prints a warning to stderr' do
+      expect { out }.to output(/Docscribe DEBUG: DocBuilder\.build failed at spec_debug\.rb:/).to_stderr
+    end
   end
 
-  it 'does not print warnings by default when doc building raises' do
-    skip 'cannot suppress RBS fallback warning on Ruby 2.7' if RUBY_VERSION < '3.0'
+  describe 'by default' do
+    let(:old) { ENV.fetch('DOCSCRIBE_DEBUG', nil) }
 
-    old = ENV.fetch('DOCSCRIBE_DEBUG', nil)
-    ENV['DOCSCRIBE_DEBUG'] = nil
+    before do
+      skip 'cannot suppress RBS fallback warning on Ruby 2.7' if RUBY_VERSION < '3.0'
+      ENV['DOCSCRIBE_DEBUG'] = nil
+      allow(Docscribe::Infer).to receive(:returns_spec_from_node).and_raise(StandardError, 'boom')
+    end
 
-    allow(Docscribe::Infer).to receive(:returns_spec_from_node).and_raise(StandardError, 'boom')
+    after { ENV['DOCSCRIBE_DEBUG'] = old }
 
-    expect do
-      out
-    end.not_to output.to_stderr
-  ensure
-    ENV['DOCSCRIBE_DEBUG'] = old
+    it 'does not print warnings to stderr' do
+      expect { out }.not_to output.to_stderr
+    end
   end
 end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # Emit-related configuration (headers, visibility tags, etc.).
   class Config
     # Whether to emit method header lines such as:
     #   # +MyClass#foo+ -> Integer

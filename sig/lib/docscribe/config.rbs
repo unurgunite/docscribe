@@ -1,0 +1,9 @@
+module Docscribe
+  class Config
+    @raw: Hash[String, untyped]
+
+    attr_reader raw: Hash[String, untyped]
+
+    def initialize: (?Hash[String, untyped] raw) -> void
+  end
+end

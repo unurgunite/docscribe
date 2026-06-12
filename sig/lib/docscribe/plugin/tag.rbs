@@ -1,0 +1,11 @@
+module Docscribe
+  module Plugin
+    class Tag
+      attr_accessor name: String
+      attr_accessor text: (String | nil)
+      attr_accessor types: (Array[String] | nil)
+
+      def initialize: (?name: String, ?text: (String | nil), ?types: (Array[String] | nil)) -> void
+    end
+  end
+end

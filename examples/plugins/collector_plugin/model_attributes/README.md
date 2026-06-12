@@ -52,7 +52,7 @@ end
     - Walks the AST to find method definitions
     - For each method, analyzes the return expression
     - Looks up column types from the parser
-    - Infers YARD types from column types (e.g., `boolean` → `Boolean`, `integer` → `Integer`)
+    - Infers YARD types from column types (e.g., `boolean` -> `Boolean`, `integer` -> `Integer`)
     - Generates `@return` doc blocks
 
 ## Column type mapping

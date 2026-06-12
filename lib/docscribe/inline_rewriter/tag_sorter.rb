@@ -64,26 +64,45 @@ module Docscribe
       # @param [Array<String>] lines
       # @return [Array<Hash>]
       def parse_segments(lines)
-        segments = []
+        segments = [] #: Array[untyped]
         i = 0
 
-        while i < lines.length
-          line = lines[i]
-
-          if top_level_tag_line?(line)
-            entries = []
-            while i < lines.length && top_level_tag_line?(lines[i])
-              entry, i = consume_entry(lines, i)
-              entries << entry
-            end
-            segments << { type: :tag_run, entries: entries }
-          else
-            segments << { type: :other, lines: [line] }
-            i += 1
-          end
-        end
+        i = advance_parse(lines, i, segments) while i < lines.length
 
         segments
+      end
+
+      # Parse the next line as either a tag run or non-tag content, appending to segments.
+      #
+      # @note module_function: when included, also defines #advance_parse (instance visibility: private)
+      # @param [Array<String>] lines comment block lines
+      # @param [Integer] idx current parse index
+      # @param [Array<Hash>] segments accumulated parsed segments
+      # @return [Integer] new index after processing
+      def advance_parse(lines, idx, segments)
+        if top_level_tag_line?(lines[idx])
+          consume_tag_run(lines, idx, segments)
+        else
+          segments << { type: :other, lines: [lines[idx]] }
+          idx + 1
+        end
+      end
+
+      # Consume a contiguous tag run and append to segments.
+      #
+      # @note module_function: when included, also defines #consume_tag_run (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Integer] idx current index
+      # @param [Array<Hash>] segments accumulated segments
+      # @return [Integer] new index after consuming the run
+      def consume_tag_run(lines, idx, segments)
+        entries = [] #: Array[untyped]
+        while idx < lines.length && top_level_tag_line?(lines[idx])
+          entry, idx = consume_entry(lines, idx)
+          entries << entry
+        end
+        segments << { type: :tag_run, entries: entries }
+        idx
       end
 
       # Sort one parsed segment if it is a tag run.
@@ -124,29 +143,51 @@ module Docscribe
       def consume_entry(lines, start_idx)
         first = lines[start_idx]
         tag = extract_tag_name(first)
-        entry_lines = [first]
-        i = start_idx + 1
+        entry_lines = collect_continuation_lines(lines, start_idx + 1)
+        i = entry_lines.length + start_idx
 
-        while i < lines.length
-          line = lines[i]
+        entry = build_entry(tag, entry_lines, first, start_idx)
 
-          break if top_level_tag_line?(line)
-          break if blank_comment_line?(line)
-          break unless comment_line?(line)
+        [entry, i]
+      end
 
-          entry_lines << line
-          i += 1
-        end
-
-        entry = Entry.new(
+      # Build an Entry struct from parsed tag name, lines, and source line metadata.
+      #
+      # @note module_function: when included, also defines #build_entry (instance visibility: private)
+      # @param [String, nil] tag the extracted tag name
+      # @param [Array<String>] entry_lines all lines belonging to this entry
+      # @param [String] first the first (tag) line
+      # @param [Integer] start_idx original index of the first line
+      # @return [Entry]
+      def build_entry(tag, entry_lines, first, start_idx)
+        Entry.new(
           tag: tag,
           lines: entry_lines,
           param_name: extract_param_name(first),
           option_owner: extract_option_owner(first),
           index: start_idx
         )
+      end
 
-        [entry, i]
+      # Collect continuation lines following a top-level tag entry.
+      #
+      # @note module_function: when included, also defines #collect_continuation_lines (instance visibility: private)
+      # @param [Array<String>] lines
+      # @param [Integer] start_idx
+      # @return [Array<String>]
+      def collect_continuation_lines(lines, start_idx)
+        result = [] #: Array[String]
+        i = start_idx
+
+        while i < lines.length
+          line = lines[i]
+          break if top_level_tag_line?(line) || blank_comment_line?(line) || !comment_line?(line)
+
+          result << line
+          i += 1
+        end
+
+        result
       end
 
       # Group entries so `@option` tags remain attached to their owning `@param`.
@@ -155,32 +196,52 @@ module Docscribe
       # @param [Array<Entry>] entries
       # @return [Array<Array<Entry>>]
       def group_entries(entries)
-        groups = []
+        groups = [] #: Array[untyped]
         i = 0
 
         while i < entries.length
-          entry = entries[i]
-
-          if entry.tag == 'param'
-            group = [entry]
-            i += 1
-
-            while i < entries.length &&
-                  entries[i].tag == 'option' &&
-                  entries[i].option_owner &&
-                  entries[i].option_owner == entry.param_name
-              group << entries[i]
-              i += 1
-            end
-
-            groups << group
-          else
-            groups << [entry]
-            i += 1
-          end
+          groups << group_entry(entries, i)
+          i += 1
         end
 
         groups
+      end
+
+      # Group a single entry, attaching any subsequent @option entries if it is a @param.
+      #
+      # @note module_function: when included, also defines #group_entry (instance visibility: private)
+      # @param [Array<Entry>] entries parsed tag entries
+      # @param [Integer] idx index of the entry to group
+      # @return [Array<Entry>] the entry group
+      def group_entry(entries, idx)
+        entry = entries[idx]
+        if entry.tag == 'param'
+          [entry] + collect_option_entries(entries, idx + 1, entry.param_name)
+        else
+          [entry]
+        end
+      end
+
+      # Collect `@option` entries belonging to the given param name.
+      #
+      # @note module_function: when included, also defines #collect_option_entries (instance visibility: private)
+      # @param [Array<Entry>] entries
+      # @param [Integer] start_idx
+      # @param [String] param_name
+      # @return [Array<Entry>]
+      def collect_option_entries(entries, start_idx, param_name)
+        result = [] #: Array[untyped]
+        i = start_idx
+
+        while i < entries.length &&
+              entries[i].tag == 'option' &&
+              entries[i].option_owner &&
+              entries[i].option_owner == param_name
+          result << entries[i]
+          i += 1
+        end
+
+        result
       end
 
       # Whether a line begins a top-level tag entry.

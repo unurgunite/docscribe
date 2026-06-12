@@ -1,0 +1,59 @@
+module Docscribe
+  module Types
+    module RBS
+      class Provider
+        @sig_dirs: Array[String]
+
+        @collection_dirs: Array[String]
+
+        @collapse_generics: bool
+
+        @env: (::RBS::Environment | nil)
+
+        @builder: (::RBS::DefinitionBuilder | nil)
+
+        @warned: bool
+
+        @collection_dropped: bool
+
+        def initialize: (sig_dirs: Array[String], ?collection_dirs: Array[String], ?collapse_generics: bool) -> void
+
+        def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Docscribe::Types::MethodSignature | nil)
+
+        private
+
+        def load_env!: () -> void
+
+        def lookup_signature: (String container, Symbol scope, (Symbol | String) name) -> (Docscribe::Types::MethodSignature | nil)
+
+        def try_with_fallback_build_env: (Array[String] all_dirs, Array[String] collection_dirs) -> ::RBS::Environment
+
+        def build_env: (Array[String] dirs) -> ::RBS::Environment
+
+        def definition_for: (container: String, scope: Symbol) -> untyped
+
+        def parse_type_name: (String string) -> ::RBS::TypeName
+
+        def absolute_const: (String container) -> String
+
+        def build_signature: (::RBS::Types::Function func) -> Docscribe::Types::MethodSignature
+
+        def build_param_types: (::RBS::Types::Function func) -> Hash[String, String]
+
+        def add_keywords!: (Hash[String, String] param_types, Hash[Symbol, untyped] keywords) -> void
+
+        def add_positionals!: (Hash[String, String] param_types, Array[untyped] list) -> void
+
+        def build_rest_positional: (::RBS::Types::Function func) -> (Docscribe::Types::RestPositional | nil)
+
+        def build_rest_keywords: (::RBS::Types::Function func) -> (Docscribe::Types::RestKeywords | nil)
+
+        def format_type: (untyped type) -> String
+
+        def handle_rbs_error: (untyped error, String context) -> void
+
+        def warn_once: (String msg) -> void
+      end
+    end
+  end
+end

@@ -1,0 +1,41 @@
+module Docscribe
+  module Types
+    module RBS
+      module TypeFormatter
+        @to_yard_formatters: Hash[Class, ^(untyped, ?collapse_generics: bool) -> String]
+
+        @named_type_classes: Array[Class]
+
+        def self?.to_yard_formatters: () -> Hash[Class, ^(untyped, ?collapse_generics: bool) -> String]
+
+        def self?.format_any: () -> "Object"
+
+        def self?.format_bool: () -> "Boolean"
+
+        def self?.format_void: () -> "void"
+
+        def self?.format_nil: () -> "nil"
+
+        def self?.format_optional: (untyped type, collapse_generics: bool) -> String
+
+        def self?.format_literal: (untyped lit) -> String
+
+        def self?.format_proc: () -> "Proc"
+
+        def self?.format_union: (untyped type, collapse_generics: bool) -> String
+
+        def self?.format_named: (untyped type, collapse_generics: bool) -> String
+
+        def self?.literal_to_yard: (untyped lit) -> String
+
+        def self?.to_yard: ((untyped | nil) type, ?collapse_generics: bool) -> String
+
+        def self?.named_type?: (untyped type) -> bool
+
+        def self?.named_type_classes: () -> Array[Class]
+
+        def self?.fallback_string: (untyped type) -> String
+      end
+    end
+  end
+end

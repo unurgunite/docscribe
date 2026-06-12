@@ -1,0 +1,5 @@
+module Docscribe
+  class Config
+    def load_plugins!: () -> void
+  end
+end

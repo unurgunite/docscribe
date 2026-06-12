@@ -24,31 +24,49 @@ module Docscribe
       def type_from_literal(node, fallback_type: FALLBACK_TYPE)
         return fallback_type unless node
 
-        case node.type
-        when :int then 'Integer'
-        when :float then 'Float'
-        when :str, :dstr then 'String'
-        when :sym then 'Symbol'
-        when :true, :false then 'Boolean' # rubocop:disable Lint/BooleanSymbol
-        when :nil then 'nil'
-        when :array then 'Array'
-        when :hash then 'Hash'
-        when :regexp then 'Regexp'
+        literal_type_for(node.type) || const_type_for(node, fallback_type) ||
+          send_new_type_for(node, fallback_type) || fallback_type
+      end
 
-        when :const
-          node.children.last.to_s
+      # Map a node type symbol to a known literal type name.
+      #
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Symbol] type node type
+      # @return [String, nil]
+      def literal_type_for(type)
+        LITERAL_TYPE_MAP[type]
+      end
 
-        when :send
-          recv, meth, = node.children
-          if meth == :new && recv && recv.type == :const
-            recv.children.last.to_s
-          else
-            fallback_type
-          end
+      # Extract a constant name from a `:const` node.
+      #
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Parser::AST::Node] node
+      # @param [String] fallback_type
+      # @param [String] _fallback_type fallback type string (unused here)
+      # @return [String, nil]
+      def const_type_for(node, _fallback_type)
+        return unless node.type == :const
 
-        else
-          fallback_type
-        end
+        node.children.last.to_s
+      end
+
+      # Extract a type from a `Foo.new` send node.
+      #
+      # @note module_function: when included, also defines # (instance visibility: private)
+      # @private
+      # @param [Parser::AST::Node] node
+      # @param [String] fallback_type
+      # @param [String] _fallback_type fallback type string (unused here)
+      # @return [String, nil]
+      def send_new_type_for(node, _fallback_type)
+        return unless node.type == :send
+
+        recv, meth, = node.children
+        return unless meth == :new && recv&.type == :const
+
+        recv.children.last.to_s
       end
     end
   end

@@ -1,0 +1,26 @@
+module Docscribe
+  module Types
+    class RestPositional
+      attr_accessor name: (String | nil)
+      attr_accessor element_type: String
+
+      def initialize: (?name: (String | nil), ?element_type: String) -> void
+    end
+
+    class RestKeywords
+      attr_accessor name: (String | nil)
+      attr_accessor type: String
+
+      def initialize: (?name: (String | nil), ?type: String) -> void
+    end
+
+    class MethodSignature
+      attr_accessor return_type: String
+      attr_accessor param_types: Hash[String, String]
+      attr_accessor rest_positional: (RestPositional | nil)
+      attr_accessor rest_keywords: (RestKeywords | nil)
+
+      def initialize: (?return_type: String, ?param_types: Hash[String, String], ?rest_positional: (RestPositional | nil), ?rest_keywords: (RestKeywords | nil)) -> void
+    end
+  end
+end

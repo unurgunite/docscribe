@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Inline rewriter @raise inference' do
+RSpec.describe Docscribe::Infer do
   describe 'rescue with explicit exception classes' do
     subject(:out) { inline(code) }
 
@@ -16,7 +16,7 @@ RSpec.describe 'Inline rewriter @raise inference' do
       RUBY
     end
 
-    it 'adds @raise for explicit exception classes rescued' do
+    it 'adds @raise for explicit exception classes rescued', :aggregate_failures do
       expect(out).to include('@raise [Foo]')
       expect(out).to include('@raise [Bar]')
     end

@@ -13,7 +13,17 @@ sources:
 # A directory to install the downloaded RBSs
 path: .gem_rbs_collection
 
-# gems:
-#   # If you want to avoid installing rbs files for gems, you can specify them here.
-#   - name: GEM_NAME
-#     ignore: true
+gems:
+  - name: rbs
+  - name: prism
+  - name: parser
+  - name: optparse
+  - name: fileutils
+  - name: pathname
+  - name: json
+  - name: logger
+  - name: monitor
+  - name: tsort
+  - name: forwardable
+  - name: strscan
+  - name: securerandom

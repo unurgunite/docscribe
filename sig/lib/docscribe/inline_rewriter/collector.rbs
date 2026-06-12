@@ -1,0 +1,238 @@
+module Docscribe
+  module InlineRewriter
+    class Collector < Parser::AST::Processor
+      class Insertion
+        attr_accessor node: Parser::AST::Node
+        attr_accessor scope: Symbol
+        attr_accessor visibility: Symbol
+        attr_accessor container: String
+        attr_accessor module_function: (bool | Symbol | nil)
+        attr_accessor included_instance_visibility: (Symbol | nil)
+        attr_accessor anchor_node: Parser::AST::Node
+        def initialize: (Parser::AST::Node node, Symbol scope, Symbol visibility, String container, (bool | Symbol | nil) module_function, (Symbol | nil) included_instance_visibility, Parser::AST::Node anchor_node) -> void
+      end
+
+      class AttrInsertion
+        attr_accessor node: Parser::AST::Node
+        attr_accessor scope: Symbol
+        attr_accessor visibility: Symbol
+        attr_accessor container: String
+        attr_accessor access: Symbol
+        attr_accessor names: Array[Symbol]
+        def initialize: (Parser::AST::Node node, Symbol scope, Symbol visibility, String container, Symbol access, Array[Symbol] names) -> void
+      end
+
+      @buffer: Parser::Source::Buffer
+
+      @insertions: Array[Insertion]
+
+      @attr_insertions: Array[AttrInsertion]
+
+      @name_stack: Array[String]
+
+      @module_states: Hash[String, Hash[Symbol, untyped]]
+
+      PROCESS_STMT_HANDLERS: { def: :process_def_stmt, defs: :process_defs_stmt, sclass: :process_sclass_stmt, send: :process_send_stmt }
+
+      class VisibilityCtx
+        @default_instance_vis: Symbol
+
+        @default_class_vis: Symbol
+
+        @explicit_instance: Hash[Symbol, Symbol]
+
+        @explicit_class: Hash[Symbol, Symbol]
+
+        @inside_sclass: bool
+
+        @module_function_default: bool
+
+        @module_function_explicit: Hash[Symbol, bool]
+
+        @container_override: String?
+
+        @container_is_module: bool
+
+        @extend_self: bool
+
+        attr_accessor default_instance_vis: Symbol
+
+        attr_accessor default_class_vis: Symbol
+
+        attr_accessor inside_sclass: bool
+
+        attr_accessor module_function_default: bool
+
+        attr_accessor container_override: String?
+
+        attr_reader explicit_instance: Hash[Symbol, Symbol]
+
+        attr_reader explicit_class: Hash[Symbol, Symbol]
+
+        attr_reader module_function_explicit: Hash[Symbol, bool]
+
+        attr_accessor container_is_module: bool
+
+        attr_accessor extend_self: bool
+
+        def initialize: () -> void
+
+        def dup: () -> VisibilityCtx
+
+        private
+
+        def copy_visibility_state: (VisibilityCtx ctx) -> void
+
+        def copy_module_function_state: (VisibilityCtx ctx) -> void
+
+        def copy_container_state: (VisibilityCtx ctx) -> void
+      end
+
+      attr_reader insertions: Array[Insertion]
+
+      attr_reader attr_insertions: Array[AttrInsertion]
+
+      def initialize: (Parser::Source::Buffer buffer) -> void
+
+      def on_class: (Parser::AST::Node node) -> untyped
+
+      def on_module: (Parser::AST::Node node) -> untyped
+
+      def on_casgn: (Parser::AST::Node node) -> untyped
+
+      def on_def: (Parser::AST::Node node) -> untyped
+
+      def on_defs: (Parser::AST::Node node) -> untyped
+
+      private
+
+      def process_def_stmt: (Parser::AST::Node node, VisibilityCtx ctx, pending_sig_anchor: Parser::AST::Node?) -> void
+
+      def process_defs_stmt: (Parser::AST::Node node, VisibilityCtx ctx, pending_sig_anchor: Parser::AST::Node?) -> void
+
+      def process_sclass_stmt: (Parser::AST::Node node, VisibilityCtx ctx) -> void
+
+      def configure_sclass_context: (VisibilityCtx ctx, Parser::AST::Node recv) -> void
+
+      def sclass_receiver?: (Parser::AST::Node recv) -> bool
+
+      def sclass_container_override: (Parser::AST::Node recv) -> String?
+
+      def process_send_stmt: (Parser::AST::Node node, VisibilityCtx ctx, pending_sig_anchor: Parser::AST::Node?) -> void
+
+      def process_struct_class: (Parser::AST::Node node, Parser::AST::Node? super_node) -> void
+
+      def process_attr_send?: (Parser::AST::Node node, VisibilityCtx ctx) -> bool
+
+      def process_extend_self_send?: (Parser::AST::Node node, VisibilityCtx ctx) -> bool
+
+      def persist_extend_self: (VisibilityCtx ctx) -> void
+
+      def extend_self_send?: (VisibilityCtx ctx, Parser::AST::Node? recv, Symbol meth, Array[Parser::AST::Node] args) -> bool
+
+      def const_receiver?: (Parser::AST::Node? node) -> bool
+
+      def attr_send?: (Parser::AST::Node? recv, Symbol meth) -> bool
+
+      def attr_scope_visibility: (VisibilityCtx ctx) -> [Symbol, Symbol]
+
+      def attr_access_type: (Symbol meth) -> Symbol
+
+      def process_module_function_send?: (Parser::AST::Node node, VisibilityCtx ctx) -> bool
+
+      def enable_default_module_function?: (VisibilityCtx ctx) -> bool
+
+      def process_named_module_function: (Array[Parser::AST::Node] args, VisibilityCtx ctx) -> void
+
+      def retroactively_promote_module_function: (Symbol name_sym, container: String) -> void
+
+      def process_class_method_visibility_send?: (Parser::AST::Node node, VisibilityCtx ctx) -> bool
+
+      def class_visibility_send?: (Parser::AST::Node? recv, Symbol meth) -> bool
+
+      def class_method_visibility: (Symbol meth) -> Symbol
+
+      def apply_class_method_visibility: (Array[Parser::AST::Node] args, VisibilityCtx ctx, Symbol visibility, String container) -> void
+
+      def process_visibility_send: (Parser::AST::Node node, VisibilityCtx ctx, ?pending_sig_anchor: Parser::AST::Node?) -> void
+
+      def visibility_send?: (Parser::AST::Node? recv, Symbol meth) -> bool
+
+      def process_visibility_args: (Array[Parser::AST::Node] args, VisibilityCtx ctx, Symbol meth, String container, Parser::AST::Node? pending_sig_anchor) -> void
+
+      def inline_visibility_def?: (Array[Parser::AST::Node] args) -> bool
+
+      def process_visibility_bare_modifier: (VisibilityCtx ctx, Symbol meth) -> void
+
+      def process_visibility_inline_modifier: (Parser::AST::Node def_node, VisibilityCtx ctx, Symbol meth, String container, Parser::AST::Node? pending_sig_anchor) -> void
+
+      def process_visibility_inline_def: (Parser::AST::Node def_node, VisibilityCtx ctx, Symbol meth, String container, Parser::AST::Node anchor_node) -> void
+
+      def process_visibility_named_modifier: (Array[Parser::AST::Node] args, VisibilityCtx ctx, Symbol meth, String container) -> void
+
+      def apply_visibility_modifier_arg: (Parser::AST::Node arg, VisibilityCtx ctx, Symbol meth, String container) -> void
+
+      def apply_class_visibility_modifier: (Symbol sym, VisibilityCtx ctx, Symbol meth, String container) -> void
+
+      def apply_instance_visibility_modifier: (Symbol sym, VisibilityCtx ctx, Symbol meth, String container) -> void
+
+      def retroactively_set_included_instance_visibility_for_module_function: (Symbol name_sym, Symbol visibility, container: String) -> void
+
+      def module_function_applies?: (VisibilityCtx ctx, Symbol name) -> bool
+
+      def process_module_function_def: (Parser::AST::Node node, Symbol name, VisibilityCtx ctx, Parser::AST::Node anchor_node) -> void
+
+      def extend_self_applies?: (VisibilityCtx ctx) -> bool
+
+      def process_extend_self_def: (Parser::AST::Node node, Symbol name, VisibilityCtx ctx, Parser::AST::Node anchor_node) -> void
+
+      def def_scope_visibility: (VisibilityCtx ctx, Symbol name) -> [Symbol, Symbol]
+
+      def retroactively_set_visibility: (Symbol name_sym, Symbol visibility, scope: Symbol, container: String) -> void
+
+      def visibility_target?: (Insertion insertion, Symbol scope, String container) -> bool
+
+      def insertion_method_name: (Parser::AST::Node node) -> Symbol?
+
+      def self_node?: (Parser::AST::Node? node) -> bool
+
+      def process_body: (Parser::AST::Node? body, VisibilityCtx ctx) -> void
+
+      def process_body_child: (Parser::AST::Node child, VisibilityCtx ctx, Array[Parser::AST::Node] pending_sig_nodes) -> void
+
+      def process_stmt: (Parser::AST::Node? node, VisibilityCtx ctx, ?pending_sig_anchor: Parser::AST::Node?) -> void
+
+      def process_casgn_stmt: (Parser::AST::Node node) -> void
+
+      def dispatch_process_stmt: (Symbol handler, Parser::AST::Node node, VisibilityCtx ctx, Parser::AST::Node? pending_sig_anchor) -> void
+
+      def process_struct_casgn?: (Parser::AST::Node node) -> bool
+
+      def struct_new_node?: (Parser::AST::Node? node) -> bool
+
+      def persist_extend_self_state: (VisibilityCtx ctx, String container) -> void
+
+      def extract_struct_member_names: (Parser::AST::Node? struct_new_node) -> Array[Symbol]
+
+      def struct_container_name: (Parser::AST::Node node) -> String
+
+      def extract_name_sym: (Parser::AST::Node arg) -> Symbol?
+
+      def const_name: (Parser::AST::Node? node) -> String
+
+      def qualified_const_name: (Parser::AST::Node node) -> String
+
+      def container_for: (VisibilityCtx ctx) -> String
+
+      def current_container: () -> String
+
+      def sorbet_sig_node?: (Parser::AST::Node? node) -> bool
+
+      def sig_block_node?: (Parser::AST::Node node) -> bool
+
+      def sig_send_node?: (Parser::AST::Node node) -> bool
+
+      def promote_extend_self_container: (container: String) -> void
+    end
+  end
+end

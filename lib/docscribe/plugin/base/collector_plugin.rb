@@ -40,9 +40,8 @@ module Docscribe
         # Each result is a Hash with:
         # - :anchor_node => Parser::AST::Node — node above which to insert doc
         # - :doc         => String — complete doc block including newlines
-        #
-        # @param [Object] _ast Param documentation.
-        # @param [Object] _buffer Param documentation.
+        # @param [Parser::AST::Node] _ast AST node to analyze
+        # @param [Parser::Source::Buffer] _buffer source buffer
         # @return [Array<Hash>]
         def collect(_ast, _buffer)
           []

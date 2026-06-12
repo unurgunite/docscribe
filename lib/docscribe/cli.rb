@@ -6,6 +6,7 @@ require 'docscribe/cli/options'
 require 'docscribe/cli/run'
 
 module Docscribe
+  # CLI entry point and command dispatch.
   module CLI
     class << self
       # Main CLI entry point.
@@ -19,18 +20,35 @@ module Docscribe
       # @return [Integer] process exit code
       def run(argv)
         argv = argv.dup
-
-        case argv.first
-        when 'init'
-          argv.shift
-          return Docscribe::CLI::Init.run(argv)
-        when 'generate'
-          argv.shift
-          return Docscribe::CLI::Generate.run(argv)
-        end
+        return dispatch_subcommand(argv) if subcommand?(argv.first)
 
         options = Docscribe::CLI::Options.parse!(argv)
         Docscribe::CLI::Run.run(options: options, argv: argv)
+      end
+
+      private
+
+      # @private
+      # @param [String] cmd
+      # @return [Boolean]
+      def subcommand?(cmd)
+        %w[init generate].include?(cmd)
+      end
+
+      # @private
+      # @param [Array<String>] argv
+      # @return [Integer, nil]
+      def dispatch_subcommand(argv)
+        case argv.first
+        when 'init'
+          argv.shift
+          Docscribe::CLI::Init.run(argv)
+        when 'generate'
+          argv.shift
+          Docscribe::CLI::Generate.run(argv)
+        else
+          0
+        end
       end
     end
   end

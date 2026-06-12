@@ -1,0 +1,57 @@
+module Docscribe
+  module CLI
+    module Options
+      DEFAULT: { stdin: false, mode: :check, strategy: :safe, verbose: false, explain: false, config: nil, include: Array[String], exclude: Array[String], include_file: Array[String], exclude_file: Array[String], rbs: false, sig_dirs: Array[String], sorbet: false, rbi_dirs: Array[String], rbs_collection: false }
+
+      BANNER: "Usage: docscribe [options] [files...]\n\nDefault behavior:\n  Inspect files and report what safe doc updates would be applied.\n\nAutocorrect:\n    -a, --autocorrect              Apply safe doc updates in place\n                                   (insert missing docs, merge existing doc-like blocks,\n                                   normalize tag order)\n    -A, --autocorrect-all          Apply aggressive doc updates in place\n                                   (rebuild existing doc blocks)\n\nInput / config:\n        --stdin                    Read code from STDIN and print rewritten output\n    -C, --config PATH              Path to config YAML (default: docscribe.yml)\n\nType information:\n        --rbs                      Use RBS signatures for @param/@return when available\n        --sig-dir DIR              Add an RBS signature directory (repeatable). Implies `--rbs`.\n        --sorbet                   Use Sorbet signatures from inline sigs / RBI files when available\n        --rbi-dir DIR              Add a Sorbet RBI directory (repeatable). Implies --sorbet.\n        --rbs-collection           Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.\n\nFiltering:\n        --include PATTERN          Include PATTERN (method id or file path; glob or /regex/)\n        --exclude PATTERN          Exclude PATTERN (method id or file path; glob or /regex/)\n        --include-file PATTERN     Only process files matching PATTERN (glob or /regex/)\n        --exclude-file PATTERN     Skip files matching PATTERN (glob or /regex/)\n\nOutput:\n        --verbose                  Print per-file actions\n    -e, --explain                  Show detailed reasons for changes\n\nOther:\n    -v, --version                  Print version and exit\n    -h, --help                     Show this help\n"
+
+      def self?.parse!: (Array[String] argv) -> Hash[Symbol, untyped]
+
+      def self?.build_option_parser: (Hash[Symbol, untyped] options, Hash[Symbol, (Symbol | nil)] autocorrect) -> OptionParser
+
+      def self?.define_autocorrect_options: (OptionParser opts, Hash[Symbol, (Symbol | nil)] autocorrect) -> void
+
+      def self?.define_input_options: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_stdin_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_config_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_type_options: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_rbs_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_sig_dir_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_sorbet_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_rbi_dir_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_rbs_collection_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_filter_options: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_include_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_exclude_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_include_file_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_exclude_file_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_output_options: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_verbose_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_explain_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_misc_options: (OptionParser opts) -> void
+
+      def self?.resolve_mode_and_strategy!: (Hash[Symbol, untyped] options, (Symbol | nil) autocorrect_mode) -> void
+
+      def self?.route_include_exclude: (Hash[Symbol, untyped] options, Symbol kind, String value) -> void
+
+      def self?.looks_like_file_pattern?: (String pat) -> bool
+    end
+  end
+end

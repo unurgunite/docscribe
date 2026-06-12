@@ -3,7 +3,7 @@
 require 'tmpdir'
 require 'fileutils'
 
-RSpec.describe 'RBS collapse_generics option' do
+RSpec.describe Docscribe::InlineRewriter do
   before { skip_unless_rbs_available! }
 
   let(:rbs) do
@@ -44,7 +44,7 @@ RSpec.describe 'RBS collapse_generics option' do
 
     let(:collapse_generics) { false }
 
-    it 'keeps generics' do
+    it 'keeps generics', :aggregate_failures do
       # Prove RBS is actually used (otherwise inference would be String)
       expect(out).to include('# @return [Integer]')
       expect(out).not_to include('# @return [String]')
@@ -72,7 +72,7 @@ RSpec.describe 'RBS collapse_generics option' do
 
     let(:collapse_generics) { true }
 
-    it 'collapses generics' do
+    it 'collapses generics', :aggregate_failures do
       # Prove RBS is actually used
       expect(out).to include('# @return [Integer]')
       expect(out).not_to include('# @return [String]')

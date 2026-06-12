@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Docscribe
+  # Plugin loading and registration from config.
   class Config
     # Load and register plugins declared under `plugins.require` in config.
     #

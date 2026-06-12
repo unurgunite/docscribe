@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Struct.new documentation' do
+RSpec.describe Docscribe::InlineRewriter do
   let(:conf) { Docscribe::Config.new('emit' => { 'attributes' => true }) }
 
   describe 'constant-assigned Struct.new' do
@@ -10,11 +10,11 @@ RSpec.describe 'Struct.new documentation' do
       Foo = Struct.new(:a, :b, keyword_init: true)
     RUBY
 
-    it 'generates @!attribute docs for constant-assigned Struct.new' do
+    it 'generates @!attribute docs for constant-assigned Struct.new', :aggregate_failures do
       expect(out).to include('# @!attribute [rw] a')
       expect(out).to include('# @!attribute [rw] b')
       expect(out).to include('#   @return [Object]')
-      expect(out).to include(param_tag('value', 'Object', space_size: 3, struct: true).to_s)
+      expect(out).to include(param_tag('value', 'Object', description: '', indent: 3).to_s)
       expect(out).to include('Foo = Struct.new(:a, :b, keyword_init: true)')
     end
   end
@@ -27,7 +27,7 @@ RSpec.describe 'Struct.new documentation' do
       end
     RUBY
 
-    it 'generates @!attribute docs for class Foo < Struct.new(...)' do
+    it 'generates @!attribute docs for class Foo < Struct.new(...)', :aggregate_failures do
       expect(out).to include('# @!attribute [rw] a')
       expect(out).to include('# @!attribute [rw] b')
       expect(out).to include('class Foo < Struct.new(:a, :b, keyword_init: true)')
@@ -41,7 +41,7 @@ RSpec.describe 'Struct.new documentation' do
       Foo = Struct.new("Foo", :a, :b, keyword_init: true)
     RUBY
 
-    it 'supports named-first Struct.new style' do
+    it 'supports named-first Struct.new style', :aggregate_failures do
       expect(out).to include('# @!attribute [rw] a')
       expect(out).to include('# @!attribute [rw] b')
       expect(out).not_to include('# @!attribute [rw] Foo')

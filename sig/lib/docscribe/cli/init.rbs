@@ -1,0 +1,17 @@
+module Docscribe
+  module CLI
+    module Init
+      def self.run: (Array[String] argv) -> (0 | 1)
+
+      private
+
+      def self.parse_init_options: (Array[String] argv) -> Hash[Symbol, untyped]
+
+      def self.default_init_options: () -> { config: "docscribe.yml", force: false, stdout: false, help: false }
+
+      def self.build_init_parser: (Hash[Symbol, untyped] opts) -> OptionParser
+
+      def self.write_init_config: (Hash[Symbol, untyped] opts, String yaml) -> (1 | 0)
+    end
+  end
+end

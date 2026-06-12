@@ -2,7 +2,7 @@
 
 require_relative 'schema_parser'
 
-# Parse Rails `db/structure.sql` into a table → columns mapping.
+# Parse Rails `db/structure.sql` into a table -> columns mapping.
 #
 # Supports PostgreSQL and MySQL SQL DDL syntax:
 # - CREATE TABLE with column definitions
@@ -13,7 +13,7 @@ require_relative 'schema_parser'
 #   parser.tables
 #   # => { 'users' => { 'email' => 'varchar', 'age' => 'integer' } }
 class StructureSqlParser
-  # SQL type → normalized database type mapping.
+  # SQL type -> normalized database type mapping.
   #
   # @return [Hash{String => String}]
   SQL_TYPE_MAP = {
@@ -68,13 +68,9 @@ class StructureSqlParser
     'enum' => 'enum'
   }.freeze
 
-  # @!attribute [r] tables
-  #   @return [Hash]
-  attr_reader :tables
-
-  # Parse the structure.sql file and return a table → column map.
+  # Parse the structure.sql file and return a table -> column map.
   #
-  # @param [Object] root Param documentation.
+  # @param [String] root the application root directory path
   # @return [Hash{String => Hash{String => String}}]
   def initialize(root:)
     @root = root
@@ -92,9 +88,12 @@ class StructureSqlParser
     @tables = parse(source)
   end
 
+  CONSTRAINT_RE = /\A(PRIMARY\s+KEY|UNIQUE|INDEX|KEY|FOREIGN\s+KEY|CHECK|CONSTRAINT)\b/i.freeze
+  COLUMN_DEF_RE = /\A["`]?(\w+)["`]?\s+(\w+(?:\s*\(.*?\))?(?:\s+\w+\s+\w+)?)\b/i.freeze
+
   private
 
-  # Parse structure.sql source into a table → column map.
+  # Parse structure.sql source into a table -> column map.
   #
   # @private
   # @param [String] source
@@ -103,7 +102,10 @@ class StructureSqlParser
     tables = {}
 
     # Find all CREATE TABLE blocks
-    source.scan(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`]?(\w+)["`]?\s*\((.*?)\)\s*(?:ENGINE|DEFAULT|CHARSET|ON\s+COMMIT|;\s*$)/m) do |table_name, columns_sql|
+    source.scan(
+      /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`]?(\w+)["`]?\s*
+       \((.*?)\)\s*(?:ENGINE|DEFAULT|CHARSET|ON\s+COMMIT|;\s*$)/xm
+    ) do |table_name, columns_sql|
       tables[table_name] = {}
 
       # Parse column definitions
@@ -120,30 +122,24 @@ class StructureSqlParser
   # @param [Hash{String => String}] columns
   # @return [Object]
   def parse_columns(columns_sql, columns)
-    # Split by commas, but handle parentheses in types like varchar(255)
-    parts = split_columns(columns_sql)
+    split_columns(columns_sql).each { |part| parse_column_part(part, columns) }
+  end
 
-    parts.each do |part|
-      part = part.strip
-      next if part.empty?
+  def parse_column_part(part, columns)
+    part = part.strip
+    return if part.empty? || part.match?(CONSTRAINT_RE)
 
-      # Skip constraints: PRIMARY KEY, UNIQUE, INDEX, FOREIGN KEY, CHECK
-      next if part.match?(/\A(PRIMARY\s+KEY|UNIQUE|INDEX|KEY|FOREIGN\s+KEY|CHECK|CONSTRAINT)\b/i)
+    m = part.match(COLUMN_DEF_RE)
+    return unless m
 
-      # Extract column name and type
-      next unless part =~ /\A["`]?(\w+)["`]?\s+(\w+(?:\s*\(.*?\))?(?:\s+\w+\s+\w+)?)\b/i
+    column_name = m[1].downcase
+    raw_type = m[2].strip.downcase
+    return if SchemaParser::SKIPPED_COLUMNS.include?(column_name)
 
-      column_name = ::Regexp.last_match(1).downcase
-      raw_type = ::Regexp.last_match(2).strip.downcase
+    normalized_type = normalize_type(raw_type)
+    return if normalized_type.nil?
 
-      next if SchemaParser::SKIPPED_COLUMNS.include?(column_name)
-
-      # Normalize type
-      normalized_type = normalize_type(raw_type)
-      next if normalized_type.nil?
-
-      columns[column_name] = normalized_type
-    end
+    columns[column_name] = normalized_type
   end
 
   # Split column definitions by comma, respecting parentheses.
@@ -153,31 +149,38 @@ class StructureSqlParser
   # @return [Array<String>]
   def split_columns(sql)
     parts = []
-    depth = 0
-    current = ''
-
-    sql.each_char do |char|
-      case char
-      when '('
-        depth += 1
-        current << char
-      when ')'
-        depth -= 1
-        current << char
-      when ','
-        if depth.zero?
-          parts << current
-          current = ''
-        else
-          current << char
-        end
-      else
-        current << char
-      end
-    end
-
-    parts << current unless current.strip.empty?
+    state = { depth: 0, cur: +'' }
+    sql.each_char { |c| split_char(c, parts, state) }
+    parts << state[:cur] unless state[:cur].strip.empty?
     parts
+  end
+
+  def split_char(char, parts, state)
+    case char
+    when '(' then open_paren(state, char)
+    when ')' then close_paren(state, char)
+    when ',' then split_comma(char, parts, state)
+    else state[:cur] << char
+    end
+  end
+
+  def open_paren(state, char)
+    state[:depth] += 1
+    state[:cur] << char
+  end
+
+  def close_paren(state, char)
+    state[:depth] -= 1
+    state[:cur] << char
+  end
+
+  def split_comma(char, parts, state)
+    if state[:depth].zero?
+      parts << state[:cur]
+      state[:cur] = +''
+    else
+      state[:cur] << char
+    end
   end
 
   # Normalize a raw SQL type to our canonical type name.

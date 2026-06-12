@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy idempotency' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out2) { inline(out1) }
 
   let(:code) do

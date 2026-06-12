@@ -3,56 +3,76 @@
 require 'tmpdir'
 require 'fileutils'
 
-RSpec.describe 'RBS core types' do
-  it 'resolves Numeric#positive? from core RBS via rbs collection pattern' do
-    skip_unless_rbs_available!
+RSpec.describe Docscribe::InlineRewriter do
+  describe 'resolves Numeric#positive? from core RBS via rbs collection pattern' do
+    subject(:methods) { builder.build_instance(RBS::TypeName.parse('::Numeric')) }
 
-    Dir.mktmpdir do |dir|
-      sig_dir = File.join(dir, 'sig')
+    let(:root) { Dir.mktmpdir }
+    let(:sig_dir) { File.join(root, 'sig') }
+
+    let(:loader) do
+      RBS::EnvironmentLoader.new.tap do |l|
+        l.add(library: 'rbs')
+        l.add(path: Pathname(sig_dir))
+      end
+    end
+
+    let(:env) { RBS::Environment.from_loader(loader).resolve_type_names }
+    let(:builder) { RBS::DefinitionBuilder.new(env: env) }
+
+    before do
+      skip_unless_rbs_available!
       FileUtils.mkdir_p(sig_dir)
       File.write(File.join(sig_dir, 'demo.rbs'), <<~RBS)
         class Demo
           def foo: () -> String
         end
       RBS
+    end
 
-      # rbs collection pattern: add(library: 'rbs') loads core transitively
-      loader = RBS::EnvironmentLoader.new
-      loader.add(library: 'rbs')
-      loader.add(path: Pathname(sig_dir))
-      env = RBS::Environment.from_loader(loader).resolve_type_names
-      builder = RBS::DefinitionBuilder.new(env: env)
+    after { FileUtils.rm_rf(root) }
 
-      # build_instance returns Methods (not definition)
-      methods = builder.build_instance(RBS::TypeName.parse('::Numeric'))
-      defn = methods.methods[:positive?]
+    it 'has positive? method' do
+      expect(methods.methods[:positive?]).not_to be_nil
+    end
 
-      expect(defn).not_to be_nil
-      expect(defn.method_types.length).to be > 0
+    it 'has at least one type signature' do
+      expect(methods.methods[:positive?].method_types.length).to be > 0
+    end
 
-      # Check that the return type is bool
-      method_type = defn.method_types.first
-      func = method_type.type
-      expect(func).to be_a(RBS::Types::Function)
-      expect(func.return_type).to be_a(RBS::Types::Bases::Bool)
+    it 'returns Function type' do
+      method_type = methods.methods[:positive?].method_types.first
+      expect(method_type.type).to be_a(RBS::Types::Function)
+    end
+
+    it 'returns Bool' do
+      method_type = methods.methods[:positive?].method_types.first
+      expect(method_type.type.return_type).to be_a(RBS::Types::Bases::Bool)
     end
   end
 
-  it 'does NOT resolve Numeric when core_root is nil' do
-    skip_unless_rbs_available!
+  describe 'does NOT resolve Numeric when core_root is nil' do
+    subject(:build) { builder.build_instance(RBS::TypeName.parse('::Numeric')) }
 
-    Dir.mktmpdir do |dir|
-      sig_dir = File.join(dir, 'sig')
+    let(:root) { Dir.mktmpdir }
+    let(:sig_dir) { File.join(root, 'sig') }
+
+    let(:loader) do
+      RBS::EnvironmentLoader.new(core_root: nil).tap { |l| l.add(path: Pathname(sig_dir)) }
+    end
+
+    let(:env) { RBS::Environment.from_loader(loader).resolve_type_names }
+    let(:builder) { RBS::DefinitionBuilder.new(env: env) }
+
+    before do
+      skip_unless_rbs_available!
       FileUtils.mkdir_p(sig_dir)
+    end
 
-      # core_root: nil — no core types
-      loader = RBS::EnvironmentLoader.new(core_root: nil)
-      loader.add(path: Pathname(sig_dir))
-      env = RBS::Environment.from_loader(loader).resolve_type_names
-      builder = RBS::DefinitionBuilder.new(env: env)
+    after { FileUtils.rm_rf(root) }
 
-      expect { builder.build_instance(RBS::TypeName.parse('::Numeric')) }
-        .to raise_error(RuntimeError, /Unknown name/)
+    it 'raises Unknown name error' do
+      expect { build }.to raise_error(RuntimeError, /Unknown name/)
     end
   end
 end

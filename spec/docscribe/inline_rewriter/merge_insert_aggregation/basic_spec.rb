@@ -3,15 +3,9 @@
 require 'parser/source/buffer'
 require 'parser/source/tree_rewriter'
 
-RSpec.describe 'merge insert aggregation' do
-  it 'applies one insert per end_pos and avoids consecutive blank-comment separators' do
-    src = "class A\nend\n"
-
-    buffer = Parser::Source::Buffer.new('(merge-agg)')
-    buffer.source = src
-
+RSpec.describe Docscribe::InlineRewriter do
+  subject(:out) do
     rewriter = Parser::Source::TreeRewriter.new(buffer)
-
     merge_inserts = Hash.new { |h, k| h[k] = [] }
     end_pos = src.length
 
@@ -27,19 +21,23 @@ RSpec.describe 'merge insert aggregation' do
       "# @param [Object] y Param documentation.\n"
     ]
 
-    Docscribe::InlineRewriter.send(
+    described_class.send(
       :apply_merge_inserts!,
       rewriter: rewriter,
       buffer: buffer,
       merge_inserts: merge_inserts
     )
 
-    out = rewriter.process
+    rewriter.process
+  end
 
-    expect(out).to include('@param [Object] x')
-    expect(out).to include('@param [Object] y')
+  let(:src) { "class A\nend\n" }
+  let(:buffer) { Parser::Source::Buffer.new('(merge-agg)').tap { |b| b.source = src } }
 
-    # No consecutive blank comment separator lines
+  it { expect(out).to include('@param [Object] x') }
+  it { expect(out).to include('@param [Object] y') }
+
+  it 'avoids consecutive blank comment separator lines' do
     expect(out).not_to match(/^\s*#\s*$\n^\s*#\s*$/m)
   end
 end

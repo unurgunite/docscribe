@@ -14,162 +14,185 @@ RSpec.describe DocscribePlugins::SchemaAttributes do
   end
 
   describe 'collect' do
-    it 'documents columns for ApplicationRecord models' do
-      plugin.instance_variable_set(:@schema,
-                                   { 'users' => [{ name: 'email', type: 'string' }, { name: 'is_admin', type: 'boolean' }] })
+    subject(:out) { rewrite(code) }
 
-      code = <<~RUBY
-        class User < ApplicationRecord
-          def admin?
-            is_admin
+    describe 'documents columns for ApplicationRecord models' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            def admin?
+              is_admin
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
+      before do
+        plugin.instance_variable_set(:@schema,
+                                     { 'users' => [{ name: 'email', type: 'string' },
+                                                   { name: 'is_admin', type: 'boolean' }] })
+      end
 
-      expect(out).to include('# @!attribute [r] email')
-      expect(out).to include('#   @return [String]')
-      expect(out).to include('# @!attribute [r] is_admin')
-      expect(out).to include('#   @return [Boolean]')
+      it { is_expected.to include('# @!attribute [r] email') }
+      it { is_expected.to include('#   @return [String]') }
+      it { is_expected.to include('# @!attribute [r] is_admin') }
+      it { is_expected.to include('#   @return [Boolean]') }
     end
 
-    it 'maps integer columns to Integer' do
-      plugin.instance_variable_set(:@schema, { 'posts' => [{ name: 'view_count', type: 'integer' }] })
-
-      code = <<~RUBY
-        class Post < ApplicationRecord
-        end
-      RUBY
-
-      out = rewrite(code)
-      expect(out).to include('# @!attribute [r] view_count')
-      expect(out).to include('#   @return [Integer]')
-    end
-
-    it 'maps datetime columns to Time' do
-      plugin.instance_variable_set(:@schema, { 'posts' => [{ name: 'published_at', type: 'datetime' }] })
-
-      code = <<~RUBY
-        class Post < ApplicationRecord
-        end
-      RUBY
-
-      out = rewrite(code)
-      expect(out).to include('# @!attribute [r] published_at')
-      expect(out).to include('#   @return [Time]')
-    end
-
-    it 'maps json columns to Hash' do
-      plugin.instance_variable_set(:@schema, { 'posts' => [{ name: 'metadata', type: 'json' }] })
-
-      code = <<~RUBY
-        class Post < ApplicationRecord
-        end
-      RUBY
-
-      out = rewrite(code)
-      expect(out).to include('# @!attribute [r] metadata')
-      expect(out).to include('#   @return [Hash]')
-    end
-
-    it 'skips standard Rails columns' do
-      plugin.instance_variable_set(:@schema,
-                                   { 'users' => [{ name: 'id', type: 'integer' }, { name: 'created_at', type: 'datetime' }, { name: 'updated_at', type: 'datetime' },
-                                                 { name: 'email', type: 'string' }] })
-
-      code = <<~RUBY
-        class User < ApplicationRecord
-        end
-      RUBY
-
-      out = rewrite(code)
-      expect(out).not_to include('# @!attribute [r] id')
-      expect(out).not_to include('# @!attribute [r] created_at')
-      expect(out).not_to include('# @!attribute [r] updated_at')
-      expect(out).to include('# @!attribute [r] email')
-    end
-
-    it 'does not document non-ActiveRecord classes' do
-      plugin.instance_variable_set(:@schema, { 'email_formatters' => [{ name: 'template', type: 'string' }] })
-
-      code = <<~RUBY
-        class EmailFormatter
-          def format(email)
-            email
+    describe 'maps integer columns to Integer' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-      expect(out).not_to include('# @!attribute [r] template')
+      before { plugin.instance_variable_set(:@schema, { 'posts' => [{ name: 'view_count', type: 'integer' }] }) }
+
+      it { is_expected.to include('# @!attribute [r] view_count') }
+      it { is_expected.to include('#   @return [Integer]') }
     end
 
-    it 'handles namespaced models' do
-      plugin.instance_variable_set(:@schema, { 'admin_users' => [{ name: 'role', type: 'string' }] })
+    describe 'maps datetime columns to Time' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+          end
+        RUBY
+      end
 
-      code = <<~RUBY
-        class Admin::User < ApplicationRecord
-        end
-      RUBY
+      before { plugin.instance_variable_set(:@schema, { 'posts' => [{ name: 'published_at', type: 'datetime' }] }) }
 
-      out = rewrite(code)
-      expect(out).to include('# @!attribute [r] role')
-      expect(out).to include('#   @return [String]')
+      it { is_expected.to include('# @!attribute [r] published_at') }
+      it { is_expected.to include('#   @return [Time]') }
     end
 
-    it 'handles ActiveRecord::Base inheritance' do
-      plugin.instance_variable_set(:@schema, { 'legacy_users' => [{ name: 'password', type: 'string' }] })
+    describe 'maps json columns to Hash' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+          end
+        RUBY
+      end
 
-      code = <<~RUBY
-        class LegacyUser < ActiveRecord::Base
-        end
-      RUBY
+      before { plugin.instance_variable_set(:@schema, { 'posts' => [{ name: 'metadata', type: 'json' }] }) }
 
-      out = rewrite(code)
-      expect(out).to include('# @!attribute [r] password')
-      expect(out).to include('#   @return [String]')
+      it { is_expected.to include('# @!attribute [r] metadata') }
+      it { is_expected.to include('#   @return [Hash]') }
     end
 
-    it 'uses Object for unknown column types' do
-      plugin.instance_variable_set(:@schema, { 'users' => [{ name: 'custom_field', type: 'unknown_type' }] })
-
-      code = <<~RUBY
-        class User < ApplicationRecord
-        end
-      RUBY
-
-      out = rewrite(code)
-      expect(out).to include('# @!attribute [r] custom_field')
-      expect(out).to include('#   @return [Object]')
-    end
-
-    it 'is idempotent in safe mode' do
-      plugin.instance_variable_set(:@schema, { 'users' => [{ name: 'email', type: 'string' }] })
-
-      code = <<~RUBY
-        class User < ApplicationRecord
-        end
-      RUBY
-
-      first  = rewrite(code)
-      second = rewrite(first)
-
-      expect(second.scan('# @!attribute [r] email').length).to eq(1)
-    end
-
-    context 'with no schema.rb' do
-      it 'returns empty array gracefully' do
-        plugin.instance_variable_set(:@schema, {})
-
-        code = <<~RUBY
+    describe 'skips standard Rails columns' do
+      let(:code) do
+        <<~RUBY
           class User < ApplicationRecord
           end
         RUBY
-
-        out = rewrite(code)
-        expect(out).not_to include('# @!attribute [r]')
       end
+
+      before do
+        plugin.instance_variable_set(:@schema,
+                                     { 'users' => [
+                                       { name: 'id', type: 'integer' },
+                                       { name: 'created_at', type: 'datetime' },
+                                       { name: 'updated_at', type: 'datetime' },
+                                       { name: 'email', type: 'string' }
+                                     ] })
+      end
+
+      it { is_expected.not_to include('# @!attribute [r] id') }
+      it { is_expected.not_to include('# @!attribute [r] created_at') }
+      it { is_expected.not_to include('# @!attribute [r] updated_at') }
+      it { is_expected.to include('# @!attribute [r] email') }
+    end
+
+    describe 'does not document non-ActiveRecord classes' do
+      let(:code) do
+        <<~RUBY
+          class EmailFormatter
+            def format(email)
+              email
+            end
+          end
+        RUBY
+      end
+
+      before do
+        plugin.instance_variable_set(:@schema, { 'email_formatters' => [{ name: 'template', type: 'string' }] })
+      end
+
+      it { is_expected.not_to include('# @!attribute [r] template') }
+    end
+
+    describe 'handles namespaced models' do
+      let(:code) do
+        <<~RUBY
+          class Admin::User < ApplicationRecord
+          end
+        RUBY
+      end
+
+      before { plugin.instance_variable_set(:@schema, { 'admin_users' => [{ name: 'role', type: 'string' }] }) }
+
+      it { is_expected.to include('# @!attribute [r] role') }
+      it { is_expected.to include('#   @return [String]') }
+    end
+
+    describe 'handles ActiveRecord::Base inheritance' do
+      let(:code) do
+        <<~RUBY
+          class LegacyUser < ActiveRecord::Base
+          end
+        RUBY
+      end
+
+      before { plugin.instance_variable_set(:@schema, { 'legacy_users' => [{ name: 'password', type: 'string' }] }) }
+
+      it { is_expected.to include('# @!attribute [r] password') }
+      it { is_expected.to include('#   @return [String]') }
+    end
+
+    describe 'uses Object for unknown column types' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+          end
+        RUBY
+      end
+
+      before { plugin.instance_variable_set(:@schema, { 'users' => [{ name: 'custom_field', type: 'unknown_type' }] }) }
+
+      it { is_expected.to include('# @!attribute [r] custom_field') }
+      it { is_expected.to include('#   @return [Object]') }
+    end
+
+    describe 'is idempotent in safe mode' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+          end
+        RUBY
+      end
+
+      before { plugin.instance_variable_set(:@schema, { 'users' => [{ name: 'email', type: 'string' }] }) }
+
+      it 'does not duplicate on second run' do
+        first  = rewrite(code)
+        second = rewrite(first)
+        expect(second.scan('# @!attribute [r] email').length).to eq(1)
+      end
+    end
+
+    describe 'with no schema.rb' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+          end
+        RUBY
+      end
+
+      before { plugin.instance_variable_set(:@schema, {}) }
+
+      it { is_expected.not_to include('# @!attribute [r]') }
     end
   end
 end

@@ -1,0 +1,13 @@
+module Docscribe
+  module Infer
+    module Literals
+      def self?.type_from_literal: ((Parser::AST::Node | nil) node, ?fallback_type: String) -> String
+
+      def self?.literal_type_for: (Symbol type) -> (String | nil)
+
+      def self?.const_type_for: (Parser::AST::Node node, String _fallback_type) -> (String | nil)
+
+      def self?.send_new_type_for: (Parser::AST::Node node, String _fallback_type) -> (String | nil)
+    end
+  end
+end

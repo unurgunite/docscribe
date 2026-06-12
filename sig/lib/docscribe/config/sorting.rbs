@@ -1,0 +1,7 @@
+module Docscribe
+  class Config
+    def sort_tags?: () -> bool
+
+    def tag_order: () -> Array[String]
+  end
+end

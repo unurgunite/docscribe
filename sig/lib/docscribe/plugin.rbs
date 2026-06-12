@@ -1,0 +1,15 @@
+module Docscribe
+  module Plugin
+    def self.run_tag_plugins: (Docscribe::Plugin::Context context) -> Array[Docscribe::Plugin::Tag]
+
+    def self.run_collector_plugins: (Parser::AST::Node ast, Parser::Source::Buffer buffer) -> Array[Hash[Symbol, untyped]]
+
+    def self.process_single_plugin_result: (Docscribe::Plugin::Registry::Entry entry, Parser::AST::Node ast, Parser::Source::Buffer buffer) -> Array[Hash[Symbol, untyped]]
+
+    def self.process_plugin_insertions: (Array[untyped] results, Docscribe::Plugin::Registry::Entry entry, Docscribe::Plugin::Base::CollectorPlugin plugin) -> Array[Hash[Symbol, untyped]]
+
+    def self.valid_plugin_result?: (untyped insertion, untyped plugin) -> bool
+
+    def self.debug?: () -> bool
+  end
+end

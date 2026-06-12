@@ -1,0 +1,11 @@
+module Docscribe
+  module Infer
+    module Raises
+      def self?.infer_raises_from_node: (Parser::AST::Node node) -> Array[String]
+
+      def self?.exception_names_from_rescue_list: ((Parser::AST::Node | nil) exc_list) -> Array[String]
+
+      def self?.collect_send_raise: (Array[String] raises, Parser::AST::Node node) -> void
+    end
+  end
+end

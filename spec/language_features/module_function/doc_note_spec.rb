@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'module_function documentation note' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -15,7 +15,7 @@ RSpec.describe 'module_function documentation note' do
       RUBY
     end
 
-    it 'notes included instance visibility is private by default' do
+    it 'notes included instance visibility is private by default', :aggregate_failures do
       expect(out).to include('# @note module_function: when included, also defines #foo (instance visibility: private)')
       expect(out).to include('# +M.foo+')
     end
@@ -31,7 +31,7 @@ RSpec.describe 'module_function documentation note' do
       RUBY
     end
 
-    it 'notes included instance visibility can be overridden with public def' do
+    it 'notes included instance visibility can be overridden with public def', :aggregate_failures do
       expect(out).to include('# @note module_function: when included, also defines #foo (instance visibility: public)')
       expect(out).to include('# +M.foo+')
     end

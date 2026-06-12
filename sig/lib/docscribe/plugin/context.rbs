@@ -1,0 +1,16 @@
+module Docscribe
+  module Plugin
+    class Context
+      attr_accessor node: Parser::AST::Node
+      attr_accessor container: String
+      attr_accessor scope: Symbol
+      attr_accessor visibility: Symbol
+      attr_accessor method_name: Symbol
+      attr_accessor inferred_params: Hash[String, String]
+      attr_accessor inferred_return: String
+      attr_accessor source: String
+
+      def initialize: (?node: Parser::AST::Node, ?container: String, ?scope: Symbol, ?visibility: Symbol, ?method_name: Symbol, ?inferred_params: Hash[String, String], ?inferred_return: String, ?source: String) -> void
+    end
+  end
+end

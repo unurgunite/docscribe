@@ -74,18 +74,25 @@ module Docscribe
             next unless decl.respond_to?(:members)
 
             container = normalize_container(decl.name.to_s)
-
-            decl.members.each do |member|
-              next unless method_definition_member?(member)
-
-              scope = member.kind == :singleton ? :class : :instance
-              overload = member.overloads&.first
-              next unless overload
-
-              func = overload.method_type.type
-              @index[[container, scope, member.name.to_s.to_sym]] = build_signature(func)
-            end
+            decl.members.each { |member| process_method_member(container, member) }
           end
+        end
+
+        # Process a single method definition member into the index.
+        #
+        # @private
+        # @param [String] container normalized container name
+        # @param [Object] member
+        # @return [void]
+        def process_method_member(container, member)
+          return unless method_definition_member?(member)
+
+          scope = member.kind == :singleton ? :class : :instance
+          overload = member.overloads&.first
+          return unless overload
+
+          func = overload.method_type.type
+          @index[[container, scope, member.name.to_s.to_sym]] = build_signature(func)
         end
 
         # @private
@@ -116,16 +123,28 @@ module Docscribe
         # @param [::RBS::Types::Function] func
         # @return [Hash{String => String}]
         def build_param_types(func)
-          param_types = {}
+          param_types = {} #: Hash[String, String]
 
           add_positionals!(param_types, func.required_positionals)
           add_positionals!(param_types, func.optional_positionals)
           add_positionals!(param_types, func.trailing_positionals)
 
-          func.required_keywords.each { |kw, p| param_types[kw.to_s] = format_type(p.type) }
-          func.optional_keywords.each { |kw, p| param_types[kw.to_s] = format_type(p.type) }
+          add_keywords!(param_types, func.required_keywords)
+          add_keywords!(param_types, func.optional_keywords)
 
           param_types
+        end
+
+        # Add keyword parameters to the normalized parameter map.
+        #
+        # @private
+        # @param [Hash{String => String}] param_types
+        # @param [Hash{Symbol => Object}] keywords
+        # @return [void]
+        def add_keywords!(param_types, keywords)
+          keywords.each do |kw, p|
+            param_types[kw.to_s] = format_type(p.type)
+          end
         end
 
         # Add positional parameters with names to the normalized param map.

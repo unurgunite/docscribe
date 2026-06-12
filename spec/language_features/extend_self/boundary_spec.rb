@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'extend self boundary' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -18,7 +18,7 @@ RSpec.describe 'extend self boundary' do
       RUBY
     end
 
-    it 'does not retroactively promote defs that appear after extend self' do
+    it 'does not retroactively promote defs that appear after extend self', :aggregate_failures do
       # a should be module method
       expect(out).to include('# +M.a+')
       expect(out).not_to include('# +M#a+')
@@ -43,7 +43,7 @@ RSpec.describe 'extend self boundary' do
       RUBY
     end
 
-    it 'does not promote methods from other containers' do
+    it 'does not promote methods from other containers', :aggregate_failures do
       expect(out).to include('# +M.a+')
       expect(out).to include('# +N#a+')
     end

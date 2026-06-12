@@ -1,0 +1,11 @@
+module Docscribe
+  module CLI
+    def self.run: (Array[String] argv) -> Integer
+
+    private
+
+    def self.subcommand?: (String? cmd) -> bool
+
+    def self.dispatch_subcommand: (Array[String] argv) -> Integer
+  end
+end

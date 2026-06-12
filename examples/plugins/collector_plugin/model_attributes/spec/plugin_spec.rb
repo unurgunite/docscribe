@@ -5,14 +5,14 @@ require 'tmpdir'
 
 require_relative '../../../collector_plugin/model_attributes/plugin'
 
-RSpec.describe 'ModelAttributes integration' do
+RSpec.describe DocscribePlugins::ModelAttributes do
   subject(:out) { rewrite(code) }
 
   let(:conf) do
     Docscribe::Config.new(
       'emit' => {
         'header' => true,
-        'param_tags' => param_tags,
+        'param_tags' => false,
         'return_tag' => true,
         'include_default_message' => false
       }
@@ -45,14 +45,12 @@ RSpec.describe 'ModelAttributes integration' do
     RUBY
   end
 
-  let(:param_tags) { false }
-
   let(:root) { Dir.mktmpdir('docscribe-model-attributes') }
-  let(:schema_path) { File.join(root, 'db', 'schema.rb') }
 
-  let(:plugin) { DocscribePlugins::ModelAttributes.new(root: root) }
+  let(:plugin) { described_class.new(root: root) }
 
   before do
+    schema_path = File.join(root, 'db', 'schema.rb')
     FileUtils.mkdir_p(File.dirname(schema_path))
     File.write(schema_path, schema_content)
     Docscribe::Plugin::Registry.register(plugin)
@@ -92,7 +90,16 @@ RSpec.describe 'ModelAttributes integration' do
   end
 
   describe 'User model with params' do
-    let(:param_tags) { true }
+    let(:conf) do
+      Docscribe::Config.new(
+        'emit' => {
+          'header' => true,
+          'param_tags' => true,
+          'return_tag' => true,
+          'include_default_message' => false
+        }
+      )
+    end
 
     let(:code) do
       <<~RUBY
@@ -251,7 +258,7 @@ RSpec.describe 'ModelAttributes integration' do
       RUBY
     end
 
-    it 'falls back to standard collector output when plugin returns nothing' do
+    it 'falls back to standard collector output when plugin returns nothing', :aggregate_failures do
       expect(out).to include('# +EmailValidator#valid?+ -> Boolean')
       expect(out).to include('# @return [Boolean]')
     end

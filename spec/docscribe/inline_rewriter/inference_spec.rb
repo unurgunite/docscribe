@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Inline rewriter inference' do
+RSpec.describe Docscribe::InlineRewriter do
   describe 'Boolean and Hash from keyword defaults' do
     subject(:out) { inline(code) }
 
@@ -10,7 +10,7 @@ RSpec.describe 'Inline rewriter inference' do
       end
     RUBY
 
-    it 'infers Boolean and Hash from keyword defaults' do
+    it 'infers Boolean and Hash from keyword defaults', :aggregate_failures do
       expect(out).to include('@param [Boolean] verbose')
       expect(out).to include('@param [Hash] options')
     end
@@ -25,7 +25,7 @@ RSpec.describe 'Inline rewriter inference' do
       end
     RUBY
 
-    it 'infers Array/Hash/Proc for splats and block' do
+    it 'infers Array/Hash/Proc for splats and block', :aggregate_failures do
       expect(out).to include('@param [Array] args')
       expect(out).to include('@param [Hash] kwargs')
       expect(out).to include('@param [Proc] block')
@@ -43,7 +43,7 @@ RSpec.describe 'Inline rewriter inference' do
       end
     RUBY
 
-    it 'infers Integer and Symbol for return types from literals' do
+    it 'infers Integer and Symbol for return types from literals', :aggregate_failures do
       expect(out).to match(header_regex('Demo', 'a', 'Integer'))
       expect(out).to include('@return [Integer]')
       expect(out).to match(header_regex('Demo', 'b', 'Symbol'))
@@ -60,7 +60,7 @@ RSpec.describe 'Inline rewriter inference' do
       end
     RUBY
 
-    it 'treats required keyword without default as Object; but options: without default as Hash' do
+    it 'treats required keyword without default as Object; but options: without default as Hash', :aggregate_failures do
       expect(out).to include('@param [Hash] options')
       expect(out).to include('@param [Object] kw')
     end

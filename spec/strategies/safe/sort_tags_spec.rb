@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy tag sorting' do
+RSpec.describe Docscribe::InlineRewriter do
   describe 'contiguous tag run' do
     subject(:out) { inline(code) }
 
@@ -54,7 +54,7 @@ RSpec.describe 'safe strategy tag sorting' do
       RUBY
     end
 
-    it 'preserves existing param text when sorting' do
+    it 'preserves existing param text when sorting', :aggregate_failures do
       expect(out).to match(
         /# @param \[Object\] x blah-blah\n\s*# @return \[Integer\]/
       )

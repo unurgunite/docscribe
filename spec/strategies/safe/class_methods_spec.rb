@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy class methods' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code) }
 
   let(:code) do
@@ -12,7 +12,7 @@ RSpec.describe 'safe strategy class methods' do
     RUBY
   end
 
-  it 'merges missing tags for def self.foo' do
+  it 'merges missing tags for def self.foo', :aggregate_failures do
     expect(out).to include(param_tag('x', 'Object'))
     expect(out).to include('# @return [Object]')
     expect(out).not_to include('# +A.foo+') # merge should not insert Docscribe header

@@ -1,0 +1,5 @@
+module Docscribe
+  class Config
+    def self.default_yaml: () -> ::String
+  end
+end

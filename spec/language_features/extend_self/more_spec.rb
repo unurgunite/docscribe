@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'extend self extra behaviors' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -15,7 +15,7 @@ RSpec.describe 'extend self extra behaviors' do
       RUBY
     end
 
-    it 'treats it as extend-self mode (documents as M.foo)' do
+    it 'treats it as extend-self mode (documents as M.foo)', :aggregate_failures do
       expect(out).to include('# +M.foo+')
       expect(out).not_to include('# +M#foo+')
       expect(out).not_to include('@note module_function:')
@@ -37,7 +37,7 @@ RSpec.describe 'extend self extra behaviors' do
       RUBY
     end
 
-    it 'endpoint becomes private' do
+    it 'endpoint becomes private', :aggregate_failures do
       expect(out).to include('# +M.foo+')
       expect(out).to match(/# \+M\.foo\+.*?\n.*?# @private/m)
     end
@@ -56,7 +56,7 @@ RSpec.describe 'extend self extra behaviors' do
       RUBY
     end
 
-    it 'persists extend self across reopened modules in the same file' do
+    it 'persists extend self across reopened modules in the same file', :aggregate_failures do
       expect(out).to include('# +M.foo+')
       expect(out).not_to include('# +M#foo+')
     end

@@ -43,15 +43,8 @@ module DocscribePlugins
       Docscribe::Infer::ASTWalk.walk(ast) do |node|
         next unless association_node?(node)
 
-        _recv, meth, name_node, *option_nodes = *node
-        next unless name_node&.type == :sym
-
-        assoc_name = name_node.children.first
-        options    = extract_options(option_nodes)
-        indent     = extract_indent(node)
-
-        doc = build_doc(meth, assoc_name, options, indent)
-        results << { anchor_node: node, doc: doc }
+        doc = association_doc(node)
+        results << doc if doc
       end
 
       results
@@ -71,24 +64,41 @@ module DocscribePlugins
       recv.nil? && ASSOCIATION_METHODS.include?(meth)
     end
 
+    def association_doc(node)
+      _recv, meth, name_node, *option_nodes = *node
+      return unless name_node&.type == :sym
+
+      assoc_name = name_node.children.first
+      options    = extract_options(option_nodes)
+      indent     = extract_indent(node)
+
+      { anchor_node: node, doc: build_doc(meth, assoc_name, options, indent) }
+    end
+
     # Extract option key-value pairs from the trailing Hash argument.
     #
     # @private
     # @param [Array<Parser::AST::Node>] option_nodes
     # @return [Hash{Symbol => Object}]
     def extract_options(option_nodes)
-      hash_node = option_nodes.find { |n| n.is_a?(Parser::AST::Node) && n.type == :hash }
+      hash_node = option_nodes.find { |n| hash_node?(n) }
       return {} unless hash_node
 
-      hash_node.children.each_with_object({}) do |pair, opts|
-        next unless pair.type == :pair
+      hash_node.children.each_with_object({}) { |pair, opts| add_option(pair, opts) }
+    end
 
-        key_node, val_node = *pair
-        key = key_node.children.first if key_node.type == :sym
-        next unless key
+    def hash_node?(node)
+      node.is_a?(Parser::AST::Node) && node.type == :hash
+    end
 
-        opts[key] = extract_value(val_node)
-      end
+    def add_option(pair, opts)
+      return unless pair.type == :pair
+
+      key_node, val_node = *pair
+      key = key_node.children.first if key_node.type == :sym
+      return unless key
+
+      opts[key] = extract_value(val_node)
     end
 
     # Extract a primitive value from an AST node.
@@ -149,17 +159,14 @@ module DocscribePlugins
     # @param [Hash] options
     # @return [String]
     def resolve_return_type(meth, assoc_name, options)
-      case meth
-      when :belongs_to, :has_one
-        if options[:polymorphic]
-          'ApplicationRecord'
-        else
-          class_name_from_options(options) || camelize(assoc_name)
-        end
-      when :has_many, :has_and_belongs_to_many
-        inner = class_name_from_options(options) || camelize(singular(assoc_name))
-        "Array<#{inner}>"
+      if %i[belongs_to has_one].include?(meth)
+        return 'ApplicationRecord' if options[:polymorphic]
+
+        return class_name_from_options(options) || camelize(assoc_name)
       end
+
+      inner = class_name_from_options(options) || camelize(singular(assoc_name))
+      "Array<#{inner}>"
     end
 
     # Build a one-line description for an association.
@@ -172,14 +179,11 @@ module DocscribePlugins
     def build_description(meth, assoc_name, options)
       case meth
       when :belongs_to
-        polymorphic = options[:polymorphic] ? ' (polymorphic)' : ''
+        polymorphic = options[:polymorphic] ? ' (polymorphic)' : nil
         "Associated #{assoc_name}#{polymorphic} object."
-      when :has_one
-        "Associated #{assoc_name} object."
-      when :has_many
-        "Returns the associated #{assoc_name}."
-      when :has_and_belongs_to_many
-        "Returns the associated #{assoc_name} (HABTM)."
+      when :has_one then "Associated #{assoc_name} object."
+      when :has_many then "Returns the associated #{assoc_name}."
+      when :has_and_belongs_to_many then "Returns the associated #{assoc_name} (HABTM)."
       end
     end
 

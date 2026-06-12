@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'safe strategy struct docs' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'attributes' => true }) }
@@ -16,7 +16,7 @@ RSpec.describe 'safe strategy struct docs' do
       RUBY
     end
 
-    it 'appends missing @!attribute blocks into the existing doc-like block' do
+    it 'appends missing @!attribute blocks into the existing doc-like block', :aggregate_failures do
       expect(out).to include('# @todo docs')
       expect(out).to include('# @!attribute [rw] a')
       expect(out).to include('# @!attribute [rw] b')
@@ -32,7 +32,7 @@ RSpec.describe 'safe strategy struct docs' do
       RUBY
     end
 
-    it 'inserts full struct docs' do
+    it 'inserts full struct docs', :aggregate_failures do
       expect(out).to include('# NOTE: keep this')
       expect(out).to include('# @!attribute [rw] name')
     end
@@ -46,7 +46,7 @@ RSpec.describe 'safe strategy struct docs' do
       RUBY
     end
 
-    it 'does not rewrite it into assignment style' do
+    it 'does not rewrite it into assignment style', :aggregate_failures do
       expect(out).to include('class Foo < Struct.new(:a, :b, keyword_init: true)')
       expect(out).not_to include('Foo = Struct.new')
     end

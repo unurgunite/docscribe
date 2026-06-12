@@ -4,18 +4,16 @@ require 'parser/current'
 require 'docscribe/plugin'
 require 'tmpdir'
 
-# Load parser and plugin from the model_attributes directory
 require_relative '../schema_parser/schema_parser'
 require_relative '../plugin'
 
-RSpec.describe 'ModelAttributes end-to-end' do
-  let(:root) { Dir.mktmpdir }
-  let(:schema_path) { File.join(root, 'db', 'schema.rb') }
-  let(:plugin) { DocscribePlugins::ModelAttributes.new(root: root) }
+RSpec.describe DocscribePlugins::ModelAttributes do
+  let(:plugin) { described_class.new(root: Dir.mktmpdir) }
 
   before do
-    FileUtils.mkdir_p(File.dirname(schema_path))
-    File.write(schema_path, <<~SCHEMA)
+    root = plugin.root
+    FileUtils.mkdir_p(File.join(root, 'db'))
+    File.write(File.join(root, 'db', 'schema.rb'), <<~SCHEMA)
       ActiveRecord::Schema.define(version: 2024_01_01_000000) do
         create_table "users", force: :cascade do |t|
           t.string "email", null: false
@@ -46,113 +44,123 @@ RSpec.describe 'ModelAttributes end-to-end' do
 
   after do
     Docscribe::Plugin::Registry.clear!
-    FileUtils.rm_rf(root)
+    FileUtils.rm_rf(plugin.root)
   end
 
-  # Method documentation.
-  #
-  # @param [Object] code Param documentation.
-  # @return [Object]
   def rewrite(code)
     Docscribe::InlineRewriter.insert_comments(code, strategy: :safe)
   end
 
   describe 'full parser + plugin pipeline' do
-    it 'generates correct Boolean doc from schema.rb' do
-      code = <<~RUBY
-        class User < ApplicationRecord
-          def admin?
-            is_admin
-          end
-        end
-      RUBY
+    subject(:out) { rewrite(code) }
 
-      out = rewrite(code)
-      expect(out).to include('# @return [Boolean]')
-      # Should not have multiple @return lines
-      expect(out.scan('# @return [Boolean]').size).to eq(1)
+    describe 'generates correct Boolean doc from schema.rb' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            def admin?
+              is_admin
+            end
+          end
+        RUBY
+      end
+
+      it { is_expected.to include('# @return [Boolean]') }
+
+      it 'does not have multiple @return lines' do
+        expect(out.scan('# @return [Boolean]').size).to eq(1)
+      end
     end
 
-    it 'generates correct String doc for email' do
-      code = <<~RUBY
-        class User < ApplicationRecord
-          def formatted_email
-            email.upcase
+    describe 'generates correct String doc for email' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            def formatted_email
+              email.upcase
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-      expect(out).to include('# @return [String]')
+      it { is_expected.to include('# @return [String]') }
     end
 
-    it 'generates correct Integer doc for age' do
-      code = <<~RUBY
-        class User < ApplicationRecord
-          def age_in_months
-            age * 12
+    describe 'generates correct Integer doc for age' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            def age_in_months
+              age * 12
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-      expect(out).to include('# @return [Integer]')
+      it { is_expected.to include('# @return [Integer]') }
     end
 
-    it 'generates correct Boolean for published post' do
-      code = <<~RUBY
-        class Post < ApplicationRecord
-          def published?
-            published
+    describe 'generates correct Boolean for published post' do
+      let(:code) do
+        <<~RUBY
+          class Post < ApplicationRecord
+            def published?
+              published
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-      expect(out).to include('# @return [Boolean]')
+      it { is_expected.to include('# @return [Boolean]') }
     end
 
-    it 'handles string concatenation across columns' do
-      code = <<~RUBY
-        class User < ApplicationRecord
-          def fullname
-            name.upcase
+    describe 'handles string concatenation across columns' do
+      let(:code) do
+        <<~RUBY
+          class User < ApplicationRecord
+            def fullname
+              name.upcase
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-      expect(out).to include('# @return [String]')
+      it { is_expected.to include('# @return [String]') }
     end
 
-    it 'handles namespaced models (Admin::User -> admin_users table)' do
-      code = <<~RUBY
-        class Admin::User < ApplicationRecord
-          def admin_role
-            is_admin
+    describe 'handles namespaced models (Admin::User -> admin_users table)' do
+      let(:code) do
+        <<~RUBY
+          class Admin::User < ApplicationRecord
+            def admin_role
+              is_admin
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      out = rewrite(code)
-      expect(out).to include('# @return [Boolean]')
+      it { is_expected.to include('# @return [Boolean]') }
     end
 
-    it 'does not generate plugin docs for non-ActiveRecord classes' do
-      code = <<~RUBY
-        class EmailValidator
-          def valid?(email)
-            true
+    describe 'does not generate plugin docs for non-ActiveRecord classes' do
+      let(:code) do
+        <<~RUBY
+          class EmailValidator
+            def valid?(email)
+              true
+            end
           end
-        end
-      RUBY
+        RUBY
+      end
 
-      ast = Parser::CurrentRuby.parse(code)
-      buffer = Parser::Source::Buffer.new('(string)')
-      buffer.source = code
+      let(:parsed_ast) { Parser::CurrentRuby.parse(code) }
+      let(:buffer) do
+        b = Parser::Source::Buffer.new('(string)')
+        b.source = code
+        b
+      end
 
-      results = plugin.collect(ast, buffer)
-      expect(results).to be_empty
+      it { expect(plugin.collect(parsed_ast, buffer)).to be_empty }
     end
   end
 end

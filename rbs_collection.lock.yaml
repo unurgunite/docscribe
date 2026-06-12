@@ -21,6 +21,10 @@ gems:
   version: '0'
   source:
     type: stdlib
+- name: forwardable
+  version: '0'
+  source:
+    type: stdlib
 - name: json
   version: '0'
   source:
@@ -61,6 +65,10 @@ gems:
     revision: 81fa8bd0617286078617a62b6a3229cebfd4af23
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
+- name: pathname
+  version: '0'
+  source:
+    type: stdlib
 - name: prism
   version: 1.9.0
   source:
@@ -81,6 +89,18 @@ gems:
     revision: 81fa8bd0617286078617a62b6a3229cebfd4af23
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
+- name: random-formatter
+  version: '0'
+  source:
+    type: stdlib
+- name: rbs
+  version: 4.0.2
+  source:
+    type: rubygems
+- name: rdoc
+  version: '0'
+  source:
+    type: stdlib
 - name: regexp_parser
   version: '2.8'
   source:
@@ -109,6 +129,18 @@ gems:
     revision: 81fa8bd0617286078617a62b6a3229cebfd4af23
     remote: https://github.com/ruby/gem_rbs_collection.git
     repo_dir: gems
+- name: securerandom
+  version: '0'
+  source:
+    type: stdlib
+- name: strscan
+  version: '0'
+  source:
+    type: stdlib
+- name: tsort
+  version: '0'
+  source:
+    type: stdlib
 - name: yard
   version: '0.9'
   source:

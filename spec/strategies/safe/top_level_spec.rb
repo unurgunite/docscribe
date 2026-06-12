@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'top-level methods' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code, strategy: :safe, config: conf) }
 
   let(:conf) { Docscribe::Config.new('emit' => { 'header' => true }) }
@@ -12,7 +12,7 @@ RSpec.describe 'top-level methods' do
       end
     RUBY
 
-    it 'adds documentation' do
+    it 'adds documentation', :aggregate_failures do
       expect(out).to include('Object#foo')
       expect(out).to include('# Method documentation.')
     end
@@ -25,7 +25,7 @@ RSpec.describe 'top-level methods' do
       end
     RUBY
 
-    it 'adds documentation' do
+    it 'adds documentation', :aggregate_failures do
       expect(out).to include('Object.bar')
       expect(out).to include('# Method documentation.')
     end
@@ -44,7 +44,7 @@ RSpec.describe 'top-level methods' do
       end
     RUBY
 
-    it 'documents both' do
+    it 'documents both', :aggregate_failures do
       expect(out).to include('# +Object#foo+')
       expect(out).to include('# +Obj#abc+')
     end

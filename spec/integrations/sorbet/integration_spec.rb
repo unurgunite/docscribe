@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe 'Sorbet inline signature integration' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline_with_sorbet(code, config_overrides: conf) }
 
   let(:conf) { { 'emit' => { 'header' => true } } }
@@ -19,12 +19,24 @@ RSpec.describe 'Sorbet inline signature integration' do
       RUBY
     end
 
-    it 'uses inline sigs for params and return types' do
+    it 'includes header section' do
       expect(out).to match(header_regex('Demo', 'foo', 'Integer'))
+    end
+
+    it 'includes @return tag' do
       expect(out).to include('# @return [Integer]')
+    end
+
+    it 'does not include wrong @return tag' do
       expect(out).not_to include('# @return [String]')
+    end
+
+    it 'includes @param tags', :aggregate_failures do
       expect(out).to include(param_tag('verbose', 'Boolean'))
       expect(out).to include(param_tag('count', 'Integer'))
+    end
+
+    it 'does not include default @param tags', :aggregate_failures do
       expect(out).not_to include(param_tag('verbose', 'Object'))
       expect(out).not_to include(param_tag('count', 'Object'))
     end
@@ -47,13 +59,19 @@ RSpec.describe 'Sorbet inline signature integration' do
       RUBY
     end
 
-    it 'parses multiline signatures' do
+    it 'includes @param tag' do
       expect(out).to match(
         /# @param \[(?:String\?|String, nil|nil, String)\] name Param documentation\./
       )
+    end
+
+    it 'includes @return tag' do
       expect(out).to match(
         /# @return \[(?:String, Integer|Integer, String)\]/
       )
+    end
+
+    it 'does not include wrong @return tag' do
       expect(out).not_to include('# @return [String]')
     end
   end
@@ -72,7 +90,7 @@ RSpec.describe 'Sorbet inline signature integration' do
       RUBY
     end
 
-    it 'uses inline sigs for class methods' do
+    it 'uses inline sigs for class methods', :aggregate_failures do
       expect(out).to match(/# \+Demo\.status\+\s*-> Symbol/)
       expect(out).to include('# @return [Symbol]')
       expect(out).not_to include('# @return [String]')
@@ -93,7 +111,7 @@ RSpec.describe 'Sorbet inline signature integration' do
       RUBY
     end
 
-    it 'renders void returns from inline sigs' do
+    it 'renders void returns from inline sigs', :aggregate_failures do
       expect(out).to match(header_regex('Demo', 'foo', 'void'))
       expect(out).to include('# @return [void]')
       expect(out).to include(param_tag('flag', 'Boolean'))
@@ -115,7 +133,7 @@ RSpec.describe 'Sorbet inline signature integration' do
       RUBY
     end
 
-    it 'uses Sorbet rest arg and kwrest element types' do
+    it 'uses Sorbet rest arg and kwrest element types', :aggregate_failures do
       expect(out).to include(param_tag('args', 'Array<Integer>'))
       expect(out).to include(param_tag('kwargs', 'Hash<Symbol, Float>'))
       expect(out).to include('# @return [Symbol]')

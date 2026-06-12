@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe '@todo blocks are doc-like' do
+RSpec.describe Docscribe::InlineRewriter do
   subject(:out) { inline(code) }
 
   let(:code) do
@@ -12,7 +12,7 @@ RSpec.describe '@todo blocks are doc-like' do
     RUBY
   end
 
-  it 'merges into a block that only contains @todo' do
+  it 'merges into a block that only contains @todo', :aggregate_failures do
     expect(out).to include('# @todo docs')
     expect(out).to include(param_tag('x', 'Object'))
   end
