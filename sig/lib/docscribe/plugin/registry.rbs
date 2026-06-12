@@ -1,0 +1,39 @@
+module Docscribe
+  module Plugin
+    module Registry
+      class Entry
+        attr_accessor plugin: untyped
+        attr_accessor priority: Integer
+        attr_accessor order: Integer
+
+        def initialize: (?plugin: untyped, ?priority: Integer, ?order: Integer) -> void
+      end
+
+      self.@tag_entries: Array[Entry]
+
+      self.@collector_entries: Array[Entry]
+
+      self.@order_seq: Integer
+
+      @order_seq: Integer
+
+      def self?.register: (untyped plugin, ?priority: Integer) -> void
+
+      def self?.parse_priority: (untyped priority) -> Integer
+
+      def self?.create_entry: (untyped plugin, Integer priority) -> Entry
+
+      def self?.route_entry: (Entry entry, untyped plugin) -> void
+
+      def self?.tag_plugins: () -> Array[untyped]
+
+      def self?.collector_plugins: () -> Array[untyped]
+
+      def self?.tag_entries: () -> Array[Entry]
+
+      def self?.collector_entries: () -> Array[Entry]
+
+      def self?.clear!: () -> void
+    end
+  end
+end

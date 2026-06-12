@@ -1002,7 +1002,7 @@ module Docscribe
         return unless body
 
         nodes = body.type == :begin ? body.children : [body]
-        pending_sig_nodes = []
+        pending_sig_nodes = [] #: Array[Parser::AST::Node]
 
         nodes.each do |child|
           process_body_child(child, ctx, pending_sig_nodes)

@@ -199,7 +199,7 @@ module Docscribe
                build_params_lines(setup[:node], setup[:indent], external_sig: setup[:external_sig], config: config,
                                                                 param_types_override: pt)
              end
-        rt = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(setup[:node]) : []
+        rt = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(setup[:node]) : [] #: Array[String]
         [pt, pl, rt]
       end
 
@@ -428,8 +428,8 @@ module Docscribe
       # @param [Hash] ctx
       # @return [Hash]
       def collect_missing_all(ctx)
-        lines = []
-        reasons = []
+        lines = [] #: Array[String]
+        reasons = [] #: Array[Hash]
         collect_missing_visibility!(lines, reasons, **ctx)
         collect_missing_module_function_note!(lines, reasons, **ctx)
         collect_missing_params!(lines, reasons, **ctx)
@@ -556,7 +556,7 @@ module Docscribe
         args = extract_args_from_node(node)
         return unless args
 
-        param_types = {}
+        param_types = {} #: Hash[String, String]
         collect_all_param_types(args, param_types, external_sig, config)
         param_types.empty? ? nil : param_types
       end

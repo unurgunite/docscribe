@@ -1,0 +1,9 @@
+module Docscribe
+  module Plugin
+    module Base
+      class TagPlugin
+        def call: (Docscribe::Plugin::Context _context) -> Array[Docscribe::Plugin::Tag]
+      end
+    end
+  end
+end

@@ -17,7 +17,7 @@ module Docscribe
     # @raise [LoadError]
     # @return [Docscribe::Types::ProviderChain, nil]
     def signature_provider_for(source:, file:)
-      providers = []
+      providers = [] #: Array[untyped]
       append_sorbet_providers(providers, source: source, file: file)
       providers << rbs_provider if rbs_enabled?
       build_provider_chain(providers)

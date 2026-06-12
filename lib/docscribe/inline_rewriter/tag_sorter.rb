@@ -64,7 +64,7 @@ module Docscribe
       # @param [Array<String>] lines
       # @return [Array<Hash>]
       def parse_segments(lines)
-        segments = []
+        segments = [] #: Array[untyped]
         i = 0
 
         i = advance_parse(lines, i, segments) while i < lines.length
@@ -96,7 +96,7 @@ module Docscribe
       # @param [Array<Hash>] segments accumulated segments
       # @return [Integer] new index after consuming the run
       def consume_tag_run(lines, idx, segments)
-        entries = []
+        entries = [] #: Array[untyped]
         while idx < lines.length && top_level_tag_line?(lines[idx])
           entry, idx = consume_entry(lines, idx)
           entries << entry
@@ -176,7 +176,7 @@ module Docscribe
       # @param [Integer] start_idx
       # @return [Array<String>]
       def collect_continuation_lines(lines, start_idx)
-        result = []
+        result = [] #: Array[String]
         i = start_idx
 
         while i < lines.length
@@ -196,7 +196,7 @@ module Docscribe
       # @param [Array<Entry>] entries
       # @return [Array<Array<Entry>>]
       def group_entries(entries)
-        groups = []
+        groups = [] #: Array[untyped]
         i = 0
 
         while i < entries.length
@@ -230,7 +230,7 @@ module Docscribe
       # @param [String] param_name
       # @return [Array<Entry>]
       def collect_option_entries(entries, start_idx, param_name)
-        result = []
+        result = [] #: Array[untyped]
         i = start_idx
 
         while i < entries.length &&

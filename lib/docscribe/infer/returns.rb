@@ -79,7 +79,7 @@ module Docscribe
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
                                  param_types: nil)
         body = extract_def_body(node)
-        spec = { normal: FALLBACK_TYPE, rescues: [] }
+        spec = { normal: FALLBACK_TYPE, rescues: [] } #: Hash[Symbol, untyped]
         return spec unless body
 
         local_var_types = build_local_variable_types(body)
@@ -174,7 +174,7 @@ module Docscribe
       # @param [Parser::AST::Node] node AST node to walk
       # @return [Hash, nil]
       def build_local_variable_types(node)
-        types = {}
+        types = {} #: Hash[String, String]
         ASTWalk.walk(node) do |n|
           collect_assignment_type(n, types)
         end

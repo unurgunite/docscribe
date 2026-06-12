@@ -1,0 +1,202 @@
+module Docscribe
+  class ParseError < StandardError
+  end
+
+  module InlineRewriter
+    def self.insert_comments: (String code, ?strategy: Symbol?, ?rewrite: bool?, ?merge: bool?, **untyped options) -> String
+
+    def self.rewrite_with_report: (String code, ?strategy: Symbol?, ?rewrite: bool?, ?merge: bool?, **untyped options) -> { output: String, changes: Array[Hash[Symbol, untyped]] }
+
+    def self.build_rewrite_pipeline: (Parser::Source::Buffer buffer, Parser::AST::Node ast) -> Hash[Symbol, untyped]
+
+    def self.dispatch_rewrite_insertions: (Hash[Symbol, untyped] pipeline, Parser::Source::Buffer buffer, **untyped options) -> void
+
+    def self.dispatch_method_insertion: (Collector::Insertion ins, Hash[Symbol, untyped] pipeline, Parser::Source::Buffer buffer, **untyped options) -> void
+
+    def self.dispatch_attr_insertion: (Collector::AttrInsertion ins, Hash[Symbol, untyped] pipeline, Parser::Source::Buffer buffer, **untyped options) -> void
+
+    def self.dispatch_plugin_insertion: (Hash[Symbol, untyped] ins, Hash[Symbol, untyped] pipeline, Parser::Source::Buffer buffer, **untyped options) -> void
+
+    private
+
+    def self.setup_rewrite_env: (String code, Hash[Symbol, untyped] options) -> { config: Config, file: String, buffer: Parser::Source::Buffer, ast: Parser::AST::Node, signature_provider: (Types::ProviderChain | nil), core_rbs_provider: (untyped | nil) }
+
+    def self.load_core_rbs_provider: (Config config, (untyped | nil) core_rbs_provider) -> (untyped | nil)
+
+    def self.collect_insertions: (Parser::Source::Buffer buffer, Parser::AST::Node ast) -> Array[untyped]
+
+    def self.deduplicate_insertions: (Array[ [Symbol, untyped] ] insertions, ?method_overrides_by_pos: (Hash[Integer, untyped] | nil)?) -> Array[ [Symbol, untyped] ]
+
+    def self.process_dedup_group: (Integer pos, Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] result, (Hash[Integer, untyped] | nil) method_overrides_by_pos) -> Array[ [Symbol, untyped] ]
+
+    def self.group_by_position: (Array[ [Symbol, untyped] ] insertions) -> Hash[Integer, Array[ [Symbol, untyped] ]]
+
+    def self.find_override_items: (Array[ [Symbol, untyped] ] plugin_items) -> Array[ [Symbol, untyped] ]
+
+    def self.handle_override_case: (Array[ [Symbol, untyped] ] result, Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] override_items, (Hash[Integer, untyped] | nil) method_overrides_by_pos, Integer pos) -> void
+
+    def self.deduplicate_items: (Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] plugin_items, Integer pos, Array[ [Symbol, untyped] ] _method_items) -> Array[ [Symbol, untyped] ]
+
+    def self.plugin_doc_item?: ( [Symbol, untyped] pair) -> bool
+
+    def self.deduplicate_plugin_doc_case: (Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] plugin_doc_items, Integer pos) -> Array[ [Symbol, untyped] ]
+
+    def self.override_or_plugin_method?: ( [Symbol, untyped] pair) -> bool
+
+    def self.max_plugin_priority: (Array[ [Symbol, untyped] ] plugin_items) -> Integer
+
+    def self.filter_lower_priority_plugins: (Array[ [Symbol, untyped] ] items, Integer threshold) -> Array[ [Symbol, untyped] ]
+
+    def self.warn_plugin_conflict!: (Array[ [Symbol, untyped] ] dropped, Array[ [Symbol, untyped] ] plugin_items, Integer max_prio, Integer pos) -> void
+
+    def self.conflict_location_str: (Integer pos, Array[ [Symbol, untyped] ] plugin_items) -> String
+
+    def self.pick_highest_priority_override_insertion: (Array[ [Symbol, untyped] ] override_items, pos: Integer) -> (Hash[Symbol, untyped] | nil)
+
+    def self.max_plugin_priority_for: (Array[ [Symbol, untyped] ] override_items) -> Integer
+
+    def self.sort_winners_by_order: (Array[ [Symbol, untyped] ] winners) -> Array[ [Symbol, untyped] ]
+
+    def self.warn_override_conflict!: (Array[ [Symbol, untyped] ] winners_sorted, Integer max_prio, Integer pos) -> void
+
+    def self.plugin_insertion_priority: (Hash[Symbol, untyped] insertion) -> Integer
+
+    def self.plugin_insertion_label: (Hash[Symbol, untyped] insertion) -> String
+
+    def self.plugin_insertion_line: (Hash[Symbol, untyped] insertion) -> (Integer | nil)
+
+    def self.plugin_insertion_pos: (Symbol kind, (Hash[Symbol, untyped] | Collector::Insertion | Collector::AttrInsertion) ins) -> Integer
+
+    def self.apply_plugin_insertion!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, insertion: Hash[Symbol, untyped], strategy: Symbol, config: Config) -> void
+
+    def self.insert_plugin_doc: (Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer, Parser::Source::Range bol_range, String doc, Symbol strategy) -> void
+
+    def self.any_comment_block_removal_range: (Parser::Source::Buffer buffer, Integer bol_pos) -> (Parser::Source::Range | nil)
+
+    def self.nearest_comment_line_index: (String src, Array[String] lines, Integer bol_pos) -> (Integer | nil)
+
+    def self.comment_block_start_index: (Array[String] lines, Integer def_line_idx) -> Integer
+
+    def self.skip_preserved_lines: (Array[String] lines, Integer start_idx, Integer def_line_idx) -> Integer
+
+    def self.normalize_plugin_doc: (String doc, String indent, config: Config, anchor_node: (Parser::AST::Node | nil)) -> String
+
+    def self.trim_trailing_blank_lines: (String doc) -> String
+
+    def self.prepend_default_message_if_no_prose: (String doc, Parser::AST::Node anchor_node, String indent, Config config) -> String
+
+    def self.doc_has_prose?: (String doc) -> bool
+
+    def self.normalize_plugin_doc_indent: (String doc, String indent) -> String
+
+    def self.normalize_strategy: (strategy: (Symbol | nil), rewrite: (bool | nil), merge: (bool | nil)) -> Symbol
+
+    def self.validate_strategy!: (Symbol strategy) -> void
+
+    def self.apply_method_insertion!: (**untyped options) -> void
+
+    def self.dispatch_method_insertion_by_strategy!: (Parser::Source::Range anchor_bol_range, Hash[Symbol, untyped] options, Hash[Symbol, untyped] params, (String | nil) doc) -> void
+
+    def self.method_insertion_allowed?: (Collector::Insertion insertion, Config config) -> bool
+
+    def self.build_method_insertion_params: (Collector::Insertion insertion, Config config, (Types::ProviderChain | nil) signature_provider, (untyped | nil) core_rbs_provider, (Hash[Symbol, untyped] | nil) method_override) -> Hash[Symbol, untyped]
+
+    def self.build_effective_params: (Collector::Insertion insertion, **untyped options) -> { param_types: Hash[untyped, untyped], return_type_override: untyped, override_tags: Array[untyped] }
+
+    def self.resolve_external_signature: (Collector::Insertion insertion, (Types::ProviderChain | nil) signature_provider) -> (Types::MethodSignature | nil)
+
+    def self.resolve_param_types: (Collector::Insertion insertion, (Types::MethodSignature | nil) external_sig, Config config) -> (Hash[String, String] | nil)
+
+    def self.apply_method_insertion_aggressive!: (**untyped options) -> void
+
+    def self.remove_method_comment_block: (Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer, Collector::Insertion insertion) -> void
+
+    def self.apply_method_insertion_safe!: (**untyped options) -> void
+
+    def self.apply_method_insertion_safe_with_info!: (**untyped options) -> void
+
+    def self.commit_safe_doc_outcome: (Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer, Hash[Symbol, untyped] info, String new_block, **untyped rest) -> void
+
+    def self.filter_doc_params: (Hash[Symbol, untyped] options) -> Hash[Symbol, untyped]
+
+    def self.handle_doc_replacement: (Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer, Hash[Symbol, untyped] info, String new_block, **untyped log_opts) -> void
+
+    def self.compute_doc_replacement: (Hash[Symbol, untyped] info, Array[String] missing_lines, **untyped options) -> [ bool, String, String ]
+
+    def self.log_method_doc_changes!: (insertion: Collector::Insertion, merge_result: Hash[Symbol, untyped], **untyped rest) -> void
+
+    def self.apply_method_insertion_safe_without_info!: (**untyped options) -> void
+
+    def self.filter_method_doc_params: (Hash[Symbol, untyped] options) -> Hash[Symbol, untyped]
+
+    def self.add_change: (**untyped options) -> void
+
+    def self.method_id_for: (Collector::Insertion insertion) -> String
+
+    def self.apply_attr_insertion!: (**untyped options) -> void
+
+    def self.attr_insertion_params: (Collector::AttrInsertion insertion, Config config, (Types::ProviderChain | nil) signature_provider, Parser::Source::Range bol_range) -> { insertion: Collector::AttrInsertion, config: Config, signature_provider: (Types::ProviderChain | nil), bol_range: Parser::Source::Range }
+
+    def self.dispatch_attr_strategy: (Hash[Symbol, untyped] params, Hash[Symbol, untyped] options) -> void
+
+    def self.apply_attr_aggressive!: (Hash[Symbol, untyped] params, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
+
+    def self.apply_attr_safe!: (Hash[Symbol, untyped] params, Hash[Integer, Array[ [Integer, String] ]] merge_inserts, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
+
+    def self.merge_attr_additions!: (insertion: Collector::AttrInsertion, info: Hash[Symbol, untyped], merge_inserts: Hash[Integer, Array[ [Integer, String] ]], config: Config, signature_provider: (Types::ProviderChain | nil)) -> void
+
+    def self.apply_merge_inserts!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, merge_inserts: Hash[Integer, Array[ [Integer, String] ]]) -> void
+
+    def self.merge_text_for_pos: (Array[ [Integer, String] ] chunks) -> (String | nil)
+
+    def self.merge_chunk_into_out: (String chunk, Array[String] out_lines, Regexp sep_re) -> void
+
+    def self.extract_separators: (Array[String] lines, Regexp sep_re) -> Array[String]
+
+    def self.build_attr_merge_additions: (ins: Collector::AttrInsertion, existing_lines: Array[String], config: Config, signature_provider: (Types::ProviderChain | nil)) -> (String | nil)
+
+    def self.missing_attr_names: (Collector::AttrInsertion ins, Array[String] existing_lines) -> Array[Symbol]
+
+    def self.existing_attr_names: (Array[String] lines) -> Hash[String, bool]
+
+    def self.attribute_allowed?: (Config config, Collector::AttrInsertion ins) -> bool
+
+    def self.allowed_for_access?: (Config config, Collector::AttrInsertion ins, Symbol name_sym) -> bool
+
+    def self.build_attr_doc_for_node: (Collector::AttrInsertion ins, config: Config, signature_provider: (Types::ProviderChain | nil)) -> (String | nil)
+
+    def self.build_attr_doc_lines: (Collector::AttrInsertion ins, indent: String, config: Config, signature_provider: (Types::ProviderChain | nil), ?names: (Array[Symbol] | nil)?) -> Array[String]
+
+    def self.build_single_attr_lines: (Collector::AttrInsertion ins, Symbol name_sym, indent: String, **untyped opts) -> Array[String]
+
+    def self.append_attr_return_tag: (Array[String] lines, String indent, String attr_type, Symbol access) -> void
+
+    def self.append_attr_param_tag: (Array[String] lines, String indent, String attr_type, Symbol access, Config cfg) -> void
+
+    def self.attr_visibility_lines: (String indent, Config config, Collector::AttrInsertion ins) -> Array[String]
+
+    def self.format_attribute_param_tag: (String indent, String name, String type, style: (String | Symbol)) -> String
+
+    def self.attribute_type: (Collector::AttrInsertion ins, Symbol name_sym, Config config, signature_provider: (Types::ProviderChain | nil)) -> String
+
+    def self.build_signature_provider: (Config config, String code, String file) -> (untyped | nil)
+
+    def self.build_method_doc: (Collector::Insertion insertion, **untyped options) -> (String | nil)
+
+    def self.build_missing_method_merge_result: (Collector::Insertion insertion, existing_lines: Array[String], **untyped options) -> Hash[Symbol, untyped]
+
+    def self.method_doc_comment_info: (Parser::Source::Buffer buffer, Collector::Insertion insertion) -> (Hash[Symbol, untyped] | nil)
+
+    def self.method_comment_block_removal_range: (Parser::Source::Buffer buffer, Collector::Insertion insertion) -> (Parser::Source::Range | nil)
+
+    def self.method_bol_ranges: (Parser::Source::Buffer buffer, Collector::Insertion insertion) -> [Parser::Source::Range, Parser::Source::Range]
+
+    def self.method_line_for: (Collector::Insertion insertion) -> Integer
+
+    def self.anchor_node_for: (Collector::Insertion insertion) -> Parser::AST::Node
+
+    def self.extract_method_override!: (untyped method_override) -> Hash[Symbol, untyped]
+
+    def self.normalize_override_tags: (Array[untyped] tags) -> Array[Plugin::Tag]
+  end
+end

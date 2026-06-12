@@ -1,0 +1,27 @@
+module Docscribe
+  class Config
+    def process_file?: (String path) -> bool
+
+    def load_file_patterns: () -> [ Array[String], Array[String] ]
+
+    def relative_path: (String path) -> String
+
+    def process_method?: (container: String, scope: Symbol, visibility: Symbol, name: String | Symbol) -> bool
+
+    def normalize_file_patterns: (Array[String]? list) -> Array[String]
+
+    def expand_directory_shorthand: (String pattern) -> Array[String]
+
+    def file_matches_any?: (Array[String] patterns, String path) -> bool
+
+    def file_match_pattern?: (String pattern, String path) -> bool
+
+    def filter_scopes: () -> Array[String]
+
+    def filter_visibilities: () -> Array[String]
+
+    def filter_exclude_patterns: () -> Array[String]
+
+    def filter_include_patterns: () -> Array[String]
+  end
+end

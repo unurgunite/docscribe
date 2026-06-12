@@ -116,7 +116,7 @@ module Docscribe
         # @return [String]
         def format_named(type, collapse_generics:)
           name = type.name.to_s.delete_prefix('::')
-          args = type.respond_to?(:args) ? type.args : []
+          args = type.respond_to?(:args) ? type.args : [] #: Array[untyped]
 
           if args && !args.empty?
             return name if collapse_generics

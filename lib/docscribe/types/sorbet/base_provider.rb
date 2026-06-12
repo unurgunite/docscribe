@@ -123,7 +123,7 @@ module Docscribe
         # @param [::RBS::Types::Function] func
         # @return [Hash{String => String}]
         def build_param_types(func)
-          param_types = {}
+          param_types = {} #: Hash[String, String]
 
           add_positionals!(param_types, func.required_positionals)
           add_positionals!(param_types, func.optional_positionals)

@@ -1,0 +1,33 @@
+module Docscribe
+  module InlineRewriter
+    module SourceHelpers
+      def self?.node_name: (Parser::AST::Node node) -> (Symbol | nil)
+
+      def self?.line_start_range: (Parser::Source::Buffer buffer, Parser::AST::Node node) -> Parser::Source::Range
+
+      def self?.doc_comment_block_info: (Parser::Source::Buffer buffer, Integer def_bol_pos) -> (Hash[Symbol, untyped] | nil)
+
+      def self?.comment_block_removal_range: (Parser::Source::Buffer buffer, Integer def_bol_pos) -> (Parser::Source::Range | nil)
+
+      def self?.find_comment_block_range: (Array[String] lines, Integer def_line_idx) -> ({ start_idx: Integer, end_idx: Integer } | nil)
+
+      def self?.find_preserved_start_idx: (Array[String] lines, Integer start_idx, Integer end_idx) -> Integer
+
+      def self?.doc_marker?: (Array[String] lines, Range[Integer] range) -> bool
+
+      def self?.build_block_info: (Array[String] lines, Integer start_idx, Integer preserved_start_idx, Integer end_idx) -> Hash[Symbol, untyped]
+
+      def self?.compute_removal_range: (Parser::Source::Buffer buffer, Array[String] lines, Integer preserved_start_idx, Integer def_bol_pos) -> Parser::Source::Range
+
+      def self?.compute_positions: (Array[String] lines, Integer start_idx, Integer doc_start_idx, Integer end_pos_idx) -> { start_pos: Integer, doc_start_pos: Integer, end_pos: Integer }
+
+      def self?.preserved_comment_line?: (String line) -> bool
+
+      def self?.doc_marker_line?: (String line) -> bool
+
+      def self?.already_has_doc_immediately_above?: (Parser::Source::Buffer buffer, Integer insert_pos) -> bool
+
+      def self?.line_indent: (Parser::AST::Node node) -> String
+    end
+  end
+end

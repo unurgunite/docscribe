@@ -1,100 +1,27 @@
 module Docscribe
   module CLI
-    # Build and override effective config from CLI flags.
     module ConfigBuilder
-      # Build an effective config by applying CLI overrides on top of a base config.
-      #
-      # CLI overrides currently affect:
-      # - method/file include and exclude filters
-      # - RBS enablement and additional signature directories
-      # - Sorbet enablement and RBI directories
-      #
-      # If no relevant CLI override is present, the original config is returned unchanged.
-      #
-      # @note module_function: when included, also defines #build (instance visibility: private)
-      # @param [Docscribe::Config] base base config loaded from YAML/defaults
-      # @param [Hash] options parsed CLI options
-      # @return [Docscribe::Config] merged effective config
-      def self?.build: (untyped base, untyped options) -> untyped
+      def self?.build: (Docscribe::Config base, Hash[Symbol, untyped] options) -> Docscribe::Config
 
-      # Whether any CLI override is present.
-      #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Hash] options parsed CLI options
-      # @return [Boolean]
-      def self?.needs_override?: (untyped options) -> untyped
+      def self?.needs_override?: (Hash[Symbol, untyped] options) -> bool
 
-      # Whether any method or file filter CLI options were provided.
-      #
-      # @note module_function: when included, also defines #filter_overrides? (instance visibility: private)
-      # @param [Hash] options parsed CLI options
-      # @return [Boolean]
-      def self?.filter_overrides?: (untyped options) -> untyped
+      def self?.filter_overrides?: (Hash[Symbol, untyped] options) -> bool
 
-      # Whether any RBS-related CLI options were provided.
-      #
-      # @note module_function: when included, also defines #rbs_overrides? (instance visibility: private)
-      # @param [Hash] options parsed CLI options
-      # @return [Boolean]
-      def self?.rbs_overrides?: (untyped options) -> untyped
+      def self?.rbs_overrides?: (Hash[Symbol, untyped] options) -> bool
 
-      # Whether any Sorbet-related CLI options were provided.
-      #
-      # @note module_function: when included, also defines #sorbet_overrides? (instance visibility: private)
-      # @param [Hash] options parsed CLI options
-      # @return [Boolean]
-      def self?.sorbet_overrides?: (untyped options) -> untyped
+      def self?.sorbet_overrides?: (Hash[Symbol, untyped] options) -> bool
 
-      # Apply method and file filter overrides to the raw config.
-      #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
-      # @return [void]
-      def self?.apply_filter_overrides: (untyped raw, untyped options) -> untyped
+      def self?.apply_filter_overrides: (Hash[String, untyped] raw, Hash[Symbol, untyped] options) -> void
 
-      # Merge CLI method include/exclude patterns into the raw config hash.
-      #
-      # @note module_function: when included, also defines #apply_method_filters (instance visibility: private)
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
-      # @return [void]
-      def self?.apply_method_filters: (untyped raw, untyped options) -> untyped
+      def self?.apply_method_filters: (Hash[String, untyped] raw, Hash[Symbol, untyped] options) -> void
 
-      # Merge CLI file include/exclude patterns into the raw config hash.
-      #
-      # @note module_function: when included, also defines #apply_file_filters (instance visibility: private)
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
-      # @return [void]
-      def self?.apply_file_filters: (untyped raw, untyped options) -> untyped
+      def self?.apply_file_filters: (Hash[String, untyped] raw, Hash[Symbol, untyped] options) -> void
 
-      # Apply RBS-related CLI overrides to the raw config.
-      #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
-      # @return [void]
-      def self?.apply_rbs_overrides: (untyped raw, untyped options) -> (nil | untyped)
+      def self?.apply_rbs_overrides: (Hash[String, untyped] raw, Hash[Symbol, untyped] options) -> void
 
-      # Resolve and apply the RBS collection path into the raw config hash.
-      #
-      # @note module_function: when included, also defines #apply_rbs_collection (instance visibility: private)
-      # @param [Hash] raw raw config hash
-      # @return [void]
-      def self?.apply_rbs_collection: (untyped raw) -> untyped
+      def self?.apply_rbs_collection: (Hash[String, untyped] raw) -> void
 
-      # Apply Sorbet-related CLI overrides to the raw config.
-      #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
-      # @return [void]
-      def self?.apply_sorbet_overrides: (untyped raw, untyped options) -> (nil | untyped)
+      def self?.apply_sorbet_overrides: (Hash[String, untyped] raw, Hash[Symbol, untyped] options) -> void
     end
   end
 end

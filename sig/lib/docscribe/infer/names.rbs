@@ -1,0 +1,9 @@
+module Docscribe
+  module Infer
+    module Names
+      def self?.const_full_name: ((Parser::AST::Node | nil) node) -> (String | nil)
+
+      def self?.build_const_full_name: (Parser::AST::Node node) -> String
+    end
+  end
+end

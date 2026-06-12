@@ -1,0 +1,9 @@
+module Docscribe
+  module Types
+    module Sorbet
+      class RBIProvider < BaseProvider
+        def initialize: (rbi_dirs: Array[String], ?collapse_generics: bool) -> void
+      end
+    end
+  end
+end

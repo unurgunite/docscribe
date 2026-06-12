@@ -1,0 +1,19 @@
+module Docscribe
+  module Parsing
+    def self.parse: (String code, ?file: String, ?backend: Symbol) -> (Parser::AST::Node | nil)
+
+    def self.parse_buffer: (Parser::Source::Buffer buffer, ?backend: Symbol) -> (Parser::AST::Node | nil)
+
+    def self.parse_with_comments: (String code, ?file: String, ?backend: Symbol) -> [ Parser::AST::Node, Array[Parser::Source::Comment] ]
+
+    def self.parse_with_comments_buffer: (Parser::Source::Buffer buffer, ?backend: Symbol) -> [ Parser::AST::Node, Array[Parser::Source::Comment] ]
+
+    private
+
+    def self.parser_for: (?backend: Symbol) -> (Parser::Base | untyped)
+
+    def self.backend: (?Symbol backend) -> (Symbol | nil)
+
+    def self.ruby_gte_34?: () -> bool
+  end
+end

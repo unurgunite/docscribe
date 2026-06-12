@@ -1,0 +1,77 @@
+module Docscribe
+  module InlineRewriter
+    module DocBlock
+      Entry: untyped
+
+      def self?.merge: (Array[String] existing_lines, missing_lines: Array[String], sort_tags: bool, tag_order: Array[String], ?filter_existing: ::Hash[Symbol, untyped]) -> Array[String]
+
+      def self?.parse_generated: (Array[String] lines, tag_order: Array[String]) -> Array[untyped]
+
+      def self?.filter_existing_entries: (Array[untyped] entries, ::Hash[Symbol, untyped] filter_existing) -> Array[untyped]
+
+      def self?.filter_param_entry?: (untyped entry, Array[String] param_names) -> bool
+
+      def self?.filter_return_entry?: (untyped entry, bool filter_return) -> bool
+
+      def self?.parse: (Array[String] lines, tag_order: Array[String]) -> Array[untyped]
+
+      def self?.parse_lines: (Array[String] lines, Array[String] sortable_tags, entries: Array[untyped], index: Integer) -> Array[untyped]
+
+      def self?.parse_one_line: (Array[String] lines, Integer idx, Array[String] sortable_tags, Array[untyped] entries, Integer index) -> Integer
+
+      def self?.build_other_entry: (String line, Integer index) -> untyped
+
+      def self?.sort: (Array[untyped] entries, tag_order: Array[String]) -> Array[untyped]
+
+      def self?.sort_loop: (Array[untyped] entries, Array[untyped] out, ::Hash[String, Integer] priority) -> void
+
+      def self?.consume_tag_run: (Array[untyped] entries, Integer idx) -> [Array[untyped], Integer]
+
+      def self?.render: (Array[untyped] entries) -> Array[String]
+
+      def self?.sort_run: (Array[untyped] entries, priority: ::Hash[String, Integer]) -> Array[untyped]
+
+      def self?.build_groups: (Array[untyped] entries) -> Array[Array[untyped]]
+
+      def self?.group_entries_loop: (Array[untyped] entries, Array[Array[untyped]] groups) -> void
+
+      def self?.group_one_entry: (Array[untyped] entries, Integer idx, Array[Array[untyped]] groups) -> Integer
+
+      def self?.build_param_group: (Array[untyped] entries, Integer idx, untyped entry) -> Array[untyped]
+
+      def self?.group_priority: (Array[untyped] group, ::Hash[String, Integer] priority) -> Integer
+
+      def self?.build_priority: (Array[String] tag_order) -> ::Hash[String, Integer]
+
+      def self?.normalized_tag_order: (Array[String] tag_order) -> Array[String]
+
+      def self?.consume_tag_entry: (Array[String] lines, Integer start_idx, index: Integer, sortable_tags: Array[String]) -> [untyped, Integer]
+
+      def self?.collect_continuation_lines: (Array[String] lines, Integer start_idx, String first, Array[String] sortable_tags) -> Array[String]
+
+      def self?.add_continuation_lines: (Array[String] lines, Integer start_idx, Array[String] result, Array[String] sortable_tags) -> void
+
+      def self?.continuation_candidate?: (String line, Array[String] sortable_tags) -> bool
+
+      def self?.build_tag_entry: (String first, String? tag, Array[String] entry_lines, Integer index) -> untyped
+
+      def self?.extract_subject: (String line, String? tag) -> String?
+
+      def self?.extract_param_name: (String line) -> String?
+
+      def self?.extract_option_owner: (String line) -> String?
+
+      def self?.sortable_top_level_tag_line?: (String line, Array[String] sortable_tags) -> bool
+
+      def self?.extract_tag: (String line) -> String?
+
+      def self?.top_level_tag_line?: (String line) -> bool
+
+      def self?.comment_line?: (String line) -> bool
+
+      def self?.blank_comment_line?: (String line) -> bool
+
+      def self?.continuation_comment_line?: (String line) -> bool
+    end
+  end
+end

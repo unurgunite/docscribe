@@ -1,0 +1,45 @@
+module Docscribe
+  module InlineRewriter
+    module TagSorter
+      Entry: untyped
+
+      def self?.sort: (Array[String] lines, tag_order: Array[String]) -> Array[String]
+
+      def self?.build_priority: (Array[String] tag_order) -> Hash[String, Integer]
+
+      def self?.parse_segments: (Array[String] lines) -> Array[Hash[Symbol, untyped]]
+
+      def self?.advance_parse: (Array[String] lines, Integer idx, Array[Hash[Symbol, untyped]] segments) -> Integer
+
+      def self?.consume_tag_run: (Array[String] lines, Integer idx, Array[Hash[Symbol, untyped]] segments) -> Integer
+
+      def self?.sort_segment: (Hash[Symbol, untyped] segment, priority: Hash[String, Integer]) -> Array[String]
+
+      def self?.group_priority: (Array[untyped] group, Hash[String, Integer] priority) -> Integer
+
+      def self?.consume_entry: (Array[String] lines, Integer start_idx) -> [untyped, Integer]
+
+      def self?.build_entry: ((String | nil) tag, Array[String] entry_lines, String first, Integer start_idx) -> untyped
+
+      def self?.collect_continuation_lines: (Array[String] lines, Integer start_idx) -> Array[String]
+
+      def self?.group_entries: (Array[untyped] entries) -> Array[Array[untyped]]
+
+      def self?.group_entry: (Array[untyped] entries, Integer idx) -> Array[untyped]
+
+      def self?.collect_option_entries: (Array[untyped] entries, Integer start_idx, String param_name) -> Array[untyped]
+
+      def self?.top_level_tag_line?: (String line) -> bool
+
+      def self?.comment_line?: (String line) -> bool
+
+      def self?.blank_comment_line?: (String line) -> bool
+
+      def self?.extract_tag_name: (String line) -> (String | nil)
+
+      def self?.extract_param_name: (String line) -> (String | nil)
+
+      def self?.extract_option_owner: (String line) -> (String | nil)
+    end
+  end
+end

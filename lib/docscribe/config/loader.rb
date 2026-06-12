@@ -13,7 +13,7 @@ module Docscribe
     # @param [String, nil] path optional config path
     # @return [Docscribe::Config]
     def self.load(path = nil)
-      raw = {}
+      raw = {} #: Hash[String, untyped]
       if path && File.file?(path)
         raw = safe_load_file_compat(path)
       elsif File.file?('docscribe.yml')
@@ -31,10 +31,12 @@ module Docscribe
     # @return [Hash]
     def self.safe_load_file_compat(path)
       if YAML.respond_to?(:safe_load_file)
-        YAML.safe_load_file(path, permitted_classes: [], permitted_symbols: [], aliases: true) || {}
+        YAML.safe_load_file(path,
+                            permitted_classes: [], permitted_symbols: [],
+                            aliases: true) || {} #: Hash[String, untyped]
       else
         yaml = File.open(path, 'r:bom|utf-8', &:read)
-        safe_load_compat(yaml, filename: path) || {}
+        safe_load_compat(yaml, filename: path) || {} #: Hash[String, untyped]
       end
     end
 
@@ -51,7 +53,7 @@ module Docscribe
         permitted_symbols: [],
         aliases: true,
         filename: filename
-      )
+      ) #: Hash[String, untyped]
     rescue ArgumentError
       # Older Psych signature uses positional args
       Psych.safe_load(yaml, [], [], true, filename)
