@@ -158,20 +158,20 @@ module Docscribe
         raw['sorbet']['rbi_dirs'] = Array(raw['sorbet']['rbi_dirs']) + options[:rbi_dirs]
       end
 
-      # Method documentation.
+      # Output overrides
       #
       # @note module_function: when included, also defines #output_overrides? (instance visibility: private)
-      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [Boolean]
       def output_overrides?(options)
         options[:keep_descriptions]
       end
 
-      # Method documentation.
+      # Apply output overrides
       #
       # @note module_function: when included, also defines #apply_output_overrides (instance visibility: private)
-      # @param [Hash<String, Object>] raw Param documentation.
-      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @param [Hash<String, Object>] raw raw config hash
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [void]
       def apply_output_overrides(raw, options)
         raw['keep_descriptions'] = options[:keep_descriptions] if options.key?(:keep_descriptions)

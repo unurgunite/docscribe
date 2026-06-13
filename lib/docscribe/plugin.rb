@@ -24,7 +24,7 @@ module Docscribe
     # abort the entire run.
     #
     # @raise [StandardError]
-    # @param [Docscribe::Plugin::Context] context Param documentation.
+    # @param [Docscribe::Plugin::Context] context
     # @return [Array<Docscribe::Plugin::Tag>]
     def self.run_tag_plugins(context)
       Registry.tag_entries
@@ -43,8 +43,8 @@ module Docscribe
 
     # Run all registered CollectorPlugins for one file's AST.
     #
-    # @param [Parser::AST::Node] ast Param documentation.
-    # @param [Parser::Source::Buffer] buffer Param documentation.
+    # @param [Parser::AST::Node] ast
+    # @param [Parser::Source::Buffer] buffer
     # @return [Array<Hash<Symbol, Object>>]
     def self.run_collector_plugins(ast, buffer)
       Registry.collector_entries.flat_map { |entry| process_single_plugin_result(entry, ast, buffer) }
@@ -55,9 +55,9 @@ module Docscribe
     # Merges plugin metadata into each hash insertion and handles errors.
     #
     # @raise [StandardError]
-    # @param [Docscribe::Plugin::Registry::Entry] entry Param documentation.
-    # @param [Parser::AST::Node] ast Param documentation.
-    # @param [Parser::Source::Buffer] buffer Param documentation.
+    # @param [Docscribe::Plugin::Registry::Entry] entry registry entry with priority and order metadata
+    # @param [Parser::AST::Node] ast
+    # @param [Parser::Source::Buffer] buffer
     # @return [Array<Hash<Symbol, Object>>] if StandardError
     # @return [Array] if StandardError
     def self.process_single_plugin_result(entry, ast, buffer)
@@ -89,8 +89,8 @@ module Docscribe
 
     # Validate a CollectorPlugin result is a Hash.
     #
-    # @param [Object] insertion Param documentation.
-    # @param [Object] plugin Param documentation.
+    # @param [Object] insertion
+    # @param [Object] plugin the collector plugin instance
     # @return [Boolean]
     def self.valid_plugin_result?(insertion, plugin)
       return true if insertion.is_a?(Hash)
@@ -99,7 +99,7 @@ module Docscribe
       false
     end
 
-    # Method documentation.
+    # Self
     #
     # @return [Boolean]
     def self.debug?

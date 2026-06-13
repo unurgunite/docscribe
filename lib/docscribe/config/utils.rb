@@ -46,7 +46,7 @@ module Docscribe
     # Convert an internal scope symbol into the config key used under `methods`.
     #
     # @private
-    # @param [Symbol] scope Param documentation.
+    # @param [Symbol] scope :instance or :class
     # @return [String]
     def scope_to_key(scope)
       scope == :class ? 'class' : 'instance'
@@ -55,8 +55,8 @@ module Docscribe
     # Check whether any pattern matches the given text.
     #
     # @private
-    # @param [Array<String>] patterns Param documentation.
-    # @param [String] text Param documentation.
+    # @param [Array<String>] patterns
+    # @param [String] text
     # @return [Boolean]
     def matches_any?(patterns, text)
       patterns.any? { |pat| match_pattern?(pat, text) }
@@ -69,8 +69,8 @@ module Docscribe
     # - shell-style glob patterns (with `/` translated to `#` since method IDs use `#`)
     #
     # @private
-    # @param [String] pattern Param documentation.
-    # @param [String] text Param documentation.
+    # @param [String] pattern
+    # @param [String] text
     # @return [Boolean]
     def match_pattern?(pattern, text)
       if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2

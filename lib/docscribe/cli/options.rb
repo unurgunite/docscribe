@@ -108,10 +108,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define autocorrect options
       #
       # @note module_function: when included, also defines #define_autocorrect_options (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Symbol, nil>] autocorrect mutable container for autocorrect mode (:safe, :aggressive, nil)
       # @return [void]
       def define_autocorrect_options(opts, autocorrect)
@@ -124,10 +124,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define input options
       #
       # @note module_function: when included, also defines #define_input_options (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_input_options(opts, options)
@@ -135,10 +135,10 @@ module Docscribe
         define_config_option(opts, options)
       end
 
-      # Method documentation.
+      # Define stdin option
       #
       # @note module_function: when included, also defines #define_stdin_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_stdin_option(opts, options)
@@ -147,10 +147,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define config option
       #
       # @note module_function: when included, also defines #define_config_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_config_option(opts, options)
@@ -159,10 +159,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define type options
       #
       # @note module_function: when included, also defines #define_type_options (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_type_options(opts, options)
@@ -173,11 +173,11 @@ module Docscribe
         define_rbs_collection_option(opts, options)
       end
 
-      # Method documentation.
+      # Define rbs option
       #
       # @note module_function: when included, also defines #define_rbs_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
-      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_rbs_option(opts, options)
         opts.on('--rbs', 'Use RBS signatures for @param/@return when available (falls back to inference)') do
@@ -185,11 +185,11 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define sig dir option
       #
       # @note module_function: when included, also defines #define_sig_dir_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
-      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_sig_dir_option(opts, options)
         opts.on('--sig-dir DIR', 'Add an RBS signature directory (repeatable). Implies --rbs.') do |v|
@@ -198,11 +198,11 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define sorbet option
       #
       # @note module_function: when included, also defines #define_sorbet_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
-      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_sorbet_option(opts, options)
         opts.on('--sorbet', 'Use Sorbet signatures from inline sigs / RBI files when available') do
@@ -210,11 +210,11 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define rbi dir option
       #
       # @note module_function: when included, also defines #define_rbi_dir_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
-      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_rbi_dir_option(opts, options)
         opts.on('--rbi-dir DIR', 'Add a Sorbet RBI directory (repeatable). Implies --sorbet.') do |v|
@@ -223,11 +223,11 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define rbs collection option
       #
       # @note module_function: when included, also defines #define_rbs_collection_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
-      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_rbs_collection_option(opts, options)
         opts.on('--rbs-collection', 'Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.') do
@@ -236,10 +236,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define filter options
       #
       # @note module_function: when included, also defines #define_filter_options (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_filter_options(opts, options)
@@ -249,10 +249,10 @@ module Docscribe
         define_exclude_file_option(opts, options)
       end
 
-      # Method documentation.
+      # Define include option
       #
       # @note module_function: when included, also defines #define_include_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_include_option(opts, options)
@@ -261,10 +261,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define exclude option
       #
       # @note module_function: when included, also defines #define_exclude_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_exclude_option(opts, options)
@@ -274,10 +274,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define include file option
       #
       # @note module_function: when included, also defines #define_include_file_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_include_file_option(opts, options)
@@ -286,10 +286,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define exclude file option
       #
       # @note module_function: when included, also defines #define_exclude_file_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_exclude_file_option(opts, options)
@@ -298,10 +298,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define output options
       #
       # @note module_function: when included, also defines #define_output_options (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_output_options(opts, options)
@@ -310,10 +310,10 @@ module Docscribe
         define_keep_descriptions_option(opts, options)
       end
 
-      # Method documentation.
+      # Define verbose option
       #
       # @note module_function: when included, also defines #define_verbose_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_verbose_option(opts, options)
@@ -322,10 +322,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define explain option
       #
       # @note module_function: when included, also defines #define_explain_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_explain_option(opts, options)
@@ -334,12 +334,12 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define keep descriptions option
       #
       # @note module_function: when included, also defines
       #   #define_keep_descriptions_option (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
-      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_keep_descriptions_option(opts, options)
         opts.on('-k', '--keep-descriptions',
@@ -348,10 +348,10 @@ module Docscribe
         end
       end
 
-      # Method documentation.
+      # Define misc options
       #
       # @note module_function: when included, also defines #define_misc_options (instance visibility: private)
-      # @param [OptionParser] opts Param documentation.
+      # @param [OptionParser] opts
       # @return [void]
       def define_misc_options(opts)
         opts.on('-v', '--version', 'Print version and exit') do

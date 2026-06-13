@@ -37,7 +37,7 @@ module Docscribe
         # Parse CLI options for `docscribe init`.
         #
         # @private
-        # @param [Array<String>] argv Param documentation.
+        # @param [Array<String>] argv command-line arguments for `docscribe init`
         # @return [Hash<Symbol, Object>] parsed options
         def parse_init_options(argv)
           opts = default_init_options

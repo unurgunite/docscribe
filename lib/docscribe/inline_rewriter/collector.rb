@@ -232,7 +232,7 @@ module Docscribe
 
       # Enter a class body and collect documentation targets from its contents.
       #
-      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Parser::AST::Node] node an AST node
       # @return [Object]
       def on_class(node)
         cname_node, super_node, body = *node
@@ -253,7 +253,7 @@ module Docscribe
       # This also carries `extend self` state across reopened modules in the same
       # file.
       #
-      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Parser::AST::Node] node an AST node
       # @return [Object]
       def on_module(node)
         cname_node, body = *node
@@ -297,7 +297,7 @@ module Docscribe
       # that +def foo+ declared outside of any class or module is still picked
       # up by the collector.
       #
-      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Parser::AST::Node] node an AST node
       # @return [Object]
       def on_def(node)
         return node unless @name_stack.empty?
@@ -313,7 +313,7 @@ module Docscribe
       # Handles the case of +def self.foo+ declared at the top level, outside
       # of any class or module body.
       #
-      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Parser::AST::Node] node an AST node
       # @return [Object]
       def on_defs(node)
         return node unless @name_stack.empty?
@@ -329,9 +329,9 @@ module Docscribe
       # Process a `:def` node for documentation insertion.
       #
       # @private
-      # @param [Parser::AST::Node] node Param documentation.
-      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx Param documentation.
-      # @param [Parser::AST::Node?] pending_sig_anchor Param documentation.
+      # @param [Parser::AST::Node] node an AST node
+      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
+      # @param [Parser::AST::Node?] pending_sig_anchor Sorbet `sig` node waiting for a method
       # @return [void]
       def process_def_stmt(node, ctx, pending_sig_anchor:)
         name, = *node
@@ -369,8 +369,8 @@ module Docscribe
       # Process a `:sclass` node for documentation insertion.
       #
       # @private
-      # @param [Parser::AST::Node] node Param documentation.
-      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx Param documentation.
+      # @param [Parser::AST::Node] node an AST node
+      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
       # @return [void]
       def process_sclass_stmt(node, ctx)
         # `class << self` — affects default visibility for singleton methods and changes scope.
@@ -417,9 +417,9 @@ module Docscribe
       # Process a `:send` node for documentation insertion.
       #
       # @private
-      # @param [Parser::AST::Node] node Param documentation.
-      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx Param documentation.
-      # @param [Parser::AST::Node?] pending_sig_anchor Param documentation.
+      # @param [Parser::AST::Node] node an AST node
+      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
+      # @param [Parser::AST::Node?] pending_sig_anchor Sorbet `sig` node waiting for a method
       # @return [void]
       def process_send_stmt(node, ctx, pending_sig_anchor:)
         if process_attr_send?(node, ctx)
@@ -760,8 +760,8 @@ module Docscribe
       # Process a bare visibility modifier (no args).
       #
       # @private
-      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx Param documentation.
-      # @param [Symbol] meth Param documentation.
+      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
+      # @param [Symbol] meth the visibility method (:private, :protected, :public)
       # @return [void]
       def process_visibility_bare_modifier(ctx, meth)
         if ctx.inside_sclass
@@ -774,11 +774,11 @@ module Docscribe
       # Process an inline visibility modifier (private def foo).
       #
       # @private
-      # @param [Parser::AST::Node] def_node Param documentation.
-      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx Param documentation.
-      # @param [Symbol] meth Param documentation.
-      # @param [String] container Param documentation.
-      # @param [Parser::AST::Node?] pending_sig_anchor Param documentation.
+      # @param [Parser::AST::Node] def_node
+      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
+      # @param [Symbol] meth the visibility method (:private, :protected, :public)
+      # @param [String] container the container name
+      # @param [Parser::AST::Node?] pending_sig_anchor Sorbet `sig` node waiting for a method
       # @return [void]
       def process_visibility_inline_modifier(def_node, ctx, meth, container, pending_sig_anchor)
         anchor_node = pending_sig_anchor || def_node
@@ -794,11 +794,11 @@ module Docscribe
       # Process an inline def under a visibility modifier.
       #
       # @private
-      # @param [Parser::AST::Node] def_node Param documentation.
-      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx Param documentation.
-      # @param [Symbol] meth Param documentation.
-      # @param [String] container Param documentation.
-      # @param [Parser::AST::Node] anchor_node Param documentation.
+      # @param [Parser::AST::Node] def_node
+      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
+      # @param [Symbol] meth the visibility method (:private, :protected, :public)
+      # @param [String] container the container name
+      # @param [Parser::AST::Node] anchor_node the anchor node for comment placement
       # @return [void]
       def process_visibility_inline_def(def_node, ctx, meth, container, anchor_node)
         name, = *def_node
@@ -816,10 +816,10 @@ module Docscribe
       # Process a named visibility modifier (private :foo).
       #
       # @private
-      # @param [Array<Parser::AST::Node>] args Param documentation.
-      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx Param documentation.
-      # @param [Symbol] meth Param documentation.
-      # @param [String] container Param documentation.
+      # @param [Array<Parser::AST::Node>] args the destructured arguments from Struct.new
+      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
+      # @param [Symbol] meth the visibility method (:private, :protected, :public)
+      # @param [String] container the container name
       # @return [void]
       def process_visibility_named_modifier(args, ctx, meth, container)
         args.each do |arg|

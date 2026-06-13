@@ -23,7 +23,7 @@ module Docscribe
       fetch_bool(%w[rbs enabled], false)
     end
 
-    # Method documentation.
+    # Core rbs provider
     #
     # @return [Docscribe::Types::RBS::Provider, nil]
     def core_rbs_provider
@@ -48,7 +48,7 @@ module Docscribe
       false
     end
 
-    # Method documentation.
+    # Build rbs provider
     #
     # @private
     # @raise [LoadError]
@@ -65,7 +65,7 @@ module Docscribe
       nil
     end
 
-    # Method documentation.
+    # Build core rbs provider
     #
     # @private
     # @raise [LoadError]

@@ -374,7 +374,7 @@ module Docscribe
         # Extract type mismatch changes from file_changes.
         #
         # @private
-        # @param [Array<Hash<Symbol, Object>>] file_changes Param documentation.
+        # @param [Array<Hash<Symbol, Object>>] file_changes structured change records
         # @return [Array<Hash<Symbol, Object>>]
         def type_mismatch_changes(file_changes)
           file_changes.select { |c| %i[updated_param updated_return].include?(c[:type]) }
@@ -383,11 +383,11 @@ module Docscribe
         # Handle check result when there are no real changes.
         #
         # @private
-        # @param [String] path Param documentation.
-        # @param [Array<Hash<Symbol, Object>>] type_mismatches Param documentation.
-        # @param [String] display_path Param documentation.
-        # @param [Hash<Symbol, Object>] options Param documentation.
-        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [String] path file path
+        # @param [Array<Hash<Symbol, Object>>] type_mismatches
+        # @param [String] display_path path shown in CLI output
+        # @param [Hash<Symbol, Object>] options CLI options
+        # @param [Hash<Symbol, Object>] state shared processing state
         # @return [void]
         def handle_check_no_changes(path, type_mismatches:, display_path:, options:, state:)
           if type_mismatches.any?
@@ -404,11 +404,11 @@ module Docscribe
         # With --verbose, prints the per-file verdict and all change reasons.
         #
         # @private
-        # @param [String] path Param documentation.
-        # @param [Array<Hash<Symbol, Object>>] file_changes Param documentation.
-        # @param [String] display_path Param documentation.
-        # @param [Hash<Symbol, Object>] options Param documentation.
-        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [String] path file path
+        # @param [Array<Hash<Symbol, Object>>] file_changes structured change records
+        # @param [String] display_path path shown in CLI output
+        # @param [Hash<Symbol, Object>] options CLI options
+        # @param [Hash<Symbol, Object>] state shared processing state
         # @return [void]
         def handle_check_failed(path, file_changes:, display_path:, options:, state:)
           if options[:verbose]
@@ -451,10 +451,10 @@ module Docscribe
         # Log a write-mode verdict.
         #
         # @private
-        # @param [String] verdict Param documentation.
-        # @param [String] display_path Param documentation.
-        # @param [Array<Hash<Symbol, Object>>] file_changes Param documentation.
-        # @param [Hash<Symbol, Object>] options Param documentation.
+        # @param [String] verdict
+        # @param [String] display_path path shown in CLI output
+        # @param [Array<Hash<Symbol, Object>>] file_changes structured change records
+        # @param [Hash<Symbol, Object>] options CLI options
         # @return [void]
         def log_write_verdict(verdict, display_path, file_changes, options)
           if options[:verbose]
@@ -470,7 +470,7 @@ module Docscribe
         # Callers are responsible for gating on --verbose / --explain.
         #
         # @private
-        # @param [Array<Hash<Symbol, Object>>] file_changes Param documentation.
+        # @param [Array<Hash<Symbol, Object>>] file_changes structured change records
         # @return [void]
         def print_check_explanations(file_changes)
           file_changes.each do |change|
@@ -481,11 +481,11 @@ module Docscribe
         # Record a write error in state.
         #
         # @private
-        # @param [String] path Param documentation.
+        # @param [String] path file path
         # @param [Object] error the exception raised during file write
-        # @param [String] display_path Param documentation.
-        # @param [Hash<Symbol, Object>] options Param documentation.
-        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [String] display_path path shown in CLI output
+        # @param [Hash<Symbol, Object>] options CLI options
+        # @param [Hash<Symbol, Object>] state shared processing state
         # @return [void]
         def record_write_error(path, error, display_path:, options:, state:)
           state[:had_errors] = true
@@ -497,9 +497,9 @@ module Docscribe
         # Log a per-file check verdict.
         #
         # @private
-        # @param [String] verdict Param documentation.
-        # @param [String] display_path Param documentation.
-        # @param [Hash<Symbol, Object>] options Param documentation.
+        # @param [String] verdict
+        # @param [String] display_path path shown in CLI output
+        # @param [Hash<Symbol, Object>] options CLI options
         # @return [void]
         def log_check_verdict(verdict, display_path, options)
           if options[:verbose]
@@ -530,7 +530,7 @@ module Docscribe
         # Print the check-mode status line.
         #
         # @private
-        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [Hash<Symbol, Object>] state shared processing state
         # @return [void]
         def print_check_status_line(state)
           checked_error = state[:error_paths].size
@@ -587,8 +587,8 @@ module Docscribe
         #
         # Skips explanations when --verbose showed them inline per-file.
         #
-        # @param [Hash<Symbol, Object>] state Param documentation.
-        # @param [Hash<Symbol, Object>] options Param documentation.
+        # @param [Hash<Symbol, Object>] state shared processing state
+        # @param [Hash<Symbol, Object>] options CLI options
         # @return [void]
         def print_fail_paths(state, options)
           state[:fail_paths].each do |p|
@@ -604,8 +604,8 @@ module Docscribe
 
         # Print type mismatch paths from check summary.
         #
-        # @param [Hash<Symbol, Object>] state Param documentation.
-        # @param [Hash<Symbol, Object>] options Param documentation.
+        # @param [Hash<Symbol, Object>] state shared processing state
+        # @param [Hash<Symbol, Object>] options CLI options
         # @return [void]
         def print_type_mismatch_paths(state, options)
           return unless options[:verbose] || options[:explain]
@@ -679,7 +679,7 @@ module Docscribe
 
         # Print error paths from check summary.
         #
-        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [Hash<Symbol, Object>] state shared processing state
         # @return [void]
         def print_error_paths(state)
           state[:error_paths].each do |p|

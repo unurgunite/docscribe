@@ -44,8 +44,8 @@ module Docscribe
       # @note module_function: when included, also defines #inferred_param_type (instance visibility: private)
       # @param [String] name parameter name
       # @param [String?] default_str default expression source
-      # @param [String] fallback_type Param documentation.
-      # @param [Boolean] treat_options_keyword_as_hash Param documentation.
+      # @param [String] fallback_type type returned when not special-cased
+      # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
       # @return [String]
       def inferred_param_type(name, default_str, fallback_type, treat_options_keyword_as_hash:)
         if name.end_with?(':') && default_str.nil?

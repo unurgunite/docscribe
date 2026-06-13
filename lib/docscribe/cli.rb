@@ -28,19 +28,19 @@ module Docscribe
 
       private
 
-      # Method documentation.
+      # Subcommand
       #
       # @private
-      # @param [String?] cmd Param documentation.
+      # @param [String?] cmd
       # @return [Boolean]
       def subcommand?(cmd)
         %w[init generate].include?(cmd)
       end
 
-      # Method documentation.
+      # Dispatch subcommand
       #
       # @private
-      # @param [Array<String>] argv Param documentation.
+      # @param [Array<String>] argv raw command-line arguments
       # @return [Integer]
       def dispatch_subcommand(argv)
         case argv.first

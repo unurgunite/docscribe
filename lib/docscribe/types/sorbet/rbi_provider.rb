@@ -12,7 +12,7 @@ module Docscribe
       # any signatures that can be parsed are indexed into Docscribe's normalized
       # signature model.
       class RBIProvider < BaseProvider
-        # Method documentation.
+        # Initialize
         #
         # @param [Array<String>] rbi_dirs directories scanned recursively for
         # @param [Boolean] collapse_generics whether generic container types

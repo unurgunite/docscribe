@@ -111,7 +111,7 @@ module Docscribe
         # Format an RBS named type (class, interface, alias) with optional generic arguments.
         #
         # @note module_function: when included, also defines #format_named (instance visibility: private)
-        # @param [Object] type Param documentation.
+        # @param [Object] type the unrecognized RBS type object
         # @param [Boolean] collapse_generics whether to omit generic type arguments
         # @return [String]
         def format_named(type, collapse_generics:)

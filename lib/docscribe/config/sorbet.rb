@@ -24,9 +24,9 @@ module Docscribe
 
     # Append Sorbet-based providers to the list.
     #
-    # @param [Array<Object>] providers Param documentation.
-    # @param [String] source Param documentation.
-    # @param [String] file Param documentation.
+    # @param [Array<Object>] providers
+    # @param [String] source Ruby source being rewritten
+    # @param [String] file source name for diagnostics
     # @return [void]
     def append_sorbet_providers(providers, source:, file:)
       return unless sorbet_enabled?
@@ -38,8 +38,8 @@ module Docscribe
     # Build a Sorbet source provider (inline sigs).
     #
     # @raise [LoadError]
-    # @param [String] source Param documentation.
-    # @param [String] file Param documentation.
+    # @param [String] source Ruby source being rewritten
+    # @param [String] file source name for diagnostics
     # @return [Docscribe::Types::Sorbet::SourceProvider, nil] if LoadError
     # @return [nil] if LoadError
     def sorbet_source_provider(source, file)
@@ -55,7 +55,7 @@ module Docscribe
 
     # Build the provider chain from a non-empty list, or return nil.
     #
-    # @param [Array<Object>] providers Param documentation.
+    # @param [Array<Object>] providers
     # @return [Docscribe::Types::ProviderChain, nil]
     def build_provider_chain(providers)
       providers = providers.compact

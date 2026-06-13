@@ -36,7 +36,7 @@ module Docscribe
 
       # Parse a prepared source buffer into a parser-gem-compatible AST.
       #
-      # @param [Parser::Source::Buffer] buffer Param documentation.
+      # @param [Parser::Source::Buffer] buffer
       # @param [Symbol] backend :auto, :parser, or :prism
       # @return [Parser::AST::Node, nil]
       def parse_buffer(buffer, backend: :auto)
@@ -57,7 +57,7 @@ module Docscribe
 
       # Parse a prepared source buffer and also return comments when supported by the backend.
       #
-      # @param [Parser::Source::Buffer] buffer Param documentation.
+      # @param [Parser::Source::Buffer] buffer
       # @param [Symbol] backend :auto, :parser, or :prism
       # @return [[ ::Parser::AST::Node, ::Array[::Parser::Source::Comment] ]] ]]
       def parse_with_comments_buffer(buffer, backend: :auto)
@@ -70,7 +70,7 @@ module Docscribe
       # Build the backend-specific parser object.
       #
       # @private
-      # @param [Symbol] backend Param documentation.
+      # @param [Symbol] backend requested backend
       # @return [Parser::Base, Object]
       def parser_for(backend: :auto)
         case backend(backend)

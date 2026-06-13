@@ -12,7 +12,7 @@ module Docscribe
     # - Sorbet RBI files
     # - RBS files
     class ProviderChain
-      # Method documentation.
+      # Initialize
       #
       # @param [Array<Object>] providers ordered signature providers
       # @return [void]

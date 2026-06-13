@@ -31,7 +31,7 @@ module Docscribe
     # Compute the relative path for filtering.
     #
     # @raise [StandardError]
-    # @param [String] path Param documentation.
+    # @param [String] path file path to test
     # @return [String] if StandardError
     # @return [Object] if StandardError
     def relative_path(path)
@@ -86,7 +86,7 @@ module Docscribe
     # - `"spec/"` => `"spec/**/*"`
     # - `"spec"` => `"spec/**/*"` if `spec` exists as a directory
     #
-    # @param [String] pattern Param documentation.
+    # @param [String] pattern
     # @return [Array<String>]
     def expand_directory_shorthand(pattern)
       pat = pattern.dup
@@ -102,8 +102,8 @@ module Docscribe
 
     # Check whether a file path matches any configured file pattern.
     #
-    # @param [Array<String>] patterns Param documentation.
-    # @param [String] path Param documentation.
+    # @param [Array<String>] patterns
+    # @param [String] path file path to test
     # @return [Boolean]
     def file_matches_any?(patterns, path)
       patterns.any? { |pat| file_match_pattern?(pat, path) }
@@ -116,8 +116,8 @@ module Docscribe
     # - globs
     # - recursive glob shorthand normalization
     #
-    # @param [String] pattern Param documentation.
-    # @param [String] path Param documentation.
+    # @param [String] pattern
+    # @param [String] path file path to test
     # @return [Boolean]
     def file_match_pattern?(pattern, path)
       if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2

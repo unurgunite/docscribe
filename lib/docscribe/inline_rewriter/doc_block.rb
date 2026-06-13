@@ -231,7 +231,7 @@ module Docscribe
       # Render parsed entries back into comment lines.
       #
       # @note module_function: when included, also defines #render (instance visibility: private)
-      # @param [Array<Object>] entries Param documentation.
+      # @param [Array<Object>] entries contiguous tag run entries
       # @return [Array<String>]
       def render(entries)
         entries.flat_map(&:lines)
@@ -256,7 +256,7 @@ module Docscribe
       # Group entries so related `@option` tags stay attached to their owning `@param`.
       #
       # @note module_function: when included, also defines #build_groups (instance visibility: private)
-      # @param [Array<Object>] entries Param documentation.
+      # @param [Array<Object>] entries contiguous tag run entries
       # @return [Array<Array<Object>>]
       def build_groups(entries)
         groups = [] #: Array[untyped]
@@ -319,8 +319,8 @@ module Docscribe
       # Compute the priority of a grouped sortable unit.
       #
       # @note module_function: when included, also defines #group_priority (instance visibility: private)
-      # @param [Array<Object>] group Param documentation.
-      # @param [Hash<String, Integer>] priority Param documentation.
+      # @param [Array<Object>] group
+      # @param [Hash<String, Integer>] priority tag priority map
       # @return [Integer]
       def group_priority(group, priority)
         priority.fetch(group.first.tag, priority.length)
@@ -329,7 +329,7 @@ module Docscribe
       # Build a tag priority map from configured order.
       #
       # @note module_function: when included, also defines #build_priority (instance visibility: private)
-      # @param [Array<String>] tag_order Param documentation.
+      # @param [Array<String>] tag_order configured sortable tag order
       # @return [Hash<String, Integer>]
       def build_priority(tag_order)
         normalized_tag_order(tag_order).each_with_index.to_h
@@ -338,7 +338,7 @@ module Docscribe
       # Normalize configured tag names by removing leading `@`.
       #
       # @note module_function: when included, also defines #normalized_tag_order (instance visibility: private)
-      # @param [Array<String>] tag_order Param documentation.
+      # @param [Array<String>] tag_order configured sortable tag order
       # @return [Array<String>]
       def normalized_tag_order(tag_order)
         Array(tag_order).map { |t| t.to_s.sub(/\A@/, '') }
@@ -350,10 +350,10 @@ module Docscribe
       # until a new sortable tag line or a blank comment separator is encountered.
       #
       # @note module_function: when included, also defines #consume_tag_entry (instance visibility: private)
-      # @param [Array<String>] lines Param documentation.
-      # @param [Integer] start_idx Param documentation.
+      # @param [Array<String>] lines comment block lines
+      # @param [Integer] start_idx index to start scanning from
       # @param [Integer] index stable original index
-      # @param [Array<String>] sortable_tags Param documentation.
+      # @param [Array<String>] sortable_tags tag names treated as sortable
       # @return [[ Object, ::Integer ]]
       def consume_tag_entry(lines, start_idx, index:, sortable_tags:)
         first = lines[start_idx]
@@ -434,8 +434,8 @@ module Docscribe
       # Currently only `@param` entries carry a subject, used to keep `@option` tags attached.
       #
       # @note module_function: when included, also defines #extract_subject (instance visibility: private)
-      # @param [String] line Param documentation.
-      # @param [String?] tag Param documentation.
+      # @param [String] line the line to check
+      # @param [String?] tag the extracted tag name
       # @return [String?]
       def extract_subject(line, tag)
         case tag
@@ -451,7 +451,7 @@ module Docscribe
       # - `@param name [Type]`
       #
       # @note module_function: when included, also defines #extract_param_name (instance visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line the line to check
       # @return [String?]
       def extract_param_name(line)
         return Regexp.last_match(1) if line =~ /^\s*#\s*@param\b\s+\[[^\]]+\]\s+(\S+)/
@@ -463,7 +463,7 @@ module Docscribe
       # Extract the owning options-hash param name from an `@option` line.
       #
       # @note module_function: when included, also defines #extract_option_owner (instance visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line the line to check
       # @return [String?]
       def extract_option_owner(line)
         line[/^\s*#\s*@option\b\s+(\S+)/, 1]
@@ -472,8 +472,8 @@ module Docscribe
       # Whether a line is a sortable top-level tag line.
       #
       # @note module_function: when included, also defines #sortable_top_level_tag_line? (instance visibility: private)
-      # @param [String] line Param documentation.
-      # @param [Array<String>] sortable_tags Param documentation.
+      # @param [String] line the line to check
+      # @param [Array<String>] sortable_tags tag names treated as sortable
       # @return [Boolean]
       def sortable_top_level_tag_line?(line, sortable_tags)
         return false unless top_level_tag_line?(line)
@@ -484,7 +484,7 @@ module Docscribe
       # Extract a top-level tag name without the leading `@`.
       #
       # @note module_function: when included, also defines #extract_tag (instance visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line the line to check
       # @return [String?]
       def extract_tag(line)
         line[/^\s*#\s*@(\w+)/, 1]
@@ -493,7 +493,7 @@ module Docscribe
       # Whether a line begins a top-level YARD-style tag.
       #
       # @note module_function: when included, also defines #top_level_tag_line? (instance visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line the line to check
       # @return [Boolean]
       def top_level_tag_line?(line)
         !!(line =~ /^\s*#\s*@\w+/)
@@ -502,7 +502,7 @@ module Docscribe
       # Whether a line is any comment line.
       #
       # @note module_function: when included, also defines #comment_line? (instance visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line the line to check
       # @return [Boolean]
       def comment_line?(line)
         !!(line =~ /^\s*#/)
@@ -511,7 +511,7 @@ module Docscribe
       # Whether a line is a blank comment separator such as `#`.
       #
       # @note module_function: when included, also defines #blank_comment_line? (instance visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line the line to check
       # @return [Boolean]
       def blank_comment_line?(line)
         !!(line =~ /^\s*#\s*$/)
@@ -520,7 +520,7 @@ module Docscribe
       # Whether a comment line should be treated as a continuation of the previous tag entry.
       #
       # @note module_function: when included, also defines #continuation_comment_line? (instance visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line the line to check
       # @return [Boolean]
       def continuation_comment_line?(line)
         !!(line =~ /^\s*#[ \t]{2,}\S/)

@@ -53,7 +53,7 @@ module Docscribe
       # @note module_function: when included, also defines #parse_priority (instance visibility: private)
       # @raise [StandardError]
       # @raise [ArgumentError]
-      # @param [Object] priority Param documentation.
+      # @param [Object] priority plugin priority (higher wins for conflicts)
       # @return [Integer] if StandardError
       # @return [Object] if StandardError
       def parse_priority(priority)
@@ -65,8 +65,8 @@ module Docscribe
       # Create a new Entry with the next order number.
       #
       # @note module_function: when included, also defines #create_entry (instance visibility: private)
-      # @param [Object] plugin Param documentation.
-      # @param [Integer] priority Param documentation.
+      # @param [Object] plugin plugin instance
+      # @param [Integer] priority plugin priority (higher wins for conflicts)
       # @return [Docscribe::Plugin::Registry::Entry]
       def create_entry(plugin, priority)
         @order_seq += 1
@@ -77,8 +77,8 @@ module Docscribe
       #
       # @note module_function: when included, also defines #route_entry (instance visibility: private)
       # @raise [ArgumentError]
-      # @param [Docscribe::Plugin::Registry::Entry] entry Param documentation.
-      # @param [Object] plugin Param documentation.
+      # @param [Docscribe::Plugin::Registry::Entry] entry
+      # @param [Object] plugin plugin instance
       # @return [void]
       def route_entry(entry, plugin)
         if plugin.is_a?(Base::CollectorPlugin) || plugin.respond_to?(:collect)
