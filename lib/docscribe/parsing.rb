@@ -36,7 +36,7 @@ module Docscribe
 
       # Parse a prepared source buffer into a parser-gem-compatible AST.
       #
-      # @param [Parser::Source::Buffer] buffer
+      # @param [Parser::Source::Buffer] buffer Param documentation.
       # @param [Symbol] backend :auto, :parser, or :prism
       # @return [Parser::AST::Node, nil]
       def parse_buffer(buffer, backend: :auto)
@@ -49,7 +49,7 @@ module Docscribe
       # @param [String] code Ruby source
       # @param [String] file source name used for parser locations
       # @param [Symbol] backend :auto, :parser, or :prism
-      # @return [Array<(Parser::AST::Node, Array)>]
+      # @return [[ ::Parser::AST::Node, ::Array[::Parser::Source::Comment] ]] ]]
       def parse_with_comments(code, file: '(docscribe)', backend: :auto)
         buffer = Parser::Source::Buffer.new(file, source: code)
         parse_with_comments_buffer(buffer, backend: backend)
@@ -57,9 +57,9 @@ module Docscribe
 
       # Parse a prepared source buffer and also return comments when supported by the backend.
       #
-      # @param [Parser::Source::Buffer] buffer
+      # @param [Parser::Source::Buffer] buffer Param documentation.
       # @param [Symbol] backend :auto, :parser, or :prism
-      # @return [Array<(Parser::AST::Node, Array)>]
+      # @return [[ ::Parser::AST::Node, ::Array[::Parser::Source::Comment] ]] ]]
       def parse_with_comments_buffer(buffer, backend: :auto)
         parser = parser_for(backend: backend)
         parser.parse_with_comments(buffer)
@@ -70,8 +70,8 @@ module Docscribe
       # Build the backend-specific parser object.
       #
       # @private
-      # @param [Symbol] backend
-      # @return [Object]
+      # @param [Symbol] backend Param documentation.
+      # @return [Parser::Base, Object]
       def parser_for(backend: :auto)
         case backend(backend)
         when :parser
@@ -91,9 +91,9 @@ module Docscribe
       # - auto choice based on Ruby version
       #
       # @private
-      # @param [Symbol] backend requested backend
       # @raise [ArgumentError]
-      # @return [Symbol] :parser or :prism
+      # @param [Symbol] backend requested backend
+      # @return [Symbol, nil] :parser or :prism
       def backend(backend = :auto)
         env = ENV.fetch('DOCSCRIBE_PARSER_BACKEND') { nil }
         backend = env.to_sym if env && !env.empty?

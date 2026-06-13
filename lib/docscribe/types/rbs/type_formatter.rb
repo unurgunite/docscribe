@@ -10,11 +10,11 @@ module Docscribe
       module TypeFormatter
         module_function
 
-        # rubocop:disable Metrics/AbcSize, Layout/LineLength
+        # rubocop:disable Layout/LineLength
         # Return or memoize the dispatch hash mapping RBS type classes to formatter lambdas.
         #
         # @note module_function: when included, also defines #to_yard_formatters (instance visibility: private)
-        # @return [Hash{Class=>Proc}]
+        # @return [Hash<Class, Proc>]
         def to_yard_formatters
           @to_yard_formatters ||= {
             ::RBS::Types::Bases::Any => ->(_, **) { format_any },
@@ -27,7 +27,7 @@ module Docscribe
             ::RBS::Types::Proc => ->(_, **) { format_proc }
           }.freeze
         end
-        # rubocop:enable Metrics/AbcSize, Layout/LineLength
+        # rubocop:enable Layout/LineLength
 
         # Format RBS `any` type as the YARD-equivalent `Object`.
         #
@@ -64,7 +64,7 @@ module Docscribe
         # Format an RBS Optional type as a YARD optional type with `?` suffix.
         #
         # @note module_function: when included, also defines #format_optional (instance visibility: private)
-        # @param [::RBS::Types::Optional] type the optional type to format
+        # @param [Object] type the optional type to format
         # @param [Boolean] collapse_generics whether to omit generic type arguments
         # @return [String]
         def format_optional(type, collapse_generics:)
@@ -99,19 +99,19 @@ module Docscribe
         # Format an RBS Union type as a comma-separated list of YARD types.
         #
         # @note module_function: when included, also defines #format_union (instance visibility: private)
-        # @param [::RBS::Types::Union] type the union type to format
+        # @param [Object] type the union type to format
         # @param [Boolean] collapse_generics whether to omit generic type arguments
         # @return [String]
         def format_union(type, collapse_generics:)
           type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }
-              .uniq
+                    .uniq
               .join(', ')
         end
 
         # Format an RBS named type (class, interface, alias) with optional generic arguments.
         #
         # @note module_function: when included, also defines #format_named (instance visibility: private)
-        # @param [::RBS::Types::ClassInstance, ::RBS::Types::Interface, ::RBS::Types::Alias] type
+        # @param [Object] type Param documentation.
         # @param [Boolean] collapse_generics whether to omit generic type arguments
         # @return [String]
         def format_named(type, collapse_generics:)
@@ -147,7 +147,7 @@ module Docscribe
         # Dispatch an RBS type object to the appropriate YARD formatter.
         #
         # @note module_function: when included, also defines #to_yard (instance visibility: private)
-        # @param [::RBS::Type] type the RBS type object to convert
+        # @param [Object, nil] type the RBS type object to convert
         # @param [Boolean] collapse_generics whether to omit generic type arguments
         # @return [String]
         def to_yard(type, collapse_generics: false)
@@ -164,7 +164,7 @@ module Docscribe
         # Check if the given type object is a named RBS type (class, singleton, interface, or alias).
         #
         # @note module_function: when included, also defines #named_type? (instance visibility: private)
-        # @param [::RBS::Type] type the RBS type object to check
+        # @param [Object] type the RBS type object to check
         # @return [Boolean]
         def named_type?(type)
           named_type_classes.any? { |klass| type.is_a?(klass) }
@@ -186,7 +186,7 @@ module Docscribe
         # Fallback conversion of an unrecognized RBS type to a cleaned string representation.
         #
         # @note module_function: when included, also defines #fallback_string (instance visibility: private)
-        # @param [::RBS::Type] type the unrecognized RBS type object
+        # @param [Object] type the unrecognized RBS type object
         # @return [String]
         def fallback_string(type)
           type.to_s

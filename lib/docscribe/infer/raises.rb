@@ -57,8 +57,7 @@ module Docscribe
 
       # Collect exception names from a `raise` or `fail` send node.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
+      # @note module_function: when included, also defines #collect_send_raise (instance visibility: private)
       # @param [Array<String>] raises accumulator
       # @param [Parser::AST::Node] node send node
       # @return [void]

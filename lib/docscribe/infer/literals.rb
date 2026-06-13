@@ -30,8 +30,7 @@ module Docscribe
 
       # Map a node type symbol to a known literal type name.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
+      # @note module_function: when included, also defines #literal_type_for (instance visibility: private)
       # @param [Symbol] type node type
       # @return [String, nil]
       def literal_type_for(type)
@@ -40,10 +39,8 @@ module Docscribe
 
       # Extract a constant name from a `:const` node.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Parser::AST::Node] node
-      # @param [String] fallback_type
+      # @note module_function: when included, also defines #const_type_for (instance visibility: private)
+      # @param [Parser::AST::Node] node Param documentation.
       # @param [String] _fallback_type fallback type string (unused here)
       # @return [String, nil]
       def const_type_for(node, _fallback_type)
@@ -54,10 +51,8 @@ module Docscribe
 
       # Extract a type from a `Foo.new` send node.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Parser::AST::Node] node
-      # @param [String] fallback_type
+      # @note module_function: when included, also defines #send_new_type_for (instance visibility: private)
+      # @param [Parser::AST::Node] node Param documentation.
       # @param [String] _fallback_type fallback type string (unused here)
       # @return [String, nil]
       def send_new_type_for(node, _fallback_type)

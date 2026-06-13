@@ -12,11 +12,6 @@ module Docscribe
     module DocBlock
       module_function
 
-      # One parsed entry inside a doc block.
-      #
-      # `kind` is:
-      # - `:tag` for a sortable top-level tag entry
-      # - `:other` for prose/separators/non-sortable content
       # @!attribute [rw] kind
       #   @return [Object]
       #   @param [Object] value
@@ -65,7 +60,7 @@ module Docscribe
       # @param [Array<String>] missing_lines generated tag lines to add
       # @param [Boolean] sort_tags whether sortable tags should be reordered
       # @param [Array<String>] tag_order configured sortable tag order
-      # @param [Hash] filter_existing tags to filter from existing block
+      # @param [Hash<Symbol, Object>] filter_existing tags to filter from existing block
       # @return [Array<String>]
       def merge(existing_lines, missing_lines:, sort_tags:, tag_order:, filter_existing: {})
         existing_entries = parse(existing_lines, tag_order: tag_order)
@@ -81,7 +76,7 @@ module Docscribe
       # @note module_function: when included, also defines #parse_generated (instance visibility: private)
       # @param [Array<String>] lines generated lines
       # @param [Array<String>] tag_order configured sortable tag order
-      # @return [Array<Entry>]
+      # @return [Array<Object>]
       def parse_generated(lines, tag_order:)
         parse(lines, tag_order: tag_order).map do |entry|
           entry.generated = true if entry.kind == :tag
@@ -92,9 +87,9 @@ module Docscribe
       # Remove existing entries matching the filter criteria (param names or return tag).
       #
       # @note module_function: when included, also defines #filter_existing_entries (instance visibility: private)
-      # @param [Array<Entry>] entries parsed existing entries
-      # @param [Hash] filter_existing filter specification with :param_names and :return keys
-      # @return [Array<Entry>] filtered entries
+      # @param [Array<Object>] entries parsed existing entries
+      # @param [Hash<Symbol, Object>] filter_existing filter specification with :param_names and :return keys
+      # @return [Array<Object>] filtered entries
       def filter_existing_entries(entries, filter_existing)
         filter_param_names = filter_existing[:param_names] || []
         filter_return = !!filter_existing[:return]
@@ -106,7 +101,7 @@ module Docscribe
       # Check whether an entry is a @param tag whose name is in the filter list.
       #
       # @note module_function: when included, also defines #filter_param_entry? (instance visibility: private)
-      # @param [Entry] entry the entry to check
+      # @param [Object] entry the entry to check
       # @param [Array<String>] param_names parameter names to filter
       # @return [Boolean]
       def filter_param_entry?(entry, param_names)
@@ -116,7 +111,7 @@ module Docscribe
       # Check whether an entry is a @return tag that should be filtered.
       #
       # @note module_function: when included, also defines #filter_return_entry? (instance visibility: private)
-      # @param [Entry] entry the entry to check
+      # @param [Object] entry the entry to check
       # @param [Boolean] filter_return whether return tags should be filtered
       # @return [Boolean]
       def filter_return_entry?(entry, filter_return)
@@ -131,7 +126,7 @@ module Docscribe
       # @note module_function: when included, also defines #parse (instance visibility: private)
       # @param [Array<String>] lines comment block lines
       # @param [Array<String>] tag_order configured sortable tag order
-      # @return [Array<Entry>]
+      # @return [Array<Object>]
       def parse(lines, tag_order:)
         sortable_tags = normalized_tag_order(tag_order)
         parse_lines(lines, sortable_tags, entries: [], index: 0)
@@ -142,9 +137,9 @@ module Docscribe
       # @note module_function: when included, also defines #parse_lines (instance visibility: private)
       # @param [Array<String>] lines comment block lines
       # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @param [Array<Entry>] entries accumulated parsed entries
+      # @param [Array<Object>] entries accumulated parsed entries
       # @param [Integer] index stable ordering index for entries
-      # @return [Array<Entry>]
+      # @return [Array<Object>]
       def parse_lines(lines, sortable_tags, entries:, index:)
         idx = 0
         while idx < lines.length
@@ -160,7 +155,7 @@ module Docscribe
       # @param [Array<String>] lines comment block lines
       # @param [Integer] idx current line index
       # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @param [Array<Entry>] entries accumulated parsed entries
+      # @param [Array<Object>] entries accumulated parsed entries
       # @param [Integer] index stable ordering index for entries
       # @return [Integer] next line index after parsing
       def parse_one_line(lines, idx, sortable_tags, entries, index)
@@ -179,7 +174,7 @@ module Docscribe
       # @note module_function: when included, also defines #build_other_entry (instance visibility: private)
       # @param [String] line the comment line
       # @param [Integer] index stable ordering index
-      # @return [Entry]
+      # @return [Object]
       def build_other_entry(line, index)
         Entry.new(kind: :other, lines: [line], generated: false, index: index)
       end
@@ -187,9 +182,9 @@ module Docscribe
       # Sort parsed entries by configured tag order, preserving boundaries between tag runs.
       #
       # @note module_function: when included, also defines #sort (instance visibility: private)
-      # @param [Array<Entry>] entries parsed entries
+      # @param [Array<Object>] entries parsed entries
       # @param [Array<String>] tag_order configured sortable tag order
-      # @return [Array<Entry>]
+      # @return [Array<Object>]
       def sort(entries, tag_order:)
         out = [] #: Array[untyped]
         priority = build_priority(tag_order)
@@ -200,9 +195,9 @@ module Docscribe
       # Iterate entries, sorting contiguous tag runs while preserving non-tag boundaries.
       #
       # @note module_function: when included, also defines #sort_loop (instance visibility: private)
-      # @param [Array<Entry>] entries parsed entries to sort
-      # @param [Array<Entry>] out output array for sorted entries
-      # @param [Hash{String=>Integer}] priority tag priority map
+      # @param [Array<Object>] entries parsed entries to sort
+      # @param [Array<Object>] out output array for sorted entries
+      # @param [Hash<String, Integer>] priority tag priority map
       # @return [void]
       def sort_loop(entries, out, priority)
         idx = 0
@@ -221,9 +216,9 @@ module Docscribe
       # Collect a contiguous run of :tag entries starting at idx.
       #
       # @note module_function: when included, also defines #consume_tag_run (instance visibility: private)
-      # @param [Array<Entry>] entries parsed entries
+      # @param [Array<Object>] entries parsed entries
       # @param [Integer] idx start index
-      # @return [Array<(Array<Entry>, Integer)>] the tag run and next index
+      # @return [[ ::Array[Object], ::Integer ]]
       def consume_tag_run(entries, idx)
         run = [] #: Array[untyped]
         while idx < entries.length && entries[idx].kind == :tag
@@ -236,7 +231,7 @@ module Docscribe
       # Render parsed entries back into comment lines.
       #
       # @note module_function: when included, also defines #render (instance visibility: private)
-      # @param [Array<Entry>] entries
+      # @param [Array<Object>] entries Param documentation.
       # @return [Array<String>]
       def render(entries)
         entries.flat_map(&:lines)
@@ -245,9 +240,9 @@ module Docscribe
       # Sort one contiguous run of sortable tag entries.
       #
       # @note module_function: when included, also defines #sort_run (instance visibility: private)
-      # @param [Array<Entry>] entries contiguous tag run
-      # @param [Hash{String=>Integer}] priority tag priority map
-      # @return [Array<Entry>]
+      # @param [Array<Object>] entries contiguous tag run
+      # @param [Hash<String, Integer>] priority tag priority map
+      # @return [Array<Object>]
       def sort_run(entries, priority:)
         groups = build_groups(entries)
 
@@ -261,8 +256,8 @@ module Docscribe
       # Group entries so related `@option` tags stay attached to their owning `@param`.
       #
       # @note module_function: when included, also defines #build_groups (instance visibility: private)
-      # @param [Array<Entry>] entries
-      # @return [Array<Array<Entry>>]
+      # @param [Array<Object>] entries Param documentation.
+      # @return [Array<Array<Object>>]
       def build_groups(entries)
         groups = [] #: Array[untyped]
         group_entries_loop(entries, groups)
@@ -272,8 +267,8 @@ module Docscribe
       # Iterate entries to build sorted groups, attaching @option entries to their @param.
       #
       # @note module_function: when included, also defines #group_entries_loop (instance visibility: private)
-      # @param [Array<Entry>] entries contiguous tag run entries
-      # @param [Array<Array<Entry>>] groups accumulated groups
+      # @param [Array<Object>] entries contiguous tag run entries
+      # @param [Array<Array<Object>>] groups accumulated groups
       # @return [void]
       def group_entries_loop(entries, groups)
         idx = 0
@@ -283,9 +278,9 @@ module Docscribe
       # Group a single entry, creating a param group with @option children if applicable.
       #
       # @note module_function: when included, also defines #group_one_entry (instance visibility: private)
-      # @param [Array<Entry>] entries contiguous tag run entries
+      # @param [Array<Object>] entries contiguous tag run entries
       # @param [Integer] idx current entry index
-      # @param [Array<Array<Entry>>] groups accumulated groups
+      # @param [Array<Array<Object>>] groups accumulated groups
       # @return [Integer] next index after processing the group
       def group_one_entry(entries, idx, groups)
         entry = entries[idx]
@@ -302,10 +297,10 @@ module Docscribe
       # Build a group starting with a @param entry and including its following @option entries.
       #
       # @note module_function: when included, also defines #build_param_group (instance visibility: private)
-      # @param [Array<Entry>] entries contiguous tag run entries
+      # @param [Array<Object>] entries contiguous tag run entries
       # @param [Integer] idx index of the @param entry
-      # @param [Entry] entry the @param entry
-      # @return [Array<Entry>] the param group including @option children
+      # @param [Object] entry the @param entry
+      # @return [Array<Object>] the param group including @option children
       def build_param_group(entries, idx, entry)
         group = [entry]
         idx += 1
@@ -324,8 +319,8 @@ module Docscribe
       # Compute the priority of a grouped sortable unit.
       #
       # @note module_function: when included, also defines #group_priority (instance visibility: private)
-      # @param [Array<Entry>] group
-      # @param [Hash{String=>Integer}] priority
+      # @param [Array<Object>] group Param documentation.
+      # @param [Hash<String, Integer>] priority Param documentation.
       # @return [Integer]
       def group_priority(group, priority)
         priority.fetch(group.first.tag, priority.length)
@@ -334,8 +329,8 @@ module Docscribe
       # Build a tag priority map from configured order.
       #
       # @note module_function: when included, also defines #build_priority (instance visibility: private)
-      # @param [Array<String>] tag_order
-      # @return [Hash{String=>Integer}]
+      # @param [Array<String>] tag_order Param documentation.
+      # @return [Hash<String, Integer>]
       def build_priority(tag_order)
         normalized_tag_order(tag_order).each_with_index.to_h
       end
@@ -343,7 +338,7 @@ module Docscribe
       # Normalize configured tag names by removing leading `@`.
       #
       # @note module_function: when included, also defines #normalized_tag_order (instance visibility: private)
-      # @param [Array<String>] tag_order
+      # @param [Array<String>] tag_order Param documentation.
       # @return [Array<String>]
       def normalized_tag_order(tag_order)
         Array(tag_order).map { |t| t.to_s.sub(/\A@/, '') }
@@ -355,11 +350,11 @@ module Docscribe
       # until a new sortable tag line or a blank comment separator is encountered.
       #
       # @note module_function: when included, also defines #consume_tag_entry (instance visibility: private)
-      # @param [Array<String>] lines
-      # @param [Integer] start_idx
+      # @param [Array<String>] lines Param documentation.
+      # @param [Integer] start_idx Param documentation.
       # @param [Integer] index stable original index
-      # @param [Array<String>] sortable_tags
-      # @return [Array<(Entry, Integer)>] parsed entry and next index
+      # @param [Array<String>] sortable_tags Param documentation.
+      # @return [[ Object, ::Integer ]]
       def consume_tag_entry(lines, start_idx, index:, sortable_tags:)
         first = lines[start_idx]
         tag = extract_tag(first)
@@ -418,10 +413,10 @@ module Docscribe
       #
       # @note module_function: when included, also defines #build_tag_entry (instance visibility: private)
       # @param [String] first the first (tag) line
-      # @param [String, nil] tag the extracted tag name
+      # @param [String?] tag the extracted tag name
       # @param [Array<String>] entry_lines all lines belonging to this entry
       # @param [Integer] index stable ordering index
-      # @return [Entry]
+      # @return [Object]
       def build_tag_entry(first, tag, entry_lines, index)
         Entry.new(
           kind: :tag,
@@ -439,9 +434,9 @@ module Docscribe
       # Currently only `@param` entries carry a subject, used to keep `@option` tags attached.
       #
       # @note module_function: when included, also defines #extract_subject (instance visibility: private)
-      # @param [String] line
-      # @param [String] tag
-      # @return [String, nil]
+      # @param [String] line Param documentation.
+      # @param [String?] tag Param documentation.
+      # @return [String?]
       def extract_subject(line, tag)
         case tag
         when 'param'
@@ -456,8 +451,8 @@ module Docscribe
       # - `@param name [Type]`
       #
       # @note module_function: when included, also defines #extract_param_name (instance visibility: private)
-      # @param [String] line
-      # @return [String, nil]
+      # @param [String] line Param documentation.
+      # @return [String?]
       def extract_param_name(line)
         return Regexp.last_match(1) if line =~ /^\s*#\s*@param\b\s+\[[^\]]+\]\s+(\S+)/
         return Regexp.last_match(1) if line =~ /^\s*#\s*@param\b\s+(\S+)\s+\[[^\]]+\]/
@@ -468,8 +463,8 @@ module Docscribe
       # Extract the owning options-hash param name from an `@option` line.
       #
       # @note module_function: when included, also defines #extract_option_owner (instance visibility: private)
-      # @param [String] line
-      # @return [String, nil]
+      # @param [String] line Param documentation.
+      # @return [String?]
       def extract_option_owner(line)
         line[/^\s*#\s*@option\b\s+(\S+)/, 1]
       end
@@ -477,8 +472,8 @@ module Docscribe
       # Whether a line is a sortable top-level tag line.
       #
       # @note module_function: when included, also defines #sortable_top_level_tag_line? (instance visibility: private)
-      # @param [String] line
-      # @param [Array<String>] sortable_tags
+      # @param [String] line Param documentation.
+      # @param [Array<String>] sortable_tags Param documentation.
       # @return [Boolean]
       def sortable_top_level_tag_line?(line, sortable_tags)
         return false unless top_level_tag_line?(line)
@@ -489,8 +484,8 @@ module Docscribe
       # Extract a top-level tag name without the leading `@`.
       #
       # @note module_function: when included, also defines #extract_tag (instance visibility: private)
-      # @param [String] line
-      # @return [String, nil]
+      # @param [String] line Param documentation.
+      # @return [String?]
       def extract_tag(line)
         line[/^\s*#\s*@(\w+)/, 1]
       end
@@ -498,7 +493,7 @@ module Docscribe
       # Whether a line begins a top-level YARD-style tag.
       #
       # @note module_function: when included, also defines #top_level_tag_line? (instance visibility: private)
-      # @param [String] line
+      # @param [String] line Param documentation.
       # @return [Boolean]
       def top_level_tag_line?(line)
         !!(line =~ /^\s*#\s*@\w+/)
@@ -507,7 +502,7 @@ module Docscribe
       # Whether a line is any comment line.
       #
       # @note module_function: when included, also defines #comment_line? (instance visibility: private)
-      # @param [String] line
+      # @param [String] line Param documentation.
       # @return [Boolean]
       def comment_line?(line)
         !!(line =~ /^\s*#/)
@@ -516,7 +511,7 @@ module Docscribe
       # Whether a line is a blank comment separator such as `#`.
       #
       # @note module_function: when included, also defines #blank_comment_line? (instance visibility: private)
-      # @param [String] line
+      # @param [String] line Param documentation.
       # @return [Boolean]
       def blank_comment_line?(line)
         !!(line =~ /^\s*#\s*$/)
@@ -525,7 +520,7 @@ module Docscribe
       # Whether a comment line should be treated as a continuation of the previous tag entry.
       #
       # @note module_function: when included, also defines #continuation_comment_line? (instance visibility: private)
-      # @param [String] line
+      # @param [String] line Param documentation.
       # @return [Boolean]
       def continuation_comment_line?(line)
         !!(line =~ /^\s*#[ \t]{2,}\S/)

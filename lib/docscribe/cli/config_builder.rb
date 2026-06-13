@@ -19,7 +19,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #build (instance visibility: private)
       # @param [Docscribe::Config] base base config loaded from YAML/defaults
-      # @param [Hash] options parsed CLI options
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [Docscribe::Config] merged effective config
       def build(base, options)
         return base unless needs_override?(options)
@@ -34,9 +34,8 @@ module Docscribe
 
       # Whether any CLI override is present.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Hash] options parsed CLI options
+      # @note module_function: when included, also defines #needs_override? (instance visibility: private)
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [Boolean]
       def needs_override?(options)
         filter_overrides?(options) ||
@@ -48,7 +47,7 @@ module Docscribe
       # Whether any method or file filter CLI options were provided.
       #
       # @note module_function: when included, also defines #filter_overrides? (instance visibility: private)
-      # @param [Hash] options parsed CLI options
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [Boolean]
       def filter_overrides?(options)
         options[:include].any? ||
@@ -59,10 +58,9 @@ module Docscribe
 
       # Apply method and file filter overrides to the raw config.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
+      # @note module_function: when included, also defines #apply_filter_overrides (instance visibility: private)
+      # @param [Hash<String, Object>] raw raw config hash
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [void]
       def apply_filter_overrides(raw, options)
         apply_method_filters(raw, options)
@@ -72,7 +70,7 @@ module Docscribe
       # Whether any RBS-related CLI options were provided.
       #
       # @note module_function: when included, also defines #rbs_overrides? (instance visibility: private)
-      # @param [Hash] options parsed CLI options
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [Boolean]
       def rbs_overrides?(options)
         options[:rbs] ||
@@ -83,8 +81,8 @@ module Docscribe
       # Merge CLI method include/exclude patterns into the raw config hash.
       #
       # @note module_function: when included, also defines #apply_method_filters (instance visibility: private)
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
+      # @param [Hash<String, Object>] raw raw config hash
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [void]
       def apply_method_filters(raw, options)
         raw['filter'] ||= {}
@@ -95,8 +93,8 @@ module Docscribe
       # Merge CLI file include/exclude patterns into the raw config hash.
       #
       # @note module_function: when included, also defines #apply_file_filters (instance visibility: private)
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
+      # @param [Hash<String, Object>] raw raw config hash
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [void]
       def apply_file_filters(raw, options)
         files = raw['filter']['files'] ||= {} #: Hash[String, untyped]
@@ -106,10 +104,9 @@ module Docscribe
 
       # Apply RBS-related CLI overrides to the raw config.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
+      # @note module_function: when included, also defines #apply_rbs_overrides (instance visibility: private)
+      # @param [Hash<String, Object>] raw raw config hash
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [void]
       def apply_rbs_overrides(raw, options)
         raw['rbs'] ||= {}
@@ -124,7 +121,7 @@ module Docscribe
       # Whether any Sorbet-related CLI options were provided.
       #
       # @note module_function: when included, also defines #sorbet_overrides? (instance visibility: private)
-      # @param [Hash] options parsed CLI options
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [Boolean]
       def sorbet_overrides?(options)
         options[:sorbet] ||
@@ -134,7 +131,7 @@ module Docscribe
       # Resolve and apply the RBS collection path into the raw config hash.
       #
       # @note module_function: when included, also defines #apply_rbs_collection (instance visibility: private)
-      # @param [Hash] raw raw config hash
+      # @param [Hash<String, Object>] raw raw config hash
       # @return [void]
       def apply_rbs_collection(raw)
         require 'docscribe/types/rbs/collection_loader'
@@ -149,10 +146,9 @@ module Docscribe
 
       # Apply Sorbet-related CLI overrides to the raw config.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Hash] raw raw config hash
-      # @param [Hash] options parsed CLI options
+      # @note module_function: when included, also defines #apply_sorbet_overrides (instance visibility: private)
+      # @param [Hash<String, Object>] raw raw config hash
+      # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [void]
       def apply_sorbet_overrides(raw, options)
         raw['sorbet'] ||= {}
@@ -162,10 +158,21 @@ module Docscribe
         raw['sorbet']['rbi_dirs'] = Array(raw['sorbet']['rbi_dirs']) + options[:rbi_dirs]
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #output_overrides? (instance visibility: private)
+      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @return [Boolean]
       def output_overrides?(options)
         options[:keep_descriptions]
       end
 
+      # Method documentation.
+      #
+      # @note module_function: when included, also defines #apply_output_overrides (instance visibility: private)
+      # @param [Hash<String, Object>] raw Param documentation.
+      # @param [Hash<Symbol, Object>] options Param documentation.
+      # @return [void]
       def apply_output_overrides(raw, options)
         raw['keep_descriptions'] = options[:keep_descriptions] if options.key?(:keep_descriptions)
       end

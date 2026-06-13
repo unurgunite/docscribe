@@ -7,7 +7,6 @@ module Docscribe
     #
     # The template documents the most common CLI workflows and all supported
     # configuration sections with comments.
-    # @see Docscribe::Config::DEFAULT
     #
     # @return [String]
     def self.default_yaml

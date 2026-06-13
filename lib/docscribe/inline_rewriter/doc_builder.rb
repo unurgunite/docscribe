@@ -277,7 +277,7 @@ module Docscribe
           extract_raise_info(line, info[:raise_types])
           extract_plugin_info(line, info[:plugin_tags])
 
-          content = line.sub(/^\s*#\s*/, '').rstrip
+          content = line.sub(/^\s*# ?/, '').rstrip
           tags_started = true if content.start_with?('@')
           info[:description] << content unless tags_started
         end
@@ -1721,7 +1721,7 @@ module Docscribe
       # @note module_function: when included, also defines #safe_node_source (instance visibility: private)
       # @raise [StandardError]
       # @param [Parser::AST::Node] node Param documentation.
-      # @return [String]
+      # @return [String] if StandardError
       # @return [String] if StandardError
       def safe_node_source(node)
         node.loc.expression.source

@@ -21,9 +21,10 @@ module Docscribe
       # is uncertain, the fallback type is returned.
       #
       # @note module_function: when included, also defines #infer_return_type (instance visibility: private)
-      # @param [String, nil] method_source full method definition source
       # @raise [Parser::SyntaxError]
-      # @return [String]
+      # @param [String?] method_source full method definition source
+      # @return [String] if Parser::SyntaxError
+      # @return [FALLBACK_TYPE] if Parser::SyntaxError
       def infer_return_type(method_source)
         return FALLBACK_TYPE if method_source.nil? || method_source.strip.empty?
 
@@ -73,9 +74,9 @@ module Docscribe
       # @param [Parser::AST::Node] node `:def` or `:defs` node
       # @param [String] fallback_type type used when inference is uncertain
       # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
-      # @param [nil] core_rbs_provider core RBS type lookup provider
-      # @param [nil] param_types parameter name -> type map
-      # @return [Hash]
+      # @param [Object?] core_rbs_provider core RBS type lookup provider
+      # @param [Hash<String, String>?] param_types parameter name -> type map
+      # @return [Object]
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
                                  param_types: nil)
         body = extract_def_body(node)
@@ -108,11 +109,11 @@ module Docscribe
       # Populate the spec hash with normal and/or rescue return types from the body.
       #
       # @note module_function: when included, also defines #populate_returns_spec (instance visibility: private)
-      # @param [Hash] spec the return spec hash to populate
+      # @param [Object] spec the return spec hash to populate
       # @param [Parser::AST::Node] body the method body AST node
-      # @param [Hash, nil] local_var_types inferred local variable type map
-      # @param [Hash] opts additional keyword options forwarded to type inference
-      # @return [Hash]
+      # @param [Hash<Object, Object>, nil] local_var_types inferred local variable type map
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [Object]
       def populate_returns_spec(spec, body, local_var_types, **opts)
         if body.type == :rescue
           process_rescue_body(spec, body, **opts)
@@ -125,7 +126,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #infer_normal_return_type (instance visibility: private)
       # @param [Parser::AST::Node] body the method body AST node
-      # @param [Hash] opts additional keyword options forwarded to type inference
+      # @param [Object] opts additional keyword options forwarded to type inference
       # @return [String]
       def infer_normal_return_type(body, **opts)
         run_last_expr_type(body, **opts) || FALLBACK_TYPE
@@ -134,14 +135,10 @@ module Docscribe
       # Process a :rescue body node and populate spec with normal + rescue return types.
       #
       # @note module_function: when included, also defines #process_rescue_body (instance visibility: private)
-      # @param [Hash] spec the return spec hash to populate
+      # @param [Object] spec the return spec hash to populate
       # @param [Parser::AST::Node] body the :rescue AST node
-      # @param [String] fallback_type type used when inference is uncertain
-      # @param [Boolean] nil_as_optional whether nil unions render as optional types
-      # @param [Object, nil] core_rbs_provider optional RBS provider for core type lookup
-      # @param [Hash, nil] param_types parameter name to type map
-      # @param [Hash] opts additional keyword options forwarded to type inference
-      # @return [Hash]
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [Object]
       def process_rescue_body(spec, body, **opts)
         main_body = body.children[0]
         local_var_types = build_local_variable_types(body)
@@ -153,10 +150,10 @@ module Docscribe
       # Extract return types from each :resbody child and append to spec[:rescues].
       #
       # @note module_function: when included, also defines #process_rescue_branches (instance visibility: private)
-      # @param [Hash] spec the return spec hash to populate
+      # @param [Object] spec the return spec hash to populate
       # @param [Parser::AST::Node] body the :rescue AST node
-      # @param [Hash] opts additional keyword options forwarded to type inference
-      # @return [Array] the list of rescue type entries
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [Array<Object>] the list of rescue type entries
       def process_rescue_branches(spec, body, **opts)
         body.children.each do |ch|
           next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody
@@ -172,7 +169,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #build_local_variable_types (instance visibility: private)
       # @param [Parser::AST::Node] node AST node to walk
-      # @return [Hash, nil]
+      # @return [Hash<String, String>, nil]
       def build_local_variable_types(node)
         types = {} #: Hash[String, String]
         ASTWalk.walk(node) do |n|
@@ -185,7 +182,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #collect_assignment_type (instance visibility: private)
       # @param [Parser::AST::Node] node an assignment AST node
-      # @param [Hash] types the accumulated local variable type map
+      # @param [Hash<String, String>] types the accumulated local variable type map
       # @return [void]
       def collect_assignment_type(node, types)
         name, value = assignment_name_and_value(node)
@@ -199,7 +196,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #assignment_name_and_value (instance visibility: private)
       # @param [Parser::AST::Node] node an assignment AST node (:lvasgn, :gvasgn, :ivasgn, :casgn)
-      # @return [Array<(String, Parser::AST::Node)>] pair of variable name and value node
+      # @return [[ ::String | nil, ::Parser::AST::Node | nil ]]
       def assignment_name_and_value(node)
         case node.type
         when :lvasgn, :gvasgn, :ivasgn
@@ -214,9 +211,9 @@ module Docscribe
       # Handle `:begin` node for last_expr_type.
       #
       # @note module_function: when included, also defines #handle_begin_node (instance visibility: private)
-      # @param [Object] node
-      # @param [Hash] opts
-      # @return [Object]
+      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Object] opts Param documentation.
+      # @return [String, nil]
       def handle_begin_node(node, **opts)
         run_last_expr_type(node.children.last, **opts)
       end
@@ -224,9 +221,9 @@ module Docscribe
       # Handle `:if` node for last_expr_type.
       #
       # @note module_function: when included, also defines #handle_if_node (instance visibility: private)
-      # @param [Object] node
-      # @param [Hash] opts
-      # @return [Object]
+      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Object] opts Param documentation.
+      # @return [String, nil]
       def handle_if_node(node, **opts)
         t = run_last_expr_type(node.children[1], **opts)
         e = run_last_expr_type(node.children[2], **opts)
@@ -237,9 +234,9 @@ module Docscribe
       # Handle `:case` node for last_expr_type.
       #
       # @note module_function: when included, also defines #handle_case_node (instance visibility: private)
-      # @param [Object] node
-      # @param [Hash] opts
-      # @return [Object]
+      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Object] opts Param documentation.
+      # @return [String, nil]
       def handle_case_node(node, **opts)
         branches = process_case_branches(node, **opts)
         if branches.empty?
@@ -256,7 +253,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #process_case_branches (instance visibility: private)
       # @param [Parser::AST::Node] node the :case AST node
-      # @param [Hash] opts additional keyword options forwarded to type inference
+      # @param [Object] opts additional keyword options forwarded to type inference
       # @return [Array<String>] list of inferred types from each branch
       def process_case_branches(node, **opts)
         (node.children[1..] || []).compact.flat_map do |child|
@@ -271,9 +268,9 @@ module Docscribe
       # Handle `:block` node for last_expr_type.
       #
       # @note module_function: when included, also defines #handle_block_node (instance visibility: private)
-      # @param [Object] node
-      # @param [Hash] opts
-      # @return [Object]
+      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Object] opts Param documentation.
+      # @return [String, nil]
       def handle_block_node(node, **opts)
         send_node = node.children[0]
         if send_node&.type == :send
@@ -290,9 +287,9 @@ module Docscribe
       # Handle `:send` node for last_expr_type.
       #
       # @note module_function: when included, also defines #handle_send_node (instance visibility: private)
-      # @param [Object] node
-      # @param [Hash] opts
-      # @return [Object]
+      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Object] opts Param documentation.
+      # @return [String, nil]
       def handle_send_node(node, **opts)
         recv = node.children[0]
         meth = node.children[1]
@@ -314,8 +311,8 @@ module Docscribe
       # @param [Parser::AST::Node, nil] recv the receiver node of the send
       # @param [Symbol] meth the method name being called
       # @param [Object, nil] core_rbs_provider optional RBS provider for core type lookup
-      # @param [Hash, nil] local_var_types inferred local variable type map
-      # @param [Hash, nil] param_types parameter name to type map
+      # @param [Hash<Object, Object>, nil] local_var_types inferred local variable type map
+      # @param [Hash<String, String>, nil] param_types parameter name to type map
       # @return [String, nil] resolved type or nil if unresolvable
       def resolve_rbs_for_send(recv, meth, core_rbs_provider, local_var_types, param_types)
         return nil unless core_rbs_provider
@@ -329,13 +326,12 @@ module Docscribe
 
       # Resolve RBS return type for an `:lvar` receiver.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Object] recv
-      # @param [Object] meth
-      # @param [Object] core_rbs_provider
-      # @param [Object] local_var_types
-      # @param [Object] param_types
+      # @note module_function: when included, also defines #resolve_lvar_rbs (instance visibility: private)
+      # @param [Parser::AST::Node?] recv Param documentation.
+      # @param [Symbol] meth Param documentation.
+      # @param [Object, nil] core_rbs_provider Param documentation.
+      # @param [Hash<Object, Object>, nil] local_var_types Param documentation.
+      # @param [Hash<String, String>, nil] param_types Param documentation.
       # @return [String, nil]
       def resolve_lvar_rbs(recv, meth, core_rbs_provider, local_var_types, param_types)
         lvar_name = recv&.children&.first
@@ -350,8 +346,8 @@ module Docscribe
       #
       # @note module_function: when included, also defines #lookup_lvar_type (instance visibility: private)
       # @param [Symbol] lvar_name the local variable name
-      # @param [Hash, nil] local_var_types inferred local variable type map
-      # @param [Hash, nil] param_types parameter name to type map
+      # @param [Hash<Object, Object>, nil] local_var_types inferred local variable type map
+      # @param [Hash<String, String>, nil] param_types parameter name to type map
       # @return [String, nil]
       def lookup_lvar_type(lvar_name, local_var_types, param_types)
         return local_var_types[lvar_name.to_s] if local_var_types&.key?(lvar_name.to_s)
@@ -362,13 +358,12 @@ module Docscribe
 
       # Resolve RBS return type for a chained `:send` receiver.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
-      # @param [Object] recv
-      # @param [Object] meth
-      # @param [Object] core_rbs_provider
-      # @param [Object] local_var_types
-      # @param [Object] param_types
+      # @note module_function: when included, also defines #resolve_chained_send_rbs (instance visibility: private)
+      # @param [Parser::AST::Node?] recv Param documentation.
+      # @param [Symbol] meth Param documentation.
+      # @param [Object, nil] core_rbs_provider Param documentation.
+      # @param [Hash<Object, Object>, nil] local_var_types Param documentation.
+      # @param [Hash<String, String>, nil] param_types Param documentation.
       # @return [String, nil]
       def resolve_chained_send_rbs(recv, meth, core_rbs_provider, local_var_types, param_types)
         inner_type = run_last_expr_type(recv, fallback_type: nil, nil_as_optional: false,
@@ -392,12 +387,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #last_expr_type (instance visibility: private)
       # @param [Parser::AST::Node, nil] node expression node
-      # @param [String] fallback_type type used when inference is uncertain
-      # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
-      # @param [Object, nil] core_rbs_provider optional RBS provider for core type lookup
-      # @param [Hash, nil] param_types parameter name -> type map for lvar resolution
-      # @param [nil] local_var_types pre-built local variable types map
-      # @param [Hash] opts additional keyword options forwarded to type inference
+      # @param [Object] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def last_expr_type(node, **opts)
         run_last_expr_type(node, **opts)
@@ -406,8 +396,8 @@ module Docscribe
       # Dispatch `last_expr_type` based on node type.
       #
       # @note module_function: when included, also defines #run_last_expr_type (instance visibility: private)
-      # @param [Parser::AST::Node, nil] node
-      # @param [Hash] opts options passed through as keyword args
+      # @param [Parser::AST::Node, nil] node Param documentation.
+      # @param [Object] opts options passed through as keyword args
       # @return [String, nil]
       def run_last_expr_type(node, **opts)
         return unless node
@@ -424,7 +414,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #handle_return_node (instance visibility: private)
       # @param [Parser::AST::Node] node the `:return` AST node
-      # @param [Hash] opts additional keyword options forwarded to type inference
+      # @param [Object] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_return_node(node, **opts)
         Literals.type_from_literal(node.children.first, fallback_type: opts[:fallback_type])
@@ -434,8 +424,8 @@ module Docscribe
       #
       # @note module_function: when included, also defines #resolve_rbs_return_type (instance visibility: private)
       # @param [String] container_type class or module name
-      # @param [String] method_name method name
-      # @param [Object] core_rbs_provider core RBS type lookup provider
+      # @param [String, Symbol] method_name method name
+      # @param [Object, nil] core_rbs_provider core RBS type lookup provider
       # @return [String] inferred return type
       def resolve_rbs_return_type(container_type, method_name, core_rbs_provider)
         return FALLBACK_TYPE unless core_rbs_provider
@@ -457,13 +447,11 @@ module Docscribe
       # - otherwise falls back conservatively to `fallback_type`
       #
       # @note module_function: when included, also defines #unify_types (instance visibility: private)
-      # @param [String, nil] a
-      # @param [String, nil] b
-      # @param [String] fallback_type
-      # @param [Boolean] nil_as_optional
       # @param [String, nil] type_a first type to unify
       # @param [String, nil] type_b second type to unify
-      # @return [String, nil]
+      # @param [String] fallback_type Param documentation.
+      # @param [Boolean] nil_as_optional Param documentation.
+      # @return [String]
       def unify_types(type_a, type_b, fallback_type:, nil_as_optional:)
         type_a ||= fallback_type
         type_b ||= fallback_type

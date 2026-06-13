@@ -14,7 +14,6 @@ module Docscribe
     #
     # @param [String] source Ruby source being rewritten
     # @param [String] file source name for diagnostics
-    # @raise [LoadError]
     # @return [Docscribe::Types::ProviderChain, nil]
     def signature_provider_for(source:, file:)
       providers = [] #: Array[untyped]
@@ -25,10 +24,9 @@ module Docscribe
 
     # Append Sorbet-based providers to the list.
     #
-    # @private
-    # @param [Array] providers
-    # @param [String] source
-    # @param [String] file
+    # @param [Array<Object>] providers Param documentation.
+    # @param [String] source Param documentation.
+    # @param [String] file Param documentation.
     # @return [void]
     def append_sorbet_providers(providers, source:, file:)
       return unless sorbet_enabled?
@@ -39,11 +37,11 @@ module Docscribe
 
     # Build a Sorbet source provider (inline sigs).
     #
-    # @private
-    # @param [String] source
-    # @param [String] file
     # @raise [LoadError]
-    # @return [Docscribe::Types::Sorbet::SourceProvider, nil]
+    # @param [String] source Param documentation.
+    # @param [String] file Param documentation.
+    # @return [Docscribe::Types::Sorbet::SourceProvider, nil] if LoadError
+    # @return [nil] if LoadError
     def sorbet_source_provider(source, file)
       require 'docscribe/types/sorbet/source_provider'
       Docscribe::Types::Sorbet::SourceProvider.new(
@@ -57,8 +55,7 @@ module Docscribe
 
     # Build the provider chain from a non-empty list, or return nil.
     #
-    # @private
-    # @param [Array] providers
+    # @param [Array<Object>] providers Param documentation.
     # @return [Docscribe::Types::ProviderChain, nil]
     def build_provider_chain(providers)
       providers = providers.compact

@@ -7,17 +7,15 @@ require 'psych'
 module Docscribe
   # Application configuration with deep-merge defaults and overrides.
   class Config
-    # Raw config hash after deep-merging user config with defaults.
-    #
     # @!attribute [r] raw
-    #   @return [Hash]
+    #   @return [Hash<String, Object>]
     attr_reader :raw
 
     # Create a configuration object from a raw config hash.
     #
     # Missing keys are filled from {DEFAULT} via deep merge.
     #
-    # @param [Hash, nil] raw user-provided config hash
+    # @param [Hash<String, Object>] raw user-provided config hash
     # @return [void]
     def initialize(raw = {})
       @raw = deep_merge(DEFAULT, raw || {})

@@ -507,7 +507,7 @@ module Docscribe
       # @private
       # @param [Symbol] kind :method, :attr, or :plugin
       # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion,
-      #   Docscribe::InlineRewriter::Collector::AttrInsertion] ins insertion object or hash
+      #   Docscribe::InlineRewriter::Collector::AttrInsertion] ins Param documentation.
       # @return [Integer]
       def plugin_insertion_pos(kind, ins)
         case kind
@@ -922,7 +922,6 @@ module Docscribe
       # @param [Hash<Symbol, Object>] info hash containing existing doc comment block data
       # @param [String] new_block the newly constructed replacement doc block string
       # @param [Object] rest additional kwargs (old_block, merge_result,
-      #   existing_order_changed, insertion, changes, file)
       # @return [void]
       def commit_safe_doc_outcome(rewriter, buffer, info, new_block, **rest)
         handle_doc_replacement(rewriter, buffer, info, new_block,
@@ -1054,7 +1053,6 @@ module Docscribe
       #
       # @private
       # @param [Object] options kwargs (insertion, config, rewriter, buffer, strategy,
-      #   signature_provider, merge_inserts)
       # @return [void]
       def apply_attr_insertion!(**options)
         config = options[:config]
