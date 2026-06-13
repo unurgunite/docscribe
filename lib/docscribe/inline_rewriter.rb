@@ -785,6 +785,16 @@ module Docscribe
         parsed = DocBuilder.parse_existing_doc_tags(
           method_doc_comment_info(buffer, insertion)&.dig(:doc_lines) || []
         )
+        merge_existing_descriptions!(params, parsed)
+      end
+
+      # Merge parsed descriptions into insertion params
+      #
+      # @private
+      # @param [Hash<Symbol, Object>] params insertion params
+      # @param [Hash<Symbol, Object>] parsed parsed tag info
+      # @return [void]
+      def merge_existing_descriptions!(params, parsed)
         params[:param_descriptions] = parsed[:param_descriptions] if parsed[:param_descriptions].any?
         params[:return_description] = parsed[:return_description] if parsed[:return_description]
         params[:description] = parsed[:description] if parsed[:description].any?

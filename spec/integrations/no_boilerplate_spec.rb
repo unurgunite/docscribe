@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'open3'
 require 'tmpdir'
 
 RSpec.describe Docscribe::InlineRewriter do
@@ -16,7 +17,7 @@ RSpec.describe Docscribe::InlineRewriter do
       RUBY
     end
 
-    it 'inserts method and param default messages' do
+    it 'inserts method and param default messages', :aggregate_failures do
       expect(out).to include('Method documentation.')
       expect(out).to include('Param documentation.')
     end
@@ -89,6 +90,7 @@ RSpec.describe Docscribe::InlineRewriter do
     let(:exe)  { File.expand_path('exe/docscribe') }
     let(:dir)  { Dir.mktmpdir }
     let(:path) { File.join(dir, 'foo.rb') }
+    let(:content) { File.read(path) }
 
     before do
       File.write(path, <<~RUBY)
@@ -105,10 +107,8 @@ RSpec.describe Docscribe::InlineRewriter do
     it 'generates tags without boilerplate text', :aggregate_failures do
       skip 'cannot suppress RBS fallback warning on Ruby 2.7' if RUBY_VERSION < '3.0'
       expect(result[2].exitstatus).to eq(0)
-      content = File.read(path)
       expect(content).to include('# @param [Object] name')
-      expect(content).not_to include('Method documentation.')
-      expect(content).not_to include('Param documentation.')
+      expect(content).not_to include('Method documentation.', 'Param documentation.')
     end
   end
 
@@ -118,6 +118,7 @@ RSpec.describe Docscribe::InlineRewriter do
     let(:exe)  { File.expand_path('exe/docscribe') }
     let(:dir)  { Dir.mktmpdir }
     let(:path) { File.join(dir, 'foo.rb') }
+    let(:content) { File.read(path) }
 
     before do
       File.write(path, <<~RUBY)
@@ -138,10 +139,8 @@ RSpec.describe Docscribe::InlineRewriter do
     it 'combines -A -k -B: keeps descriptions, no boilerplate', :aggregate_failures do
       skip 'cannot suppress RBS fallback warning on Ruby 2.7' if RUBY_VERSION < '3.0'
       expect(result[2].exitstatus).to eq(0)
-      content = File.read(path)
       expect(content).to include('User name')
-      expect(content).not_to include('Method documentation.')
-      expect(content).not_to include('Param documentation.')
+      expect(content).not_to include('Method documentation.', 'Param documentation.')
     end
   end
 end

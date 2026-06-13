@@ -187,7 +187,8 @@ module Docscribe
       # @note module_function: when included, also defines #build_param_and_raise_info (instance visibility: private)
       # @param [Hash<Symbol, Object>] setup method setup hash with name, normal_type, scope, visibility
       # @param [Docscribe::Config] config Docscribe configuration object
-      # @param [Hash<Symbol, Object>] opts additional options including infer_default, fallback_type, treat_options_keyword_as_hash
+      # @param [Hash<Symbol, Object>] opts additional options including
+      #   infer_default, fallback_type, treat_options_keyword_as_hash
       # @return [Array<Object>]
       def build_param_and_raise_info(setup, config, opts)
         pt = opts[:param_types] || build_param_types_from_node(setup[:node], external_sig: setup[:external_sig],
@@ -208,7 +209,8 @@ module Docscribe
       # @param [Parser::AST::Node] node AST node whose source text to extract
       # @param [String] name the method name string
       # @param [Docscribe::Config] config Docscribe configuration object
-      # @param [Hash<Symbol, Object>] opts additional options including infer_default, fallback_type, treat_options_keyword_as_hash
+      # @param [Hash<Symbol, Object>] opts additional options including
+      #   infer_default, fallback_type, treat_options_keyword_as_hash
       # @return [Hash<Symbol, Object>]
       def resolve_doc_setup!(setup, node, name, config, opts)
         external_sig = resolve_external_sig(setup[:container], setup[:scope], name, opts[:signature_provider])
@@ -271,16 +273,26 @@ module Docscribe
         init = init_parse_info
         tags_started = false
         Array(lines).each_with_object(init) do |line, info|
-          extract_param_info(line, info[:param_names], info[:param_types], info[:param_descriptions])
-          extract_return_info(line, info)
-          extract_visibility_info(line, info)
-          extract_raise_info(line, info[:raise_types])
-          extract_plugin_info(line, info[:plugin_tags])
-
-          content = line.sub(/^\s*# ?/, '').rstrip
-          tags_started = true if content.start_with?('@')
-          info[:description] << content unless tags_started
+          tags_started = parse_existing_tag_line(line, info, tags_started)
         end
+      end
+
+      # Parse a single doc comment line for tag info.
+      #
+      # @note module_function: when included, also defines #parse_existing_tag_line (instance visibility: private)
+      # @param [String] line the doc comment line
+      # @param [Hash<Symbol, Object>] info mutable parse info accumulator
+      # @param [Boolean] tags_started whether @tags have been seen
+      # @return [Boolean] updated tags_started
+      def parse_existing_tag_line(line, info, tags_started)
+        extract_param_info(line, info[:param_names], info[:param_types], info[:param_descriptions])
+        extract_return_info(line, info)
+        extract_visibility_info(line, info)
+        extract_raise_info(line, info[:raise_types])
+        extract_plugin_info(line, info[:plugin_tags])
+        content = line.sub(/^\s*# ?/, '').rstrip
+        (tags_started ||= content.start_with?('@')) || (info[:description] << content)
+        tags_started
       end
 
       # Init parse info
@@ -957,15 +969,15 @@ module Docscribe
       # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
       # @return [Array<Object>]
       def core_body_tags(indent, setup, ctx)
-        config = ctx[:config]
+        config, insertion = ctx.values_at(:config, :insertion)
         [
           defaults_and_visibility(indent, config, setup[:scope], setup[:visibility],
                                   description: ctx[:description]),
-          build_module_function_note_lines(indent, ctx[:insertion], setup[:name]),
+          build_module_function_note_lines(indent, insertion, setup[:name]),
           build_raise_tag_lines(indent, ctx[:raise_types], config),
           build_return_line_if_needed(indent, setup, config, ctx),
           build_rescue_return_lines(indent, setup[:rescue_specs], config),
-          build_plugin_tag_lines(ctx[:insertion], indent, setup[:normal_type], ctx[:override_tags])
+          build_plugin_tag_lines(insertion, indent, setup[:normal_type], ctx[:override_tags])
         ]
       end
 
@@ -1207,7 +1219,8 @@ module Docscribe
       # @param [Object] default
       # @param [Object, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
-      # @param [Hash<Symbol, Object>] opts additional options including infer_default, fallback_type, treat_options_keyword_as_hash
+      # @param [Hash<Symbol, Object>] opts additional options including
+      #   infer_default, fallback_type, treat_options_keyword_as_hash
       # @return [String]
       def optarg_type(pname, default, external_sig, param_types_override, opts)
         default_src = source_from_node(default)

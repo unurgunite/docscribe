@@ -10,25 +10,6 @@ module Docscribe
       module TypeFormatter
         module_function
 
-        # rubocop:disable Layout/LineLength
-        # Return or memoize the dispatch hash mapping RBS type classes to formatter lambdas.
-        #
-        # @note module_function: when included, also defines #to_yard_formatters (instance visibility: private)
-        # @return [Hash<Class, Proc>]
-        def to_yard_formatters
-          @to_yard_formatters ||= {
-            ::RBS::Types::Bases::Any => ->(_, **) { format_any },
-            ::RBS::Types::Bases::Bool => ->(_, **) { format_bool },
-            ::RBS::Types::Bases::Void => ->(_, **) { format_void },
-            ::RBS::Types::Bases::Nil => ->(_, **) { format_nil },
-            ::RBS::Types::Optional => ->(t, collapse_generics:) { format_optional(t, collapse_generics: collapse_generics) },
-            ::RBS::Types::Union => ->(t, collapse_generics:) { format_union(t, collapse_generics: collapse_generics) },
-            ::RBS::Types::Literal => ->(t, **) { format_literal(t.literal) },
-            ::RBS::Types::Proc => ->(_, **) { format_proc }
-          }.freeze
-        end
-        # rubocop:enable Layout/LineLength
-
         # Format RBS `any` type as the YARD-equivalent `Object`.
         #
         # @note module_function: when included, also defines #format_any (instance visibility: private)
@@ -193,6 +174,36 @@ module Docscribe
               .gsub(/\A::/, '')
               .gsub(/\bbool\b/, 'Boolean')
               .gsub(/\buntyped\b/, 'Object')
+        end
+
+        FORMATTER_CLASSES = [
+          ::RBS::Types::Bases::Any,
+          ::RBS::Types::Bases::Bool,
+          ::RBS::Types::Bases::Void,
+          ::RBS::Types::Bases::Nil,
+          ::RBS::Types::Optional,
+          ::RBS::Types::Union,
+          ::RBS::Types::Literal,
+          ::RBS::Types::Proc
+        ].freeze
+
+        FORMATTER_LAMBDAS = [
+          ->(_, **) { format_any },
+          ->(_, **) { format_bool },
+          ->(_, **) { format_void },
+          ->(_, **) { format_nil },
+          ->(t, collapse_generics:) { format_optional(t, collapse_generics: collapse_generics) },
+          ->(t, collapse_generics:) { format_union(t, collapse_generics: collapse_generics) },
+          ->(t, **) { format_literal(t.literal) },
+          ->(_, **) { format_proc }
+        ].freeze
+
+        # Return or memoize the dispatch hash mapping RBS type classes to formatter lambdas.
+        #
+        # @note module_function: when included, also defines #to_yard_formatters (instance visibility: private)
+        # @return [Hash<Class, Proc>]
+        def to_yard_formatters
+          @to_yard_formatters ||= FORMATTER_CLASSES.zip(FORMATTER_LAMBDAS).to_h.freeze
         end
       end
     end

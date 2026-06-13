@@ -53,7 +53,7 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
         expect(raw['emit']).to be_a(Hash)
       end
 
-      it 'preserves existing emit keys' do
+      it 'preserves existing emit keys', :aggregate_failures do
         raw['emit'] = { 'some_other_key' => true }
         described_class.apply_output_overrides(raw, options)
         expect(raw['emit']['some_other_key']).to be(true)
@@ -104,7 +104,7 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
       expect(config.raw['emit']['include_param_documentation']).to be(false)
     end
 
-    it 'does not mutate the base config' do
+    it 'does not mutate the base config', :aggregate_failures do
       config = described_class.build(base, default_options.merge(no_boilerplate: true))
       expect(config.raw['emit']['include_default_message']).to be(false)
       expect(base.raw['emit']['include_default_message']).to be(true)
