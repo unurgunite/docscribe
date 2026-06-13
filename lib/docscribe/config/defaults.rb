@@ -71,6 +71,7 @@ module Docscribe
         'collapse_generics' => false
       },
       'keep_descriptions' => false,
+      'skip_anonymous_block_params' => false,
       'plugins' => {
         'require' => [] #: Array[String]
       }

@@ -100,6 +100,9 @@ module Docscribe
         # Preserve existing @param/@return descriptions in aggressive mode
         keep_descriptions: false
 
+        # Skip @param for anonymous block arguments (&) (Ruby 3.2+)
+        skip_anonymous_block_params: false
+
         plugins:
           # Load custom plugins
           # Example:

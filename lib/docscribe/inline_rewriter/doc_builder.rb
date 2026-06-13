@@ -80,7 +80,11 @@ module Docscribe
           [build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
         },
         blockarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+          if opts[:config]&.skip_anonymous_block_params? && arg_node.children.first.nil?
+            []
+          else
+            [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+          end
         },
         forward_arg: ->(*) { [] } #: Array[String]
       }.freeze
@@ -1030,6 +1034,7 @@ module Docscribe
         params = (args.children || []).each_with_object([]) do |a, p|
           pd = (kwargs[:param_descriptions] || {})[param_name_from_arg(a)] || default_pd
           p.concat(build_param_line(a, indent, external_sig, kwargs[:param_types_override],
+                                    config: config,
                                     fallback_type: config.fallback_type,
                                     treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?,
                                     param_documentation: pd,
