@@ -10,6 +10,84 @@ module Docscribe
       module TypeFormatter
         module_function
 
+        # Dispatch an RBS type object to the appropriate YARD formatter.
+        #
+        # @note module_function: when included, also defines #to_yard (instance visibility: private)
+        # @param [Object, nil] type the RBS type object to convert
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @return [String]
+        def to_yard(type, collapse_generics: false)
+          return 'Object' unless type
+
+          handler = to_yard_formatters.find { |klass, _| type.is_a?(klass) }
+          return handler.last.call(type, cg: collapse_generics) if handler
+
+          return format_named(type, collapse_generics: collapse_generics) if named_type?(type)
+
+          fallback_string(type)
+        end
+
+        # Check if the given type object is a named RBS type (class, singleton, interface, or alias).
+        #
+        # @note module_function: when included, also defines #named_type? (instance visibility: private)
+        # @param [Object] type the RBS type object to check
+        # @return [Boolean]
+        def named_type?(type)
+          named_type_classes.any? { |klass| type.is_a?(klass) }
+        end
+
+        # Return or memoize the list of RBS type classes considered named types.
+        #
+        # @note module_function: when included, also defines #named_type_classes (instance visibility: private)
+        # @return [Array<Class>]
+        def named_type_classes
+          @named_type_classes ||= [
+            ::RBS::Types::ClassInstance,
+            ::RBS::Types::ClassSingleton,
+            ::RBS::Types::Interface,
+            ::RBS::Types::Alias
+          ].freeze
+        end
+
+        # Fallback conversion of an unrecognized RBS type to a cleaned string representation.
+        #
+        # @note module_function: when included, also defines #fallback_string (instance visibility: private)
+        # @param [Object] type the unrecognized RBS type object
+        # @return [String]
+        def fallback_string(type)
+          type.to_s
+              .gsub(/\A::/, '')
+              .gsub(/\bbool\b/, 'Boolean')
+              .gsub(/\buntyped\b/, 'Object')
+        end
+
+        # Return or memoize the dispatch hash mapping RBS type classes to formatter lambdas.
+        #
+        # @note module_function: when included, also defines #to_yard_formatters (instance visibility: private)
+        # @return [Hash<Class, Proc>]
+        def to_yard_formatters
+          @to_yard_formatters ||= formatter_pairs.to_h.freeze
+        end
+
+        # rubocop:disable Metrics/AbcSize
+        # Hash of RBS type classes and their YARD formatter lambdas.
+        #
+        # @note module_function: when included, also defines #formatter_pairs (instance visibility: private)
+        # @return [Hash<Class, Proc>]
+        def formatter_pairs
+          @formatter_pairs ||= {
+            ::RBS::Types::Bases::Any => ->(_, **) { format_any },
+            ::RBS::Types::Bases::Bool => ->(_, **) { format_bool },
+            ::RBS::Types::Bases::Void => ->(_, **) { format_void },
+            ::RBS::Types::Bases::Nil => ->(_, **) { format_nil },
+            ::RBS::Types::Optional => ->(t, cg:) { format_optional(t, collapse_generics: cg) },
+            ::RBS::Types::Union => ->(t, cg:) { format_union(t, collapse_generics: cg) },
+            ::RBS::Types::Literal => ->(t, **) { format_literal(t.literal) },
+            ::RBS::Types::Proc => ->(_, **) { format_proc }
+          }.freeze
+        end
+        # rubocop:enable Metrics/AbcSize
+
         # Format RBS `any` type as the YARD-equivalent `Object`.
         #
         # @note module_function: when included, also defines #format_any (instance visibility: private)
@@ -123,87 +201,6 @@ module Docscribe
           when NilClass then 'nil'
           else 'Object'
           end
-        end
-
-        # Dispatch an RBS type object to the appropriate YARD formatter.
-        #
-        # @note module_function: when included, also defines #to_yard (instance visibility: private)
-        # @param [Object, nil] type the RBS type object to convert
-        # @param [Boolean] collapse_generics whether to omit generic type arguments
-        # @return [String]
-        def to_yard(type, collapse_generics: false)
-          return 'Object' unless type
-
-          handler = to_yard_formatters.find { |klass, _| type.is_a?(klass) }
-          return handler.last.call(type, collapse_generics: collapse_generics) if handler
-
-          return format_named(type, collapse_generics: collapse_generics) if named_type?(type)
-
-          fallback_string(type)
-        end
-
-        # Check if the given type object is a named RBS type (class, singleton, interface, or alias).
-        #
-        # @note module_function: when included, also defines #named_type? (instance visibility: private)
-        # @param [Object] type the RBS type object to check
-        # @return [Boolean]
-        def named_type?(type)
-          named_type_classes.any? { |klass| type.is_a?(klass) }
-        end
-
-        # Return or memoize the list of RBS type classes considered named types.
-        #
-        # @note module_function: when included, also defines #named_type_classes (instance visibility: private)
-        # @return [Array<Class>]
-        def named_type_classes
-          @named_type_classes ||= [
-            ::RBS::Types::ClassInstance,
-            ::RBS::Types::ClassSingleton,
-            ::RBS::Types::Interface,
-            ::RBS::Types::Alias
-          ].freeze
-        end
-
-        # Fallback conversion of an unrecognized RBS type to a cleaned string representation.
-        #
-        # @note module_function: when included, also defines #fallback_string (instance visibility: private)
-        # @param [Object] type the unrecognized RBS type object
-        # @return [String]
-        def fallback_string(type)
-          type.to_s
-              .gsub(/\A::/, '')
-              .gsub(/\bbool\b/, 'Boolean')
-              .gsub(/\buntyped\b/, 'Object')
-        end
-
-        FORMATTER_CLASSES = [
-          ::RBS::Types::Bases::Any,
-          ::RBS::Types::Bases::Bool,
-          ::RBS::Types::Bases::Void,
-          ::RBS::Types::Bases::Nil,
-          ::RBS::Types::Optional,
-          ::RBS::Types::Union,
-          ::RBS::Types::Literal,
-          ::RBS::Types::Proc
-        ].freeze
-
-        FORMATTER_LAMBDAS = [
-          ->(_, **) { format_any },
-          ->(_, **) { format_bool },
-          ->(_, **) { format_void },
-          ->(_, **) { format_nil },
-          ->(t, collapse_generics:) { format_optional(t, collapse_generics: collapse_generics) },
-          ->(t, collapse_generics:) { format_union(t, collapse_generics: collapse_generics) },
-          ->(t, **) { format_literal(t.literal) },
-          ->(_, **) { format_proc }
-        ].freeze
-
-        # Return or memoize the dispatch hash mapping RBS type classes to formatter lambdas.
-        #
-        # @note module_function: when included, also defines #to_yard_formatters (instance visibility: private)
-        # @return [Hash<Class, Proc>]
-        def to_yard_formatters
-          @to_yard_formatters ||= FORMATTER_CLASSES.zip(FORMATTER_LAMBDAS).to_h.freeze
         end
       end
     end
