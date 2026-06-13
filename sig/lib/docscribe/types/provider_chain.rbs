@@ -5,7 +5,7 @@ module Docscribe
 
       def initialize: (*untyped providers) -> void
 
-      def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Docscribe::Types::MethodSignature | nil)
+      def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Types::MethodSignature | nil)
     end
   end
 end

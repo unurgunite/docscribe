@@ -18,13 +18,13 @@ module Docscribe
 
         def initialize: (sig_dirs: Array[String], ?collection_dirs: Array[String], ?collapse_generics: bool) -> void
 
-        def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Docscribe::Types::MethodSignature | nil)
+        def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Types::MethodSignature | nil)
 
         private
 
         def load_env!: () -> void
 
-        def lookup_signature: (String container, Symbol scope, (Symbol | String) name) -> (Docscribe::Types::MethodSignature | nil)
+        def lookup_signature: (String container, Symbol scope, (Symbol | String) name) -> (Types::MethodSignature | nil)
 
         def try_with_fallback_build_env: (Array[String] all_dirs, Array[String] collection_dirs) -> ::RBS::Environment
 
@@ -36,7 +36,7 @@ module Docscribe
 
         def absolute_const: (String container) -> String
 
-        def build_signature: (::RBS::Types::Function func) -> Docscribe::Types::MethodSignature
+        def build_signature: (::RBS::Types::Function func) -> Types::MethodSignature
 
         def build_param_types: (::RBS::Types::Function func) -> Hash[String, String]
 
@@ -44,9 +44,9 @@ module Docscribe
 
         def add_positionals!: (Hash[String, String] param_types, Array[untyped] list) -> void
 
-        def build_rest_positional: (::RBS::Types::Function func) -> (Docscribe::Types::RestPositional | nil)
+        def build_rest_positional: (::RBS::Types::Function func) -> (Types::RestPositional | nil)
 
-        def build_rest_keywords: (::RBS::Types::Function func) -> (Docscribe::Types::RestKeywords | nil)
+        def build_rest_keywords: (::RBS::Types::Function func) -> (Types::RestKeywords | nil)
 
         def format_type: (untyped type) -> String
 

@@ -1,6 +1,6 @@
 module Docscribe
   class Config
-    def self.load: (?String? path) -> Docscribe::Config
+    def self.load: (?String? path) -> Config
 
     def self.safe_load_file_compat: (String path) -> Hash[untyped, untyped]
 

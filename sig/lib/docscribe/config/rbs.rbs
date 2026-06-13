@@ -1,24 +1,24 @@
 module Docscribe
   class Config
-    @rbs_provider: (Docscribe::Types::RBS::Provider | nil)
+    @rbs_provider: (Types::RBS::Provider | nil)
 
-    @core_rbs_provider: (Docscribe::Types::RBS::Provider | nil)
+    @core_rbs_provider: (Types::RBS::Provider | nil)
 
     @rbs_warning_emitted: bool
 
-    def rbs_provider: () -> (Docscribe::Types::RBS::Provider | nil)
+    def rbs_provider: () -> (Types::RBS::Provider | nil)
 
     def rbs_enabled?: () -> bool
 
-    def core_rbs_provider: () -> (Docscribe::Types::RBS::Provider | nil)
+    def core_rbs_provider: () -> (Types::RBS::Provider | nil)
 
     private
 
     def ruby_supports_rbs?: () -> bool
 
-    def build_rbs_provider: () -> (Docscribe::Types::RBS::Provider | nil)
+    def build_rbs_provider: () -> (Types::RBS::Provider | nil)
 
-    def build_core_rbs_provider: () -> (Docscribe::Types::RBS::Provider | nil)
+    def build_core_rbs_provider: () -> (Types::RBS::Provider | nil)
 
     def rbs_sig_dirs: () -> Array[String]
 

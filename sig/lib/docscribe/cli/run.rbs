@@ -5,15 +5,15 @@ module Docscribe
 
       def self.run: (options: Hash[Symbol, untyped], argv: Array[String]) -> Integer
 
-      def self.build_config: (Hash[Symbol, untyped] options) -> Docscribe::Config
+      def self.build_config: (Hash[Symbol, untyped] options) -> Config
 
-      def self.run_stdin: (options: Hash[Symbol, untyped], conf: Docscribe::Config) -> Integer
+      def self.run_stdin: (options: Hash[Symbol, untyped], conf: Config) -> Integer
 
-      def self.stdin_rewrite_result: (Hash[Symbol, untyped] options, Docscribe::Config conf) -> Hash[Symbol, untyped]
+      def self.stdin_rewrite_result: (Hash[Symbol, untyped] options, Config conf) -> Hash[Symbol, untyped]
 
-      def self.core_rbs_provider_for: (Docscribe::Config conf) -> (untyped | nil)
+      def self.core_rbs_provider_for: (Config conf) -> (untyped | nil)
 
-      def self.filtered_paths: (Array[String] argv, Docscribe::Config conf) -> Array[String]
+      def self.filtered_paths: (Array[String] argv, Config conf) -> Array[String]
 
       def self.no_files_found: () -> 1
 
@@ -21,7 +21,7 @@ module Docscribe
 
       def self.append_expanded_path: (Array[String] files, String path) -> void
 
-      def self.run_files: (options: Hash[Symbol, untyped], conf: Docscribe::Config, paths: Array[String]) -> Integer
+      def self.run_files: (options: Hash[Symbol, untyped], conf: Config, paths: Array[String]) -> Integer
 
       private
 
@@ -31,7 +31,7 @@ module Docscribe
 
       def self.initial_run_state: () -> Hash[Symbol, untyped]
 
-      def self.process_one_file: (String path, options: Hash[Symbol, untyped], conf: Docscribe::Config, pwd: Pathname, state: Hash[Symbol, untyped]) -> void
+      def self.process_one_file: (String path, options: Hash[Symbol, untyped], conf: Config, pwd: Pathname, state: Hash[Symbol, untyped]) -> void
 
       def self.dispatch_file_result: (String path, src: String, out: String, file_changes: Array[Hash[Symbol, untyped]], **Hash[Symbol, untyped] ctx) -> void
 
