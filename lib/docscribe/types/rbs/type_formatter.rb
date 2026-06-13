@@ -69,7 +69,7 @@ module Docscribe
           @to_yard_formatters ||= formatter_pairs.to_h.freeze
         end
 
-        # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+        # rubocop:disable Metrics/AbcSize
         # Hash of RBS type classes and their YARD formatter lambdas.
         #
         # @note module_function: when included, also defines #formatter_pairs (instance visibility: private)
@@ -87,7 +87,7 @@ module Docscribe
             ::RBS::Types::Tuple => ->(t, cg:) { format_tuple(t, collapse_generics: cg) }
           }.freeze
         end
-        # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+        # rubocop:enable Metrics/AbcSize
 
         # Format RBS `any` type as the YARD-equivalent `Object`.
         #

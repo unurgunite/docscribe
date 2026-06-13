@@ -161,7 +161,9 @@ module Docscribe
       # @raise [Docscribe::ParseError]
       # @param [String] code the Ruby source code string to parse and rewrite
       # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
-      # @return [{ config: ::Docscribe::Config, file: ::String, buffer: ::Parser::Source::Buffer, ast: ::Parser::AST::Node, signature_provider: ::Docscribe::Types::ProviderChain | nil, core_rbs_provider: Object | nil }]
+      # @return [{ config: ::Docscribe::Config, file: ::String, buffer: ::Parser::Source::Buffer,
+      #     ast: ::Parser::AST::Node, signature_provider: ::Docscribe::Types::ProviderChain | nil,
+      #     core_rbs_provider: Object | nil }]
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
         file = (options[:file] || '(inline)').to_s
@@ -503,7 +505,7 @@ module Docscribe
       #
       # @private
       # @param [Symbol] kind :method, :attr, or :plugin
-      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] ins
+      # @param [Hash<Symbol, Object>, Insertion, AttrInsertion] ins
       # @return [Integer]
       def plugin_insertion_pos(kind, ins)
         case kind
@@ -1077,7 +1079,8 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @param [Parser::Source::Range] bol_range the beginning-of-line range for the attribute node
-      # @return [{ insertion: ::Docscribe::InlineRewriter::Collector::AttrInsertion, config: ::Docscribe::Config, signature_provider: ::Docscribe::Types::ProviderChain | nil, bol_range: ::Parser::Source::Range }]
+      # @return [{ insertion: ::Docscribe::InlineRewriter::Collector::AttrInsertion, config: ::Docscribe::Config,
+      #   signature_provider: ::Docscribe::Types::ProviderChain | nil, bol_range: ::Parser::Source::Range }]
       def attr_insertion_params(insertion, config, signature_provider, bol_range)
         {
           insertion: insertion, config: config,

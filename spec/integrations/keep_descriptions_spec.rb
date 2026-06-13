@@ -178,7 +178,7 @@ RSpec.describe Docscribe::InlineRewriter do
       expect(out).to include('#   Should not be empty.')
     end
 
-    it 'preserves general multi-line description before tags' do
+    it 'preserves general multi-line description before tags', :aggregate_failures do
       expect(out).to include('# This method handles normalization,')
       expect(out).to include('# validation, and transformation.')
     end
@@ -245,6 +245,7 @@ RSpec.describe Docscribe::InlineRewriter do
       expect(out).to include('# Say hello')
     end
 
+    # rubocop:disable RSpec/ExampleLength
     it 'does not accumulate brackets on repeated runs' do
       Dir.mktmpdir do |dir|
         sig_dir = File.join(dir, 'sig')
@@ -261,6 +262,7 @@ RSpec.describe Docscribe::InlineRewriter do
         expect(twice).to eq(out)
       end
     end
+    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'aggressive mode keep_descriptions: true — with nested Tuple types' do
@@ -313,6 +315,7 @@ RSpec.describe Docscribe::InlineRewriter do
       expect(out).to include('stats')
     end
 
+    # rubocop:disable RSpec/ExampleLength
     it 'is idempotent across runs' do
       Dir.mktmpdir do |dir|
         sig_dir = File.join(dir, 'sig')
@@ -329,6 +332,7 @@ RSpec.describe Docscribe::InlineRewriter do
         expect(twice).to eq(out)
       end
     end
+    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'via CLI' do

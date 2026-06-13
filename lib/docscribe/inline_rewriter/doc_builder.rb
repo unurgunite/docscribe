@@ -285,7 +285,6 @@ module Docscribe
       def parse_existing_tag_line(line, info, tags_started)
         extract_all_comment_tags(line, info)
         content = line.sub(/^\s*# ?/, '').rstrip
-
         if content.start_with?('@')
           tags_started = true
           track_last_tag(content, info)
@@ -730,7 +729,8 @@ module Docscribe
 
       # Merge module function note lines
       #
-      # @note module_function: when included, also defines #merge_module_function_note_lines (instance visibility: private)
+      # @note module_function: when included, also defines #merge_module_function_note_lines
+      #   (instance visibility: private)
       # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
       # @param [String] name the method name string
@@ -863,7 +863,8 @@ module Docscribe
 
       # Collect missing module function note
       #
-      # @note module_function: when included, also defines #collect_missing_module_function_note! (instance visibility: private)
+      # @note module_function: when included, also defines #collect_missing_module_function_note!
+      #   (instance visibility: private)
       # @param [Array<String>] lines array of output doc lines being accumulated
       # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
       # @param [Object] ctx merged context hash with info and indent
@@ -1179,7 +1180,8 @@ module Docscribe
 
       # Build module function note lines
       #
-      # @note module_function: when included, also defines #build_module_function_note_lines (instance visibility: private)
+      # @note module_function: when included, also defines #build_module_function_note_lines
+      #   (instance visibility: private)
       # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
       # @param [String] name the method name string
@@ -1469,22 +1471,22 @@ module Docscribe
       def format_param_tag(indent, name, type, documentation, style:)
         doc = documentation.to_s.strip
         type = type.to_s
+        line = build_param_tag_base(indent, name, type, style)
+        doc.empty? ? line : append_param_doc(line, doc, indent)
+      end
 
-        line = case style.to_s
-               when 'name_type'
-                 "#{indent}# @param #{name} [#{type}]"
-               else
-                 "#{indent}# @param [#{type}] #{name}"
-               end
-
-        if doc.empty?
-          line
-        else
-          parts = doc.split("\n")
-          result = "#{line} #{parts.first}"
-          parts[1..]&.each { |l| result << "\n#{indent}#   #{l}" }
-          result
+      def build_param_tag_base(indent, name, type, style)
+        case style.to_s
+        when 'name_type' then "#{indent}# @param #{name} [#{type}]"
+        else "#{indent}# @param [#{type}] #{name}"
         end
+      end
+
+      def append_param_doc(line, doc, indent)
+        parts = doc.split("\n")
+        result = "#{line} #{parts.first}"
+        parts[1..]&.each { |l| result << "\n#{indent}#   #{l}" }
+        result
       end
 
       # Append option lines
@@ -1597,7 +1599,8 @@ module Docscribe
 
       # Extract param name from param line
       #
-      # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
+      # @note module_function: when included, also defines #extract_param_name_from_param_line
+      #   (instance visibility: private)
       # @param [String] line a `@param` doc line
       # @return [String, nil] the parameter name or nil
       def extract_param_name_from_param_line(line)
@@ -1609,7 +1612,8 @@ module Docscribe
 
       # Extract param type from param line
       #
-      # @note module_function: when included, also defines #extract_param_type_from_param_line (instance visibility: private)
+      # @note module_function: when included, also defines #extract_param_type_from_param_line
+      #   (instance visibility: private)
       # @param [String] line a `@param` tag line
       # @return [String, nil]
       def extract_param_type_from_param_line(line)
@@ -1691,7 +1695,8 @@ module Docscribe
 
       # Collect missing rescue returns
       #
-      # @note module_function: when included, also defines #collect_missing_rescue_returns! (instance visibility: private)
+      # @note module_function: when included, also defines #collect_missing_rescue_returns!
+      #   (instance visibility: private)
       # @param [Array<String>] lines array of output doc lines being accumulated
       # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
       # @param [Object] ctx merged context hash with info and indent
