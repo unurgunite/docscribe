@@ -48,7 +48,7 @@ filter:
   files:
     # File paths relative to project root (globs or /regex/)
     include: []
-    exclude: ["spec", "./examples/**/spec"]
+    exclude: ["spec", "examples/**/spec/**/*"]
 
 methods:
   # Override defaults per scope and visibility.
