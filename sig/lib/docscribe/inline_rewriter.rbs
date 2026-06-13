@@ -127,7 +127,7 @@ module Docscribe
 
     def self.apply_method_insertion_safe_without_info!: (**untyped options) -> void
 
-    def self.filter_method_doc_params: (Hash[Symbol, untyped] options) -> Hash[Symbol, untyped]
+    def self.extract_existing_descriptions!: (Parser::Source::Buffer buffer, Collector::Insertion insertion, Hash[Symbol, untyped] params, Symbol strategy, Config config) -> void
 
     def self.add_change: (**untyped options) -> void
 
@@ -180,10 +180,6 @@ module Docscribe
     def self.attribute_type: (Collector::AttrInsertion ins, Symbol name_sym, Config config, signature_provider: (Types::ProviderChain | nil)) -> String
 
     def self.build_signature_provider: (Config config, String code, String file) -> (untyped | nil)
-
-    def self.build_method_doc: (Collector::Insertion insertion, **untyped options) -> (String | nil)
-
-    def self.build_missing_method_merge_result: (Collector::Insertion insertion, existing_lines: Array[String], **untyped options) -> Hash[Symbol, untyped]
 
     def self.method_doc_comment_info: (Parser::Source::Buffer buffer, Collector::Insertion insertion) -> (Hash[Symbol, untyped] | nil)
 

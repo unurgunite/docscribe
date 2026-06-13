@@ -233,6 +233,8 @@ module Docscribe
       def sig_send_node?: (Parser::AST::Node node) -> bool
 
       def promote_extend_self_container: (container: String) -> void
+
+      def drop_first_if_str!: (Array[untyped] args) -> void
     end
   end
 end

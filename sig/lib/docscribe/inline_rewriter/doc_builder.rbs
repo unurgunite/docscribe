@@ -99,7 +99,7 @@ module Docscribe
 
       def self?.build_params_lines: (Parser::AST::Node node, String indent, external_sig: (untyped | nil), config: Docscribe::Config, ?param_types_override: (Hash[String, String] | nil)) -> (Array[String] | nil)
 
-      def self?.build_all_param_lines: (untyped args, String indent, (untyped | nil) external_sig, (Hash[String, String] | nil) param_types_override, Docscribe::Config config) -> (Array[String] | nil)
+      def self?.build_all_param_lines: (untyped args, String indent, Docscribe::Config config, ?external_sig: (untyped | nil), **untyped) -> (Array[String] | nil)
 
       def self?.build_doc_lines: (Hash[Symbol, untyped] setup, config: Docscribe::Config, **untyped) -> Array[String]
 
@@ -113,7 +113,7 @@ module Docscribe
 
       def self?.defaults_and_visibility: (String indent, Docscribe::Config config, Symbol scope, Symbol visibility) -> Array[String]
 
-      def self?.build_return_line_if_needed: (String indent, Hash[Symbol, untyped] setup, Docscribe::Config config) -> Array[String]
+      def self?.build_return_line_if_needed: (String indent, Hash[Symbol, untyped] setup, Docscribe::Config config, Hash[Symbol, untyped] ctx) -> Array[String]
 
       def self?.extract_args_from_node: (Parser::AST::Node node) -> (Parser::AST::Node | nil)
 
@@ -206,6 +206,12 @@ module Docscribe
       def self?.safe_node_source: (Parser::AST::Node node) -> String
 
       def self?.render_plugin_tags: (Array[untyped] tags, String indent) -> Array[String]
+
+      ARG_DEFAULT_NAMES: Hash[Symbol, String]
+
+      def self?.extract_param_description: (String line) -> (String | nil)
+
+      def self?.param_name_from_arg: (Parser::AST::Node arg_node) -> (String | nil)
     end
   end
 end

@@ -45,6 +45,8 @@ module Docscribe
 
       def self?.define_explain_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
 
+      def self?.define_keep_descriptions_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
       def self?.define_misc_options: (OptionParser opts) -> void
 
       def self?.resolve_mode_and_strategy!: (Hash[Symbol, untyped] options, (Symbol | nil) autocorrect_mode) -> void
