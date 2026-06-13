@@ -404,6 +404,7 @@ module Docscribe
         end
 
         # Handle a failed check (file needs updates).
+        # With --verbose, prints the per-file verdict and all change reasons.
         #
         # @private
         # @param [String] path
@@ -415,7 +416,7 @@ module Docscribe
         def handle_check_failed(path, file_changes:, display_path:, options:, state:)
           if options[:verbose]
             puts("FAIL #{display_path}")
-            print_check_explanations(file_changes, options)
+            print_check_explanations(file_changes)
           else
             print('F')
           end
@@ -463,7 +464,7 @@ module Docscribe
         def log_write_verdict(verdict, display_path, file_changes, options)
           if options[:verbose]
             puts("#{verdict} #{display_path}")
-            print_check_explanations(file_changes, options)
+            print_check_explanations(file_changes)
           else
             print('C')
           end
@@ -471,13 +472,12 @@ module Docscribe
 
         # Print explanations for file changes.
         #
+        # Callers are responsible for gating on --verbose / --explain.
+        #
         # @private
         # @param [Array<Hash>] file_changes
-        # @param [Hash] options
         # @return [void]
-        def print_check_explanations(file_changes, options)
-          return unless options[:explain]
-
+        def print_check_explanations(file_changes)
           file_changes.each do |change|
             puts("  - #{format_change_reason(change)}")
           end
@@ -519,7 +519,7 @@ module Docscribe
           end
         end
 
-        # Print the check-mode summary (files OK / need updates / errors).
+        # Print the check-mode summary (fail paths, then status line).
         #
         # @private
         # @param [Hash] state shared processing state
@@ -527,8 +527,8 @@ module Docscribe
         # @return [void]
         def print_check_summary(state:, options:)
           puts
-          print_check_status_line(state)
           print_fail_paths(state, options)
+          print_check_status_line(state)
           print_type_mismatch_paths(state, options)
           print_error_paths(state)
         end
@@ -589,7 +589,9 @@ module Docscribe
 
         public
 
-        # Print fail paths from check summary.
+        # Print fail paths from check summary (stdout).
+        #
+        # Skips explanations when --verbose showed them inline per-file.
         #
         # @private
         # @param [Hash] state
@@ -597,11 +599,12 @@ module Docscribe
         # @return [void]
         def print_fail_paths(state, options)
           state[:fail_paths].each do |p|
-            warn "Would update docs: #{p}"
-            next unless options[:explain] && !options[:verbose]
+            puts "Would update: #{p}"
+
+            next if options[:verbose]
 
             Array(state[:fail_changes][p]).each do |change|
-              warn "  - #{format_change_reason(change)}"
+              puts "  - #{format_change_reason(change)}"
             end
           end
         end
