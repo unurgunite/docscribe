@@ -95,7 +95,7 @@ module Docscribe
       # @note module_function: when included, also defines #find_comment_block_range (instance visibility: private)
       # @param [Array<String>] lines
       # @param [Integer] def_line_idx
-      # @return [{ start_idx: ::Integer, end_idx: ::Integer }, nil]
+      # @return [Hash<Symbol, Integer>, nil]
       def find_comment_block_range(lines, def_line_idx)
         i = def_line_idx - 1
 
@@ -172,7 +172,7 @@ module Docscribe
       # @param [Integer] start_idx
       # @param [Integer] doc_start_idx
       # @param [Integer] end_pos_idx
-      # @return [{ start_pos: ::Integer, doc_start_pos: ::Integer, end_pos: ::Integer }]
+      # @return [Hash<Symbol, Integer>]
       def compute_positions(lines, start_idx, doc_start_idx, end_pos_idx)
         start_pos = start_idx.positive? ? (lines[0...start_idx] || []).join.length : 0
         doc_start_pos = doc_start_idx.positive? ? (lines[0...doc_start_idx] || []).join.length : 0
@@ -238,8 +238,7 @@ module Docscribe
       #
       # This helper is retained for compatibility/legacy behavior checks.
       #
-      # @note module_function: when included, also defines #already_has_doc_immediately_above?
-      #   (instance visibility: private)
+      # @note module_function: when included, also defines #already_has_doc_immediately_above? (instance visibility: private)
       # @param [Parser::Source::Buffer] buffer
       # @param [Integer] insert_pos
       # @return [Boolean]
@@ -259,8 +258,8 @@ module Docscribe
       # Tabs and spaces are preserved exactly.
       #
       # @note module_function: when included, also defines #line_indent (instance visibility: private)
-      # @raise [StandardError]
       # @param [Parser::AST::Node] node
+      # @raise [StandardError]
       # @return [String] if StandardError
       # @return [String] if StandardError
       def line_indent(node)

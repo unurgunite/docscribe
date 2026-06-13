@@ -69,9 +69,9 @@ module Docscribe
         # Rewrite code from STDIN using the selected strategy and print the
         # result.
         #
-        # @raise [StandardError]
         # @param [Hash<Symbol, Object>] options parsed CLI options
         # @param [Docscribe::Config] conf effective config
+        # @raise [StandardError]
         # @return [Integer] if StandardError
         # @return [Integer] if StandardError
         def run_stdin(options:, conf:)
@@ -267,9 +267,9 @@ module Docscribe
         # computation fails.
         #
         # @private
-        # @raise [StandardError]
         # @param [String] path file path to display
         # @param [Pathname] pwd current working directory
+        # @raise [StandardError]
         # @return [String] if StandardError
         # @return [Object] if StandardError
         def display_path_for(path, pwd:)
@@ -287,11 +287,11 @@ module Docscribe
         # Read the source file and handle read errors.
         #
         # @private
-        # @raise [StandardError]
         # @param [String] path file path to read
         # @param [String] display_path path shown in CLI output
         # @param [Hash<Symbol, Object>] options CLI options
         # @param [Hash<Symbol, Object>] state shared processing state
+        # @raise [StandardError]
         # @return [String, nil] if StandardError
         # @return [nil] if StandardError
         def read_source_for_path(path, display_path:, options:, state:)
@@ -307,10 +307,10 @@ module Docscribe
         # Rewrite the source file using InlineRewriter and handle rewrite errors.
         #
         # @private
-        # @raise [StandardError]
         # @param [String] path file path
         # @param [String] src source code
         # @param [Hash<Symbol, Object>] ctx context hash with :conf, :display_path, :options, :state keys
+        # @raise [StandardError]
         # @return [Hash<Symbol, Object>, nil] if StandardError
         # @return [nil] if StandardError
         def rewrite_result_for_path(path, src:, ctx:)
@@ -427,12 +427,12 @@ module Docscribe
         # Handle the result of an autocorrect (write) run.
         #
         # @private
-        # @raise [StandardError]
         # @param [String] path file path
         # @param [String] src original source code
         # @param [String] out rewritten source code
         # @param [Array<Hash<Symbol, Object>>] file_changes structured change records
         # @param [Hash<Symbol, Object>] ctx context hash with :display_path, :options, :state keys
+        # @raise [StandardError]
         # @return [void] if StandardError
         # @return [Object] if StandardError
         def handle_write_result(path, src:, out:, file_changes:, **ctx)

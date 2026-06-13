@@ -48,7 +48,7 @@ module Docscribe
         # Return the default options hash for the init command.
         #
         # @private
-        # @return [{ config: "docscribe.yml", force: false, stdout: false, help: false }]
+        # @return [Hash<Symbol, String, Boolean>]
         def default_init_options
           { config: 'docscribe.yml', force: false, stdout: false, help: false }
         end

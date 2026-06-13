@@ -14,9 +14,14 @@ Metrics/ClassLength:
 # Offense count: 2
 # Configuration parameters: CountComments, CountAsOne, AllowedMethods, AllowedPatterns.
 Metrics/MethodLength:
-  Max: 11
+  Max: 20
 
 # Offense count: 8
 # Configuration parameters: CountComments, CountAsOne.
 Metrics/ModuleLength:
-  Max: 884
+  Max: 893
+
+# Offense count: 6
+Layout/LineLength:
+  AllowedPatterns:
+    - '@note module_function: when included, also defines'

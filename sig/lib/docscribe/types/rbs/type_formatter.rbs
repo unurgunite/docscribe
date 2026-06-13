@@ -2,11 +2,32 @@ module Docscribe
   module Types
     module RBS
       module TypeFormatter
-        @to_yard_formatters: Hash[Class, ^(untyped, ?collapse_generics: bool) -> String]
+        type rbs_type = ::RBS::Types::Bases::Base
+                      | ::RBS::Types::Variable
+                      | ::RBS::Types::ClassSingleton
+                      | ::RBS::Types::Interface
+                      | ::RBS::Types::ClassInstance
+                      | ::RBS::Types::Alias
+                      | ::RBS::Types::Tuple
+                      | ::RBS::Types::Record
+                      | ::RBS::Types::Optional
+                      | ::RBS::Types::Union
+                      | ::RBS::Types::Intersection
+                      | ::RBS::Types::Proc
+                      | ::RBS::Types::Literal
+
+        type named_rbs_type = ::RBS::Types::ClassInstance
+                            | ::RBS::Types::ClassSingleton
+                            | ::RBS::Types::Interface
+                            | ::RBS::Types::Alias
+
+        type formatter_fn = ^(rbs_type, ?collapse_generics: bool) -> String
+
+        @to_yard_formatters: Hash[Class, formatter_fn]
 
         @named_type_classes: Array[Class]
 
-        def self?.to_yard_formatters: () -> Hash[Class, ^(untyped, ?collapse_generics: bool) -> String]
+        def self?.to_yard_formatters: () -> Hash[Class, formatter_fn]
 
         def self?.format_any: () -> "Object"
 
@@ -16,25 +37,43 @@ module Docscribe
 
         def self?.format_nil: () -> "nil"
 
-        def self?.format_optional: (untyped type, collapse_generics: bool) -> String
+        def self?.format_optional: (::RBS::Types::Optional type, collapse_generics: bool) -> String
 
-        def self?.format_literal: (untyped lit) -> String
+        def self?.format_literal: (::RBS::Types::Literal lit) -> String
 
         def self?.format_proc: () -> "Proc"
 
-        def self?.format_union: (untyped type, collapse_generics: bool) -> String
+        def self?.format_tuple: (::RBS::Types::Tuple type, collapse_generics: bool) -> String
 
-        def self?.format_named: (untyped type, collapse_generics: bool) -> String
+        def self?.format_top: () -> "Object"
 
-        def self?.literal_to_yard: (untyped lit) -> String
+        def self?.format_bottom: () -> "Object"
 
-        def self?.to_yard: ((untyped | nil) type, ?collapse_generics: bool) -> String
+        def self?.format_self: () -> "self"
 
-        def self?.named_type?: (untyped type) -> bool
+        def self?.format_instance: () -> "Object"
+
+        def self?.format_class_type: () -> "Class"
+
+        def self?.format_variable: (::RBS::Types::Variable type) -> String
+
+        def self?.format_record: (::RBS::Types::Record type, collapse_generics: bool) -> String
+
+        def self?.format_intersection: (::RBS::Types::Intersection type, collapse_generics: bool) -> String
+
+        def self?.format_union: (::RBS::Types::Union type, collapse_generics: bool) -> String
+
+        def self?.format_named: (named_rbs_type type, collapse_generics: bool) -> String
+
+        def self?.literal_to_yard: (top lit) -> String
+
+        def self?.to_yard: ((rbs_type | nil) type, ?collapse_generics: bool) -> String
+
+        def self?.named_type?: (rbs_type type) -> bool
 
         def self?.named_type_classes: () -> Array[Class]
 
-        def self?.fallback_string: (untyped type) -> String
+        def self?.fallback_string: (rbs_type type) -> String
       end
     end
   end

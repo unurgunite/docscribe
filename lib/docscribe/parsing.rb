@@ -91,8 +91,8 @@ module Docscribe
       # - auto choice based on Ruby version
       #
       # @private
-      # @raise [ArgumentError]
       # @param [Symbol] backend requested backend
+      # @raise [ArgumentError]
       # @return [Symbol, nil] :parser or :prism
       def backend(backend = :auto)
         env = ENV.fetch('DOCSCRIBE_PARSER_BACKEND') { nil }

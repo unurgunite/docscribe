@@ -25,6 +25,20 @@ module Docscribe
 
       def self?.compute_returns_spec: (Parser::AST::Node node, Config config, (Hash[String, String] | nil) param_types, (untyped | nil) core_rbs_provider) -> Hash[Symbol, untyped]
 
+      def self?.track_last_tag: (String content, Hash[Symbol, untyped] info) -> void
+
+      def self?.append_tag_continuation: (String content, Hash[Symbol, untyped] info) -> void
+
+      def self?.append_to_return_description: (String text, Hash[Symbol, untyped] info) -> void
+
+      def self?.append_to_param_description: (String text, Hash[Symbol, untyped] info) -> void
+
+      def self?.find_matching_close_bracket: (String str) -> (Integer | nil)
+
+      def self?.build_param_tag_base: (String indent, String name, String type, (String | Symbol) style) -> String
+
+      def self?.append_param_doc: (String line, String doc, String indent) -> String
+
       def self?.parse_existing_doc_tags: (Array[String] lines) -> Hash[Symbol, untyped]
 
       def self?.init_parse_info: () -> Hash[Symbol, untyped]

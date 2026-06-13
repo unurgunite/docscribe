@@ -55,7 +55,7 @@ module Docscribe
       # @param [Boolean?] rewrite compatibility alias for aggressive strategy
       # @param [Boolean?] merge compatibility alias for safe strategy
       # @param [Object] options additional keyword arguments forwarded to downstream helpers
-      # @return [{ output: ::String, changes: ::Array[::Hash[::Symbol, Object]] }]
+      # @return [Hash<Symbol, String, Array<Hash<Symbol, Object>>>]
       def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, **options)
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
         validate_strategy!(strategy)
@@ -158,12 +158,13 @@ module Docscribe
       # Setup rewrite env
       #
       # @private
-      # @raise [Docscribe::ParseError]
       # @param [String] code the Ruby source code string to parse and rewrite
       # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
-      # @return [{ config: ::Docscribe::Config, file: ::String, buffer: ::Parser::Source::Buffer,
-      #     ast: ::Parser::AST::Node, signature_provider: ::Docscribe::Types::ProviderChain | nil,
-      #     core_rbs_provider: Object | nil }]
+      # @raise [Docscribe::ParseError]
+      # @return [{ config: ::Docscribe::Config, file: ::String,
+      #   buffer: ::Parser::Source::Buffer, ast: ::Parser::AST::Node,
+      #   signature_provider: ::Docscribe::Types::ProviderChain | nil,
+      #   core_rbs_provider: Object | nil }]
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
         file = (options[:file] || '(inline)').to_s
@@ -180,9 +181,9 @@ module Docscribe
       # Load core rbs provider
       #
       # @private
-      # @raise [StandardError]
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Object, nil] core_rbs_provider optional externally-provided core RBS provider
+      # @raise [StandardError]
       # @return [Object, nil] if StandardError
       # @return [nil] if StandardError
       def load_core_rbs_provider(config, core_rbs_provider)
@@ -456,8 +457,8 @@ module Docscribe
       # Plugin insertion priority
       #
       # @private
-      # @raise [StandardError]
       # @param [Hash<Symbol, Object>] insertion the collected method insertion
+      # @raise [StandardError]
       # @return [Integer] if StandardError
       # @return [Integer] if StandardError
       def plugin_insertion_priority(insertion)
@@ -471,8 +472,8 @@ module Docscribe
       # Plugin insertion label
       #
       # @private
-      # @raise [StandardError]
       # @param [Hash<Symbol, Object>] insertion the collected method insertion
+      # @raise [StandardError]
       # @return [String] if StandardError
       # @return [String] if StandardError
       def plugin_insertion_label(insertion)
@@ -487,8 +488,8 @@ module Docscribe
       # Plugin insertion line
       #
       # @private
-      # @raise [StandardError]
       # @param [Hash<Symbol, Object>] insertion the collected method insertion
+      # @raise [StandardError]
       # @return [Integer, nil] if StandardError
       # @return [nil] if StandardError
       def plugin_insertion_line(insertion)
@@ -505,7 +506,8 @@ module Docscribe
       #
       # @private
       # @param [Symbol] kind :method, :attr, or :plugin
-      # @param [Hash<Symbol, Object>, Insertion, AttrInsertion] ins
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion,
+      #   Docscribe::InlineRewriter::Collector::AttrInsertion] ins
       # @return [Integer]
       def plugin_insertion_pos(kind, ins)
         case kind
@@ -711,8 +713,8 @@ module Docscribe
       # Validate strategy
       #
       # @private
-      # @raise [ArgumentError]
       # @param [Symbol] strategy :safe or :aggressive rewrite mode
+      # @raise [ArgumentError]
       # @return [void]
       def validate_strategy!(strategy)
         return if %i[safe aggressive].include?(strategy)
@@ -820,7 +822,7 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
       # @param [Object] options keyword options
-      # @return [{ param_types: ::Hash[Object, Object], return_type_override: Object, override_tags: ::Array[Object] }]
+      # @return [Hash<Symbol, Hash<Object, Object>, Object, Array<Object>>]
       def build_effective_params(insertion, **options)
         external_sig = resolve_external_signature(insertion, options[:signature_provider])
         param_types = resolve_param_types(insertion, external_sig, options[:config])
@@ -1079,8 +1081,10 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @param [Parser::Source::Range] bol_range the beginning-of-line range for the attribute node
-      # @return [{ insertion: ::Docscribe::InlineRewriter::Collector::AttrInsertion, config: ::Docscribe::Config,
-      #   signature_provider: ::Docscribe::Types::ProviderChain | nil, bol_range: ::Parser::Source::Range }]
+      # @return [{ insertion: ::Docscribe::InlineRewriter::Collector::AttrInsertion,
+      #   config: ::Docscribe::Config,
+      #   signature_provider: ::Docscribe::Types::ProviderChain | nil,
+      #   bol_range: ::Parser::Source::Range }]
       def attr_insertion_params(insertion, config, signature_provider, bol_range)
         {
           insertion: insertion, config: config,
@@ -1230,11 +1234,11 @@ module Docscribe
       # Build attr merge additions
       #
       # @private
-      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
       # @param [Array<String>] existing_lines array of existing doc comment lines
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
+      # @raise [StandardError]
       # @return [String, nil] if StandardError
       # @return [nil] if StandardError
       def build_attr_merge_additions(ins:, existing_lines:, config:, signature_provider:)
@@ -1317,10 +1321,10 @@ module Docscribe
       # Build attr doc for node
       #
       # @private
-      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
+      # @raise [StandardError]
       # @return [String, nil] if StandardError
       # @return [nil] if StandardError
       def build_attr_doc_for_node(ins, config:, signature_provider:)
@@ -1437,11 +1441,11 @@ module Docscribe
       # Attribute type
       #
       # @private
-      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
       # @param [Symbol] name_sym the attribute name as a Symbol
       # @param [Docscribe::Config] config the active configuration
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider RBS signature provider
+      # @raise [StandardError]
       # @return [String] if StandardError
       # @return [Object] if StandardError
       def attribute_type(ins, name_sym, config, signature_provider:)
@@ -1457,10 +1461,10 @@ module Docscribe
       # Build signature provider
       #
       # @private
-      # @raise [StandardError]
       # @param [Docscribe::Config] config the active configuration
       # @param [String] code the source code being processed
       # @param [String] file the file name
+      # @raise [StandardError]
       # @return [Object, nil] if StandardError
       # @return [Object?] if StandardError
       def build_signature_provider(config, code, file)
@@ -1518,8 +1522,8 @@ module Docscribe
       # Method line for
       #
       # @private
-      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @raise [StandardError]
       # @return [Integer] if StandardError
       # @return [Object] if StandardError
       def method_line_for(insertion)

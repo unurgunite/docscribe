@@ -21,8 +21,8 @@ module Docscribe
       # is uncertain, the fallback type is returned.
       #
       # @note module_function: when included, also defines #infer_return_type (instance visibility: private)
-      # @raise [Parser::SyntaxError]
       # @param [String?] method_source full method definition source
+      # @raise [Parser::SyntaxError]
       # @return [String] if Parser::SyntaxError
       # @return [FALLBACK_TYPE] if Parser::SyntaxError
       def infer_return_type(method_source)

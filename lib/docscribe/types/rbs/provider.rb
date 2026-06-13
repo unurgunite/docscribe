@@ -35,11 +35,11 @@ module Docscribe
         #
         # Returns nil when the method cannot be resolved or when RBS lookup fails.
         #
-        # @raise [::RBS::BaseError]
-        # @raise [StandardError]
         # @param [String] container e.g. "MyModule::MyClass"
         # @param [Symbol] scope :instance or :class
         # @param [Symbol, String] name method name
+        # @raise [::RBS::BaseError]
+        # @raise [StandardError]
         # @return [Docscribe::Types::MethodSignature, nil] if StandardError
         # @return [nil] if ::RBS::BaseError
         # @return [nil] if StandardError
@@ -96,10 +96,10 @@ module Docscribe
         # user-only dirs on failure when collection dirs are present.
         #
         # @private
-        # @raise [::RBS::BaseError]
-        # @raise [StandardError]
         # @param [Array<String>] all_dirs combined sig and collection dirs
         # @param [Array<String>] collection_dirs RBS collection directories
+        # @raise [::RBS::BaseError]
+        # @raise [StandardError]
         # @return [RBS::Environment] if ::RBS::BaseError
         # @return [Object] if ::RBS::BaseError
         def try_with_fallback_build_env(all_dirs, collection_dirs)

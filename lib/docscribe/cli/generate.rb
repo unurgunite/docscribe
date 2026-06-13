@@ -53,8 +53,8 @@ module Docscribe
         # Parse options for the generate subcommand.
         #
         # @private
-        # @raise [OptionParser::InvalidOption]
         # @param [Array<String>] argv
+        # @raise [OptionParser::InvalidOption]
         # @return [(Hash<Symbol, Object>, OptionParser)]
         def parse_generate_options(argv)
           opts = { output: nil, stdout: false, help: false }
