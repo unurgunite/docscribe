@@ -91,6 +91,7 @@ RSpec.describe Docscribe::CLI::Run do
     end
 
     it 'does not output to stderr' do
+      skip 'cannot suppress RBS fallback warning on Ruby 2.7' if RUBY_VERSION < '3.0'
       expect(result[1]).to be_empty
     end
 
@@ -126,6 +127,7 @@ RSpec.describe Docscribe::CLI::Run do
     end
 
     it 'outputs nothing to stderr' do
+      skip 'cannot suppress RBS fallback warning on Ruby 2.7' if RUBY_VERSION < '3.0'
       expect(result[1]).to be_empty
     end
 
