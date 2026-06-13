@@ -139,5 +139,12 @@ module Docscribe
     def include_param_documentation?
       fetch_bool(%w[emit include_param_documentation], true)
     end
+
+    # Whether to preserve existing @param/@return descriptions in aggressive mode.
+    #
+    # @return [Boolean]
+    def keep_descriptions?
+      fetch_bool(%w[keep_descriptions], false)
+    end
   end
 end

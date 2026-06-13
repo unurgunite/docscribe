@@ -21,7 +21,8 @@ module Docscribe
         sig_dirs: [], #: Array[String]
         sorbet: false,
         rbi_dirs: [], #: Array[String]
-        rbs_collection: false
+        rbs_collection: false,
+        keep_descriptions: false
       }.freeze
 
       module_function
@@ -59,6 +60,7 @@ module Docscribe
         Output:
                 --verbose                  Print per-file actions
             -e, --explain                  Show detailed reasons for changes
+            -k, --keep-descriptions        Preserve existing @param/@return descriptions (aggressive mode only)
 
         Other:
             -v, --version                  Print version and exit
@@ -289,6 +291,7 @@ module Docscribe
       def define_output_options(opts, options)
         define_verbose_option(opts, options)
         define_explain_option(opts, options)
+        define_keep_descriptions_option(opts, options)
       end
 
       # @note module_function: when included, also defines # (instance visibility: private)
@@ -310,6 +313,13 @@ module Docscribe
       def define_explain_option(opts, options)
         opts.on('-e', '--explain', 'Show detailed reasons for changes') do
           options[:explain] = true
+        end
+      end
+
+      def define_keep_descriptions_option(opts, options)
+        opts.on('-k', '--keep-descriptions',
+                'Preserve existing @param/@return descriptions in aggressive mode') do
+          options[:keep_descriptions] = true
         end
       end
 

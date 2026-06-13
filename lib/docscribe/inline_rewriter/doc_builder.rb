@@ -182,7 +182,8 @@ module Docscribe
       def build_unsafe(insertion, config:, setup:, **opts)
         _, pl, rt = build_param_and_raise_info(setup, config, opts)
         lines = build_doc_lines(setup, config: config, insertion: insertion, params_lines: pl, raise_types: rt,
-                                       override_tags: opts[:override_tags])
+                                       override_tags: opts[:override_tags],
+                                       return_description: opts[:return_description])
         lines.map { |l| "#{l}\n" }.join
       end
 
@@ -197,7 +198,8 @@ module Docscribe
                                                                              config: config)
         pl = if config.emit_param_tags?
                build_params_lines(setup[:node], setup[:indent], external_sig: setup[:external_sig], config: config,
-                                                                param_types_override: pt)
+                                                                param_types_override: pt,
+                                                                param_descriptions: opts[:param_descriptions])
              end
         rt = config.emit_raise_tags? ? Docscribe::Infer.infer_raises_from_node(setup[:node]) : [] #: Array[String]
         [pt, pl, rt]
@@ -274,7 +276,7 @@ module Docscribe
       def parse_existing_doc_tags(lines)
         init = init_parse_info
         Array(lines).each_with_object(init) do |line, info|
-          extract_param_info(line, info[:param_names], info[:param_types])
+          extract_param_info(line, info[:param_names], info[:param_types], info[:param_descriptions])
           extract_return_info(line, info)
           extract_visibility_info(line, info)
           extract_raise_info(line, info[:raise_types])
@@ -288,8 +290,9 @@ module Docscribe
       # @return [Hash]
       def init_parse_info
         {
-          param_names: {}, param_types: {}, raise_types: {}, plugin_tags: {},
-          has_return: false, return_type: nil,
+          param_names: {}, param_types: {}, param_descriptions: {},
+          raise_types: {}, plugin_tags: {},
+          has_return: false, return_type: nil, return_description: nil,
           has_private: false, has_protected: false, has_module_function_note: false
         }
       end
@@ -448,7 +451,7 @@ module Docscribe
       # @param [Object] param_names hash tracking existing @param names
       # @param [Object] param_types hash tracking existing @param types
       # @return [Object]
-      def extract_param_info(line, param_names, param_types)
+      def extract_param_info(line, param_names, param_types, param_descriptions = nil)
         return unless (pname = extract_param_name_from_param_line(line))
 
         param_names[pname] = true
@@ -457,6 +460,10 @@ module Docscribe
         end
 
         param_types[pname] = type_match[1] || 'untyped'
+        return unless param_descriptions
+
+        desc = extract_param_description(line)
+        param_descriptions[pname] = desc if desc
       end
 
       # Extract return info from a doc line.
@@ -470,9 +477,10 @@ module Docscribe
         return unless line.match?(/^\s*#\s*@return\b/)
 
         info[:has_return] = true
-        return unless (m = line.match(/@return\s+\[([^\]]+)\]/))
-
-        info[:return_type] = m[1]
+        if (m = line.match(/@return\s+\[([^\]]+)\](?:\s+(.*))?/))
+          info[:return_type] = m[1]
+          info[:return_description] = m[2]&.strip
+        end
       end
 
       # Extract visibility info from a doc line.
@@ -861,11 +869,11 @@ module Docscribe
       # @param [Docscribe::Config] config
       # @param [nil] param_types_override parameter name -> type map override
       # @return [Array<String>, nil]
-      def build_params_lines(node, indent, external_sig:, config:, param_types_override: nil)
+      def build_params_lines(node, indent, external_sig:, config:, **kwargs)
         args = extract_args_from_node(node)
         return nil unless args
 
-        build_all_param_lines(args, indent, external_sig, param_types_override, config)
+        build_all_param_lines(args, indent, config, external_sig: external_sig, **kwargs)
       end
 
       # Build all param lines for args.
@@ -877,15 +885,15 @@ module Docscribe
       # @param [Object] param_types_override
       # @param [Docscribe::Config] config
       # @return [Array<String>, nil]
-      def build_all_param_lines(args, indent, external_sig, param_types_override, config)
-        fb = config.fallback_type
-        tk = config.treat_options_keyword_as_hash?
-        ts = config.param_tag_style
-        pd = config.include_param_documentation? ? config.param_documentation : ''
+      def build_all_param_lines(args, indent, config, external_sig: nil, **kwargs)
+        default_pd = config.include_param_documentation? ? config.param_documentation : ''
         params = (args.children || []).each_with_object([]) do |a, p|
-          p.concat(build_param_line(a, indent, external_sig, param_types_override,
-                                    fallback_type: fb, treat_options_keyword_as_hash: tk,
-                                    param_documentation: pd, param_tag_style: ts))
+          pd = (kwargs[:param_descriptions] || {})[param_name_from_arg(a)] || default_pd
+          p.concat(build_param_line(a, indent, external_sig, kwargs[:param_types_override],
+                                    fallback_type: config.fallback_type,
+                                    treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?,
+                                    param_documentation: pd,
+                                    param_tag_style: config.param_tag_style))
         end
         params.empty? ? nil : params
       end
@@ -902,7 +910,8 @@ module Docscribe
         i = setup[:indent]
         assemble_doc_lines(i, setup, config: config, insertion: kwargs[:insertion],
                                      params_lines: kwargs[:params_lines],
-                                     raise_types: kwargs[:raise_types], override_tags: kwargs[:override_tags])
+                                     raise_types: kwargs[:raise_types], override_tags: kwargs[:override_tags],
+                                     return_description: kwargs[:return_description])
       end
 
       # Assemble all doc lines into a single array.
@@ -962,7 +971,7 @@ module Docscribe
           defaults_and_visibility(indent, config, setup[:scope], setup[:visibility]),
           build_module_function_note_lines(indent, ctx[:insertion], setup[:name]),
           build_raise_tag_lines(indent, ctx[:raise_types], config),
-          build_return_line_if_needed(indent, setup, config),
+          build_return_line_if_needed(indent, setup, config, ctx),
           build_rescue_return_lines(indent, setup[:rescue_specs], config),
           build_plugin_tag_lines(ctx[:insertion], indent, setup[:normal_type], ctx[:override_tags])
         ]
@@ -990,10 +999,11 @@ module Docscribe
       # @param [Object] indent indentation string for doc comment lines
       # @param [Object] setup method setup hash with name, normal_type, scope, visibility
       # @return [Array<String>]
-      def build_return_line_if_needed(indent, setup, config)
-        emit_ret = config.emit_return_tag?(setup[:scope], setup[:visibility])
+      def build_return_line_if_needed(indent, setup, config, ctx)
         ret_line = build_return_tag_line(indent, setup[:normal_type], config, setup[:scope], setup[:visibility])
-        emit_ret && ret_line ? [ret_line] : []
+        rd = ctx[:return_description]
+        ret_line = "#{ret_line} #{rd}" if ret_line && rd && !rd.empty?
+        ret_line ? [ret_line] : []
       end
 
       # Extract args sub-node from a def or defs node.
@@ -1462,6 +1472,20 @@ module Docscribe
 
         key = pname.to_s
         override_map[key] || override_map[:"#{key}"] || override_map["#{key}:"] || override_map[:"#{key}:"]
+      end
+
+      def extract_param_description(line)
+        m = line.match(/@param\s+\[[^\]]+\]\s+\S+\s+(.+)/) || line.match(/@param\s+\S+\s+\[[^\]]+\]\s+(.+)/)
+        desc = m[1]&.strip if m
+        desc unless desc&.empty?
+      end
+
+      ARG_DEFAULT_NAMES = { restarg: 'args', kwrestarg: 'kwargs', blockarg: 'block' }.freeze
+
+      def param_name_from_arg(arg_node)
+        return nil if arg_node.type == :forward_arg
+
+        (arg_node.children.first || ARG_DEFAULT_NAMES[arg_node.type] || '').to_s
       end
 
       # Extract the parameter name from a `@param` doc line.

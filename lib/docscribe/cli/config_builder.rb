@@ -26,8 +26,9 @@ module Docscribe
 
         raw = Marshal.load(Marshal.dump(base.raw))
         apply_filter_overrides(raw, options)
-        apply_rbs_overrides(raw, options) if options[:rbs] || options[:rbs_collection] || options[:sig_dirs].any?
-        apply_sorbet_overrides(raw, options) if options[:sorbet] || options[:rbi_dirs].any?
+        apply_rbs_overrides(raw, options) if rbs_overrides?(options)
+        apply_sorbet_overrides(raw, options) if sorbet_overrides?(options)
+        apply_output_overrides(raw, options)
         Docscribe::Config.new(raw)
       end
 
@@ -40,7 +41,8 @@ module Docscribe
       def needs_override?(options)
         filter_overrides?(options) ||
           rbs_overrides?(options) ||
-          sorbet_overrides?(options)
+          sorbet_overrides?(options) ||
+          output_overrides?(options)
       end
 
       # Whether any method or file filter CLI options were provided.
@@ -55,27 +57,6 @@ module Docscribe
           options[:exclude_file].any?
       end
 
-      # Whether any RBS-related CLI options were provided.
-      #
-      # @note module_function: when included, also defines #rbs_overrides? (instance visibility: private)
-      # @param [Hash] options parsed CLI options
-      # @return [Boolean]
-      def rbs_overrides?(options)
-        options[:rbs] ||
-          options[:rbs_collection] ||
-          options[:sig_dirs].any?
-      end
-
-      # Whether any Sorbet-related CLI options were provided.
-      #
-      # @note module_function: when included, also defines #sorbet_overrides? (instance visibility: private)
-      # @param [Hash] options parsed CLI options
-      # @return [Boolean]
-      def sorbet_overrides?(options)
-        options[:sorbet] ||
-          options[:rbi_dirs].any?
-      end
-
       # Apply method and file filter overrides to the raw config.
       #
       # @note module_function: when included, also defines # (instance visibility: private)
@@ -86,6 +67,17 @@ module Docscribe
       def apply_filter_overrides(raw, options)
         apply_method_filters(raw, options)
         apply_file_filters(raw, options)
+      end
+
+      # Whether any RBS-related CLI options were provided.
+      #
+      # @note module_function: when included, also defines #rbs_overrides? (instance visibility: private)
+      # @param [Hash] options parsed CLI options
+      # @return [Boolean]
+      def rbs_overrides?(options)
+        options[:rbs] ||
+          options[:rbs_collection] ||
+          options[:sig_dirs].any?
       end
 
       # Merge CLI method include/exclude patterns into the raw config hash.
@@ -129,6 +121,16 @@ module Docscribe
         apply_rbs_collection(raw)
       end
 
+      # Whether any Sorbet-related CLI options were provided.
+      #
+      # @note module_function: when included, also defines #sorbet_overrides? (instance visibility: private)
+      # @param [Hash] options parsed CLI options
+      # @return [Boolean]
+      def sorbet_overrides?(options)
+        options[:sorbet] ||
+          options[:rbi_dirs].any?
+      end
+
       # Resolve and apply the RBS collection path into the raw config hash.
       #
       # @note module_function: when included, also defines #apply_rbs_collection (instance visibility: private)
@@ -158,6 +160,14 @@ module Docscribe
         return unless options[:rbi_dirs].any?
 
         raw['sorbet']['rbi_dirs'] = Array(raw['sorbet']['rbi_dirs']) + options[:rbi_dirs]
+      end
+
+      def output_overrides?(options)
+        options[:keep_descriptions]
+      end
+
+      def apply_output_overrides(raw, options)
+        raw['keep_descriptions'] = options[:keep_descriptions] if options.key?(:keep_descriptions)
       end
     end
   end

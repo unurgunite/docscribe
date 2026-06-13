@@ -399,9 +399,7 @@ module Docscribe
       # @return [Object]
       def conflict_location_str(pos, plugin_items)
         line = plugin_insertion_line(plugin_items.first[1])
-        loc = +"pos=#{pos}"
-        loc << " line=#{line}" if line
-        loc
+        "pos=#{pos}#{" line=#{line}" if line}"
       end
 
       # @private
@@ -639,11 +637,9 @@ module Docscribe
       def normalize_plugin_doc(doc, indent, config:, anchor_node:)
         doc = normalize_plugin_doc_indent(doc, indent)
         doc = trim_trailing_blank_lines(doc)
-
         if anchor_node && %i[def defs].include?(anchor_node.type) && config.include_default_message?
           doc = prepend_default_message_if_no_prose(doc, anchor_node, indent, config)
         end
-
         doc
       end
 
@@ -759,7 +755,8 @@ module Docscribe
         anchor_bol_range, = method_bol_ranges(options[:buffer], insertion)
         params = build_method_insertion_params(insertion, config, options[:signature_provider],
                                                options[:core_rbs_provider], options[:method_override])
-        doc = build_method_doc(insertion, **params)
+        extract_existing_descriptions!(options[:buffer], insertion, params, options[:strategy], config)
+        doc = DocBuilder.build(insertion, **params)
         dispatch_method_insertion_by_strategy!(anchor_bol_range, options, params, doc)
       end
 
@@ -790,6 +787,17 @@ module Docscribe
         name = SourceHelpers.node_name(insertion.node)
         config.process_method?(container: insertion.container, scope: insertion.scope,
                                visibility: insertion.visibility || :public, name: name)
+      end
+
+      # Extract descriptions from existing doc comments.
+      def extract_existing_descriptions!(buffer, insertion, params, strategy, config)
+        return unless strategy == :aggressive && config.keep_descriptions?
+
+        parsed = DocBuilder.parse_existing_doc_tags(
+          method_doc_comment_info(buffer, insertion)&.dig(:doc_lines) || []
+        )
+        params[:param_descriptions] = parsed[:param_descriptions] if parsed[:param_descriptions].any?
+        params[:return_description] = parsed[:return_description] if parsed[:return_description]
       end
 
       # Build all parameters needed for method insertion.
@@ -903,8 +911,8 @@ module Docscribe
       def apply_method_insertion_safe_with_info!(**options)
         i = options[:info]
         dp = filter_doc_params(options)
-        mr = build_missing_method_merge_result(options[:insertion], existing_lines: i[:doc_lines],
-                                                                    strategy: options[:strategy], **dp)
+        mr = DocBuilder.build_missing_merge_result(options[:insertion], existing_lines: i[:doc_lines],
+                                                                        strategy: options[:strategy], **dp)
         changed, n, ob = compute_doc_replacement(i, mr[:lines], strategy: options[:strategy], **dp)
         commit_safe_doc_outcome(options[:rewriter], options[:buffer], i, n,
                                 old_block: ob, merge_result: mr,
@@ -1012,7 +1020,9 @@ module Docscribe
         rewriter = options[:rewriter]
         insertion = options[:insertion]
         anchor_bol_range = options[:anchor_bol_range]
-        doc = build_method_doc(insertion, **filter_method_doc_params(options))
+        doc = DocBuilder.build(insertion, **options.reject do |k, _|
+          %i[rewriter buffer insertion anchor_bol_range changes file strategy].include?(k)
+        end)
         return if doc.nil? || doc.empty?
 
         rewriter.insert_before(anchor_bol_range, doc)
@@ -1024,9 +1034,6 @@ module Docscribe
       # @private
       # @param [Object] options the full options hash to filter
       # @return [Object]
-      def filter_method_doc_params(options)
-        options.reject { |k, _| %i[rewriter buffer insertion anchor_bol_range changes file strategy].include?(k) }
-      end
 
       # Append a structured change record.
       #
@@ -1455,27 +1462,6 @@ module Docscribe
         end
       rescue StandardError
         config.respond_to?(:rbs_provider) ? config.rbs_provider : nil
-      end
-
-      # Delegate to DocBuilder.build for generating a complete doc block.
-      #
-      # @private
-      # @param [Collector::Insertion] insertion the collected method insertion
-      # @param [Hash] options kwargs for DocBuilder.build (param_types, return_type_override, override_tags, config)
-      # @return [String, nil] generated doc block or nil
-      def build_method_doc(insertion, **options)
-        DocBuilder.build(insertion, **options)
-      end
-
-      # Delegate to DocBuilder.build_missing_merge_result for generating missing doc lines only.
-      #
-      # @private
-      # @param [Collector::Insertion] insertion the collected method insertion
-      # @param [Array<String>] existing_lines existing doc-like lines
-      # @param [Hash] options keyword arguments forwarded to DocBuilder.build_missing_merge_result
-      # @return [Hash] result with `:lines` and `:reasons` keys
-      def build_missing_method_merge_result(insertion, existing_lines:, **options)
-        DocBuilder.build_missing_merge_result(insertion, existing_lines: existing_lines, **options)
       end
 
       # Get doc comment block info (preceding comments) for a method insertion.

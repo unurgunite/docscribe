@@ -97,6 +97,9 @@ module Docscribe
           rbi_dirs: ["sorbet/rbi", "rbi"]
           collapse_generics: false
 
+        # Preserve existing @param/@return descriptions in aggressive mode
+        keep_descriptions: false
+
         plugins:
           # Load custom plugins
           # Example:

@@ -70,6 +70,7 @@ module Docscribe
         'rbi_dirs' => ['sorbet/rbi', 'rbi'],
         'collapse_generics' => false
       },
+      'keep_descriptions' => false,
       'plugins' => {
         'require' => [] #: Array[String]
       }
