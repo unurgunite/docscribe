@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'tmpdir'
+require 'fileutils'
 
 RSpec.describe Docscribe::InlineRewriter do
   describe 'aggressive mode (default)' do
@@ -139,6 +140,194 @@ RSpec.describe Docscribe::InlineRewriter do
     it 'preserves @return description and generates @param', :aggregate_failures do
       expect(out).to include('# @return [String] the formatted output')
       expect(out).to include(param_tag('name', 'Object'))
+    end
+  end
+
+  describe 'aggressive mode keep_descriptions: true — multi-line descriptions' do
+    subject(:out) { inline(code, strategy: :aggressive, config: config) }
+
+    let(:config) { Docscribe::Config.new('keep_descriptions' => true) }
+
+    let(:code) do
+      <<~RUBY
+        class Demo
+          # Process the input data
+          #
+          # This method handles normalization,
+          # validation, and transformation.
+          #
+          # @param [String] name The users full name.
+          #   Should not be empty.
+          # @param [Integer] age The users age.
+          # @return [String] The greeting message.
+          #   May be personalized.
+          def greet(name, age)
+            "Hello, \#{name}"
+          end
+        end
+      RUBY
+    end
+
+    it 'preserves multi-line @return description', :aggregate_failures do
+      expect(out).to include('# @return [String] The greeting message.')
+      expect(out).to include('#   May be personalized.')
+    end
+
+    it 'preserves multi-line @param description', :aggregate_failures do
+      expect(out).to include('@param [Object] name The users full name.')
+      expect(out).to include('#   Should not be empty.')
+    end
+
+    it 'preserves general multi-line description before tags' do
+      expect(out).to include('# This method handles normalization,')
+      expect(out).to include('# validation, and transformation.')
+    end
+
+    it 'does not accumulate on repeated runs', :aggregate_failures do
+      twice = described_class.insert_comments(
+        out, strategy: :aggressive, config: config
+      )
+      expect(twice).to eq(out)
+    end
+  end
+
+  describe 'aggressive mode keep_descriptions: true — with RBS Tuple types' do
+    subject(:out) do
+      Dir.mktmpdir do |dir|
+        sig_dir = File.join(dir, 'sig')
+        FileUtils.mkdir_p(sig_dir)
+        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
+
+        inline(
+          code, strategy: :aggressive,
+                config: Docscribe::Config.new(
+                  'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] },
+                  'keep_descriptions' => true
+                )
+        )
+      end
+    end
+
+    before { skip_unless_rbs_available! }
+
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def greet: (::String name, ::Integer age) -> [::String, ::Integer]
+        end
+      RBS
+    end
+
+    let(:code) do
+      <<~RUBY
+        class Demo
+          # Say hello
+          #
+          # @param [String] name The users name.
+          # @return [Array] A tuple with greeting and count.
+          def greet(name, age)
+            ["Hello, \#{name}", age]
+          end
+        end
+      RUBY
+    end
+
+    it 'formats Tuple type without brackets', :aggregate_failures do
+      expect(out).to include('@return [(String, Integer)]')
+      expect(out).not_to include('@return [[(String, Integer)]')
+    end
+
+    it 'preserves @param description' do
+      expect(out).to include('The users name.')
+    end
+
+    it 'preserves general description' do
+      expect(out).to include('# Say hello')
+    end
+
+    it 'does not accumulate brackets on repeated runs' do
+      Dir.mktmpdir do |dir|
+        sig_dir = File.join(dir, 'sig')
+        FileUtils.mkdir_p(sig_dir)
+        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
+
+        twice = described_class.insert_comments(
+          out, strategy: :aggressive,
+               config: Docscribe::Config.new(
+                 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] },
+                 'keep_descriptions' => true
+               )
+        )
+        expect(twice).to eq(out)
+      end
+    end
+  end
+
+  describe 'aggressive mode keep_descriptions: true — with nested Tuple types' do
+    subject(:out) do
+      Dir.mktmpdir do |dir|
+        sig_dir = File.join(dir, 'sig')
+        FileUtils.mkdir_p(sig_dir)
+        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
+
+        inline(
+          code, strategy: :aggressive,
+                config: Docscribe::Config.new(
+                  'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] },
+                  'keep_descriptions' => true
+                )
+        )
+      end
+    end
+
+    before { skip_unless_rbs_available! }
+
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def stats: (::String name) -> [::Integer, ::Array[::String]]
+        end
+      RBS
+    end
+
+    let(:code) do
+      <<~RUBY
+        class Demo
+          # Collect stats
+          #
+          # @param [String] name The name.
+          # @return [Array] stats
+          def stats(name)
+            [42, ["a", "b"]]
+          end
+        end
+      RUBY
+    end
+
+    it 'formats nested Tuple with generics correctly', :aggregate_failures do
+      expect(out).to include('@return [(Integer, Array<String>)]')
+      expect(out).not_to include('[[')
+    end
+
+    it 'preserves @return description' do
+      expect(out).to include('stats')
+    end
+
+    it 'is idempotent across runs' do
+      Dir.mktmpdir do |dir|
+        sig_dir = File.join(dir, 'sig')
+        FileUtils.mkdir_p(sig_dir)
+        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
+
+        twice = described_class.insert_comments(
+          out, strategy: :aggressive,
+               config: Docscribe::Config.new(
+                 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] },
+                 'keep_descriptions' => true
+               )
+        )
+        expect(twice).to eq(out)
+      end
     end
   end
 

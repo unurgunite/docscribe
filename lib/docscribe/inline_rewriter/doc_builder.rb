@@ -283,13 +283,17 @@ module Docscribe
       # @param [Object] tags_started whether @tags have been seen
       # @return [Object] updated tags_started
       def parse_existing_tag_line(line, info, tags_started)
-        extract_param_info(line, info[:param_names], info[:param_types], info[:param_descriptions])
-        extract_return_info(line, info)
-        extract_visibility_info(line, info)
-        extract_raise_info(line, info[:raise_types])
-        extract_plugin_info(line, info[:plugin_tags])
+        extract_all_comment_tags(line, info)
         content = line.sub(/^\s*# ?/, '').rstrip
-        (tags_started ||= content.start_with?('@')) || (info[:description] << content)
+
+        if content.start_with?('@')
+          tags_started = true
+          track_last_tag(content, info)
+        elsif tags_started && info[:last_tag]
+          append_tag_continuation(content, info)
+        elsif content
+          info[:description] << content
+        end
         tags_started
       end
 
@@ -303,7 +307,8 @@ module Docscribe
           raise_types: {}, plugin_tags: {},
           has_return: false, return_type: nil, return_description: nil,
           has_private: false, has_protected: false, has_module_function_note: false,
-          description: []
+          description: [],
+          last_tag: nil, last_param: nil
         }
       end
 
@@ -453,6 +458,14 @@ module Docscribe
 
       # Extract param info
       #
+      def extract_all_comment_tags(line, info)
+        extract_param_info(line, info[:param_names], info[:param_types], info[:param_descriptions])
+        extract_return_info(line, info)
+        extract_visibility_info(line, info)
+        extract_raise_info(line, info[:raise_types])
+        extract_plugin_info(line, info[:plugin_tags])
+      end
+
       # @note module_function: when included, also defines #extract_param_info (instance visibility: private)
       # @param [String] line a single doc comment line to parse
       # @param [Hash<String, Object>] param_names hash tracking existing @param names
@@ -504,6 +517,42 @@ module Docscribe
         return_type = rest[1...type_end]
         desc = rest[(type_end + 1)..]&.strip
         [return_type, desc.empty? ? nil : desc]
+      end
+
+      def track_last_tag(content, info)
+        tag = content.match(/@(\w+)/)&.[](1)&.to_sym
+        info[:last_tag] = tag
+        return unless tag == :param
+
+        pname = extract_param_name_from_param_line(content)
+        info[:last_param] = pname if pname
+      end
+
+      def append_tag_continuation(content, info)
+        text = content.strip
+        return if text.empty?
+
+        append_to_return_description(text, info) if info[:last_tag] == :return
+        append_to_param_description(text, info) if info[:last_tag] == :param
+      end
+
+      def append_to_return_description(text, info)
+        if info[:return_description]
+          info[:return_description] += "\n#{text}"
+        else
+          info[:return_description] = text
+        end
+      end
+
+      def append_to_param_description(text, info)
+        pname = info[:last_param]
+        return unless pname
+
+        if info[:param_descriptions][pname]
+          info[:param_descriptions][pname] += "\n#{text}"
+        else
+          info[:param_descriptions][pname] = text
+        end
       end
 
       # Extract visibility info
@@ -1036,7 +1085,11 @@ module Docscribe
       def build_return_line_if_needed(indent, setup, config, ctx)
         ret_line = build_return_tag_line(indent, setup[:normal_type], config, setup[:scope], setup[:visibility])
         rd = ctx[:return_description]
-        ret_line = "#{ret_line} #{rd}" if ret_line && rd && !rd.empty?
+        if ret_line && rd && !rd.empty?
+          lines = rd.split("\n")
+          ret_line = "#{ret_line} #{lines.first}"
+          lines[1..]&.each { |l| ret_line << "\n#{indent}#   #{l}" }
+        end
         ret_line ? [ret_line] : []
       end
 
@@ -1424,7 +1477,14 @@ module Docscribe
                  "#{indent}# @param [#{type}] #{name}"
                end
 
-        doc.empty? ? line : "#{line} #{doc}"
+        if doc.empty?
+          line
+        else
+          parts = doc.split("\n")
+          result = "#{line} #{parts.first}"
+          parts[1..]&.each { |l| result << "\n#{indent}#   #{l}" }
+          result
+        end
       end
 
       # Append option lines
