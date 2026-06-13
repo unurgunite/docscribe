@@ -270,9 +270,67 @@ module Docscribe
       def parse_existing_doc_tags(lines)
         init = init_parse_info
         tags_started = false
-        Array(lines).each_with_object(init) do |line, info|
+        joined_lines = join_multiline_tags(Array(lines))
+        joined_lines.each_with_object(init) do |line, info|
           tags_started = parse_existing_tag_line(line, info, tags_started)
         end
+      end
+
+      # Join @param/@return/@raise tag lines where the type bracket spans multiple lines.
+      #
+      # @note module_function: when included, also defines #join_multiline_tags (instance visibility: private)
+      # @param [Object] lines doc comment lines
+      # @return [Object]
+      def join_multiline_tags(lines)
+        result = []
+        i = 0
+        while i < lines.length
+          line = lines[i]
+          content = line.sub(/^\s*#\s*/, '')
+          if content.match?(/^@(param|return|raise)\s+\[/) && unbalanced_bracket?(content)
+            buffer, consumed = join_tag_continuations(lines, i)
+            result << "# #{buffer}"
+            i += consumed
+          else
+            result << line
+            i += 1
+          end
+        end
+        result
+      end
+
+      # Join continuation lines for a multi-line tag type bracket.
+      #
+      # @note module_function: when included, also defines #join_tag_continuations (instance visibility: private)
+      # @param [Object] lines all doc comment lines
+      # @param [Object] start index of the @param/@return/@raise line
+      # @return [Array] joined content and number of lines consumed
+      def join_tag_continuations(lines, start)
+        buffer = +lines[start].sub(/^\s*#\s*/, '').dup
+        i = start + 1
+        while i < lines.length
+          continuation = lines[i].sub(/^\s*#[ \t]/, '')
+          break unless continuation.start_with?(' ')
+
+          buffer << continuation.rstrip
+          i += 1
+          break unless unbalanced_bracket?(buffer)
+        end
+        [buffer, i - start]
+      end
+
+      # Check if bracket depth is positive (an opening `[` is unclosed).
+      #
+      # @note module_function: when included, also defines #unbalanced_bracket? (instance visibility: private)
+      # @param [Object] str
+      # @return [Boolean]
+      def unbalanced_bracket?(str)
+        depth = 0
+        str.each_char do |c|
+          depth += 1 if c == '['
+          depth -= 1 if c == ']'
+        end
+        depth.positive?
       end
 
       # Parse a single doc comment line for tag info.
@@ -479,11 +537,10 @@ module Docscribe
         return unless (pname = extract_param_name_from_param_line(line))
 
         param_names[pname] = true
-        unless (type_match = line.match(/@param\s+\[([^\]]+)\]\s+\S+/) || line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
-          return
-        end
+        ptype = extract_param_type_from_param_line(line)
+        return unless ptype
 
-        param_types[pname] = type_match[1] || 'untyped'
+        param_types[pname] = ptype
         return unless param_descriptions
 
         desc = extract_param_description(line)
@@ -606,22 +663,6 @@ module Docscribe
         return unless (m = line.match(/^\s*#\s*@(\w+)\b/))
 
         plugin_tags[m[1] || ''] = true
-      end
-
-      # @note module_function: when included, also defines #find_matching_close_bracket (instance visibility: private)
-      # @param [String] str
-      # @return [Integer, nil]
-      def find_matching_close_bracket(str)
-        depth = 0
-        str.each_char.with_index do |c, i|
-          case c
-          when '[' then depth += 1
-          when ']'
-            depth -= 1
-            return i if depth.zero?
-          end
-        end
-        nil
       end
 
       # Extract raise types from line
@@ -1607,10 +1648,35 @@ module Docscribe
       # @param [String] line a `@param` tag line
       # @return [String, nil]
       def extract_param_description(line)
-        m = line.match(/@param\s+\[[^\]]+\]\s+\S+\s+(.+)/) || line.match(/@param\s+\S+\s+\[[^\]]+\]\s+(.+)/)
-        desc = m[1]&.strip if m
-        desc unless desc&.empty?
+        after = param_rest_after_type(line)
+        return nil unless after
+
+        parts = after.split(/\s+/, 2)
+        parts[1] if parts.length > 1 && !parts[1].empty?
       end
+
+      # Extract everything after the type bracket in a @param line.
+      #
+      # @note module_function: when included, also defines #param_rest_after_type (instance visibility: private)
+      # @param [Object] line a @param doc line
+      # @return [nil] the text after the closing `]`, or nil
+      #   rubocop:disable Metrics/AbcSize
+      def param_rest_after_type(line)
+        content = line.sub(/^\s*#\s*/, '')
+        if (m = content.match(/@param\s+\[/))
+          rest = content[(m.end(0) - 1)..]
+          type_end = find_matching_close_bracket(rest)
+          return rest[(type_end + 1)..]&.strip if type_end
+        end
+        if (m = content.match(/@param\s+(\S+)\s+\[/))
+          idx = content.index('[', m.end(0))
+          rest = content[idx..]
+          type_end = find_matching_close_bracket(rest)
+          return rest[(type_end + 1)..]&.strip if type_end
+        end
+        nil
+      end
+      # rubocop:enable Metrics/AbcSize
 
       ARG_DEFAULT_NAMES = { restarg: 'args', kwrestarg: 'kwargs', blockarg: 'block' }.freeze
 
@@ -1631,8 +1697,20 @@ module Docscribe
       # @param [String] line a `@param` doc line
       # @return [String, nil] the parameter name or nil
       def extract_param_name_from_param_line(line)
-        return Regexp.last_match(1) if line =~ /@param\b\s+\[[^\]]+\]\s+(\S+)/
-        return Regexp.last_match(1) if line =~ /@param\b\s+(\S+)\s+\[[^\]]+\]/
+        content = line.sub(/^\s*#\s*/, '')
+        # @param [Type] name
+        if (m = content.match(/@param\s+\[/))
+          rest = content[(m.end(0) - 1)..]
+          type_end = find_matching_close_bracket(rest)
+          if type_end
+            after = rest[(type_end + 1)..]&.strip
+            return after.split(/\s+/).first if after
+          end
+        end
+        # @param name [Type]
+        if (m = content.match(/@param\s+(\S+)\s+\[/))
+          return m[1]
+        end
 
         nil
       end
@@ -1643,9 +1721,36 @@ module Docscribe
       # @param [String] line a `@param` tag line
       # @return [String, nil]
       def extract_param_type_from_param_line(line)
-        if (m = line.match(/@param\s+\[([^\]]+)\]\s+\S+/) || line.match(/@param\s+\S+\s+\[([^\]]+)\]/))
-          m[1]
+        content = line.sub(/^\s*#\s*/, '')
+        # @param [Type] name
+        if (m = content.match(/@param\s+\[/))
+          rest = content[(m.end(0) - 1)..]
+          type_end = find_matching_close_bracket(rest)
+          return rest[1...type_end] if type_end
         end
+        # @param name [Type]
+        if (m = content.match(/@param\s+\S+\s+\[/))
+          rest = content[(m.end(0) - 1)..]
+          type_end = find_matching_close_bracket(rest)
+          return rest[1...type_end] if type_end
+        end
+        nil
+      end
+
+      # @note module_function: when included, also defines #find_matching_close_bracket (instance visibility: private)
+      # @param [String] str
+      # @return [Integer, nil]
+      def find_matching_close_bracket(str)
+        depth = 0
+        str.each_char.with_index do |c, i|
+          case c
+          when '[' then depth += 1
+          when ']'
+            depth -= 1
+            return i if depth.zero?
+          end
+        end
+        nil
       end
 
       # Collect missing raises

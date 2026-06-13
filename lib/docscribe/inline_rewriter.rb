@@ -161,10 +161,8 @@ module Docscribe
       # @param [String] code the Ruby source code string to parse and rewrite
       # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
       # @raise [Docscribe::ParseError]
-      # @return [{ config: ::Docscribe::Config, file: ::String,
-      #   buffer: ::Parser::Source::Buffer, ast: ::Parser::AST::Node,
-      #   signature_provider: ::Docscribe::Types::ProviderChain | nil,
-      #   core_rbs_provider: Object | nil }]
+      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node,
+      #   Docscribe::Types::ProviderChain, nil, Object, nil>]
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
         file = (options[:file] || '(inline)').to_s

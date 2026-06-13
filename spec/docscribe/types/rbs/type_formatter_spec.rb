@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Docscribe::Types::RBS::TypeFormatter do
+RSpec.describe 'Docscribe::Types::RBS::TypeFormatter' do
   before do
     skip_unless_rbs_available!
     require 'docscribe/types/rbs/type_formatter'
@@ -8,7 +8,7 @@ RSpec.describe Docscribe::Types::RBS::TypeFormatter do
 
   describe '.to_yard' do
     def yard(type)
-      described_class.to_yard(type)
+      Docscribe::Types::RBS::TypeFormatter.to_yard(type)
     end
 
     let(:integer_type) { RBS::Types::ClassInstance.new(name: type_name('::Integer'), args: [], location: nil) }
