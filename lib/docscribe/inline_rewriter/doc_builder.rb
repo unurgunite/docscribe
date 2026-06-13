@@ -188,7 +188,6 @@ module Docscribe
       # @param [Hash<Symbol, Object>] setup method setup hash with name, normal_type, scope, visibility
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] opts additional options including
-      #   infer_default, fallback_type, treat_options_keyword_as_hash
       # @return [Array<Object>]
       def build_param_and_raise_info(setup, config, opts)
         pt = opts[:param_types] || build_param_types_from_node(setup[:node], external_sig: setup[:external_sig],
@@ -210,7 +209,6 @@ module Docscribe
       # @param [String] name the method name string
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] opts additional options including
-      #   infer_default, fallback_type, treat_options_keyword_as_hash
       # @return [Hash<Symbol, Object>]
       def resolve_doc_setup!(setup, node, name, config, opts)
         external_sig = resolve_external_sig(setup[:container], setup[:scope], name, opts[:signature_provider])
@@ -280,10 +278,10 @@ module Docscribe
       # Parse a single doc comment line for tag info.
       #
       # @note module_function: when included, also defines #parse_existing_tag_line (instance visibility: private)
-      # @param [String] line the doc comment line
-      # @param [Hash<Symbol, Object>] info mutable parse info accumulator
-      # @param [Boolean] tags_started whether @tags have been seen
-      # @return [Boolean] updated tags_started
+      # @param [Object] line the doc comment line
+      # @param [Object] info mutable parse info accumulator
+      # @param [Object] tags_started whether @tags have been seen
+      # @return [Object] updated tags_started
       def parse_existing_tag_line(line, info, tags_started)
         extract_param_info(line, info[:param_names], info[:param_types], info[:param_descriptions])
         extract_return_info(line, info)
@@ -486,10 +484,26 @@ module Docscribe
         return unless line.match?(/^\s*#\s*@return\b/)
 
         info[:has_return] = true
-        if (m = line.match(/@return\s+\[([^\]]+)\](?:\s+(.*))?/))
-          info[:return_type] = m[1]
-          info[:return_description] = m[2]&.strip
-        end
+        content = line.sub(/^\s*#\s*/, '')
+        return unless (m = content.match(/@return\s+/))
+
+        return_type, return_desc = parse_return_rest(m.post_match)
+        info[:return_type] = return_type if return_type
+        info[:return_description] = return_desc if return_desc
+      end
+
+      # @note module_function: when included, also defines #parse_return_rest (instance visibility: private)
+      # @param [Object] rest
+      # @return [Array]
+      def parse_return_rest(rest)
+        return unless rest[0] == '['
+
+        type_end = find_matching_close_bracket(rest)
+        return unless type_end
+
+        return_type = rest[1...type_end]
+        desc = rest[(type_end + 1)..]&.strip
+        [return_type, desc.empty? ? nil : desc]
       end
 
       # Extract visibility info
@@ -524,6 +538,22 @@ module Docscribe
         return unless (m = line.match(/^\s*#\s*@(\w+)\b/))
 
         plugin_tags[m[1] || ''] = true
+      end
+
+      # @note module_function: when included, also defines #find_matching_close_bracket (instance visibility: private)
+      # @param [Object] str
+      # @return [nil]
+      def find_matching_close_bracket(str)
+        depth = 0
+        str.each_char.with_index do |c, i|
+          case c
+          when '[' then depth += 1
+          when ']'
+            depth -= 1
+            return i if depth.zero?
+          end
+        end
+        nil
       end
 
       # Extract raise types from line
@@ -651,8 +681,7 @@ module Docscribe
 
       # Merge module function note lines
       #
-      # @note module_function: when included, also defines
-      #   #merge_module_function_note_lines (instance visibility: private)
+      # @note module_function: when included, also defines #merge_module_function_note_lines (instance visibility: private)
       # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
       # @param [String] name the method name string
@@ -785,8 +814,7 @@ module Docscribe
 
       # Collect missing module function note
       #
-      # @note module_function: when included, also defines
-      #   #collect_missing_module_function_note! (instance visibility: private)
+      # @note module_function: when included, also defines #collect_missing_module_function_note! (instance visibility: private)
       # @param [Array<String>] lines array of output doc lines being accumulated
       # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
       # @param [Object] ctx merged context hash with info and indent
@@ -1098,8 +1126,7 @@ module Docscribe
 
       # Build module function note lines
       #
-      # @note module_function: when included, also defines
-      #   #build_module_function_note_lines (instance visibility: private)
+      # @note module_function: when included, also defines #build_module_function_note_lines (instance visibility: private)
       # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
       # @param [String] name the method name string
@@ -1220,7 +1247,6 @@ module Docscribe
       # @param [Object, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Hash<Symbol, Object>] opts additional options including
-      #   infer_default, fallback_type, treat_options_keyword_as_hash
       # @return [String]
       def optarg_type(pname, default, external_sig, param_types_override, opts)
         default_src = source_from_node(default)
@@ -1511,8 +1537,7 @@ module Docscribe
 
       # Extract param name from param line
       #
-      # @note module_function: when included, also defines
-      #   #extract_param_name_from_param_line (instance visibility: private)
+      # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
       # @param [String] line a `@param` doc line
       # @return [String, nil] the parameter name or nil
       def extract_param_name_from_param_line(line)
@@ -1524,8 +1549,7 @@ module Docscribe
 
       # Extract param type from param line
       #
-      # @note module_function: when included, also defines
-      #   #extract_param_type_from_param_line (instance visibility: private)
+      # @note module_function: when included, also defines #extract_param_type_from_param_line (instance visibility: private)
       # @param [String] line a `@param` tag line
       # @return [String, nil]
       def extract_param_type_from_param_line(line)
@@ -1607,8 +1631,7 @@ module Docscribe
 
       # Collect missing rescue returns
       #
-      # @note module_function: when included, also defines
-      #   #collect_missing_rescue_returns! (instance visibility: private)
+      # @note module_function: when included, also defines #collect_missing_rescue_returns! (instance visibility: private)
       # @param [Array<String>] lines array of output doc lines being accumulated
       # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
       # @param [Object] ctx merged context hash with info and indent

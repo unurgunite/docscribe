@@ -69,11 +69,11 @@ module Docscribe
           @to_yard_formatters ||= formatter_pairs.to_h.freeze
         end
 
-        # rubocop:disable Metrics/AbcSize
+        # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         # Hash of RBS type classes and their YARD formatter lambdas.
         #
         # @note module_function: when included, also defines #formatter_pairs (instance visibility: private)
-        # @return [Hash<Class, Proc>]
+        # @return [Object]
         def formatter_pairs
           @formatter_pairs ||= {
             ::RBS::Types::Bases::Any => ->(_, **) { format_any },
@@ -83,10 +83,11 @@ module Docscribe
             ::RBS::Types::Optional => ->(t, cg:) { format_optional(t, collapse_generics: cg) },
             ::RBS::Types::Union => ->(t, cg:) { format_union(t, collapse_generics: cg) },
             ::RBS::Types::Literal => ->(t, **) { format_literal(t.literal) },
-            ::RBS::Types::Proc => ->(_, **) { format_proc }
+            ::RBS::Types::Proc => ->(_, **) { format_proc },
+            ::RBS::Types::Tuple => ->(t, cg:) { format_tuple(t, collapse_generics: cg) }
           }.freeze
         end
-        # rubocop:enable Metrics/AbcSize
+        # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
         # Format RBS `any` type as the YARD-equivalent `Object`.
         #
@@ -153,6 +154,16 @@ module Docscribe
         # @return [String]
         def format_proc
           'Proc'
+        end
+
+        # Format an RBS Tuple type as a parenthesized list of YARD types.
+        #
+        # @note module_function: when included, also defines #format_tuple (instance visibility: private)
+        # @param [Object] type the tuple type to format
+        # @param [Object] collapse_generics whether to omit generic type arguments
+        # @return [String]
+        def format_tuple(type, collapse_generics:)
+          "(#{type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }.join(', ')})"
         end
 
         # Format an RBS Union type as a comma-separated list of YARD types.

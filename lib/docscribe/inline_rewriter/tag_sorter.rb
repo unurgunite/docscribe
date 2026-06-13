@@ -136,7 +136,7 @@ module Docscribe
       # @note module_function: when included, also defines #consume_entry (instance visibility: private)
       # @param [Array<String>] lines comment block lines
       # @param [Integer] start_idx original index of the first line
-      # @return [[ Object, ::Integer ]]
+      # @return [(Object, Integer)]
       def consume_entry(lines, start_idx)
         first = lines[start_idx]
         tag = extract_tag_name(first)

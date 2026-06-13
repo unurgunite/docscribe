@@ -541,7 +541,7 @@ module Docscribe
       #
       # @private
       # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
-      # @return [[ ::Symbol, ::Symbol ]]
+      # @return [(Symbol, Symbol)]
       def attr_scope_visibility(ctx)
         if ctx.inside_sclass
           [:class, ctx.default_class_vis]
@@ -946,7 +946,7 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
       # @param [Symbol] name the method name
-      # @return [[ ::Symbol, ::Symbol ]]
+      # @return [(Symbol, Symbol)]
       def def_scope_visibility(ctx, name)
         if ctx.inside_sclass
           [:class, ctx.explicit_class[name] || ctx.default_class_vis]

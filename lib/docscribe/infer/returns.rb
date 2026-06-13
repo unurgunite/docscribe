@@ -196,7 +196,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #assignment_name_and_value (instance visibility: private)
       # @param [Parser::AST::Node] node an assignment AST node (:lvasgn, :gvasgn, :ivasgn, :casgn)
-      # @return [[ ::String | nil, ::Parser::AST::Node | nil ]]
+      # @return [(String, nil, Parser::AST::Node, nil)]
       def assignment_name_and_value(node)
         case node.type
         when :lvasgn, :gvasgn, :ivasgn

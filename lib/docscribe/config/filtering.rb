@@ -22,7 +22,7 @@ module Docscribe
 
     # Load normalized file include/exclude patterns from config.
     #
-    # @return [[ ::Array[::String], ::Array[::String] ]]
+    # @return [(Array<String>, Array<String>)]
     def load_file_patterns
       files = raw.dig('filter', 'files') || {}
       [normalize_file_patterns(files['include']), normalize_file_patterns(files['exclude'])]

@@ -55,7 +55,7 @@ module Docscribe
         # @private
         # @raise [OptionParser::InvalidOption]
         # @param [Array<String>] argv
-        # @return [[ ::Hash[::Symbol, Object], ::OptionParser ]]
+        # @return [(Hash<Symbol, Object>, OptionParser)]
         def parse_generate_options(argv)
           opts = { output: nil, stdout: false, help: false }
           parser = build_option_parser(opts)
@@ -74,7 +74,7 @@ module Docscribe
         #
         # @private
         # @param [Array<String>] argv
-        # @return [[ ::String?, ::String? ]]
+        # @return [(String?, String?)]
         def extract_generate_args(argv)
           [argv.shift, argv.shift]
         end

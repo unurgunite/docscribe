@@ -218,7 +218,7 @@ module Docscribe
       # @note module_function: when included, also defines #consume_tag_run (instance visibility: private)
       # @param [Array<Object>] entries parsed entries
       # @param [Integer] idx start index
-      # @return [[ ::Array[Object], ::Integer ]]
+      # @return [(Array<Object>, Integer)]
       def consume_tag_run(entries, idx)
         run = [] #: Array[untyped]
         while idx < entries.length && entries[idx].kind == :tag
@@ -354,7 +354,7 @@ module Docscribe
       # @param [Integer] start_idx index to start scanning from
       # @param [Integer] index stable original index
       # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @return [[ Object, ::Integer ]]
+      # @return [(Object, Integer)]
       def consume_tag_entry(lines, start_idx, index:, sortable_tags:)
         first = lines[start_idx]
         tag = extract_tag(first)
