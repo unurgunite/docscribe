@@ -22,7 +22,8 @@ module Docscribe
         sorbet: false,
         rbi_dirs: [], #: Array[String]
         rbs_collection: false,
-        keep_descriptions: false
+        keep_descriptions: false,
+        no_boilerplate: false
       }.freeze
 
       module_function
@@ -304,10 +305,15 @@ module Docscribe
       # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
+      # @note module_function: when included, also defines #define_output_options (instance visibility: private)
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
+      # @return [void]
       def define_output_options(opts, options)
         define_verbose_option(opts, options)
         define_explain_option(opts, options)
         define_keep_descriptions_option(opts, options)
+        define_no_boilerplate_option(opts, options)
       end
 
       # Define verbose option
@@ -341,10 +347,27 @@ module Docscribe
       # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
+      # @note module_function: when included, also defines
+      #   #define_keep_descriptions_option (instance visibility: private)
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
+      # @return [void]
       def define_keep_descriptions_option(opts, options)
         opts.on('-k', '--keep-descriptions',
                 'Preserve existing @param/@return descriptions in aggressive mode') do
           options[:keep_descriptions] = true
+        end
+      end
+
+      # @note module_function: when included, also defines
+      #   #define_no_boilerplate_option (instance visibility: private)
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
+      # @return [void]
+      def define_no_boilerplate_option(opts, options)
+        opts.on('-B', '--no-boilerplate',
+                "Don't insert template text when generating documentation") do
+          options[:no_boilerplate] = true
         end
       end
 

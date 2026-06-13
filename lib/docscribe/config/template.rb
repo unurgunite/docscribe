@@ -20,6 +20,7 @@ module Docscribe
         #   bundle exec docscribe lib          # check what would change
         #   bundle exec docscribe -a lib       # apply safe updates
         #   bundle exec docscribe -A lib       # rebuild all doc blocks
+        #   bundle exec docscribe -AkB lib     # rebuild, keep descriptions, no boilerplate
 
         emit:
           # What to include in generated documentation

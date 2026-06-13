@@ -158,23 +158,33 @@ module Docscribe
         raw['sorbet']['rbi_dirs'] = Array(raw['sorbet']['rbi_dirs']) + options[:rbi_dirs]
       end
 
-      # Output overrides
+      # Whether any output-related CLI options were provided.
       #
       # @note module_function: when included, also defines #output_overrides? (instance visibility: private)
       # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [Boolean]
       def output_overrides?(options)
-        options[:keep_descriptions]
+        !!options[:keep_descriptions] || !!options[:no_boilerplate]
       end
 
-      # Apply output overrides
+      # Apply output-related CLI overrides to the raw config.
+      #
+      # Currently handles:
+      # - `keep_descriptions` → raw['keep_descriptions']
+      # - `no_boilerplate` → raw['emit']['include_default_message'] and
+      #   raw['emit']['include_param_documentation'] = false
       #
       # @note module_function: when included, also defines #apply_output_overrides (instance visibility: private)
       # @param [Hash<String, Object>] raw raw config hash
       # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [void]
       def apply_output_overrides(raw, options)
-        raw['keep_descriptions'] = options[:keep_descriptions] if options.key?(:keep_descriptions)
+        return unless options[:keep_descriptions] || options[:no_boilerplate]
+
+        raw['keep_descriptions'] = true if options[:keep_descriptions]
+        raw['emit'] ||= {}
+        raw['emit']['include_default_message'] = false if options[:no_boilerplate]
+        raw['emit']['include_param_documentation'] = false if options[:no_boilerplate]
       end
     end
   end
