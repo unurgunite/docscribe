@@ -45,8 +45,7 @@ module Docscribe
     #
     # @param [Parser::AST::Node] ast
     # @param [Parser::Source::Buffer] buffer
-    # @raise [StandardError]
-    # @return [Array<Hash>]
+    # @return [Array<Hash<Symbol, Object>>]
     def self.run_collector_plugins(ast, buffer)
       Registry.collector_entries.flat_map { |entry| process_single_plugin_result(entry, ast, buffer) }
     end
@@ -55,11 +54,12 @@ module Docscribe
     #
     # Merges plugin metadata into each hash insertion and handles errors.
     #
-    # @param [Entry] entry
+    # @param [Docscribe::Plugin::Registry::Entry] entry registry entry with priority and order metadata
     # @param [Parser::AST::Node] ast
     # @param [Parser::Source::Buffer] buffer
     # @raise [StandardError]
-    # @return [Array<Hash>]
+    # @return [Array<Hash<Symbol, Object>>] if StandardError
+    # @return [Array] if StandardError
     def self.process_single_plugin_result(entry, ast, buffer)
       plugin = entry.plugin
       results = Array(plugin.collect(ast, buffer))
@@ -71,10 +71,10 @@ module Docscribe
 
     # Merge plugin metadata into collector results and filter invalid ones.
     #
-    # @param [Array] results collector plugin results to process
-    # @param [Entry] entry registry entry with priority and order metadata
-    # @param [Base::CollectorPlugin] plugin the collector plugin instance
-    # @return [Array<Hash>]
+    # @param [Array<Object>] results collector plugin results to process
+    # @param [Docscribe::Plugin::Registry::Entry] entry registry entry with priority and order metadata
+    # @param [Docscribe::Plugin::Base::CollectorPlugin] plugin the collector plugin instance
+    # @return [Array<Hash<Symbol, Object>>]
     def self.process_plugin_insertions(results, entry, plugin)
       results.map do |insertion|
         next nil unless valid_plugin_result?(insertion, plugin)
@@ -89,9 +89,8 @@ module Docscribe
 
     # Validate a CollectorPlugin result is a Hash.
     #
-    # @private
     # @param [Object] insertion
-    # @param [Object] plugin
+    # @param [Object] plugin the collector plugin instance
     # @return [Boolean]
     def self.valid_plugin_result?(insertion, plugin)
       return true if insertion.is_a?(Hash)
@@ -100,6 +99,8 @@ module Docscribe
       false
     end
 
+    # Self
+    #
     # @return [Boolean]
     def self.debug?
       ENV['DOCSCRIBE_DEBUG'] == '1'

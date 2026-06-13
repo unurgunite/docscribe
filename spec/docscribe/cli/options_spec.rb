@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'docscribe/cli/options'
+
 RSpec.describe Docscribe::CLI::Options do
   it 'routes /regex/ passed to --include into method filters (not file filters)', :aggregate_failures do
     argv = %w[--include /^A#foo$/ lib]
@@ -64,5 +66,26 @@ RSpec.describe Docscribe::CLI::Options do
 
     expect(opts[:sorbet]).to be(true)
     expect(opts[:rbi_dirs]).to eq(%w[sorbet/rbi rbi])
+  end
+
+  it 'sets no_boilerplate with -B', :aggregate_failures do
+    opts = described_class.parse!(%w[-B lib])
+
+    expect(opts[:no_boilerplate]).to be(true)
+  end
+
+  it 'sets no_boilerplate with --no-boilerplate', :aggregate_failures do
+    opts = described_class.parse!(%w[--no-boilerplate lib])
+
+    expect(opts[:no_boilerplate]).to be(true)
+  end
+
+  it 'combines -A -k -B without error', :aggregate_failures do
+    opts = described_class.parse!(%w[-AkB lib])
+
+    expect(opts[:mode]).to eq(:write)
+    expect(opts[:strategy]).to eq(:aggressive)
+    expect(opts[:keep_descriptions]).to be(true)
+    expect(opts[:no_boilerplate]).to be(true)
   end
 end

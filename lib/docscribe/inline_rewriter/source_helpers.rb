@@ -50,7 +50,7 @@ module Docscribe
       # @note module_function: when included, also defines #doc_comment_block_info (instance visibility: private)
       # @param [Parser::Source::Buffer] buffer
       # @param [Integer] def_bol_pos beginning-of-line position of the target def
-      # @return [Hash, nil]
+      # @return [Hash<Symbol, Object>, nil]
       def doc_comment_block_info(buffer, def_bol_pos)
         lines = buffer.source.lines
         def_line_idx = (buffer.source[0...def_bol_pos] || '').count("\n")
@@ -95,7 +95,7 @@ module Docscribe
       # @note module_function: when included, also defines #find_comment_block_range (instance visibility: private)
       # @param [Array<String>] lines
       # @param [Integer] def_line_idx
-      # @return [Hash{start_idx: Integer, end_idx: Integer}, nil]
+      # @return [Hash<Symbol, Integer>, nil]
       def find_comment_block_range(lines, def_line_idx)
         i = def_line_idx - 1
 
@@ -128,7 +128,7 @@ module Docscribe
       #
       # @note module_function: when included, also defines #doc_marker? (instance visibility: private)
       # @param [Array<String>] lines
-      # @param [Range] range line index range
+      # @param [Range<Integer>] range line index range
       # @return [Boolean]
       def doc_marker?(lines, range)
         (lines[range] || []).any? { |line| doc_marker_line?(line) }
@@ -141,7 +141,7 @@ module Docscribe
       # @param [Integer] start_idx
       # @param [Integer] preserved_start_idx
       # @param [Integer] end_idx
-      # @return [Hash]
+      # @return [Hash<Symbol, Object>]
       def build_block_info(lines, start_idx, preserved_start_idx, end_idx)
         positions = compute_positions(lines, start_idx, preserved_start_idx, end_idx)
         {
@@ -158,7 +158,7 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer
       # @param [Array<String>] lines
       # @param [Integer] preserved_start_idx
-      # @param [Integer] def_bol_pos
+      # @param [Integer] def_bol_pos beginning-of-line position of the target def
       # @return [Parser::Source::Range]
       def compute_removal_range(buffer, lines, preserved_start_idx, def_bol_pos)
         start_pos = preserved_start_idx.positive? ? (lines[0...preserved_start_idx] || []).join.length : 0
@@ -172,7 +172,7 @@ module Docscribe
       # @param [Integer] start_idx
       # @param [Integer] doc_start_idx
       # @param [Integer] end_pos_idx
-      # @return [Hash{start_pos: Integer, doc_start_pos: Integer, end_pos: Integer}]
+      # @return [Hash<Symbol, Integer>]
       def compute_positions(lines, start_idx, doc_start_idx, end_pos_idx)
         start_pos = start_idx.positive? ? (lines[0...start_idx] || []).join.length : 0
         doc_start_pos = doc_start_idx.positive? ? (lines[0...doc_start_idx] || []).join.length : 0
@@ -238,8 +238,7 @@ module Docscribe
       #
       # This helper is retained for compatibility/legacy behavior checks.
       #
-      # @note module_function: when included, also defines #already_has_doc_immediately_above?
-      #   (instance visibility: private)
+      # @note module_function: when included, also defines #already_has_doc_immediately_above? (instance visibility: private)
       # @param [Parser::Source::Buffer] buffer
       # @param [Integer] insert_pos
       # @return [Boolean]
@@ -261,7 +260,8 @@ module Docscribe
       # @note module_function: when included, also defines #line_indent (instance visibility: private)
       # @param [Parser::AST::Node] node
       # @raise [StandardError]
-      # @return [String]
+      # @return [String] if StandardError
+      # @return [String] if StandardError
       def line_indent(node)
         line = node.loc.expression.source_line
         return '' unless line

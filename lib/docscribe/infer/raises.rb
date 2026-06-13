@@ -41,8 +41,7 @@ module Docscribe
       # - `Foo` => `["Foo"]`
       # - `[Foo, Bar]` => `["Foo", "Bar"]`
       #
-      # @note module_function: when included, also defines
-      #   #exception_names_from_rescue_list (instance visibility: private)
+      # @note module_function: when included, also defines #exception_names_from_rescue_list (instance visibility: private)
       # @param [Parser::AST::Node, nil] exc_list rescue exception list node
       # @return [Array<String>]
       def exception_names_from_rescue_list(exc_list)
@@ -57,8 +56,7 @@ module Docscribe
 
       # Collect exception names from a `raise` or `fail` send node.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
+      # @note module_function: when included, also defines #collect_send_raise (instance visibility: private)
       # @param [Array<String>] raises accumulator
       # @param [Parser::AST::Node] node send node
       # @return [void]

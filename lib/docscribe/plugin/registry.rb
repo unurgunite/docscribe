@@ -16,12 +16,12 @@ module Docscribe
       #   @param [Object] value
       #
       # @!attribute [rw] priority
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [Integer]
+      #   @param [Integer] value
       #
       # @!attribute [rw] order
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [Integer]
+      #   @param [Integer] value
       Entry = Struct.new(:plugin, :priority, :order, keyword_init: true)
 
       @tag_entries = []
@@ -41,8 +41,6 @@ module Docscribe
       # @note module_function: when included, also defines #register (instance visibility: private)
       # @param [Object] plugin plugin instance
       # @param [Integer] priority plugin priority (higher wins for conflicts)
-      # @raise [ArgumentError] if plugin type cannot be determined
-      # @raise [StandardError]
       # @return [void]
       def register(plugin, priority: 0)
         prio = parse_priority(priority)
@@ -53,10 +51,11 @@ module Docscribe
       # Parse and validate plugin priority.
       #
       # @note module_function: when included, also defines #parse_priority (instance visibility: private)
-      # @param [Object] priority
-      # @raise [ArgumentError]
+      # @param [Object] priority plugin priority (higher wins for conflicts)
       # @raise [StandardError]
-      # @return [Integer]
+      # @raise [ArgumentError]
+      # @return [Integer] if StandardError
+      # @return [Object] if StandardError
       def parse_priority(priority)
         Integer(priority)
       rescue StandardError
@@ -66,9 +65,9 @@ module Docscribe
       # Create a new Entry with the next order number.
       #
       # @note module_function: when included, also defines #create_entry (instance visibility: private)
-      # @param [Object] plugin
-      # @param [Integer] priority
-      # @return [Entry]
+      # @param [Object] plugin plugin instance
+      # @param [Integer] priority plugin priority (higher wins for conflicts)
+      # @return [Docscribe::Plugin::Registry::Entry]
       def create_entry(plugin, priority)
         @order_seq += 1
         Entry.new(plugin: plugin, priority: priority, order: @order_seq)
@@ -77,8 +76,8 @@ module Docscribe
       # Route entry to tag or collector list.
       #
       # @note module_function: when included, also defines #route_entry (instance visibility: private)
-      # @param [Entry] entry
-      # @param [Object] plugin
+      # @param [Docscribe::Plugin::Registry::Entry] entry
+      # @param [Object] plugin plugin instance
       # @raise [ArgumentError]
       # @return [void]
       def route_entry(entry, plugin)
@@ -94,7 +93,7 @@ module Docscribe
       # All registered tag plugins in registration order.
       #
       # @note module_function: when included, also defines #tag_plugins (instance visibility: private)
-      # @return [Array<#call>]
+      # @return [Array<Object>]
       def tag_plugins
         @tag_entries.map(&:plugin)
       end
@@ -102,7 +101,7 @@ module Docscribe
       # All registered collector plugins in registration order.
       #
       # @note module_function: when included, also defines #collector_plugins (instance visibility: private)
-      # @return [Array<#collect>]
+      # @return [Array<Object>]
       def collector_plugins
         @collector_entries.map(&:plugin)
       end
@@ -110,7 +109,7 @@ module Docscribe
       # All registered tag plugin entries (plugin + priority metadata).
       #
       # @note module_function: when included, also defines #tag_entries (instance visibility: private)
-      # @return [Array<Entry>]
+      # @return [Array<Docscribe::Plugin::Registry::Entry>]
       def tag_entries
         @tag_entries.dup
       end
@@ -118,7 +117,7 @@ module Docscribe
       # All registered collector plugin entries (plugin + priority metadata).
       #
       # @note module_function: when included, also defines #collector_entries (instance visibility: private)
-      # @return [Array<Entry>]
+      # @return [Array<Docscribe::Plugin::Registry::Entry>]
       def collector_entries
         @collector_entries.dup
       end

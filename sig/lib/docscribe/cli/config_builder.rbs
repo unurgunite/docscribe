@@ -1,7 +1,7 @@
 module Docscribe
   module CLI
     module ConfigBuilder
-      def self?.build: (Docscribe::Config base, Hash[Symbol, untyped] options) -> Docscribe::Config
+      def self?.build: (Config base, Hash[Symbol, untyped] options) -> Config
 
       def self?.needs_override?: (Hash[Symbol, untyped] options) -> bool
 
@@ -22,6 +22,10 @@ module Docscribe
       def self?.apply_rbs_collection: (Hash[String, untyped] raw) -> void
 
       def self?.apply_sorbet_overrides: (Hash[String, untyped] raw, Hash[Symbol, untyped] options) -> void
+
+      def self?.output_overrides?: (Hash[Symbol, untyped] options) -> bool
+
+      def self?.apply_output_overrides: (Hash[String, untyped] raw, Hash[Symbol, untyped] options) -> void
     end
   end
 end

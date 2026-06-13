@@ -29,5 +29,7 @@ module Docscribe
     def include_default_message?: () -> bool
 
     def include_param_documentation?: () -> bool
+
+    def keep_descriptions?: () -> bool
   end
 end

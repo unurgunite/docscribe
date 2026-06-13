@@ -12,8 +12,10 @@ module Docscribe
     # - Sorbet RBI files
     # - RBS files
     class ProviderChain
-      # @param [Array<#signature_for>] providers ordered signature providers
-      # @return [Object]
+      # Initialize
+      #
+      # @param [Array<Object>] providers ordered signature providers
+      # @return [void]
       def initialize(*providers)
         @providers = providers.compact
       end

@@ -8,7 +8,6 @@ module Docscribe
     # If RBS cannot be loaded, this returns nil and Docscribe falls back to
     # inference.
     #
-    # @raise [LoadError]
     # @return [Docscribe::Types::RBS::Provider, nil]
     def rbs_provider
       return nil unless rbs_enabled?
@@ -24,8 +23,9 @@ module Docscribe
       fetch_bool(%w[rbs enabled], false)
     end
 
-    # @raise [LoadError]
-    # @return [Object]
+    # Core rbs provider
+    #
+    # @return [Docscribe::Types::RBS::Provider, nil]
     def core_rbs_provider
       return nil unless ruby_supports_rbs?
 
@@ -48,9 +48,12 @@ module Docscribe
       false
     end
 
+    # Build rbs provider
+    #
     # @private
     # @raise [LoadError]
-    # @return [Docscribe::Types::RBS::Provider, nil]
+    # @return [Docscribe::Types::RBS::Provider, nil] if LoadError
+    # @return [nil] if LoadError
     def build_rbs_provider
       require 'docscribe/types/rbs/provider'
       Docscribe::Types::RBS::Provider.new(
@@ -62,9 +65,12 @@ module Docscribe
       nil
     end
 
+    # Build core rbs provider
+    #
     # @private
     # @raise [LoadError]
-    # @return [Docscribe::Types::RBS::Provider, nil]
+    # @return [Docscribe::Types::RBS::Provider, nil] if LoadError
+    # @return [nil] if LoadError
     def build_core_rbs_provider
       require 'docscribe/types/rbs/provider'
       Docscribe::Types::RBS::Provider.new(
@@ -102,7 +108,7 @@ module Docscribe
     # - `Array<Integer>`       => `Array`
     #
     # @private
-    # @return [Object]
+    # @return [Boolean]
     def rbs_collapse_generics?
       fetch_bool(%w[rbs collapse_generics], false)
     end

@@ -46,7 +46,7 @@ module Docscribe
     # Convert an internal scope symbol into the config key used under `methods`.
     #
     # @private
-    # @param [Symbol] scope
+    # @param [Symbol] scope :instance or :class
     # @return [String]
     def scope_to_key(scope)
       scope == :class ? 'class' : 'instance'
@@ -85,9 +85,9 @@ module Docscribe
     # Nested hashes are merged recursively; non-hash values are replaced.
     #
     # @private
-    # @param [Hash] hash1 base hash
-    # @param [Hash, nil] hash2 override hash
-    # @return [Hash]
+    # @param [Hash<Object, Object>] hash1 base hash
+    # @param [Hash<Object, Object>, nil] hash2 override hash
+    # @return [Hash<Object, Object>]
     def deep_merge(hash1, hash2)
       return hash1 unless hash2
 

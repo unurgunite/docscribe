@@ -7,7 +7,6 @@ module Docscribe
     #
     # The template documents the most common CLI workflows and all supported
     # configuration sections with comments.
-    # @see Docscribe::Config::DEFAULT
     #
     # @return [String]
     def self.default_yaml
@@ -21,6 +20,7 @@ module Docscribe
         #   bundle exec docscribe lib          # check what would change
         #   bundle exec docscribe -a lib       # apply safe updates
         #   bundle exec docscribe -A lib       # rebuild all doc blocks
+        #   bundle exec docscribe -AkB lib     # rebuild, keep descriptions, no boilerplate
 
         emit:
           # What to include in generated documentation
@@ -96,6 +96,9 @@ module Docscribe
           enabled: false
           rbi_dirs: ["sorbet/rbi", "rbi"]
           collapse_generics: false
+
+        # Preserve existing @param/@return descriptions in aggressive mode
+        keep_descriptions: false
 
         plugins:
           # Load custom plugins

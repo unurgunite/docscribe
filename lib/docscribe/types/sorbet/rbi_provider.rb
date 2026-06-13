@@ -12,11 +12,11 @@ module Docscribe
       # any signatures that can be parsed are indexed into Docscribe's normalized
       # signature model.
       class RBIProvider < BaseProvider
+        # Initialize
+        #
         # @param [Array<String>] rbi_dirs directories scanned recursively for
-        #   `.rbi` files
         # @param [Boolean] collapse_generics whether generic container types
-        #   should be simplified during formatting
-        # @return [Object]
+        # @return [void]
         def initialize(rbi_dirs:, collapse_generics: false)
           super(collapse_generics: collapse_generics)
 

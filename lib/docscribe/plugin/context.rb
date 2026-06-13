@@ -2,27 +2,37 @@
 
 module Docscribe
   module Plugin
-    # Snapshot of everything known about a method at doc-generation time.
+    # @!attribute [rw] node
+    #   @return [Parser::AST::Node]
+    #   @param [Parser::AST::Node] value
     #
-    # Passed to every registered TagPlugin. Read-only — plugins must not
-    # mutate the context.
+    # @!attribute [rw] container
+    #   @return [String]
+    #   @param [String] value
     #
-    # @!attribute node
-    #   @return [Parser::AST::Node] the :def or :defs AST node
-    # @!attribute container
-    #   @return [String] e.g. "MyModule::MyClass" or "Object" for top-level
-    # @!attribute scope
-    #   @return [Symbol] :instance or :class
-    # @!attribute visibility
-    #   @return [Symbol] :public, :protected, or :private
-    # @!attribute method_name
+    # @!attribute [rw] scope
     #   @return [Symbol]
-    # @!attribute inferred_params
-    #   @return [Hash{String => String}] name => inferred type
-    # @!attribute inferred_return
-    #   @return [String] inferred return type
-    # @!attribute source
-    #   @return [String] raw method source text
+    #   @param [Symbol] value
+    #
+    # @!attribute [rw] visibility
+    #   @return [Symbol]
+    #   @param [Symbol] value
+    #
+    # @!attribute [rw] method_name
+    #   @return [Symbol]
+    #   @param [Symbol] value
+    #
+    # @!attribute [rw] inferred_params
+    #   @return [Hash<String, String>]
+    #   @param [Hash<String, String>] value
+    #
+    # @!attribute [rw] inferred_return
+    #   @return [String]
+    #   @param [String] value
+    #
+    # @!attribute [rw] source
+    #   @return [String]
+    #   @param [String] value
     Context = Struct.new(
       :node,
       :container,
