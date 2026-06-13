@@ -1147,7 +1147,7 @@ module Docscribe
         rd = ctx[:return_description]
         if ret_line && rd && !rd.empty?
           lines = rd.split("\n")
-          ret_line = "#{ret_line} #{lines.first}"
+          ret_line = +"#{ret_line} #{lines.first}"
           lines[1..]&.each { |l| ret_line << "\n#{indent}#   #{l}" }
         end
         ret_line ? [ret_line] : []
@@ -1553,7 +1553,7 @@ module Docscribe
       # @return [String]
       def append_param_doc(line, doc, indent)
         parts = doc.split("\n")
-        result = "#{line} #{parts.first}"
+        result = +"#{line} #{parts.first}"
         parts[1..]&.each { |l| result << "\n#{indent}#   #{l}" }
         result
       end
