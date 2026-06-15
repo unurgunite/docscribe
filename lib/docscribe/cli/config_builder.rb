@@ -139,7 +139,7 @@ module Docscribe
         if collection_path
           raw['rbs']['collection_dirs'] = Array(raw['rbs']['collection_dirs']) + [collection_path]
         else
-          warn 'Docscribe: rbs_collection.lock.yaml not found or collection not installed. ' \
+          warn 'Docscribe: rbs_collection.lock.yaml not found. ' \
                'Run `bundle exec rbs collection install` first.'
         end
       end
