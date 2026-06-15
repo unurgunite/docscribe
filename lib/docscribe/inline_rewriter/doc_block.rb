@@ -457,14 +457,13 @@ module Docscribe
         content = line.sub(/^\s*#\s*/, '')
         if (m = content.match(/@param\s+(\S+)\s+\[/))
           return m[1]
-        end
-
-        if (m = content.match(/@param\s+\[/))
+        elsif (m = content.match(/@param\s+\[/))
           end0 = m.end(0) #: Integer
           rest = content[(end0 - 1)..]
           type_end = matching_close_bracket(rest)
           return name_after_bracket(rest, type_end) if type_end
         end
+
         nil
       end
 

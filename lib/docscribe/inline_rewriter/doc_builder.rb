@@ -1038,12 +1038,11 @@ module Docscribe
       def build_all_param_lines(args, indent, config, external_sig: nil, **kwargs)
         param_lines = [] #: Array[String]
         params = (args.children || []).each_with_object(param_lines) do |a, p|
-          pd = param_doc_for_arg(a, kwargs, config)
           p.concat(build_param_line(a, indent, external_sig, kwargs[:param_types_override],
                                     skip_anonymous_block_params: config.skip_anonymous_block_params?,
                                     fallback_type: config.fallback_type,
                                     treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?,
-                                    param_documentation: pd,
+                                    param_documentation: param_doc_for_arg(a, kwargs, config),
                                     param_tag_style: config.param_tag_style))
         end
         params.empty? ? nil : params
@@ -1714,14 +1713,13 @@ module Docscribe
         content = line.sub(/^\s*#\s*/, '')
         if (m = content.match(/@param\s+(\S+)\s+\[/))
           return m[1]
-        end
-
-        if (m = content.match(/@param\s+\[/))
+        elsif (m = content.match(/@param\s+\[/))
           name_end = m.end(0) #: Integer
           rest = content[(name_end - 1)..]
           type_end = find_matching_close_bracket(rest)
           return name_after_type_bracket(rest, type_end) if type_end
         end
+
         nil
       end
 

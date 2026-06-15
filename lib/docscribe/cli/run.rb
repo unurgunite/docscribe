@@ -440,11 +440,8 @@ module Docscribe
         # @raise [StandardError]
         # @return [void] if StandardError
         # @return [Object] if StandardError
-        def handle_write_result(path, src:, out:, file_changes:, **ctx) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-          if out == src
-            log_check_verdict('OK', ctx[:display_path], ctx[:options])
-            return
-          end
+        def handle_write_result(path, src:, out:, file_changes:, **ctx) # rubocop:disable Metrics/AbcSize
+          return log_check_verdict('OK', ctx[:display_path], ctx[:options]) if out == src
 
           File.write(path, out)
           log_write_verdict('CHANGED', ctx[:display_path], file_changes, ctx[:options])

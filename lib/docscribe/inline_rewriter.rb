@@ -230,10 +230,7 @@ module Docscribe
       # @return [Array<(Symbol, Object)>]
       def process_dedup_group(pos, items, result, method_overrides_by_pos)
         plugin_items = items.select { |pair| pair.first == :plugin }
-        if plugin_items.empty?
-          result.concat(items)
-          return
-        end
+        return result.concat(items) if plugin_items.empty?
 
         method_items = items.select { |pair| pair.first == :method }
         override_items = find_override_items(plugin_items)
@@ -918,17 +915,13 @@ module Docscribe
       def apply_method_insertion_safe_with_info!(**options)
         i = options[:info]
         dp = filter_doc_params(options)
-        mr = DocBuilder.build_missing_merge_result(
-          options[:insertion],
-          existing_lines: i[:doc_lines],
-          strategy: options[:strategy], **dp # steep:ignore
+        mr = DocBuilder.build_missing_merge_result( # steep:ignore
+          options[:insertion], existing_lines: i[:doc_lines], strategy: options[:strategy], **dp
         )
         changed, n, ob = compute_doc_replacement(i, mr[:lines], strategy: options[:strategy], **dp)
         commit_safe_doc_outcome(options[:rewriter], options[:buffer], i, n,
-                                old_block: ob, merge_result: mr,
-                                existing_order_changed: changed,
-                                insertion: options[:insertion], changes: options[:changes],
-                                file: options[:file])
+                                old_block: ob, merge_result: mr, existing_order_changed: changed,
+                                insertion: options[:insertion], changes: options[:changes], file: options[:file])
       end
 
       # Commit safe doc outcome
