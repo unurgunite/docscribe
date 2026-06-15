@@ -455,20 +455,15 @@ module Docscribe
       # @return [String?]
       def extract_param_name(line)
         content = line.sub(/^\s*#\s*/, '')
-        # @param [Type] name
-        if (m = content.match(/@param\s+\[/))
-          rest = content[(m.end(0) - 1)..]
-          type_end = matching_close_bracket(rest)
-          if type_end
-            after = rest[(type_end + 1)..]&.strip
-            return after.split(/\s+/).first if after
-          end
-        end
-        # @param name [Type]
         if (m = content.match(/@param\s+(\S+)\s+\[/))
           return m[1]
         end
 
+        if (m = content.match(/@param\s+\[/))
+          rest = content[(m.end(0) - 1)..]
+          type_end = matching_close_bracket(rest)
+          return rest[(type_end + 1)..]&.strip&.split(/\s+/)&.first if type_end
+        end
         nil
       end
 

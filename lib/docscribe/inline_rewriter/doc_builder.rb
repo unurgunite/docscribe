@@ -80,7 +80,7 @@ module Docscribe
           [build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
         },
         blockarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          if opts[:config]&.skip_anonymous_block_params? && arg_node.children.first.nil?
+          if opts[:skip_anonymous_block_params] && arg_node.children.first.nil?
             []
           else
             [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
@@ -288,19 +288,19 @@ module Docscribe
       def join_multiline_tags(lines)
         result = []
         i = 0
-        while i < lines.length
-          line = lines[i]
-          content = line.sub(/^\s*#\s*/, '')
-          if content.match?(/^@(param|return|raise)\s+\[/) && unbalanced_bracket?(content)
-            buffer, consumed = join_tag_continuations(lines, i)
-            result << "# #{buffer}"
-            i += consumed
-          else
-            result << line
-            i += 1
-          end
-        end
+        i = consume_tag_or_copy(lines, i, result) while i < lines.length
         result
+      end
+
+      def consume_tag_or_copy(lines, i, result)
+        if (c = lines[i].sub(/^\s*#\s*/, '')) =~ /^@(param|return|raise)\s+\[/ && unbalanced_bracket?(c)
+          buffer, consumed = join_tag_continuations(lines, i)
+          result << "# #{buffer}"
+          i + consumed
+        else
+          result << lines[i]
+          i + 1
+        end
       end
 
       # Join continuation lines for a multi-line tag type bracket.
@@ -346,8 +346,7 @@ module Docscribe
       # @return [Object] updated tags_started
       def parse_existing_tag_line(line, info, tags_started)
         extract_all_comment_tags(line, info)
-        content = line.sub(/^\s*# ?/, '').rstrip
-        if content.start_with?('@')
+        if (content = line.sub(/^\s*# ?/, '').rstrip).start_with?('@')
           tags_started = true
           track_last_tag(content, info)
         elsif tags_started && info[:last_tag]
@@ -1030,11 +1029,10 @@ module Docscribe
       # @param [Object] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
       # @return [Array<String>, nil]
       def build_all_param_lines(args, indent, config, external_sig: nil, **kwargs)
-        default_pd = config.include_param_documentation? ? config.param_documentation : ''
         params = (args.children || []).each_with_object([]) do |a, p|
-          pd = (kwargs[:param_descriptions] || {})[param_name_from_arg(a)] || default_pd
+          pd = (kwargs[:param_descriptions] || {})[param_name_from_arg(a)] || (config.include_param_documentation? ? config.param_documentation : '')
           p.concat(build_param_line(a, indent, external_sig, kwargs[:param_types_override],
-                                    config: config,
+                                    skip_anonymous_block_params: config.skip_anonymous_block_params?,
                                     fallback_type: config.fallback_type,
                                     treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?,
                                     param_documentation: pd,
@@ -1665,24 +1663,15 @@ module Docscribe
       # @note module_function: when included, also defines #param_rest_after_type (instance visibility: private)
       # @param [Object] line a @param doc line
       # @return [nil] the text after the closing `]`, or nil
-      #   rubocop:disable Metrics/AbcSize
       def param_rest_after_type(line)
         content = line.sub(/^\s*#\s*/, '')
-        if (m = content.match(/@param\s+\[/))
+        if (m = content.match(/@param\s+(\S+\s+)?\[/))
           rest = content[(m.end(0) - 1)..]
-          type_end = find_matching_close_bracket(rest)
-          return rest[(type_end + 1)..]&.strip if type_end
-        end
-        if (m = content.match(/@param\s+(\S+)\s+\[/))
-          idx = content.index('[', m.end(0))
-          rest = content[idx..]
           type_end = find_matching_close_bracket(rest)
           return rest[(type_end + 1)..]&.strip if type_end
         end
         nil
       end
-      # rubocop:enable Metrics/AbcSize
-
       ARG_DEFAULT_NAMES = { restarg: 'args', kwrestarg: 'kwargs', blockarg: 'block' }.freeze
 
       # Param name from arg
@@ -1703,20 +1692,15 @@ module Docscribe
       # @return [String, nil] the parameter name or nil
       def extract_param_name_from_param_line(line)
         content = line.sub(/^\s*#\s*/, '')
-        # @param [Type] name
-        if (m = content.match(/@param\s+\[/))
-          rest = content[(m.end(0) - 1)..]
-          type_end = find_matching_close_bracket(rest)
-          if type_end
-            after = rest[(type_end + 1)..]&.strip
-            return after.split(/\s+/).first if after
-          end
-        end
-        # @param name [Type]
         if (m = content.match(/@param\s+(\S+)\s+\[/))
           return m[1]
         end
 
+        if (m = content.match(/@param\s+\[/))
+          rest = content[(m.end(0) - 1)..]
+          type_end = find_matching_close_bracket(rest)
+          return rest[(type_end + 1)..]&.strip&.split(/\s+/)&.first if type_end
+        end
         nil
       end
 
@@ -1727,14 +1711,7 @@ module Docscribe
       # @return [String, nil]
       def extract_param_type_from_param_line(line)
         content = line.sub(/^\s*#\s*/, '')
-        # @param [Type] name
-        if (m = content.match(/@param\s+\[/))
-          rest = content[(m.end(0) - 1)..]
-          type_end = find_matching_close_bracket(rest)
-          return rest[1...type_end] if type_end
-        end
-        # @param name [Type]
-        if (m = content.match(/@param\s+\S+\s+\[/))
+        if (m = content.match(/@param\s+(\S+\s+)?\[/))
           rest = content[(m.end(0) - 1)..]
           type_end = find_matching_close_bracket(rest)
           return rest[1...type_end] if type_end
