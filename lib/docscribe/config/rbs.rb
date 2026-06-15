@@ -32,6 +32,16 @@ module Docscribe
       @core_rbs_provider ||= build_core_rbs_provider
     end
 
+    # Whether to warn when rbs_collection.lock.yaml exists but --rbs-collection
+    # was not passed.
+    #
+    # Set `rbs.warn_missing_collection: false` in `docscribe.yml` to suppress.
+    #
+    # @return [Boolean]
+    def rbs_warn_missing_collection?
+      fetch_bool(%w[rbs warn_missing_collection], true)
+    end
+
     private
 
     # Check whether the current Ruby version supports RBS (requires 3.0+).
@@ -59,7 +69,8 @@ module Docscribe
       Docscribe::Types::RBS::Provider.new(
         sig_dirs: rbs_sig_dirs,
         collection_dirs: rbs_collection_dirs,
-        collapse_generics: rbs_collapse_generics?
+        collapse_generics: rbs_collapse_generics?,
+        collapse_object_generics: rbs_collapse_object_generics?
       )
     rescue LoadError
       warn 'Docscribe: --rbs requires the `rbs` gem. Add `gem "rbs"` to your Gemfile and run `bundle install`.'
@@ -112,6 +123,20 @@ module Docscribe
     # @return [Boolean]
     def rbs_collapse_generics?
       fetch_bool(%w[rbs collapse_generics], false)
+    end
+
+    # Whether to collapse generic types when all inner types are Object.
+    #
+    # Unlike `collapse_generics` (which drops all generic info), this only
+    # collapses when the type arguments provide no useful information:
+    # - `Hash<Symbol, Object>` => stays as is (Symbol is useful)
+    # - `Hash<Object, Object>` => `Hash`
+    # - `Array<Object>`        => `Array`
+    #
+    # @private
+    # @return [Boolean]
+    def rbs_collapse_object_generics?
+      fetch_bool(%w[rbs collapse_object_generics], false)
     end
   end
 end

@@ -63,7 +63,9 @@ module Docscribe
         'collection' => false,
         'sig_dirs' => ['sig'],
         'collection_dirs' => [], #: Array[String]
-        'collapse_generics' => false
+        'collapse_generics' => false,
+        'warn_missing_collection' => true,
+        'collapse_object_generics' => false
       },
       'sorbet' => {
         'enabled' => false,

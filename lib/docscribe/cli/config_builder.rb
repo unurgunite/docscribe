@@ -29,7 +29,9 @@ module Docscribe
         apply_rbs_overrides(raw, options) if rbs_overrides?(options)
         apply_sorbet_overrides(raw, options) if sorbet_overrides?(options)
         apply_output_overrides(raw, options)
-        Docscribe::Config.new(raw)
+        conf = Docscribe::Config.new(raw)
+        warn_missing_rbs_collection(conf, options)
+        conf
       end
 
       # Whether any CLI override is present.
@@ -191,6 +193,25 @@ module Docscribe
         raw['emit'] ||= {}
         raw['emit']['include_default_message'] = false if options[:no_boilerplate]
         raw['emit']['include_param_documentation'] = false if options[:no_boilerplate]
+      end
+
+      # Warn when rbs_collection.lock.yaml exists but --rbs-collection was not passed.
+      #
+      # The warning can be suppressed by setting `rbs.warn_missing_collection: false`
+      # in the project's `docscribe.yml`.
+      #
+      # @note module_function: when included, also defines #warn_missing_rbs_collection (instance visibility: private)
+      # @param [Docscribe::Config] conf effective config
+      # @param [Hash<Symbol, Object>] options parsed CLI options
+      # @return [void]
+      def warn_missing_rbs_collection(conf, options)
+        return if options[:rbs_collection]
+        return unless conf.rbs_warn_missing_collection?
+        return unless File.exist?('rbs_collection.lock.yaml')
+
+        warn 'Docscribe: rbs_collection.lock.yaml found but --rbs-collection not set. ' \
+             'Pass --rbs-collection or set `rbs.collection: true` in docscribe.yml to enable RBS collection. ' \
+             'Set `rbs.warn_missing_collection: false` to suppress this warning.'
       end
     end
   end

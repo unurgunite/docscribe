@@ -15,14 +15,19 @@ module Docscribe
         # @note module_function: when included, also defines #to_yard (instance visibility: private)
         # @param [Docscribe::Types::RBS::TypeFormatter::rbs_type, nil] type the RBS type object to convert
         # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics whether to collapse generics when all inner types are Object
         # @return [String]
-        def to_yard(type, collapse_generics: false)
+        def to_yard(type, collapse_generics: false, collapse_object_generics: false)
           return 'Object' unless type
 
           handler = to_yard_formatters.find { |klass, _| type.is_a?(klass) }
-          return handler.last.call(type, cg: collapse_generics) if handler
+          return handler.last.call(type, cg: collapse_generics, cog: collapse_object_generics) if handler
 
-          return format_named(type, collapse_generics: collapse_generics) if named_type?(type) # steep:ignore
+          if named_type?(type)
+            return format_named(type, # steep:ignore
+                                collapse_generics: collapse_generics,
+                                collapse_object_generics: collapse_object_generics)
+          end
 
           fallback_string(type)
         end
@@ -79,19 +84,27 @@ module Docscribe
             ::RBS::Types::Bases::Bool => ->(_, **) { format_bool },
             ::RBS::Types::Bases::Void => ->(_, **) { format_void },
             ::RBS::Types::Bases::Nil => ->(_, **) { format_nil },
-            ::RBS::Types::Optional => ->(t, cg:) { format_optional(t, collapse_generics: cg) },
-            ::RBS::Types::Union => ->(t, cg:) { format_union(t, collapse_generics: cg) },
+            ::RBS::Types::Optional => lambda { |t, cg:, cog:|
+              format_optional(t, collapse_generics: cg, collapse_object_generics: cog)
+            },
+            ::RBS::Types::Union => lambda { |t, cg:, cog:|
+              format_union(t, collapse_generics: cg, collapse_object_generics: cog)
+            },
             ::RBS::Types::Literal => ->(t, **) { format_literal(t.literal) },
             ::RBS::Types::Proc => ->(_, **) { format_proc },
-            ::RBS::Types::Tuple => ->(t, cg:) { format_tuple(t, collapse_generics: cg) },
+            ::RBS::Types::Tuple => lambda { |t, cg:, cog:|
+              format_tuple(t, collapse_generics: cg, collapse_object_generics: cog)
+            },
             ::RBS::Types::Bases::Top => ->(_, **) { format_top },
             ::RBS::Types::Bases::Bottom => ->(_, **) { format_bottom },
             ::RBS::Types::Bases::Self => ->(_, **) { format_self },
             ::RBS::Types::Bases::Instance => ->(_, **) { format_instance },
             ::RBS::Types::Bases::Class => ->(_, **) { format_class_type },
             ::RBS::Types::Variable => ->(t, **) { format_variable(t) },
-            ::RBS::Types::Record => ->(t, cg:) { format_record(t, collapse_generics: cg) },
-            ::RBS::Types::Intersection => ->(t, cg:) { format_intersection(t, collapse_generics: cg) }
+            ::RBS::Types::Record => lambda { |t, cg:, cog:|
+              format_record(t, collapse_generics: cg, collapse_object_generics: cog)
+            },
+            ::RBS::Types::Intersection => ->(t, cg:, cog:) { format_intersection(t, collapse_generics: cg, collapse_object_generics: cog) }
           }.freeze
         end
 
@@ -132,9 +145,11 @@ module Docscribe
         # @note module_function: when included, also defines #format_optional (instance visibility: private)
         # @param [RBS::Types::Optional] type the optional type to format
         # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics
         # @return [String]
-        def format_optional(type, collapse_generics:)
-          "#{to_yard(type.type, collapse_generics: collapse_generics)}?"
+        def format_optional(type, collapse_generics:, collapse_object_generics:)
+          "#{to_yard(type.type, collapse_generics: collapse_generics,
+                                collapse_object_generics: collapse_object_generics)}?"
         end
 
         # Map a Ruby literal value to its corresponding YARD type name.
@@ -167,9 +182,12 @@ module Docscribe
         # @note module_function: when included, also defines #format_tuple (instance visibility: private)
         # @param [RBS::Types::Tuple] type the tuple type to format
         # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics
         # @return [String]
-        def format_tuple(type, collapse_generics:)
-          "(#{type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }.join(', ')})"
+        def format_tuple(type, collapse_generics:, collapse_object_generics:)
+          "(#{type.types.map do |t|
+            to_yard(t, collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
+          end.join(', ')})"
         end
 
         # Format RBS top type as YARD `Object`.
@@ -226,9 +244,12 @@ module Docscribe
         # @note module_function: when included, also defines #format_record (instance visibility: private)
         # @param [RBS::Types::Record] type the record type
         # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics
         # @return [String]
-        def format_record(type, collapse_generics:)
-          value_types = type.all_fields.values.map { |(ty, _)| to_yard(ty, collapse_generics: collapse_generics) }.uniq
+        def format_record(type, collapse_generics:, collapse_object_generics:)
+          value_types = type.all_fields.values.map do |(ty, _)|
+            to_yard(ty, collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
+          end.uniq
           "Hash<Symbol, #{value_types.join(', ')}>"
         end
 
@@ -237,9 +258,12 @@ module Docscribe
         # @note module_function: when included, also defines #format_intersection (instance visibility: private)
         # @param [RBS::Types::Intersection] type the intersection type
         # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics
         # @return [String]
-        def format_intersection(type, collapse_generics:)
-          type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }.join(' & ')
+        def format_intersection(type, collapse_generics:, collapse_object_generics:)
+          type.types.map do |t|
+            to_yard(t, collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
+          end.join(' & ')
         end
 
         # Format an RBS Union type as a comma-separated list of YARD types.
@@ -247,11 +271,14 @@ module Docscribe
         # @note module_function: when included, also defines #format_union (instance visibility: private)
         # @param [RBS::Types::Union] type the union type to format
         # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics
         # @return [String]
-        def format_union(type, collapse_generics:)
-          type.types.map { |t| to_yard(t, collapse_generics: collapse_generics) }
+        def format_union(type, collapse_generics:, collapse_object_generics:)
+          type.types.map do |t|
+            to_yard(t, collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
+          end
                     .uniq
-              .join(', ')
+                    .join(', ')
         end
 
         # Format an RBS named type (class, interface, alias) with optional generic arguments.
@@ -259,18 +286,37 @@ module Docscribe
         # @note module_function: when included, also defines #format_named (instance visibility: private)
         # @param [Docscribe::Types::RBS::TypeFormatter::named_rbs_type] type the unrecognized RBS type object
         # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics whether to collapse generics when all inner types are Object
         # @return [String]
-        def format_named(type, collapse_generics:)
+        def format_named(type, collapse_generics:, collapse_object_generics:)
           name = type.name.to_s.delete_prefix('::')
           args = type.respond_to?(:args) ? type.args : [] #: Array[untyped]
 
           if args && !args.empty?
-            return name if collapse_generics
-
-            "#{name}<#{args.map { |a| to_yard(a, collapse_generics: collapse_generics) }.join(', ')}>"
+            format_generic_args(name, args, collapse_generics: collapse_generics,
+                                            collapse_object_generics: collapse_object_generics)
           else
             name
           end
+        end
+
+        # Format generic type arguments for a named type.
+        #
+        # @note module_function: when included, also defines #format_generic_args (instance visibility: private)
+        # @param [String] name the type name
+        # @param [Array<untyped>] args the generic type arguments
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics whether to collapse generics when all inner types are Object
+        # @return [String]
+        def format_generic_args(name, args, collapse_generics:, collapse_object_generics:)
+          return name if collapse_generics
+
+          formatted = args.map do |a|
+            to_yard(a, collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
+          end
+          return name if collapse_object_generics && formatted.all? { |s| s == 'Object' }
+
+          "#{name}<#{formatted.join(', ')}>"
         end
 
         # Convert a Ruby literal value to its YARD type name string.

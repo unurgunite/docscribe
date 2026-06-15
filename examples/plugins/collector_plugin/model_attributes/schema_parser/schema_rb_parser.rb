@@ -98,6 +98,10 @@ class SchemaRbParser
     tables
   end
 
+  # @private
+  # @param [Object] line
+  # @param [Object] tables
+  # @return [Object]
   def parse_create_table(line, tables)
     m = line.match(CREATE_TABLE)
     return unless m
@@ -106,6 +110,11 @@ class SchemaRbParser
     m[1]
   end
 
+  # @private
+  # @param [Object] line
+  # @param [Object] tables
+  # @param [Object] current_table
+  # @return [Object]
   def parse_t_column(line, tables, current_table)
     m = line.match(T_COLUMN)
     return unless m
@@ -118,6 +127,10 @@ class SchemaRbParser
     tables[current_table][col_name] = COLUMN_TYPES[col_type]
   end
 
+  # @private
+  # @param [Object] line
+  # @param [Object] tables
+  # @return [Object]
   def parse_add_column(line, tables)
     m = line.match(ADD_COLUMN)
     return unless m

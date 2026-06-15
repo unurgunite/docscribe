@@ -125,14 +125,23 @@ module DocscribePlugins
       false
     end
 
+    # @private
+    # @param [Object] parent
+    # @return [Object]
     def active_record_parent?(parent)
       application_record_parent?(parent) || active_record_base_parent?(parent)
     end
 
+    # @private
+    # @param [Object] parent
+    # @return [Object]
     def application_record_parent?(parent)
       parent.type == :const && parent.children[1] == :ApplicationRecord
     end
 
+    # @private
+    # @param [Object] parent
+    # @return [Object]
     def active_record_base_parent?(parent)
       parent.type == :const &&
         parent.children[0]&.type == :const &&
@@ -236,6 +245,11 @@ module DocscribePlugins
       tables
     end
 
+    # @private
+    # @param [Object] line
+    # @param [Object] tables
+    # @param [Object] current_table
+    # @return [Object]
     def parse_table_line(line, tables, current_table)
       case line
       when /\A\s*create_table\s+["'](\w+)["']/
@@ -248,12 +262,20 @@ module DocscribePlugins
       end
     end
 
+    # @private
+    # @param [Object] _line
+    # @param [Object] tables
+    # @return [Object]
     def new_table_in_schema(_line, tables)
       table_name = ::Regexp.last_match(1)
       tables[table_name] ||= []
       table_name
     end
 
+    # @private
+    # @param [Object] tables
+    # @param [Object] current_table
+    # @return [Object]
     def add_column_from_line(tables, current_table)
       col_type = ::Regexp.last_match(1)
       col_name = ::Regexp.last_match(2)
@@ -266,6 +288,10 @@ module DocscribePlugins
       }
     end
 
+    # @private
+    # @param [Object] col_type
+    # @param [Object] col_name
+    # @return [Object]
     def recognized_column?(col_type, col_name)
       RECOGNIZED_COLUMNS.include?(col_type.to_sym) &&
         !SKIPPED_COLUMNS.include?(col_name)
@@ -291,6 +317,11 @@ module DocscribePlugins
       results
     end
 
+    # @private
+    # @param [Object] node
+    # @param [Object] columns
+    # @param [Object] results
+    # @return [Object]
     def collect_class_attributes(node, columns, results)
       return unless node.type == :class
 
@@ -302,6 +333,9 @@ module DocscribePlugins
       end
     end
 
+    # @private
+    # @param [Object] node
+    # @return [Object]
     def attribute_indent(node)
       _name, _parent, body = *node
 
@@ -311,6 +345,11 @@ module DocscribePlugins
       extract_indent(stmts.first || node)
     end
 
+    # @private
+    # @param [Object] column
+    # @param [Object] indent
+    # @param [Object] node
+    # @return [Hash]
     def build_attribute_doc(column, indent, node)
       return if SKIPPED_COLUMNS.include?(column[:name])
 
