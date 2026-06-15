@@ -118,10 +118,10 @@ module Docscribe
 
         # Warn and return exit code when no matching files were found.
         #
-        # @return [Integer] exit code 1
+        # @return [Integer] exit code 2
         def no_files_found
           warn 'No files found. Pass files or directories (e.g. `docscribe lib`).'
-          1
+          2
         end
 
         # Expand CLI path arguments into a sorted list of Ruby files.
@@ -207,9 +207,9 @@ module Docscribe
         # @private
         # @param [Hash<Symbol, Object>] options CLI options
         # @param [Hash<Symbol, Object>] state shared processing state
-        # @return [Integer] exit code 0 or 1
+        # @return [Integer] exit code: 0 = OK, 1 = findings, 2 = error
         def run_exit_code(options, state)
-          return 1 if state[:had_errors]
+          return 2 if state[:had_errors]
           return 1 if options[:mode] == :check && state[:changed]
 
           0
@@ -598,7 +598,7 @@ module Docscribe
           state[:fail_paths].each do |p|
             puts "Would update: #{p}"
 
-            next if options[:verbose]
+            next if options[:verbose] || options[:quiet]
 
             Array(state[:fail_changes][p]).each do |change|
               puts "  - #{format_change_reason(change)}"
@@ -612,6 +612,7 @@ module Docscribe
         # @param [Hash<Symbol, Object>] options CLI options
         # @return [void]
         def print_type_mismatch_paths(state, options)
+          return if options[:quiet]
           return unless options[:verbose] || options[:explain]
 
           state[:type_mismatch_paths].each do |p|
@@ -649,7 +650,7 @@ module Docscribe
           state[:corrected_paths].each do |p|
             puts "Updated: #{p}"
 
-            next if options[:verbose]
+            next if options[:verbose] || options[:quiet]
 
             Array(state[:corrected_changes][p]).each do |change|
               puts "  - #{format_change_reason(change)}"

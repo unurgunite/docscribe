@@ -361,12 +361,18 @@ docscribe [options] [files...]
 
 Docscribe has three main ways to run:
 
-- **Inspect mode** (default): checks what safe doc updates would be applied and exits non-zero if files need changes.
+- **Inspect mode** (default): checks what safe doc updates would be applied and exits 1 if files need changes.
 - **Safe autocorrect** (`-a`, `--autocorrect`): writes safe, non-destructive updates in place.
 - **Aggressive autocorrect** (`-A`, `--autocorrect-all`): rewrites existing doc blocks more aggressively.
 - **STDIN mode** (`--stdin`): reads Ruby source from STDIN and prints rewritten source to STDOUT.
 
-If you pass no files and don’t use `--stdin`, Docscribe processes the current directory recursively.
+If you pass no files and don't use `--stdin`, Docscribe processes the current directory recursively.
+
+### Exit codes
+
+- **0** — all files are up to date (no changes needed)
+- **1** — some files need documentation updates
+- **2** — execution error (parse error, missing files, etc.)
 
 ### Options
 
@@ -387,8 +393,12 @@ If you pass no files and don’t use `--stdin`, Docscribe processes the current 
 - `--verbose`  
   Print per-file actions.
 
+- `--quiet` (`-q`)  
+  Only show status, no details (suppresses change reasons).
+  Overrides the default detailed output.
+
 - `--explain`  
-  Show detailed reasons for each file that would change.
+  Show detailed reasons for each file (default; no-op for compatibility).
 
 - `--rbs`  
   Use RBS signatures for `@param`/`@return` when available (falls back to inference).
@@ -456,7 +466,7 @@ If you pass no files and don’t use `--stdin`, Docscribe processes the current 
 
 - Show detailed reasons for files that would change:
   ```shell
-  docscribe --verbose --explain lib
+  docscribe --verbose lib
   ```
 
 ## Update strategies
@@ -515,6 +525,8 @@ With `--explain`, Docscribe also prints detailed reasons, such as:
 - missing `@return`
 - missing module_function note
 - unsorted tags
+
+Use `--quiet` to suppress these details and show only file names and the summary line.
 
 ## Parser backend (Parser gem vs Prism)
 

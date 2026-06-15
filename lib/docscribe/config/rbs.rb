@@ -62,6 +62,7 @@ module Docscribe
         collapse_generics: rbs_collapse_generics?
       )
     rescue LoadError
+      warn 'Docscribe: --rbs requires the `rbs` gem. Add `gem "rbs"` to your Gemfile and run `bundle install`.'
       nil
     end
 

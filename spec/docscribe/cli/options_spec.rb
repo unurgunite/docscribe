@@ -88,4 +88,34 @@ RSpec.describe Docscribe::CLI::Options do
     expect(opts[:keep_descriptions]).to be(true)
     expect(opts[:no_boilerplate]).to be(true)
   end
+
+  it 'sets explain with --explain', :aggregate_failures do
+    opts = described_class.parse!(%w[--explain lib])
+
+    expect(opts[:explain]).to be(true)
+    expect(opts[:quiet]).to be(false)
+  end
+
+  it 'sets quiet with --quiet', :aggregate_failures do
+    opts = described_class.parse!(%w[--quiet lib])
+
+    expect(opts[:quiet]).to be(true)
+    expect(opts[:explain]).to be(false)
+  end
+
+  it 'parses -q as quiet' do
+    opts = described_class.parse!(%w[-q lib])
+
+    expect(opts[:quiet]).to be(true)
+  end
+
+  it 'quiet and explain can coexist' do
+    opts = described_class.parse!(%w[--quiet --explain lib])
+    expect(opts[:quiet]).to be(true)
+  end
+
+  it 'quiet and explain can coexist (explain)' do
+    opts = described_class.parse!(%w[--quiet --explain lib])
+    expect(opts[:explain]).to be(true)
+  end
 end

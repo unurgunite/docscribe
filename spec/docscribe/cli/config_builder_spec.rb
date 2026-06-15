@@ -118,4 +118,15 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
       expect(config.raw['emit']['include_param_documentation']).to be(false)
     end
   end
+
+  describe 'rbs_collection warning' do
+    it 'warns when rbs_collection.lock.yaml is not found' do
+      require 'docscribe/types/rbs/collection_loader'
+      allow(Docscribe::Types::RBS::CollectionLoader).to receive(:resolve).and_return(nil)
+
+      raw = Marshal.load(Marshal.dump(Docscribe::Config.new({}).raw))
+      expect { described_class.apply_rbs_collection(raw) }
+        .to output(/rbs_collection\.lock\.yaml not found/).to_stderr
+    end
+  end
 end
