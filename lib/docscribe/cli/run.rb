@@ -23,6 +23,8 @@ module Docscribe
           checked_ok: 0,
           checked_fail: 0,
           corrected: 0,
+          corrected_paths: [], #: Array[String]
+          corrected_changes: {}, #: Hash[String, untyped]
           fail_paths: [], #: Array[String]
           fail_changes: {}, #: Hash[String, untyped]
           error_paths: [], #: Array[String]
@@ -196,7 +198,7 @@ module Docscribe
           if options[:mode] == :check
             print_check_summary(state: state, options: options)
           elsif options[:mode] == :write
-            print_write_summary(state: state)
+            print_write_summary(state: state, options: options)
           end
         end
 
@@ -300,7 +302,7 @@ module Docscribe
           state[:had_errors] = true
           state[:error_paths] << path
           state[:error_messages][path] = "#{e.class}: #{e.message}"
-          options[:verbose] ? warn("ERR #{display_path}: #{state[:error_messages][path]}") : print('E')
+          options[:verbose] ? warn("ERR #{display_path}: #{state[:error_messages][path]}") : $stderr.print('E')
           nil
         end
 
@@ -344,7 +346,7 @@ module Docscribe
           if ctx[:options][:verbose]
             warn "ERR #{ctx[:display_path]}: #{state[:error_messages][path]}"
           else
-            print('E')
+            $stderr.print('E')
           end
         end
 
@@ -412,10 +414,10 @@ module Docscribe
         # @return [void]
         def handle_check_failed(path, file_changes:, display_path:, options:, state:)
           if options[:verbose]
-            puts("FAIL #{display_path}")
+            warn("FAIL #{display_path}")
             print_check_explanations(file_changes)
           else
-            print('F')
+            $stderr.print('F')
           end
 
           state[:checked_fail] += 1
@@ -435,7 +437,7 @@ module Docscribe
         # @raise [StandardError]
         # @return [void] if StandardError
         # @return [Object] if StandardError
-        def handle_write_result(path, src:, out:, file_changes:, **ctx)
+        def handle_write_result(path, src:, out:, file_changes:, **ctx) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
           if out == src
             log_check_verdict('OK', ctx[:display_path], ctx[:options])
             return
@@ -444,6 +446,8 @@ module Docscribe
           File.write(path, out)
           log_write_verdict('CHANGED', ctx[:display_path], file_changes, ctx[:options])
           ctx[:state][:corrected] += 1
+          ctx[:state][:corrected_paths] << ctx[:display_path]
+          ctx[:state][:corrected_changes][ctx[:display_path]] = file_changes
         rescue StandardError => e
           record_write_error(path, e, display_path: ctx[:display_path], options: ctx[:options], state: ctx[:state])
         end
@@ -458,10 +462,10 @@ module Docscribe
         # @return [void]
         def log_write_verdict(verdict, display_path, file_changes, options)
           if options[:verbose]
-            puts("#{verdict} #{display_path}")
+            warn("#{verdict} #{display_path}")
             print_check_explanations(file_changes)
           else
-            print('C')
+            $stderr.print('C')
           end
         end
 
@@ -474,7 +478,7 @@ module Docscribe
         # @return [void]
         def print_check_explanations(file_changes)
           file_changes.each do |change|
-            puts("  - #{format_change_reason(change)}")
+            warn("  - #{format_change_reason(change)}")
           end
         end
 
@@ -503,13 +507,13 @@ module Docscribe
         # @return [void]
         def log_check_verdict(verdict, display_path, options)
           if options[:verbose]
-            puts("#{verdict} #{display_path}")
+            warn("#{verdict} #{display_path}")
           else
-            print(if verdict == 'FAIL'
-                    'F'
-                  else
-                    verdict == 'MT' ? 'M' : '.'
-                  end)
+            $stderr.print(if verdict == 'FAIL'
+                            'F'
+                          else
+                            verdict == 'MT' ? 'M' : '.'
+                          end)
           end
         end
 
@@ -618,6 +622,41 @@ module Docscribe
           end
         end
 
+        # Print the write-mode summary (files corrected, errors).
+        #
+        # @param [Hash<Symbol, Object>] state shared processing state
+        # @param [Hash] options CLI options
+        # @return [void]
+        def print_write_summary(state:, options:)
+          puts
+          puts "Docscribe: updated #{state[:corrected]} file(s)" if state[:corrected].positive?
+          print_corrected_paths(state, options)
+
+          return unless state[:had_errors]
+
+          warn "Docscribe: #{state[:error_paths].size} file(s) had errors"
+          print_error_paths(state)
+        end
+
+        # Print corrected paths from write-mode summary (stdout).
+        #
+        # Skips explanations when --verbose showed them inline per-file.
+        #
+        # @param [Object] state shared processing state
+        # @param [Object] options CLI options
+        # @return [Object]
+        def print_corrected_paths(state, options)
+          state[:corrected_paths].each do |p|
+            puts "Updated: #{p}"
+
+            next if options[:verbose]
+
+            Array(state[:corrected_changes][p]).each do |change|
+              puts "  - #{format_change_reason(change)}"
+            end
+          end
+        end
+
         # Format a structured change record into human-readable CLI output.
         #
         # @param [Hash<Symbol, Object>] change structured change produced by the inline rewriter
@@ -663,25 +702,14 @@ module Docscribe
           ].include?(change[:type])
         end
 
-        # Print the write-mode summary (files corrected, errors).
-        #
-        # @param [Hash<Symbol, Object>] state shared processing state
-        # @return [void]
-        def print_write_summary(state:)
-          puts
-          puts "Docscribe: updated #{state[:corrected]} file(s)" if state[:corrected].positive?
-
-          return unless state[:had_errors]
-
-          warn "Docscribe: #{state[:error_paths].size} file(s) had errors"
-          print_error_paths(state)
-        end
-
         # Print error paths from check summary.
         #
         # @param [Hash<Symbol, Object>] state shared processing state
         # @return [void]
         def print_error_paths(state)
+          return if state[:error_paths].empty?
+
+          warn ''
           state[:error_paths].each do |p|
             warn "Error processing: #{p}"
             warn "  #{state[:error_messages][p]}" if state[:error_messages][p]
