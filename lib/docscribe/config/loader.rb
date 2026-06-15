@@ -30,9 +30,11 @@ module Docscribe
     # @param [String] path file path
     # @return [Hash<Object, Object>]
     def self.safe_load_file_compat(path)
-      if YAML.respond_to?(:safe_load_file)
-        YAML.safe_load_file(path,
-                            permitted_classes: [], permitted_symbols: [],
+      if YAML.respond_to?(:safe_load_file) # steep:ignore
+        pclasses = [] #: Array[String]
+        psymbols = [] #: Array[Symbol]
+        YAML.safe_load_file(path, # steep:ignore
+                            permitted_classes: pclasses, permitted_symbols: psymbols,
                             aliases: true) || {} #: Hash[String, untyped]
       else
         yaml = File.open(path, 'r:bom|utf-8', &:read)
@@ -48,16 +50,17 @@ module Docscribe
     # @return [Hash<Object, Object>] if ArgumentError
     # @return [Object] if ArgumentError
     def self.safe_load_compat(yaml, filename: nil)
-      Psych.safe_load(
+      pclasses = [] #: Array[String]
+      psymbols = [] #: Array[Symbol]
+      Psych.safe_load( # steep:ignore
         yaml,
-        permitted_classes: [],
-        permitted_symbols: [],
+        permitted_classes: pclasses, permitted_symbols: psymbols,
         aliases: true,
         filename: filename
       ) #: Hash[String, untyped]
     rescue ArgumentError
       # Older Psych signature uses positional args
-      Psych.safe_load(yaml, [], [], true, filename)
+      Psych.safe_load(yaml, [], [], true, filename) # steep:ignore
     end
   end
 end

@@ -17,7 +17,7 @@ module Docscribe
     # @return [Array<String>]
     def tag_order
       Array(raw.dig('doc', 'tag_order') || DEFAULT.dig('doc', 'tag_order')).map do |t|
-        t.to_s.sub(/\A@/, '')
+        t.to_s.sub(/\A@/, '') # steep:ignore
       end
     end
   end

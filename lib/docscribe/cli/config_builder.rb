@@ -97,9 +97,15 @@ module Docscribe
       # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [void]
       def apply_file_filters(raw, options)
-        files = raw['filter']['files'] ||= {} #: Hash[String, untyped]
+        files = raw['filter']['files']
+        if files.nil?
+          files = {} #: Hash[String, untyped]
+          raw['filter']['files'] = files
+        end
+
         files['include'] = Array(files['include']) + options[:include_file]
         files['exclude'] = Array(files['exclude']) + options[:exclude_file]
+        files
       end
 
       # Apply RBS-related CLI overrides to the raw config.

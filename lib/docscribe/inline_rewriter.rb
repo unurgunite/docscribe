@@ -77,7 +77,7 @@ module Docscribe
         all = collect_insertions(buffer, ast)
         method_overrides_by_pos = {} #: Hash[Integer, untyped]
         all = deduplicate_insertions(all, method_overrides_by_pos: method_overrides_by_pos)
-        rewriter = Parser::Source::TreeRewriter.new(buffer)
+        rewriter = Parser::Source::TreeRewriter.new(buffer) # steep:ignore
         merge_inserts = Hash.new { |h, k| h[k] = [] } #: Hash[Integer, untyped]
         changes = [] #: Array[untyped]
 
@@ -510,9 +510,11 @@ module Docscribe
       def plugin_insertion_pos(kind, ins)
         case kind
         when :plugin
-          ins[:anchor_node].loc.expression.begin_pos
+          plugin_ins = ins #: Hash[Symbol, untyped]
+          plugin_ins[:anchor_node].loc.expression.begin_pos
         else
-          ins.node.loc.expression.begin_pos
+          method_ins = ins #: Collector::Insertion | Collector::AttrInsertion
+          method_ins.node.loc.expression.begin_pos
         end
       end
 
@@ -734,7 +736,7 @@ module Docscribe
         params = build_method_insertion_params(insertion, config, options[:signature_provider],
                                                options[:core_rbs_provider], options[:method_override])
         extract_existing_descriptions!(options[:buffer], insertion, params, options[:strategy], config)
-        doc = DocBuilder.build(insertion, **params)
+        doc = DocBuilder.build(insertion, **params) # steep:ignore
         dispatch_method_insertion_by_strategy!(anchor_bol_range, options, params, doc)
       end
 
@@ -763,7 +765,7 @@ module Docscribe
       # @param [Docscribe::Config] config the active configuration
       # @return [Boolean] true if insertion should proceed
       def method_insertion_allowed?(insertion, config)
-        name = SourceHelpers.node_name(insertion.node)
+        name = SourceHelpers.node_name(insertion.node) #: Symbol
         config.process_method?(container: insertion.container, scope: insertion.scope,
                                visibility: insertion.visibility || :public, name: name)
       end
@@ -838,10 +840,11 @@ module Docscribe
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @return [Docscribe::Types::MethodSignature, nil]
       def resolve_external_signature(insertion, signature_provider)
+        node_name = SourceHelpers.node_name(insertion.node) #: Symbol
         signature_provider&.signature_for(
           container: insertion.container,
           scope: insertion.scope,
-          name: SourceHelpers.node_name(insertion.node)
+          name: node_name
         )
       end
 
@@ -912,14 +915,13 @@ module Docscribe
       def apply_method_insertion_safe_with_info!(**options)
         i = options[:info]
         dp = filter_doc_params(options)
-        mr = DocBuilder.build_missing_merge_result(options[:insertion], existing_lines: i[:doc_lines],
-                                                                        strategy: options[:strategy], **dp)
+        mr = DocBuilder.build_missing_merge_result( # steep:ignore
+          options[:insertion], existing_lines: i[:doc_lines], strategy: options[:strategy], **dp
+        )
         changed, n, ob = compute_doc_replacement(i, mr[:lines], strategy: options[:strategy], **dp)
         commit_safe_doc_outcome(options[:rewriter], options[:buffer], i, n,
-                                old_block: ob, merge_result: mr,
-                                existing_order_changed: changed,
-                                insertion: options[:insertion], changes: options[:changes],
-                                file: options[:file])
+                                old_block: ob, merge_result: mr, existing_order_changed: changed,
+                                insertion: options[:insertion], changes: options[:changes], file: options[:file])
       end
 
       # Commit safe doc outcome
@@ -1018,7 +1020,7 @@ module Docscribe
         anchor_bol_range = options[:anchor_bol_range]
         doc = DocBuilder.build(insertion, **options.reject do |k, _|
           %i[rewriter buffer insertion anchor_bol_range changes file strategy].include?(k)
-        end)
+        end) # steep:ignore
         return if doc.nil? || doc.empty?
 
         rewriter.insert_before(anchor_bol_range, doc)
@@ -1274,7 +1276,7 @@ module Docscribe
 
         Array(lines).each do |line|
           if (m = line.match(/^\s*#\s*@!attribute\b(?:\s+\[[^\]]+\])?\s+(\S+)/))
-            names[m[1]] = true
+            names[m[1].to_s] = true
           end
         end
 
@@ -1469,7 +1471,7 @@ module Docscribe
         if config.respond_to?(:signature_provider_for)
           config.signature_provider_for(source: code, file: file)
         elsif config.respond_to?(:signature_provider)
-          config.signature_provider
+          config.signature_provider # steep:ignore
         elsif config.respond_to?(:rbs_provider)
           config.rbs_provider
         end

@@ -1,93 +1,95 @@
 module Docscribe
   module CLI
     module Run
-      INITIAL_RUN_STATE: { changed: false, had_errors: false, checked_ok: 0, checked_fail: 0, corrected: 0, fail_paths: Array[String], fail_changes: Hash[String, Array[Hash[Symbol, untyped]]], error_paths: Array[String], error_messages: Hash[String, String], type_mismatch_paths: Array[String], type_mismatch_changes: Hash[String, Array[Hash[Symbol, untyped]]] }
+      INITIAL_RUN_STATE: Formatters::state
 
-      def self.run: (options: Hash[Symbol, untyped], argv: Array[String]) -> Integer
+      def self.run: (options: Formatters::opts, argv: Array[String]) -> Integer
 
-      def self.build_config: (Hash[Symbol, untyped] options) -> Config
+      def self.build_config: (Formatters::opts options) -> Config
 
-      def self.run_stdin: (options: Hash[Symbol, untyped], conf: Config) -> Integer
+      def self.run_stdin: (options: Formatters::opts, conf: Config) -> Integer
 
-      def self.stdin_rewrite_result: (Hash[Symbol, untyped] options, Config conf) -> Hash[Symbol, untyped]
+      def self.stdin_rewrite_result: (Formatters::opts options, Config conf) -> Hash[Symbol, untyped]
 
       def self.core_rbs_provider_for: (Config conf) -> (untyped | nil)
 
       def self.filtered_paths: (Array[String] argv, Config conf) -> Array[String]
 
-      def self.no_files_found: () -> 1
+      def self.no_files_found: () -> Integer
 
       def self.expand_paths: (Array[String] args) -> Array[String]
 
       def self.append_expanded_path: (Array[String] files, String path) -> void
 
-      def self.run_files: (options: Hash[Symbol, untyped], conf: Config, paths: Array[String]) -> Integer
+      def self.run_files: (options: Formatters::opts, conf: Config, paths: Array[String]) -> Integer
 
       private
 
-      def self.finalize_run: (Hash[Symbol, untyped] options, Hash[Symbol, untyped] state) -> void
+      def self.finalize_run: (Formatters::opts options, Formatters::state state) -> void
 
-      def self.run_exit_code: (Hash[Symbol, untyped] options, Hash[Symbol, untyped] state) -> (0 | 1 | 2)
+      def self.run_exit_code: (Formatters::opts options, Formatters::state state) -> (0 | 1 | 2)
 
-      def self.initial_run_state: () -> Hash[Symbol, untyped]
+      def self.initial_run_state: () -> Formatters::state
 
-      def self.process_one_file: (String path, options: Hash[Symbol, untyped], conf: Config, pwd: Pathname, state: Hash[Symbol, untyped]) -> void
+      def self.process_one_file: (String path, options: Formatters::opts, conf: Config, pwd: Pathname, state: Formatters::state) -> void
 
-      def self.dispatch_file_result: (String path, src: String, out: String, file_changes: Array[Hash[Symbol, untyped]], **Hash[Symbol, untyped] ctx) -> void
+      def self.dispatch_file_result: (String path, src: String, out: String, file_changes: Array[Formatters::change], **untyped ctx) -> void
 
       def self.display_path_for: (String path, pwd: Pathname) -> String
 
-      def self.read_source_for_path: (String path, display_path: String, options: Hash[Symbol, untyped], state: Hash[Symbol, untyped]) -> (String | nil)
+      def self.read_source_for_path: (String path, display_path: String, options: Formatters::opts, state: Formatters::state) -> (String | nil)
 
       def self.rewrite_result_for_path: (String path, src: String, ctx: Hash[Symbol, untyped]) -> (Hash[Symbol, untyped] | nil)
 
       def self.record_rewrite_error: (String path, untyped error, Hash[Symbol, untyped] ctx) -> void
 
-      def self.handle_check_result: (String path, src: String, out: String, file_changes: Array[Hash[Symbol, untyped]], **Hash[Symbol, untyped] ctx) -> void
+      def self.handle_check_result: (String path, src: String, out: String, file_changes: Array[Formatters::change], **untyped ctx) -> void
 
-      def self.type_mismatch_changes: (Array[Hash[Symbol, untyped]] file_changes) -> Array[Hash[Symbol, untyped]]
+      def self.type_mismatch_changes: (Array[Formatters::change] file_changes) -> Array[Formatters::change]
 
-      def self.handle_check_no_changes: (String path, type_mismatches: Array[Hash[Symbol, untyped]], display_path: String, options: Hash[Symbol, untyped], state: Hash[Symbol, untyped]) -> void
+      def self.handle_check_no_changes: (String path, type_mismatches: Array[Formatters::change], display_path: String, options: Formatters::opts, state: Formatters::state) -> void
 
-      def self.handle_check_failed: (String path, file_changes: Array[Hash[Symbol, untyped]], display_path: String, options: Hash[Symbol, untyped], state: Hash[Symbol, untyped]) -> void
+      def self.handle_check_failed: (String path, file_changes: Array[Formatters::change], display_path: String, options: Formatters::opts, state: Formatters::state) -> void
 
-      def self.handle_write_result: (String path, src: String, out: String, file_changes: Array[Hash[Symbol, untyped]], **Hash[Symbol, untyped] ctx) -> void
+      def self.handle_write_result: (String path, src: String, out: String, file_changes: Array[Formatters::change], **untyped ctx) -> void
 
-      def self.log_write_verdict: (String verdict, String display_path, Array[Hash[Symbol, untyped]] file_changes, Hash[Symbol, untyped] options) -> void
+      def self.log_write_verdict: (String verdict, String display_path, Array[Formatters::change] file_changes, Formatters::opts options) -> void
 
-      def self.print_check_explanations: (Array[Hash[Symbol, untyped]] file_changes, Hash[Symbol, untyped] options) -> void
+      def self.print_check_explanations: (Array[Formatters::change] file_changes) -> void
 
-      def self.record_write_error: (String path, untyped error, display_path: String, options: Hash[Symbol, untyped], state: Hash[Symbol, untyped]) -> void
+      def self.record_write_error: (String path, untyped error, display_path: String, options: Formatters::opts, state: Formatters::state) -> void
 
-      def self.log_check_verdict: (String verdict, String display_path, Hash[Symbol, untyped] options) -> void
+      def self.log_check_verdict: (String verdict, String display_path, Formatters::opts options) -> void
 
-      def self.print_check_summary: (state: Hash[Symbol, untyped], options: Hash[Symbol, untyped]) -> void
+      def self.print_check_summary: (state: Formatters::state, options: Formatters::opts) -> void
 
-      def self.print_check_status_line: (Hash[Symbol, untyped] state) -> void
+      def self.print_check_status_line: (Formatters::state state) -> void
 
-      def self.all_fine?: (Hash[Symbol, untyped] state, Integer checked_error, Integer type_mismatch_count) -> bool
+      def self.all_fine?: (Formatters::state state, Integer checked_error, Integer type_mismatch_count) -> bool
 
-      def self.mismatch_only?: (Hash[Symbol, untyped] state, Integer checked_error) -> bool
+      def self.mismatch_only?: (Formatters::state state, Integer checked_error) -> bool
 
-      def self.build_failure_line: (Hash[Symbol, untyped] state, Integer type_mismatch_count, Integer checked_error) -> String
+      def self.build_failure_line: (Formatters::state state, Integer type_mismatch_count, Integer checked_error) -> String
 
       public
 
-      def self.print_fail_paths: (Hash[Symbol, untyped] state, Hash[Symbol, untyped] options) -> void
+      def self.print_fail_paths: (Formatters::state state, Formatters::opts options) -> void
 
-      def self.print_type_mismatch_paths: (Hash[Symbol, untyped] state, Hash[Symbol, untyped] options) -> void
+      def self.print_type_mismatch_paths: (Formatters::state state, Formatters::opts options) -> void
 
-      def self.format_change_reason: (Hash[Symbol, untyped] change) -> String
+      def self.format_change_reason: (Formatters::change change) -> String
 
-      def self.change_line_suffix: (Hash[Symbol, untyped] change) -> String
+      def self.change_line_suffix: (Formatters::change change) -> String
 
-      def self.change_method_suffix: (Hash[Symbol, untyped] change) -> String
+      def self.change_method_suffix: (Formatters::change change) -> String
 
-      def self.direct_message_change?: (Hash[Symbol, untyped] change) -> bool
+      def self.direct_message_change?: (Formatters::change change) -> bool
 
-      def self.print_write_summary: (state: Hash[Symbol, untyped]) -> void
+      def self.print_write_summary: (state: Formatters::state, options: Formatters::opts) -> void
 
-      def self.print_error_paths: (Hash[Symbol, untyped] state) -> void
+      def self.print_corrected_paths: (Formatters::state state, Formatters::opts options) -> void
+
+      def self.print_error_paths: (Formatters::state state) -> void
     end
   end
 end

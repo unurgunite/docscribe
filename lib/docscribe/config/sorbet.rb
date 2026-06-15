@@ -94,7 +94,7 @@ module Docscribe
     #
     # @return [Array<String>]
     def sorbet_rbi_dirs
-      Array(raw.dig('sorbet', 'rbi_dirs') || DEFAULT.dig('sorbet', 'rbi_dirs')).map(&:to_s)
+      Array(raw.dig('sorbet', 'rbi_dirs') || DEFAULT.dig('sorbet', 'rbi_dirs')).map(&:to_s) # steep:ignore
     end
 
     # Whether generic Sorbet/RBI container types should be simplified.

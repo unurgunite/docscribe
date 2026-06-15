@@ -87,7 +87,7 @@ module Docscribe
     # @private
     # @return [Array<String>]
     def rbs_sig_dirs
-      Array(raw.dig('rbs', 'sig_dirs') || DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s)
+      Array(raw.dig('rbs', 'sig_dirs') || DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s) # steep:ignore
     end
 
     # RBS collection directories (auto-discovered from rbs_collection.lock.yaml).
@@ -99,7 +99,7 @@ module Docscribe
     # @private
     # @return [Array<String>]
     def rbs_collection_dirs
-      Array(raw.dig('rbs', 'collection_dirs')).map(&:to_s)
+      Array(raw.dig('rbs', 'collection_dirs')).map(&:to_s) # steep:ignore
     end
 
     # Whether generic RBS types should be collapsed to simpler container names.

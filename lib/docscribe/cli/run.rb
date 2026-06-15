@@ -3,6 +3,7 @@
 require 'pathname'
 
 require 'docscribe/cli/config_builder'
+require 'docscribe/cli/formatters'
 require 'docscribe/inline_rewriter'
 
 module Docscribe
@@ -195,10 +196,12 @@ module Docscribe
         # @param [Hash<Symbol, Object>] state shared processing state
         # @return [void]
         def finalize_run(options, state)
+          formatter = Formatters.for(options[:format])
+
           if options[:mode] == :check
-            print_check_summary(state: state, options: options)
+            formatter.format_check_summary(state: state, options: options)
           elsif options[:mode] == :write
-            print_write_summary(state: state, options: options)
+            formatter.format_write_summary(state: state, options: options)
           end
         end
 
@@ -437,11 +440,8 @@ module Docscribe
         # @raise [StandardError]
         # @return [void] if StandardError
         # @return [Object] if StandardError
-        def handle_write_result(path, src:, out:, file_changes:, **ctx) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-          if out == src
-            log_check_verdict('OK', ctx[:display_path], ctx[:options])
-            return
-          end
+        def handle_write_result(path, src:, out:, file_changes:, **ctx) # rubocop:disable Metrics/AbcSize
+          return log_check_verdict('OK', ctx[:display_path], ctx[:options]) if out == src
 
           File.write(path, out)
           log_write_verdict('CHANGED', ctx[:display_path], file_changes, ctx[:options])
@@ -536,7 +536,7 @@ module Docscribe
         # @private
         # @param [Hash<Symbol, Object>] state shared processing state
         # @return [void]
-        def print_check_status_line(state)
+        def print_check_status_line(state) # rubocop:disable SortedMethodsByCall/Waterfall
           checked_error = state[:error_paths].size
           type_mismatch_count = state[:type_mismatch_paths].size
 

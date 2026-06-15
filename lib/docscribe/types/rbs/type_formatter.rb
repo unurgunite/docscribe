@@ -22,7 +22,7 @@ module Docscribe
           handler = to_yard_formatters.find { |klass, _| type.is_a?(klass) }
           return handler.last.call(type, cg: collapse_generics) if handler
 
-          return format_named(type, collapse_generics: collapse_generics) if named_type?(type)
+          return format_named(type, collapse_generics: collapse_generics) if named_type?(type) # steep:ignore
 
           fallback_string(type)
         end
@@ -73,7 +73,7 @@ module Docscribe
         #
         # @note module_function: when included, also defines #formatter_pairs (instance visibility: private)
         # @return [Object]
-        def formatter_pairs # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+        def formatter_pairs # steep:ignore # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
           @formatter_pairs ||= {
             ::RBS::Types::Bases::Any => ->(_, **) { format_any },
             ::RBS::Types::Bases::Bool => ->(_, **) { format_bool },

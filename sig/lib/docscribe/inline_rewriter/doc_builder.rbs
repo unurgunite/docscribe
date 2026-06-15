@@ -1,7 +1,7 @@
 module Docscribe
   module InlineRewriter
     module DocBuilder
-      PARAM_TYPE_COLLECTORS: Hash[Symbol, Hash[Symbol, Symbol]]
+      PARAM_TYPE_COLLECTORS: Hash[Symbol, ^(untyped, untyped, untyped, untyped) -> untyped]
 
       PARAM_BUILDERS: Hash[Symbol, ^(untyped, untyped, untyped, untyped, **untyped) -> untyped]
 
@@ -17,11 +17,11 @@ module Docscribe
 
       def self?.build_param_and_raise_info: (Hash[Symbol, untyped] setup, Config config, Hash[Symbol, untyped] opts) -> Array[untyped]
 
-      def self?.resolve_doc_setup!: (Hash[Symbol, untyped] setup, Parser::AST::Node node, String name, Config config, Hash[Symbol, untyped] opts) -> Hash[Symbol, untyped]
+      def self?.resolve_doc_setup!: (Hash[Symbol, untyped] setup, Parser::AST::Node node, Symbol name, Config config, Hash[Symbol, untyped] opts) -> Hash[Symbol, untyped]
 
-      def self?.extract_base_setup: (untyped insertion, String name) -> Hash[Symbol, untyped]
+      def self?.extract_base_setup: (untyped insertion, Symbol name) -> Hash[Symbol, untyped]
 
-      def self?.resolve_external_sig: (String container, Symbol scope, String name, (untyped | nil) signature_provider) -> (untyped | nil)
+      def self?.resolve_external_sig: (String container, Symbol scope, Symbol name, (untyped | nil) signature_provider) -> (untyped | nil)
 
       def self?.compute_returns_spec: (Parser::AST::Node node, Config config, (Hash[String, String] | nil) param_types, (untyped | nil) core_rbs_provider) -> Hash[Symbol, untyped]
 
@@ -63,7 +63,7 @@ module Docscribe
 
       def self?.collect_missing_all: (Hash[Symbol, untyped] ctx) -> Hash[Symbol, untyped]
 
-      def self?.extract_param_info: (String line, Hash[String, untyped] param_names, Hash[String, String] param_types) -> void
+      def self?.extract_param_info: (String line, Hash[String, untyped] param_names, Hash[String, String] param_types, ?(Hash[String, untyped] | nil) param_descriptions) -> void
 
       def self?.extract_return_info: (String line, Hash[Symbol, untyped] info) -> void
 
@@ -111,7 +111,7 @@ module Docscribe
 
       def self?.collect_updated_param: (String param_line, String pname, Array[String] lines, Array[Hash[Symbol, untyped]] reasons, Hash[Symbol, untyped] ctx) -> void
 
-      def self?.build_params_lines: (Parser::AST::Node node, String indent, external_sig: (untyped | nil), config: Config, ?param_types_override: (Hash[String, String] | nil)) -> (Array[String] | nil)
+      def self?.build_params_lines: (Parser::AST::Node node, String indent, external_sig: (untyped | nil), config: Config, ?param_types_override: (Hash[String, String] | nil), ?param_descriptions: (Hash[Symbol, untyped] | nil)) -> (Array[String] | nil)
 
       def self?.build_all_param_lines: (untyped args, String indent, Config config, ?external_sig: (untyped | nil), **untyped) -> (Array[String] | nil)
 
@@ -125,7 +125,7 @@ module Docscribe
 
       def self?.core_body_tags: (String indent, Hash[Symbol, untyped] setup, Hash[Symbol, untyped] ctx) -> Array[untyped]
 
-      def self?.defaults_and_visibility: (String indent, Config config, Symbol scope, Symbol visibility) -> Array[String]
+      def self?.defaults_and_visibility: (String indent, Config config, Symbol scope, Symbol visibility, ?description: (Array[String] | nil)) -> Array[String]
 
       def self?.build_return_line_if_needed: (String indent, Hash[Symbol, untyped] setup, Config config, Hash[Symbol, untyped] ctx) -> Array[String]
 
@@ -135,7 +135,7 @@ module Docscribe
 
       def self?.build_header_lines: (String indent, config: Config, **untyped) -> Array[String]
 
-      def self?.build_default_msg_lines: (String indent, Config config, Symbol scope, Symbol visibility) -> Array[String]
+      def self?.build_default_msg_lines: (String indent, Config config, Symbol scope, Symbol visibility, ?description: (Array[String] | nil)) -> Array[String]
 
       def self?.build_visibility_tag_lines: (String indent, Symbol visibility, Config config) -> Array[String]
 
@@ -226,6 +226,26 @@ module Docscribe
       def self?.extract_param_description: (String line) -> (String | nil)
 
       def self?.param_name_from_arg: (Parser::AST::Node arg_node) -> (String | nil)
+
+      def self?.join_multiline_tags: (Array[String] lines) -> Array[String]
+
+      def self?.parse_existing_tag_line: (String line, Hash[Symbol, untyped] info, bool tags_started) -> bool
+
+      def self?.consume_tag_or_copy: (Array[String] lines, Integer idx, Array[String] result) -> Integer
+
+      def self?.join_tag_continuations: (Array[String] lines, Integer start) -> [String, Integer]
+
+      def self?.unbalanced_bracket?: (String s) -> bool
+
+      def self?.extract_all_comment_tags: (String text, Hash[Symbol, untyped] info) -> void
+
+      def self?.parse_return_rest: (String rest) -> ([String, (String | nil)] | nil)
+
+      def self?.param_doc_for_arg: (untyped arg, Hash[Symbol, untyped] kwargs, Config config) -> String
+
+      def self?.param_rest_after_type: (String line) -> String?
+
+      def self?.name_after_type_bracket: (String rest, Integer type_end) -> String?
     end
   end
 end

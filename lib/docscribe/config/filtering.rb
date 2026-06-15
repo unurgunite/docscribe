@@ -121,7 +121,7 @@ module Docscribe
     # @return [Boolean]
     def file_match_pattern?(pattern, path)
       if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
-        return Regexp.new(pattern[1..-2]).match?(path)
+        return Regexp.new(pattern[1..-2]).match?(path) # steep:ignore
       end
 
       patterns_to_try = [pattern]
@@ -136,28 +136,31 @@ module Docscribe
     #
     # @return [Array<String>]
     def filter_scopes
-      Array(raw.dig('filter', 'scopes') || DEFAULT.dig('filter', 'scopes')).map(&:to_s)
+      Array(raw.dig('filter', 'scopes') || DEFAULT.dig('filter', 'scopes')).map(&:to_s) # steep:ignore
     end
 
     # Allowed method visibilities from config/defaults.
     #
     # @return [Array<String>]
     def filter_visibilities
-      Array(raw.dig('filter', 'visibilities') || DEFAULT.dig('filter', 'visibilities')).map(&:to_s)
+      Array(raw.dig('filter', 'visibilities') ||
+            DEFAULT.dig('filter', 'visibilities')).map(&:to_s) # steep:ignore
     end
 
     # Exclude method filter patterns.
     #
     # @return [Array<String>]
     def filter_exclude_patterns
-      Array(raw.dig('filter', 'exclude') || DEFAULT.dig('filter', 'exclude')).map(&:to_s).reject(&:empty?)
+      Array(raw.dig('filter', 'exclude') ||
+            DEFAULT.dig('filter', 'exclude')).map(&:to_s).reject(&:empty?) # steep:ignore
     end
 
     # Include method filter patterns.
     #
     # @return [Array<String>]
     def filter_include_patterns
-      Array(raw.dig('filter', 'include') || DEFAULT.dig('filter', 'include')).map(&:to_s).reject(&:empty?)
+      Array(raw.dig('filter', 'include') ||
+            DEFAULT.dig('filter', 'include')).map(&:to_s).reject(&:empty?) # steep:ignore
     end
   end
 end

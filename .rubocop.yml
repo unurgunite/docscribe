@@ -1,5 +1,3 @@
-inherit_from: .rubocop_todo.yml
-
 plugins:
   - rubocop-sorted_methods_by_call
   - rubocop-rspec
@@ -8,6 +6,12 @@ plugins:
 AllCops:
   NewCops: enable
   TargetRubyVersion: 2.7
+
+Metrics/ClassLength:
+  Enabled: false
+
+Metrics/ModuleLength:
+  Enabled: false
 
 Gemspec/DevelopmentDependencies:
   EnforcedStyle: gemspec

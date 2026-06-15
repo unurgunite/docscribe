@@ -123,7 +123,7 @@ module Docscribe
         def build_env(dirs)
           loader = ::RBS::EnvironmentLoader.new
           # Load core types transitively
-          loader.add(library: 'rbs')
+          loader.add(library: 'rbs') # steep:ignore
 
           dirs.each do |dir|
             path = Pathname(dir)

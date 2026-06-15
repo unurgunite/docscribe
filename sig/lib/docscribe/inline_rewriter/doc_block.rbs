@@ -59,6 +59,10 @@ module Docscribe
 
       def self?.extract_param_name: (String line) -> String?
 
+      def self?.name_after_bracket: (String rest, Integer type_end) -> String?
+
+      def self?.matching_close_bracket: (String str) -> Integer?
+
       def self?.extract_option_owner: (String line) -> String?
 
       def self?.sortable_top_level_tag_line?: (String line, Array[String] sortable_tags) -> bool
