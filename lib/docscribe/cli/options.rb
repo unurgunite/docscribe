@@ -338,7 +338,8 @@ module Docscribe
 
       # Define keep descriptions option
       #
-      # @note module_function: when included, also defines #define_keep_descriptions_option (instance visibility: private)
+      # @note module_function: when included, also defines #define_keep_descriptions_option
+      #   (instance visibility: private)
       # @param [OptionParser] opts
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]

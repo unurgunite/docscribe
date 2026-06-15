@@ -292,14 +292,19 @@ module Docscribe
         result
       end
 
-      def consume_tag_or_copy(lines, i, result)
-        if (c = lines[i].sub(/^\s*#\s*/, '')) =~ /^@(param|return|raise)\s+\[/ && unbalanced_bracket?(c)
-          buffer, consumed = join_tag_continuations(lines, i)
+      # @note module_function: when included, also defines #consume_tag_or_copy (instance visibility: private)
+      # @param [Object] lines
+      # @param [Object] idx
+      # @param [Object] result
+      # @return [Object]
+      def consume_tag_or_copy(lines, idx, result)
+        if (c = lines[idx].sub(/^\s*#\s*/, '')) =~ /^@(param|return|raise)\s+\[/ && unbalanced_bracket?(c)
+          buffer, consumed = join_tag_continuations(lines, idx)
           result << "# #{buffer}"
-          i + consumed
+          idx + consumed
         else
-          result << lines[i]
-          i + 1
+          result << lines[idx]
+          idx + 1
         end
       end
 
@@ -793,7 +798,8 @@ module Docscribe
 
       # Merge module function note lines
       #
-      # @note module_function: when included, also defines #merge_module_function_note_lines (instance visibility: private)
+      # @note module_function: when included, also defines #merge_module_function_note_lines
+      #   (instance visibility: private)
       # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
       # @param [String] name the method name string
@@ -926,7 +932,8 @@ module Docscribe
 
       # Collect missing module function note
       #
-      # @note module_function: when included, also defines #collect_missing_module_function_note! (instance visibility: private)
+      # @note module_function: when included, also defines #collect_missing_module_function_note!
+      #   (instance visibility: private)
       # @param [Array<String>] lines array of output doc lines being accumulated
       # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
       # @param [Object] ctx merged context hash with info and indent
@@ -1030,7 +1037,7 @@ module Docscribe
       # @return [Array<String>, nil]
       def build_all_param_lines(args, indent, config, external_sig: nil, **kwargs)
         params = (args.children || []).each_with_object([]) do |a, p|
-          pd = (kwargs[:param_descriptions] || {})[param_name_from_arg(a)] || (config.include_param_documentation? ? config.param_documentation : '')
+          pd = param_doc_for_arg(a, kwargs, config)
           p.concat(build_param_line(a, indent, external_sig, kwargs[:param_types_override],
                                     skip_anonymous_block_params: config.skip_anonymous_block_params?,
                                     fallback_type: config.fallback_type,
@@ -1039,6 +1046,16 @@ module Docscribe
                                     param_tag_style: config.param_tag_style))
         end
         params.empty? ? nil : params
+      end
+
+      # @note module_function: when included, also defines #param_doc_for_arg (instance visibility: private)
+      # @param [Object] arg
+      # @param [Object] kwargs
+      # @param [Object] config
+      # @return [Object]
+      def param_doc_for_arg(arg, kwargs, config)
+        (kwargs[:param_descriptions] || {})[param_name_from_arg(arg)] ||
+          (config.include_param_documentation? ? config.param_documentation : '')
       end
 
       # Build doc lines
@@ -1242,7 +1259,8 @@ module Docscribe
 
       # Build module function note lines
       #
-      # @note module_function: when included, also defines #build_module_function_note_lines (instance visibility: private)
+      # @note module_function: when included, also defines #build_module_function_note_lines
+      #   (instance visibility: private)
       # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
       # @param [String] name the method name string
@@ -1687,7 +1705,8 @@ module Docscribe
 
       # Extract param name from param line
       #
-      # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
+      # @note module_function: when included, also defines #extract_param_name_from_param_line
+      #   (instance visibility: private)
       # @param [String] line a `@param` doc line
       # @return [String, nil] the parameter name or nil
       def extract_param_name_from_param_line(line)
@@ -1699,14 +1718,23 @@ module Docscribe
         if (m = content.match(/@param\s+\[/))
           rest = content[(m.end(0) - 1)..]
           type_end = find_matching_close_bracket(rest)
-          return rest[(type_end + 1)..]&.strip&.split(/\s+/)&.first if type_end
+          return name_after_type_bracket(rest, type_end) if type_end
         end
         nil
       end
 
+      # @note module_function: when included, also defines #name_after_type_bracket (instance visibility: private)
+      # @param [Object] rest
+      # @param [Object] type_end
+      # @return [Object]
+      def name_after_type_bracket(rest, type_end)
+        rest[(type_end + 1)..].to_s.strip.split(/\s+/).first
+      end
+
       # Extract param type from param line
       #
-      # @note module_function: when included, also defines #extract_param_type_from_param_line (instance visibility: private)
+      # @note module_function: when included, also defines #extract_param_type_from_param_line
+      #   (instance visibility: private)
       # @param [String] line a `@param` tag line
       # @return [String, nil]
       def extract_param_type_from_param_line(line)
@@ -1808,7 +1836,8 @@ module Docscribe
 
       # Collect missing rescue returns
       #
-      # @note module_function: when included, also defines #collect_missing_rescue_returns! (instance visibility: private)
+      # @note module_function: when included, also defines #collect_missing_rescue_returns!
+      #   (instance visibility: private)
       # @param [Array<String>] lines array of output doc lines being accumulated
       # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
       # @param [Object] ctx merged context hash with info and indent

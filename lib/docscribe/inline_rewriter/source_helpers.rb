@@ -238,7 +238,8 @@ module Docscribe
       #
       # This helper is retained for compatibility/legacy behavior checks.
       #
-      # @note module_function: when included, also defines #already_has_doc_immediately_above? (instance visibility: private)
+      # @note module_function: when included, also defines #already_has_doc_immediately_above?
+      #   (instance visibility: private)
       # @param [Parser::Source::Buffer] buffer
       # @param [Integer] insert_pos
       # @return [Boolean]
