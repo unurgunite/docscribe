@@ -19,12 +19,14 @@ module Docscribe
         # @param [Array<String>] sig_dirs directories containing `.rbs` files
         # @param [Array<String>] collection_dirs RBS collection directories
         # @param [Boolean] collapse_generics whether generic container types
+        # @param [Boolean] collapse_object_generics
         # @return [void]
-        def initialize(sig_dirs:, collection_dirs: [], collapse_generics: false)
+        def initialize(sig_dirs:, collection_dirs: [], collapse_generics: false, collapse_object_generics: false)
           require 'rbs'
           @sig_dirs = Array(sig_dirs).map(&:to_s)
           @collection_dirs = Array(collection_dirs).map(&:to_s)
           @collapse_generics = !!collapse_generics
+          @collapse_object_generics = !!collapse_object_generics
           @env = nil
           @builder = nil
           @warned = false
@@ -272,7 +274,8 @@ module Docscribe
         def format_type(type)
           Docscribe::Types::RBS::TypeFormatter.to_yard(
             type,
-            collapse_generics: @collapse_generics
+            collapse_generics: @collapse_generics,
+            collapse_object_generics: @collapse_object_generics
           )
         end
 

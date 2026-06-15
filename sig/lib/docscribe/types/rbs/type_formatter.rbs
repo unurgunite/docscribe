@@ -21,7 +21,7 @@ module Docscribe
                             | ::RBS::Types::Interface
                             | ::RBS::Types::Alias
 
-        type formatter_fn = ^(rbs_type, ?cg: bool) -> String
+        type formatter_fn = ^(rbs_type, ?cg: bool, ?cog: bool) -> String
 
         @to_yard_formatters: Hash[Class, formatter_fn]
 
@@ -37,13 +37,13 @@ module Docscribe
 
         def self?.format_nil: () -> "nil"
 
-        def self?.format_optional: (::RBS::Types::Optional type, collapse_generics: bool) -> String
+        def self?.format_optional: (::RBS::Types::Optional type, collapse_generics: bool, collapse_object_generics: bool) -> String
 
         def self?.format_literal: (::RBS::Types::Literal lit) -> String
 
         def self?.format_proc: () -> "Proc"
 
-        def self?.format_tuple: (::RBS::Types::Tuple type, collapse_generics: bool) -> String
+        def self?.format_tuple: (::RBS::Types::Tuple type, collapse_generics: bool, collapse_object_generics: bool) -> String
 
         def self?.format_top: () -> "Object"
 
@@ -57,17 +57,17 @@ module Docscribe
 
         def self?.format_variable: (::RBS::Types::Variable type) -> String
 
-        def self?.format_record: (::RBS::Types::Record type, collapse_generics: bool) -> String
+        def self?.format_record: (::RBS::Types::Record type, collapse_generics: bool, collapse_object_generics: bool) -> String
 
-        def self?.format_intersection: (::RBS::Types::Intersection type, collapse_generics: bool) -> String
+        def self?.format_intersection: (::RBS::Types::Intersection type, collapse_generics: bool, collapse_object_generics: bool) -> String
 
-        def self?.format_union: (::RBS::Types::Union type, collapse_generics: bool) -> String
+        def self?.format_union: (::RBS::Types::Union type, collapse_generics: bool, collapse_object_generics: bool) -> String
 
-        def self?.format_named: (named_rbs_type type, collapse_generics: bool) -> String
+        def self?.format_named: (named_rbs_type type, collapse_generics: bool, collapse_object_generics: bool) -> String
 
         def self?.literal_to_yard: (top lit) -> String
 
-        def self?.to_yard: ((rbs_type | nil) type, ?collapse_generics: bool) -> String
+        def self?.to_yard: ((rbs_type | nil) type, ?collapse_generics: bool, ?collapse_object_generics: bool) -> String
 
         def self?.named_type?: (rbs_type type) -> bool
 

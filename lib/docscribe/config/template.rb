@@ -89,7 +89,9 @@ module Docscribe
           sig_dirs: ["sig"]
           collection_dirs: []                 # auto-discovered from --rbs-collection
           collapse_generics: false            # Hash<Symbol, String> => Hash
+          collapse_object_generics: false     # Hash<Object, Object> => Hash (keep if inner types are useful)
           collection: false                   # auto-discover from rbs_collection.lock.yaml
+          warn_missing_collection: true       # warn if rbs_collection.lock.yaml exists without --rbs-collection
 
         sorbet:
           # Use Sorbet inline sigs and RBI files for better types

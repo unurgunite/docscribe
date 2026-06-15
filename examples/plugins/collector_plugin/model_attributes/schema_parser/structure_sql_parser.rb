@@ -125,6 +125,10 @@ class StructureSqlParser
     split_columns(columns_sql).each { |part| parse_column_part(part, columns) }
   end
 
+  # @private
+  # @param [Object] part
+  # @param [Object] columns
+  # @return [Object]
   def parse_column_part(part, columns)
     part = part.strip
     return if part.empty? || part.match?(CONSTRAINT_RE)
@@ -155,6 +159,11 @@ class StructureSqlParser
     parts
   end
 
+  # @private
+  # @param [Object] char
+  # @param [Object] parts
+  # @param [Object] state
+  # @return [Object]
   def split_char(char, parts, state)
     case char
     when '(' then open_paren(state, char)
@@ -164,16 +173,29 @@ class StructureSqlParser
     end
   end
 
+  # @private
+  # @param [Object] state
+  # @param [Object] char
+  # @return [Object]
   def open_paren(state, char)
     state[:depth] += 1
     state[:cur] << char
   end
 
+  # @private
+  # @param [Object] state
+  # @param [Object] char
+  # @return [Object]
   def close_paren(state, char)
     state[:depth] -= 1
     state[:cur] << char
   end
 
+  # @private
+  # @param [Object] char
+  # @param [Object] parts
+  # @param [Object] state
+  # @return [Object]
   def split_comma(char, parts, state)
     if state[:depth].zero?
       parts << state[:cur]

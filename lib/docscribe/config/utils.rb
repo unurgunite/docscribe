@@ -75,6 +75,8 @@ module Docscribe
     def match_pattern?(pattern, text)
       if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
         Regexp.new(pattern[1..-2]).match?(text) # steep:ignore
+      elsif pattern.count('*?[{').zero?
+        File.fnmatch?("*#{pattern.tr('/', '#')}*", text, File::FNM_EXTGLOB)
       else
         File.fnmatch?(pattern.tr('/', '#'), text, File::FNM_EXTGLOB)
       end
