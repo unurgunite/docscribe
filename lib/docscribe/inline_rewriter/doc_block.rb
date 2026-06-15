@@ -459,7 +459,7 @@ module Docscribe
           return m[1]
         elsif (m = content.match(/@param\s+\[/))
           end0 = m.end(0) #: Integer
-          rest = content[(end0 - 1)..]
+          rest = content[(end0 - 1)..] #: String
           type_end = matching_close_bracket(rest)
           return name_after_bracket(rest, type_end) if type_end
         end

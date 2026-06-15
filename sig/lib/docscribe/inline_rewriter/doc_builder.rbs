@@ -17,11 +17,11 @@ module Docscribe
 
       def self?.build_param_and_raise_info: (Hash[Symbol, untyped] setup, Config config, Hash[Symbol, untyped] opts) -> Array[untyped]
 
-      def self?.resolve_doc_setup!: (Hash[Symbol, untyped] setup, Parser::AST::Node node, String name, Config config, Hash[Symbol, untyped] opts) -> Hash[Symbol, untyped]
+      def self?.resolve_doc_setup!: (Hash[Symbol, untyped] setup, Parser::AST::Node node, Symbol name, Config config, Hash[Symbol, untyped] opts) -> Hash[Symbol, untyped]
 
-      def self?.extract_base_setup: (untyped insertion, String name) -> Hash[Symbol, untyped]
+      def self?.extract_base_setup: (untyped insertion, Symbol name) -> Hash[Symbol, untyped]
 
-      def self?.resolve_external_sig: (String container, Symbol scope, String name, (untyped | nil) signature_provider) -> (untyped | nil)
+      def self?.resolve_external_sig: (String container, Symbol scope, Symbol name, (untyped | nil) signature_provider) -> (untyped | nil)
 
       def self?.compute_returns_spec: (Parser::AST::Node node, Config config, (Hash[String, String] | nil) param_types, (untyped | nil) core_rbs_provider) -> Hash[Symbol, untyped]
 
@@ -63,7 +63,7 @@ module Docscribe
 
       def self?.collect_missing_all: (Hash[Symbol, untyped] ctx) -> Hash[Symbol, untyped]
 
-      def self?.extract_param_info: (String line, Hash[String, untyped] param_names, Hash[String, String] param_types, ?(Hash[Symbol, untyped] | nil) param_descriptions) -> void
+      def self?.extract_param_info: (String line, Hash[String, untyped] param_names, Hash[String, String] param_types, ?(Hash[String, untyped] | nil) param_descriptions) -> void
 
       def self?.extract_return_info: (String line, Hash[Symbol, untyped] info) -> void
 
@@ -125,7 +125,7 @@ module Docscribe
 
       def self?.core_body_tags: (String indent, Hash[Symbol, untyped] setup, Hash[Symbol, untyped] ctx) -> Array[untyped]
 
-      def self?.defaults_and_visibility: (String indent, Config config, Symbol scope, Symbol visibility, ?description: (String | nil)) -> Array[String]
+      def self?.defaults_and_visibility: (String indent, Config config, Symbol scope, Symbol visibility, ?description: (Array[String] | nil)) -> Array[String]
 
       def self?.build_return_line_if_needed: (String indent, Hash[Symbol, untyped] setup, Config config, Hash[Symbol, untyped] ctx) -> Array[String]
 
@@ -135,7 +135,7 @@ module Docscribe
 
       def self?.build_header_lines: (String indent, config: Config, **untyped) -> Array[String]
 
-      def self?.build_default_msg_lines: (String indent, Config config, Symbol scope, Symbol visibility, ?description: (String | nil)) -> Array[String]
+      def self?.build_default_msg_lines: (String indent, Config config, Symbol scope, Symbol visibility, ?description: (Array[String] | nil)) -> Array[String]
 
       def self?.build_visibility_tag_lines: (String indent, Symbol visibility, Config config) -> Array[String]
 

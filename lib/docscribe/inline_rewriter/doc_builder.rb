@@ -81,12 +81,14 @@ module Docscribe
         },
         blockarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
           if opts[:skip_anonymous_block_params] && arg_node.children.first.nil?
-            []
+            [] #: Array[String]
           else
             [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
           end
         },
-        forward_arg: ->(*) { [] }
+        forward_arg: lambda { |*|
+          [] #: Array[String]
+        }
       }.freeze
 
       # Build
@@ -165,8 +167,8 @@ module Docscribe
         name = SourceHelpers.node_name(node)
         return nil unless name
 
-        setup = extract_base_setup(insertion, name) #: String
-        resolve_doc_setup!(setup, node, name, config, opts) #: String
+        setup = extract_base_setup(insertion, name)
+        resolve_doc_setup!(setup, node, name, config, opts)
       end
 
       # Build unsafe
@@ -579,12 +581,11 @@ module Docscribe
       def parse_return_rest(rest)
         return unless rest[0] == '['
 
-        type_end = find_matching_close_bracket(rest)
-        return unless type_end
+        type_end = find_matching_close_bracket(rest) or return
 
-        return_type = rest[1...type_end]
+        return_type = rest[1...type_end] #: String
         desc = rest[(type_end + 1)..]&.strip
-        [return_type, desc.empty? ? nil : desc]
+        [return_type, desc&.empty? ? nil : desc]
       end
 
       # @note module_function: when included, also defines #track_last_tag (instance visibility: private)
@@ -684,7 +685,7 @@ module Docscribe
         return [] unless line.match?(/^\s*#\s*@raise\b/)
 
         if (m = line.match(/^\s*#\s*@raise\s*\[([^\]]+)\]/))
-          parse_raise_bracket_list(m[1]) #: String
+          parse_raise_bracket_list(m[1]) # steep:ignore ArgumentTypeMismatch
         elsif (m = line.match(/^\s*#\s*@raise\s+([A-Z]\w*(?:::[A-Z]\w*)*)/))
           [m[1]]
         else
@@ -1684,7 +1685,8 @@ module Docscribe
       def param_rest_after_type(line)
         content = line.sub(/^\s*#\s*/, '')
         if (m = content.match(/@param\s+(\S+\s+)?\[/))
-          rest = content[(m.end(0) - 1)..]
+          brace_end = m.end(0) #: Integer
+          rest = content[(brace_end - 1)..] #: String
           type_end = find_matching_close_bracket(rest)
           return rest[(type_end + 1)..]&.strip if type_end
         end
@@ -1715,7 +1717,7 @@ module Docscribe
           return m[1]
         elsif (m = content.match(/@param\s+\[/))
           name_end = m.end(0) #: Integer
-          rest = content[(name_end - 1)..]
+          rest = content[(name_end - 1)..] #: String
           type_end = find_matching_close_bracket(rest)
           return name_after_type_bracket(rest, type_end) if type_end
         end
@@ -1741,7 +1743,7 @@ module Docscribe
         content = line.sub(/^\s*#\s*/, '')
         if (m = content.match(/@param\s+(\S+\s+)?\[/))
           name_end = m.end(0) #: Integer
-          rest = content[(name_end - 1)..]
+          rest = content[(name_end - 1)..] #: String
           type_end = find_matching_close_bracket(rest)
           return rest[1...type_end] if type_end
         end
