@@ -4,6 +4,9 @@ module Docscribe
   module CLI
     # Factory for output formatters.
     module Formatters
+      # @param [Docscribe::CLI::Formatters::format] format
+      # @raise [ArgumentError]
+      # @return [Docscribe::CLI::Formatters::Text, Docscribe::CLI::Formatters::Json]
       def self.for(format)
         case format
         when :text then Text.new

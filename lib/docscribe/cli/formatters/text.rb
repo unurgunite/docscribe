@@ -5,6 +5,9 @@ module Docscribe
     module Formatters
       # Text output formatter preserving the original CLI output format.
       class Text
+        # @param [Hash<Symbol, Object>] state
+        # @param [Hash<Symbol, Object>] options
+        # @return [void]
         def format_check_summary(state:, options:)
           puts
           format_fail_paths(state, options)
@@ -13,6 +16,9 @@ module Docscribe
           format_error_paths(state)
         end
 
+        # @param [Hash<Symbol, Object>] state
+        # @param [Hash<Symbol, Object>] options
+        # @return [void]
         def format_write_summary(state:, options:)
           puts
           puts "Docscribe: updated #{state[:corrected]} file(s)" if state[:corrected].positive?
@@ -24,6 +30,9 @@ module Docscribe
           format_error_paths(state)
         end
 
+        # @param [Hash<Symbol, Object>] state
+        # @param [Object] options
+        # @return [void]
         def format_fail_paths(state, options)
           state[:fail_paths].each do |p|
             puts "Would update: #{p}"
@@ -36,6 +45,8 @@ module Docscribe
           end
         end
 
+        # @param [Hash<Symbol, Object>] state
+        # @return [void]
         def format_check_status_line(state)
           checked_error = state[:error_paths].size
           type_mismatch_count = state[:type_mismatch_paths].size
@@ -49,6 +60,9 @@ module Docscribe
           end
         end
 
+        # @param [Hash<Symbol, Object>] state
+        # @param [Object] options
+        # @return [void]
         def format_type_mismatch_paths(state, options)
           return if options[:quiet]
           return unless options[:verbose] || options[:explain]
@@ -61,6 +75,9 @@ module Docscribe
           end
         end
 
+        # @param [Hash<Symbol, Object>] state
+        # @param [Object] options
+        # @return [void]
         def format_corrected_paths(state, options)
           state[:corrected_paths].each do |p|
             puts "Updated: #{p}"
@@ -73,6 +90,8 @@ module Docscribe
           end
         end
 
+        # @param [Hash<Symbol, Object>] state
+        # @return [void]
         def format_error_paths(state)
           return if state[:error_paths].empty?
 
@@ -85,14 +104,28 @@ module Docscribe
 
         private
 
+        # @private
+        # @param [Hash<Symbol, Object>] state
+        # @param [Integer] checked_error
+        # @param [Integer] type_mismatch_count
+        # @return [Boolean]
         def all_fine?(state, checked_error, type_mismatch_count)
           state[:checked_fail].zero? && checked_error.zero? && type_mismatch_count.zero?
         end
 
+        # @private
+        # @param [Hash<Symbol, Object>] state
+        # @param [Integer] checked_error
+        # @return [Boolean]
         def mismatch_only?(state, checked_error)
           state[:checked_fail].zero? && checked_error.zero?
         end
 
+        # @private
+        # @param [Hash<Symbol, Object>] state
+        # @param [Integer] type_mismatch_count
+        # @param [Integer] checked_error
+        # @return [String]
         def failure_line(state, type_mismatch_count, checked_error)
           parts = ["#{state[:checked_fail]} need updates"]
           parts << "#{type_mismatch_count} type mismatches" if type_mismatch_count.positive?
@@ -101,6 +134,9 @@ module Docscribe
           "Docscribe: FAILED (#{parts.join(', ')})"
         end
 
+        # @private
+        # @param [Hash<Symbol, Object>] change
+        # @return [String]
         def format_change_reason(change)
           line = change_line_suffix(change)
           method = change_method_suffix(change)
@@ -111,14 +147,23 @@ module Docscribe
           "#{change[:message] || change[:type].to_s.tr('_', ' ')}#{method}#{line}"
         end
 
+        # @private
+        # @param [Hash<Symbol, Object>] change
+        # @return [String]
         def change_line_suffix(change)
           change[:line] ? " at line #{change[:line]}" : ''
         end
 
+        # @private
+        # @param [Hash<Symbol, Object>] change
+        # @return [String]
         def change_method_suffix(change)
           change[:method] ? " for #{change[:method]}" : ''
         end
 
+        # @private
+        # @param [Hash<Symbol, Object>] change
+        # @return [Boolean]
         def direct_message_change?(change)
           %i[
             missing_param
