@@ -31,5 +31,7 @@ module Docscribe
     def include_param_documentation?: () -> bool
 
     def keep_descriptions?: () -> bool
+
+    def skip_anonymous_block_params?: () -> bool
   end
 end

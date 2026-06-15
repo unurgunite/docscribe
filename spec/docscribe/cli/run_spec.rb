@@ -125,6 +125,14 @@ RSpec.describe Docscribe::CLI::Run do
       expect(result[0]).to match(/updated \d+ file/)
     end
 
+    it 'prints Updated: per corrected file' do
+      expect(result[0]).to include('Updated:')
+    end
+
+    it 'prints change reasons with Updated:' do
+      expect(result[0]).to match(/Updated: .*\n\s+- missing/)
+    end
+
     it 'exits 0' do
       expect(result[2].exitstatus).to eq(0)
     end
@@ -145,6 +153,11 @@ RSpec.describe Docscribe::CLI::Run do
 
     it 'prints update summary to stdout' do
       expect(result[0]).to match(/updated \d+ file/)
+    end
+
+    it 'prints Updated: without duplicating reasons' do
+      after_updated = result[0].split('Updated:').last || ''
+      expect(after_updated).not_to include('missing docs')
     end
   end
 
