@@ -1,0 +1,38 @@
+module Docscribe
+  module CLI
+    module Formatters
+      # Text output formatter preserving the original CLI output format.
+      class Text
+        def format_check_summary: (state: untyped, options: untyped) -> untyped
+
+        def format_write_summary: (state: untyped, options: untyped) -> (nil | untyped)
+
+        def format_fail_paths: (untyped state, untyped options) -> untyped
+
+        def format_check_status_line: (untyped state) -> untyped
+
+        def format_type_mismatch_paths: (untyped state, untyped options) -> (nil | untyped)
+
+        def format_corrected_paths: (untyped state, untyped options) -> untyped
+
+        def format_error_paths: (untyped state) -> (nil | untyped)
+
+        private
+
+        def all_fine?: (untyped state, untyped checked_error, untyped type_mismatch_count) -> untyped
+
+        def mismatch_only?: (untyped state, untyped checked_error) -> untyped
+
+        def failure_line: (untyped state, untyped type_mismatch_count, untyped checked_error) -> ::String
+
+        def format_change_reason: (untyped change) -> ::String
+
+        def change_line_suffix: (untyped change) -> (::String | "")
+
+        def change_method_suffix: (untyped change) -> (::String | "")
+
+        def direct_message_change?: (untyped change) -> untyped
+      end
+    end
+  end
+end

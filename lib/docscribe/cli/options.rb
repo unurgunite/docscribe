@@ -13,6 +13,7 @@ module Docscribe
         verbose: false,
         explain: false,
         quiet: false,
+        format: :text,
         config: nil,
         include: [], #: Array[String]
         exclude: [], #: Array[String]
@@ -63,6 +64,7 @@ module Docscribe
                 --verbose                  Print per-file actions
             -e, --explain                  Show detailed reasons for changes (default)
             -q, --quiet                    Only show status, no details
+                --format FORMAT            Output format: text (default) or json
 
 
         Other:
@@ -311,6 +313,7 @@ module Docscribe
         define_verbose_option(opts, options)
         define_explain_option(opts, options)
         define_quiet_option(opts, options)
+        define_format_option(opts, options)
         define_keep_descriptions_option(opts, options)
         define_no_boilerplate_option(opts, options)
       end
@@ -348,6 +351,18 @@ module Docscribe
       def define_quiet_option(opts, options)
         opts.on('-q', '--quiet', 'Only show status, no details') do
           options[:quiet] = true
+        end
+      end
+
+      # Define format option
+      #
+      # @note module_function: when included, also defines #define_format_option (instance visibility: private)
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
+      # @return [void]
+      def define_format_option(opts, options)
+        opts.on('--format FORMAT', %i[text json], 'Output format: text (default) or json') do |v|
+          options[:format] = v
         end
       end
 

@@ -1,0 +1,59 @@
+module Docscribe
+  module CLI
+    module Formatters
+      # Output formatter producing RuboCop-compatible JSON.
+      #
+      # stdout: complete JSON document with all findings.
+      # stderr: progress markers only (same as text mode).
+      class Json
+        SEVERITY_MAP: { missing_param: "convention", missing_return: "convention", missing_raise: "convention", missing_visibility: "convention", missing_module_function_note: "convention", insert_full_doc_block: "convention", unsorted_tags: "convention", updated_param: "warning", updated_return: "warning" }
+
+        COP_NAME_MAP: { missing_param: "Docscribe/MissingParam", missing_return: "Docscribe/MissingReturn", missing_raise: "Docscribe/MissingRaise", missing_visibility: "Docscribe/MissingVisibility", missing_module_function_note: "Docscribe/MissingModuleFunctionNote", insert_full_doc_block: "Docscribe/MissingDocBlock", unsorted_tags: "Docscribe/UnsortedTags", updated_param: "Docscribe/UpdatedParam", updated_return: "Docscribe/UpdatedReturn" }
+
+        def format_check_summary: (state: untyped, options: untyped) -> untyped
+
+        def format_write_summary: (state: untyped, options: untyped) -> untyped
+
+        private
+
+        def build_document: (untyped state, untyped _options) -> untyped
+
+        def document_hash: (untyped files, untyped state) -> { metadata: untyped, files: untyped, summary: untyped }
+
+        def metadata_hash: () -> { docscribe_version: untyped, ruby_version: untyped }
+
+        def summary_hash: (untyped files, untyped state) -> { offense_count: untyped, target_file_count: untyped, inspected_file_count: untyped, error_count: untyped }
+
+        def build_files: (untyped state) -> untyped
+
+        def append_check_files: (untyped state, untyped files) -> untyped
+
+        def append_corrected_files: (untyped state, untyped files) -> untyped
+
+        def append_error_files: (untyped state, untyped files) -> untyped
+
+        def merge_or_append: (untyped files, untyped path, untyped offenses) -> untyped
+
+        def file_entry: (untyped path, untyped changes, ?severity: untyped?) -> { path: untyped, offenses: untyped }
+
+        def error_offense: (untyped state, untyped path) -> untyped
+
+        def error_offense_hash: (untyped message) -> { severity: "fatal", cop_name: "Docscribe/ProcessingError", message: untyped, corrected: false, correctable: false, location: untyped }
+
+        def default_location: () -> { start_line: 1, start_column: 1, last_line: 1, last_column: 1 }
+
+        def build_offenses: (untyped changes, ?severity: untyped?) -> untyped
+
+        def build_offense: (untyped change, untyped severity) -> { severity: untyped, cop_name: untyped, message: untyped, corrected: false, correctable: true, location: untyped }
+
+        def location_for: (untyped change) -> { start_line: untyped, start_column: 1, last_line: untyped, last_column: 1 }
+
+        def cop_name_fallback: (untyped change) -> ::String
+
+        def build_message: (untyped change) -> ::String
+
+        def inspected_count: (untyped state) -> untyped
+      end
+    end
+  end
+end

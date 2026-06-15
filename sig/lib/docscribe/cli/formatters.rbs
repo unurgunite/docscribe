@@ -1,0 +1,8 @@
+module Docscribe
+  module CLI
+    # Factory for output formatters.
+    module Formatters
+      def self.for: (untyped format) -> untyped
+    end
+  end
+end
