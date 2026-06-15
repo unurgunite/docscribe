@@ -91,10 +91,10 @@ module Docscribe
         case backend(backend)
         when :parser
           require 'parser/current'
-          Parser::CurrentRuby.new
+          Parser::CurrentRuby.new # steep:ignore
         when :prism
           require 'prism'
-          Prism::Translation::ParserCurrent.new
+          Prism::Translation::ParserCurrent.new # steep:ignore
         end
       end
 

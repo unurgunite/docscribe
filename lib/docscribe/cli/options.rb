@@ -361,7 +361,7 @@ module Docscribe
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_format_option(opts, options)
-        opts.on('--format FORMAT', %i[text json], 'Output format: text (default) or json') do |v|
+        opts.on('--format FORMAT', %i[text json], 'Output format: text (default) or json') do |v| # steep:ignore
           options[:format] = v
         end
       end

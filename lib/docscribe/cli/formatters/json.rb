@@ -74,7 +74,7 @@ module Docscribe
         end
 
         def build_files(state)
-          files = []
+          files = [] #: Array[Hash[untyped, untyped]]
 
           append_check_files(state, files) if state[:fail_paths].any? || state[:type_mismatch_paths].any?
           append_corrected_files(state, files) if state[:corrected_paths].any?

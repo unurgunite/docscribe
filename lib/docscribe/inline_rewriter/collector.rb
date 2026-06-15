@@ -1147,7 +1147,7 @@ module Docscribe
       # @return [Array<Symbol>] extracted member names
       def extract_struct_member_names(struct_new_node)
         _recv, _meth, *args = *struct_new_node
-        args ||= []
+        args ||= [] #: Array[Parser::AST::Node]
 
         args.reject! { |arg| arg.is_a?(Parser::AST::Node) && arg.type == :hash }
 

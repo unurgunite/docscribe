@@ -98,6 +98,7 @@ module Docscribe
       # @return [void]
       def apply_file_filters(raw, options)
         files = raw['filter']['files'] ||= {} #: Hash[String, untyped]
+
         files['include'] = Array(files['include']) + options[:include_file]
         files['exclude'] = Array(files['exclude']) + options[:exclude_file]
       end

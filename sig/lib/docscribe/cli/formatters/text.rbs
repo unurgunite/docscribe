@@ -3,35 +3,35 @@ module Docscribe
     module Formatters
       # Text output formatter preserving the original CLI output format.
       class Text
-        def format_check_summary: (state: untyped, options: untyped) -> untyped
+        def format_check_summary: (state: Hash[Symbol, untyped], options: Hash[Symbol, untyped]) -> void
 
-        def format_write_summary: (state: untyped, options: untyped) -> (nil | untyped)
+        def format_write_summary: (state: Hash[Symbol, untyped], options: Hash[Symbol, untyped]) -> void
 
-        def format_fail_paths: (untyped state, untyped options) -> untyped
+        def format_fail_paths: (Hash[Symbol, untyped] state, Hash[Symbol, untyped] opts) -> void
 
-        def format_check_status_line: (untyped state) -> untyped
+        def format_check_status_line: (Hash[Symbol, untyped] state) -> void
 
-        def format_type_mismatch_paths: (untyped state, untyped options) -> (nil | untyped)
+        def format_type_mismatch_paths: (Hash[Symbol, untyped] state, Hash[Symbol, untyped] opts) -> void
 
-        def format_corrected_paths: (untyped state, untyped options) -> untyped
+        def format_corrected_paths: (Hash[Symbol, untyped] state, Hash[Symbol, untyped] opts) -> void
 
-        def format_error_paths: (untyped state) -> (nil | untyped)
+        def format_error_paths: (Hash[Symbol, untyped] state) -> void
 
         private
 
-        def all_fine?: (untyped state, untyped checked_error, untyped type_mismatch_count) -> untyped
+        def all_fine?: (Hash[Symbol, untyped] state, Integer checked_error, Integer type_mismatch_count) -> bool
 
-        def mismatch_only?: (untyped state, untyped checked_error) -> untyped
+        def mismatch_only?: (Hash[Symbol, untyped] state, Integer checked_error) -> bool
 
-        def failure_line: (untyped state, untyped type_mismatch_count, untyped checked_error) -> ::String
+        def failure_line: (Hash[Symbol, untyped] state, Integer type_mismatch_count, Integer checked_error) -> String
 
-        def format_change_reason: (untyped change) -> ::String
+        def format_change_reason: (Hash[Symbol, untyped] change) -> String
 
-        def change_line_suffix: (untyped change) -> (::String | "")
+        def change_line_suffix: (Hash[Symbol, untyped] change) -> String
 
-        def change_method_suffix: (untyped change) -> (::String | "")
+        def change_method_suffix: (Hash[Symbol, untyped] change) -> String
 
-        def direct_message_change?: (untyped change) -> untyped
+        def direct_message_change?: (Hash[Symbol, untyped] change) -> bool
       end
     end
   end

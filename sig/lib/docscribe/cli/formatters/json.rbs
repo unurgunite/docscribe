@@ -2,57 +2,54 @@ module Docscribe
   module CLI
     module Formatters
       # Output formatter producing RuboCop-compatible JSON.
-      #
-      # stdout: complete JSON document with all findings.
-      # stderr: progress markers only (same as text mode).
       class Json
-        SEVERITY_MAP: { missing_param: "convention", missing_return: "convention", missing_raise: "convention", missing_visibility: "convention", missing_module_function_note: "convention", insert_full_doc_block: "convention", unsorted_tags: "convention", updated_param: "warning", updated_return: "warning" }
+        SEVERITY_MAP: Hash[Symbol, String]
 
-        COP_NAME_MAP: { missing_param: "Docscribe/MissingParam", missing_return: "Docscribe/MissingReturn", missing_raise: "Docscribe/MissingRaise", missing_visibility: "Docscribe/MissingVisibility", missing_module_function_note: "Docscribe/MissingModuleFunctionNote", insert_full_doc_block: "Docscribe/MissingDocBlock", unsorted_tags: "Docscribe/UnsortedTags", updated_param: "Docscribe/UpdatedParam", updated_return: "Docscribe/UpdatedReturn" }
+        COP_NAME_MAP: Hash[Symbol, String]
 
-        def format_check_summary: (state: untyped, options: untyped) -> untyped
+        def format_check_summary: (state: state, options: opts) -> void
 
-        def format_write_summary: (state: untyped, options: untyped) -> untyped
+        def format_write_summary: (state: state, options: opts) -> void
 
         private
 
-        def build_document: (untyped state, untyped _options) -> untyped
+        def build_document: (state state, opts _options) -> Hash[untyped, untyped]
 
-        def document_hash: (untyped files, untyped state) -> { metadata: untyped, files: untyped, summary: untyped }
+        def document_hash: (Array[Hash[untyped, untyped]] files, state state) -> Hash[untyped, untyped]
 
-        def metadata_hash: () -> { docscribe_version: untyped, ruby_version: untyped }
+        def metadata_hash: () -> Hash[Symbol, untyped]
 
-        def summary_hash: (untyped files, untyped state) -> { offense_count: untyped, target_file_count: untyped, inspected_file_count: untyped, error_count: untyped }
+        def summary_hash: (Array[Hash[untyped, untyped]] files, state state) -> Hash[Symbol, Integer]
 
-        def build_files: (untyped state) -> untyped
+        def build_files: (state state) -> Array[Hash[untyped, untyped]]
 
-        def append_check_files: (untyped state, untyped files) -> untyped
+        def append_check_files: (state state, Array[Hash[untyped, untyped]] files) -> void
 
-        def append_corrected_files: (untyped state, untyped files) -> untyped
+        def append_corrected_files: (state state, Array[Hash[untyped, untyped]] files) -> void
 
-        def append_error_files: (untyped state, untyped files) -> untyped
+        def append_error_files: (state state, Array[Hash[untyped, untyped]] files) -> void
 
-        def merge_or_append: (untyped files, untyped path, untyped offenses) -> untyped
+        def merge_or_append: (Array[Hash[untyped, untyped]] files, String path, Array[Hash[untyped, untyped]] offenses) -> void
 
-        def file_entry: (untyped path, untyped changes, ?severity: untyped?) -> { path: untyped, offenses: untyped }
+        def file_entry: (String path, Array[change] changes, ?severity: String?) -> Hash[Symbol, untyped]
 
-        def error_offense: (untyped state, untyped path) -> untyped
+        def error_offense: (state state, String path) -> Hash[Symbol, untyped]
 
-        def error_offense_hash: (untyped message) -> { severity: "fatal", cop_name: "Docscribe/ProcessingError", message: untyped, corrected: false, correctable: false, location: untyped }
+        def error_offense_hash: (String message) -> Hash[Symbol, untyped]
 
-        def default_location: () -> { start_line: 1, start_column: 1, last_line: 1, last_column: 1 }
+        def default_location: () -> Hash[Symbol, Integer]
 
-        def build_offenses: (untyped changes, ?severity: untyped?) -> untyped
+        def build_offenses: (Array[change] changes, ?severity: String?) -> Array[Hash[Symbol, untyped]]
 
-        def build_offense: (untyped change, untyped severity) -> { severity: untyped, cop_name: untyped, message: untyped, corrected: false, correctable: true, location: untyped }
+        def build_offense: (change change, String? severity) -> Hash[Symbol, untyped]
 
-        def location_for: (untyped change) -> { start_line: untyped, start_column: 1, last_line: untyped, last_column: 1 }
+        def location_for: (change change) -> Hash[Symbol, Integer]
 
-        def cop_name_fallback: (untyped change) -> ::String
+        def cop_name_fallback: (change change) -> String
 
-        def build_message: (untyped change) -> ::String
+        def build_message: (change change) -> String
 
-        def inspected_count: (untyped state) -> untyped
+        def inspected_count: (state state) -> Integer
       end
     end
   end

@@ -86,7 +86,7 @@ module Docscribe
             [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
           end
         },
-        forward_arg: ->(*) { [] } #: Array[String]
+        forward_arg: ->(*) { [] }
       }.freeze
 
       # Build
@@ -165,8 +165,8 @@ module Docscribe
         name = SourceHelpers.node_name(node)
         return nil unless name
 
-        setup = extract_base_setup(insertion, name)
-        resolve_doc_setup!(setup, node, name, config, opts)
+        setup = extract_base_setup(insertion, name) #: String
+        resolve_doc_setup!(setup, node, name, config, opts) #: String
       end
 
       # Build unsafe
@@ -286,7 +286,7 @@ module Docscribe
       # @param [Object] lines doc comment lines
       # @return [Object]
       def join_multiline_tags(lines)
-        result = []
+        result = [] #: Array[String]
         i = 0
         i = consume_tag_or_copy(lines, i, result) while i < lines.length
         result
@@ -510,7 +510,7 @@ module Docscribe
       # @return [Hash<Symbol, Object>]
       def collect_missing_all(ctx)
         lines = [] #: Array[String]
-        reasons = [] #: Array[Hash]
+        reasons = [] #: Array[Hash[Symbol, untyped]]
         collect_missing_visibility!(lines, reasons, **ctx)
         collect_missing_module_function_note!(lines, reasons, **ctx)
         collect_missing_params!(lines, reasons, **ctx)
@@ -684,7 +684,7 @@ module Docscribe
         return [] unless line.match?(/^\s*#\s*@raise\b/)
 
         if (m = line.match(/^\s*#\s*@raise\s*\[([^\]]+)\]/))
-          parse_raise_bracket_list(m[1])
+          parse_raise_bracket_list(m[1]) #: String
         elsif (m = line.match(/^\s*#\s*@raise\s+([A-Z]\w*(?:::[A-Z]\w*)*)/))
           [m[1]]
         else
@@ -1036,7 +1036,8 @@ module Docscribe
       # @param [Object] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
       # @return [Array<String>, nil]
       def build_all_param_lines(args, indent, config, external_sig: nil, **kwargs)
-        params = (args.children || []).each_with_object([]) do |a, p|
+        param_lines = [] #: Array[String]
+        params = (args.children || []).each_with_object(param_lines) do |a, p|
           pd = param_doc_for_arg(a, kwargs, config)
           p.concat(build_param_line(a, indent, external_sig, kwargs[:param_types_override],
                                     skip_anonymous_block_params: config.skip_anonymous_block_params?,
@@ -1716,7 +1717,8 @@ module Docscribe
         end
 
         if (m = content.match(/@param\s+\[/))
-          rest = content[(m.end(0) - 1)..]
+          name_end = m.end(0) #: Integer
+          rest = content[(name_end - 1)..]
           type_end = find_matching_close_bracket(rest)
           return name_after_type_bracket(rest, type_end) if type_end
         end
@@ -1740,7 +1742,8 @@ module Docscribe
       def extract_param_type_from_param_line(line)
         content = line.sub(/^\s*#\s*/, '')
         if (m = content.match(/@param\s+(\S+\s+)?\[/))
-          rest = content[(m.end(0) - 1)..]
+          name_end = m.end(0) #: Integer
+          rest = content[(name_end - 1)..]
           type_end = find_matching_close_bracket(rest)
           return rest[1...type_end] if type_end
         end
@@ -1951,7 +1954,7 @@ module Docscribe
           container: insertion.container,
           scope: insertion.scope,
           visibility: insertion.visibility,
-          method_name: SourceHelpers.node_name(node),
+          method_name: SourceHelpers.node_name(node), #: Symbol
           inferred_params: {},
           inferred_return: normal_type,
           source: source

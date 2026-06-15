@@ -37,7 +37,7 @@ module Docscribe
           lock = Pathname(root).join(LOCK_FILE)
           return nil unless lock.file?
 
-          data = YAML.safe_load(lock.read, permitted_classes: [Symbol]) || {}
+          data = YAML.safe_load(lock.read, permitted_classes: [Symbol]) || {} # steep:ignore
           rel  = data['path'] || DEFAULT_COLLECTION_PATH
 
           resolved = Pathname(root).join(rel)

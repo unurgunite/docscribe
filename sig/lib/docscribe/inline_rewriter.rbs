@@ -27,7 +27,7 @@ module Docscribe
 
     def self.deduplicate_insertions: (Array[ [Symbol, untyped] ] insertions, ?method_overrides_by_pos: (Hash[Integer, untyped] | nil)?) -> Array[ [Symbol, untyped] ]
 
-    def self.process_dedup_group: (Integer pos, Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] result, (Hash[Integer, untyped] | nil) method_overrides_by_pos) -> Array[ [Symbol, untyped] ]
+    def self.process_dedup_group: (Integer pos, Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] result, (Hash[Integer, untyped] | nil) method_overrides_by_pos) -> void
 
     def self.group_by_position: (Array[ [Symbol, untyped] ] insertions) -> Hash[Integer, Array[ [Symbol, untyped] ]]
 
@@ -65,7 +65,8 @@ module Docscribe
 
     def self.plugin_insertion_line: (Hash[Symbol, untyped] insertion) -> (Integer | nil)
 
-    def self.plugin_insertion_pos: (Symbol kind, (Hash[Symbol, untyped] | Collector::Insertion | Collector::AttrInsertion) ins) -> Integer
+    def self.plugin_insertion_pos: (:plugin, Hash[Symbol, untyped]) -> Integer
+                                | (Symbol, Collector::Insertion | Collector::AttrInsertion) -> Integer
 
     def self.apply_plugin_insertion!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, insertion: Hash[Symbol, untyped], strategy: Symbol, config: Config) -> void
 
@@ -101,7 +102,7 @@ module Docscribe
 
     def self.build_method_insertion_params: (Collector::Insertion insertion, Config config, (Types::ProviderChain | nil) signature_provider, (untyped | nil) core_rbs_provider, (Hash[Symbol, untyped] | nil) method_override) -> Hash[Symbol, untyped]
 
-    def self.build_effective_params: (Collector::Insertion insertion, **untyped options) -> { param_types: Hash[untyped, untyped], return_type_override: untyped, override_tags: Array[untyped] }
+    def self.build_effective_params: (Collector::Insertion insertion, **untyped options) -> { param_types: (Hash[untyped, untyped] | nil), return_type_override: untyped, override_tags: Array[untyped] }
 
     def self.resolve_external_signature: (Collector::Insertion insertion, (Types::ProviderChain | nil) signature_provider) -> (Types::MethodSignature | nil)
 
@@ -131,6 +132,8 @@ module Docscribe
 
     def self.add_change: (**untyped options) -> void
 
+    def self.merge_existing_descriptions!: (Hash[Symbol, untyped] params, Hash[Symbol, untyped] parsed) -> void
+
     def self.method_id_for: (Collector::Insertion insertion) -> String
 
     def self.apply_attr_insertion!: (**untyped options) -> void
@@ -139,7 +142,7 @@ module Docscribe
 
     def self.dispatch_attr_strategy: (Hash[Symbol, untyped] params, Hash[Symbol, untyped] options) -> void
 
-    def self.apply_attr_aggressive!: (Hash[Symbol, untyped] params, Parser::Source::TreeRewriter rewriter) -> void
+    def self.apply_attr_aggressive!: (Hash[Symbol, untyped] params, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
 
     def self.apply_attr_safe!: (Hash[Symbol, untyped] params, Hash[Integer, Array[ [Integer, String] ]] merge_inserts, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
 
@@ -157,7 +160,7 @@ module Docscribe
 
     def self.missing_attr_names: (Collector::AttrInsertion ins, Array[String] existing_lines) -> Array[Symbol]
 
-    def self.existing_attr_names: (Array[String] lines) -> Hash[String, bool]
+    def self.existing_attr_names: (Array[String] lines) -> Hash[(String | nil), bool]
 
     def self.attribute_allowed?: (Config config, Collector::AttrInsertion ins) -> bool
 

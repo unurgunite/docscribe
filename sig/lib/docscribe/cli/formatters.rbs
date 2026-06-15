@@ -2,7 +2,56 @@ module Docscribe
   module CLI
     # Factory for output formatters.
     module Formatters
-      def self.for: (untyped format) -> untyped
+      type format = :text | :json
+
+      type change = {
+        type: Symbol,
+        ?file: String,
+        ?line: Integer,
+        ?method: String,
+        ?message: String,
+        ?extra: Hash[Symbol, top]
+      }
+
+      type state = {
+        changed: bool,
+        had_errors: bool,
+        checked_ok: Integer,
+        checked_fail: Integer,
+        corrected: Integer,
+        corrected_paths: Array[String],
+        corrected_changes: Hash[String, Array[change]],
+        fail_paths: Array[String],
+        fail_changes: Hash[String, Array[change]],
+        error_paths: Array[String],
+        error_messages: Hash[String, String],
+        type_mismatch_paths: Array[String],
+        type_mismatch_changes: Hash[String, Array[change]]
+      }
+
+      type opts = {
+        verbose: bool,
+        quiet: bool,
+        explain: bool,
+        mode: :check | :write | :stdin,
+        format: format,
+        strategy: :safe | :aggressive,
+        config: String?,
+        include: Array[String],
+        exclude: Array[String],
+        include_file: Array[String],
+        exclude_file: Array[String],
+        rbs: bool,
+        sig_dirs: Array[String],
+        sorbet: bool,
+        rbi_dirs: Array[String],
+        rbs_collection: bool,
+        keep_descriptions: bool,
+        no_boilerplate: bool,
+        stdin: bool
+      }
+
+      def self.for: (format format) -> (Text | Json)
     end
   end
 end

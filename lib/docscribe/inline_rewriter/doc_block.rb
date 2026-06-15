@@ -460,7 +460,8 @@ module Docscribe
         end
 
         if (m = content.match(/@param\s+\[/))
-          rest = content[(m.end(0) - 1)..]
+          end0 = m.end(0) #: Integer
+          rest = content[(end0 - 1)..]
           type_end = matching_close_bracket(rest)
           return name_after_bracket(rest, type_end) if type_end
         end

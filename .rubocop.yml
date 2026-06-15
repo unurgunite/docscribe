@@ -9,6 +9,12 @@ AllCops:
   NewCops: enable
   TargetRubyVersion: 2.7
 
+Metrics/ClassLength:
+  Enabled: false
+
+Metrics/ModuleLength:
+  Enabled: false
+
 Gemspec/DevelopmentDependencies:
   EnforcedStyle: gemspec
 

@@ -15,7 +15,7 @@ module Docscribe
     # @raise [LoadError]
     # @return [void]
     def load_plugins!
-      paths = Array(raw.dig('plugins', 'require')).compact
+      paths = Array(raw.dig('plugins', 'require')).compact #: Array[String]
       return if paths.empty?
 
       require 'docscribe/plugin'
