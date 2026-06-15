@@ -35,8 +35,8 @@ RSpec.describe Docscribe::CLI::Run do
   describe 'check mode (default)' do
     let(:args) { ['foo.rb'] }
 
-    it 'prints progress markers to stdout' do
-      expect(result[0]).to include('F')
+    it 'prints progress markers to stderr' do
+      expect(result[1]).to include('F')
     end
 
     it 'prints Would update to stdout' do
@@ -72,12 +72,12 @@ RSpec.describe Docscribe::CLI::Run do
   describe 'check mode with --verbose' do
     let(:args) { %w[--verbose foo.rb] }
 
-    it 'prints FAIL verdict per file' do
-      expect(result[0]).to include('FAIL foo.rb')
+    it 'prints FAIL verdict per file to stderr' do
+      expect(result[1]).to include('FAIL foo.rb')
     end
 
-    it 'includes change reasons inline with verdict' do
-      expect(result[0]).to match(/FAIL foo\.rb\n\s+- missing/)
+    it 'includes change reasons inline with verdict on stderr' do
+      expect(result[1]).to match(/FAIL foo\.rb\n\s+- missing/)
     end
 
     it 'prints Would update without duplicating explanations' do
@@ -90,9 +90,8 @@ RSpec.describe Docscribe::CLI::Run do
       expect(result[0]).to match(/Docscribe: (FAILED|OK)/)
     end
 
-    it 'does not output to stderr' do
-      skip 'cannot suppress RBS fallback warning on Ruby 2.7' if RUBY_VERSION < '3.0'
-      expect(result[1]).to be_empty
+    it 'outputs explanations to stderr' do
+      expect(result[1]).to include('missing docs for Foo#bar')
     end
 
     it_behaves_like 'correct exit status'
@@ -118,17 +117,12 @@ RSpec.describe Docscribe::CLI::Run do
   describe 'write mode' do
     let(:args) { %w[-a foo.rb] }
 
-    it 'prints C marker per file' do
-      expect(result[0]).to include('C')
+    it 'prints C marker to stderr' do
+      expect(result[1]).to include('C')
     end
 
-    it 'prints update summary' do
+    it 'prints update summary to stdout' do
       expect(result[0]).to match(/updated \d+ file/)
-    end
-
-    it 'outputs nothing to stderr' do
-      skip 'cannot suppress RBS fallback warning on Ruby 2.7' if RUBY_VERSION < '3.0'
-      expect(result[1]).to be_empty
     end
 
     it 'exits 0' do
@@ -145,11 +139,11 @@ RSpec.describe Docscribe::CLI::Run do
   describe 'write mode with --verbose' do
     let(:args) { %w[-a --verbose foo.rb] }
 
-    it 'prints CHANGED verdict with explanations' do
-      expect(result[0]).to match(/CHANGED foo\.rb\n\s+- missing/)
+    it 'prints CHANGED verdict with explanations to stderr' do
+      expect(result[1]).to match(/CHANGED foo\.rb\n\s+- missing/)
     end
 
-    it 'prints update summary' do
+    it 'prints update summary to stdout' do
       expect(result[0]).to match(/updated \d+ file/)
     end
   end
@@ -162,11 +156,11 @@ RSpec.describe Docscribe::CLI::Run do
 
     let(:args) { ['foo.rb'] }
 
-    it 'prints dot marker' do
-      expect(result[0]).to start_with('.')
+    it 'prints dot marker to stderr' do
+      expect(result[1]).to include('.')
     end
 
-    it 'prints OK summary' do
+    it 'prints OK summary to stdout' do
       expect(result[0]).to match(/Docscribe: OK/)
     end
 

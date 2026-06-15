@@ -34,8 +34,8 @@ RSpec.describe Docscribe::CLI do
     expect(result[2].success?).to be(false)
   end
 
-  it 'shows progress with E.' do
-    expect(result[0].lines.first&.strip).to eq('E.')
+  it 'shows progress with E' do
+    expect(result[1]).to include('E')
   end
 
   it 'reports error processing' do

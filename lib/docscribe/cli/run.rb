@@ -300,7 +300,7 @@ module Docscribe
           state[:had_errors] = true
           state[:error_paths] << path
           state[:error_messages][path] = "#{e.class}: #{e.message}"
-          options[:verbose] ? warn("ERR #{display_path}: #{state[:error_messages][path]}") : print('E')
+          options[:verbose] ? warn("ERR #{display_path}: #{state[:error_messages][path]}") : $stderr.print('E')
           nil
         end
 
@@ -344,7 +344,7 @@ module Docscribe
           if ctx[:options][:verbose]
             warn "ERR #{ctx[:display_path]}: #{state[:error_messages][path]}"
           else
-            print('E')
+            $stderr.print('E')
           end
         end
 
@@ -412,10 +412,10 @@ module Docscribe
         # @return [void]
         def handle_check_failed(path, file_changes:, display_path:, options:, state:)
           if options[:verbose]
-            puts("FAIL #{display_path}")
+            warn("FAIL #{display_path}")
             print_check_explanations(file_changes)
           else
-            print('F')
+            $stderr.print('F')
           end
 
           state[:checked_fail] += 1
@@ -458,10 +458,10 @@ module Docscribe
         # @return [void]
         def log_write_verdict(verdict, display_path, file_changes, options)
           if options[:verbose]
-            puts("#{verdict} #{display_path}")
+            warn("#{verdict} #{display_path}")
             print_check_explanations(file_changes)
           else
-            print('C')
+            $stderr.print('C')
           end
         end
 
@@ -474,7 +474,7 @@ module Docscribe
         # @return [void]
         def print_check_explanations(file_changes)
           file_changes.each do |change|
-            puts("  - #{format_change_reason(change)}")
+            warn("  - #{format_change_reason(change)}")
           end
         end
 
@@ -503,13 +503,13 @@ module Docscribe
         # @return [void]
         def log_check_verdict(verdict, display_path, options)
           if options[:verbose]
-            puts("#{verdict} #{display_path}")
+            warn("#{verdict} #{display_path}")
           else
-            print(if verdict == 'FAIL'
-                    'F'
-                  else
-                    verdict == 'MT' ? 'M' : '.'
-                  end)
+            $stderr.print(if verdict == 'FAIL'
+                            'F'
+                          else
+                            verdict == 'MT' ? 'M' : '.'
+                          end)
           end
         end
 

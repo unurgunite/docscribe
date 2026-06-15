@@ -7,7 +7,7 @@ require 'docscribe/cli'
 
 RSpec.describe Docscribe::CLI do
   let(:dir) { Dir.mktmpdir }
-  let(:stdout) do
+  let(:stderr) do
     File.write(File.join(dir, 'a_ok.rb'), <<~RUBY)
       class A
         # @param [Object] x Param documentation.
@@ -22,8 +22,8 @@ RSpec.describe Docscribe::CLI do
       end
     RUBY
 
-    out, = Open3.capture3(RbConfig.ruby, exe, '--verbose', dir, chdir: dir)
-    out
+    _, err = Open3.capture3(RbConfig.ruby, exe, '--verbose', dir, chdir: dir)
+    err
   end
 
   after { FileUtils.rm_rf(dir) }
@@ -36,7 +36,7 @@ RSpec.describe Docscribe::CLI do
     end
   end
 
-  it { expect(stdout).to include('OK a_ok.rb') }
+  it { expect(stderr).to include('OK a_ok.rb') }
 
-  it { expect(stdout).to include('FAIL b_fail.rb') }
+  it { expect(stderr).to include('FAIL b_fail.rb') }
 end
