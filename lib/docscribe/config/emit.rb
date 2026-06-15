@@ -146,5 +146,15 @@ module Docscribe
     def keep_descriptions?
       fetch_bool(%w[keep_descriptions], false)
     end
+
+    # Whether to skip @param generation for anonymous block arguments (&).
+    #
+    # Ruby 3.2+ allows `def foo(&)`. When enabled, no @param is generated
+    # for anonymous block parameters since they have no name to reference.
+    #
+    # @return [Boolean]
+    def skip_anonymous_block_params?
+      fetch_bool(%w[skip_anonymous_block_params], false)
+    end
   end
 end

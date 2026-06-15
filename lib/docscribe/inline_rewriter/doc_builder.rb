@@ -80,7 +80,11 @@ module Docscribe
           [build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
         },
         blockarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+          if opts[:skip_anonymous_block_params] && arg_node.children.first.nil?
+            []
+          else
+            [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
+          end
         },
         forward_arg: ->(*) { [] } #: Array[String]
       }.freeze
@@ -284,19 +288,24 @@ module Docscribe
       def join_multiline_tags(lines)
         result = []
         i = 0
-        while i < lines.length
-          line = lines[i]
-          content = line.sub(/^\s*#\s*/, '')
-          if content.match?(/^@(param|return|raise)\s+\[/) && unbalanced_bracket?(content)
-            buffer, consumed = join_tag_continuations(lines, i)
-            result << "# #{buffer}"
-            i += consumed
-          else
-            result << line
-            i += 1
-          end
-        end
+        i = consume_tag_or_copy(lines, i, result) while i < lines.length
         result
+      end
+
+      # @note module_function: when included, also defines #consume_tag_or_copy (instance visibility: private)
+      # @param [Object] lines
+      # @param [Object] idx
+      # @param [Object] result
+      # @return [Object]
+      def consume_tag_or_copy(lines, idx, result)
+        if (c = lines[idx].sub(/^\s*#\s*/, '')) =~ /^@(param|return|raise)\s+\[/ && unbalanced_bracket?(c)
+          buffer, consumed = join_tag_continuations(lines, idx)
+          result << "# #{buffer}"
+          idx + consumed
+        else
+          result << lines[idx]
+          idx + 1
+        end
       end
 
       # Join continuation lines for a multi-line tag type bracket.
@@ -342,8 +351,7 @@ module Docscribe
       # @return [Object] updated tags_started
       def parse_existing_tag_line(line, info, tags_started)
         extract_all_comment_tags(line, info)
-        content = line.sub(/^\s*# ?/, '').rstrip
-        if content.start_with?('@')
+        if (content = line.sub(/^\s*# ?/, '').rstrip).start_with?('@')
           tags_started = true
           track_last_tag(content, info)
         elsif tags_started && info[:last_tag]
@@ -790,7 +798,8 @@ module Docscribe
 
       # Merge module function note lines
       #
-      # @note module_function: when included, also defines #merge_module_function_note_lines (instance visibility: private)
+      # @note module_function: when included, also defines #merge_module_function_note_lines
+      #   (instance visibility: private)
       # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
       # @param [String] name the method name string
@@ -923,7 +932,8 @@ module Docscribe
 
       # Collect missing module function note
       #
-      # @note module_function: when included, also defines #collect_missing_module_function_note! (instance visibility: private)
+      # @note module_function: when included, also defines #collect_missing_module_function_note!
+      #   (instance visibility: private)
       # @param [Array<String>] lines array of output doc lines being accumulated
       # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
       # @param [Object] ctx merged context hash with info and indent
@@ -1026,16 +1036,26 @@ module Docscribe
       # @param [Object] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
       # @return [Array<String>, nil]
       def build_all_param_lines(args, indent, config, external_sig: nil, **kwargs)
-        default_pd = config.include_param_documentation? ? config.param_documentation : ''
         params = (args.children || []).each_with_object([]) do |a, p|
-          pd = (kwargs[:param_descriptions] || {})[param_name_from_arg(a)] || default_pd
+          pd = param_doc_for_arg(a, kwargs, config)
           p.concat(build_param_line(a, indent, external_sig, kwargs[:param_types_override],
+                                    skip_anonymous_block_params: config.skip_anonymous_block_params?,
                                     fallback_type: config.fallback_type,
                                     treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?,
                                     param_documentation: pd,
                                     param_tag_style: config.param_tag_style))
         end
         params.empty? ? nil : params
+      end
+
+      # @note module_function: when included, also defines #param_doc_for_arg (instance visibility: private)
+      # @param [Object] arg
+      # @param [Object] kwargs
+      # @param [Object] config
+      # @return [Object]
+      def param_doc_for_arg(arg, kwargs, config)
+        (kwargs[:param_descriptions] || {})[param_name_from_arg(arg)] ||
+          (config.include_param_documentation? ? config.param_documentation : '')
       end
 
       # Build doc lines
@@ -1239,7 +1259,8 @@ module Docscribe
 
       # Build module function note lines
       #
-      # @note module_function: when included, also defines #build_module_function_note_lines (instance visibility: private)
+      # @note module_function: when included, also defines #build_module_function_note_lines
+      #   (instance visibility: private)
       # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
       # @param [String] name the method name string
@@ -1660,24 +1681,15 @@ module Docscribe
       # @note module_function: when included, also defines #param_rest_after_type (instance visibility: private)
       # @param [Object] line a @param doc line
       # @return [nil] the text after the closing `]`, or nil
-      #   rubocop:disable Metrics/AbcSize
       def param_rest_after_type(line)
         content = line.sub(/^\s*#\s*/, '')
-        if (m = content.match(/@param\s+\[/))
+        if (m = content.match(/@param\s+(\S+\s+)?\[/))
           rest = content[(m.end(0) - 1)..]
-          type_end = find_matching_close_bracket(rest)
-          return rest[(type_end + 1)..]&.strip if type_end
-        end
-        if (m = content.match(/@param\s+(\S+)\s+\[/))
-          idx = content.index('[', m.end(0))
-          rest = content[idx..]
           type_end = find_matching_close_bracket(rest)
           return rest[(type_end + 1)..]&.strip if type_end
         end
         nil
       end
-      # rubocop:enable Metrics/AbcSize
-
       ARG_DEFAULT_NAMES = { restarg: 'args', kwrestarg: 'kwargs', blockarg: 'block' }.freeze
 
       # Param name from arg
@@ -1693,43 +1705,41 @@ module Docscribe
 
       # Extract param name from param line
       #
-      # @note module_function: when included, also defines #extract_param_name_from_param_line (instance visibility: private)
+      # @note module_function: when included, also defines #extract_param_name_from_param_line
+      #   (instance visibility: private)
       # @param [String] line a `@param` doc line
       # @return [String, nil] the parameter name or nil
       def extract_param_name_from_param_line(line)
         content = line.sub(/^\s*#\s*/, '')
-        # @param [Type] name
-        if (m = content.match(/@param\s+\[/))
-          rest = content[(m.end(0) - 1)..]
-          type_end = find_matching_close_bracket(rest)
-          if type_end
-            after = rest[(type_end + 1)..]&.strip
-            return after.split(/\s+/).first if after
-          end
-        end
-        # @param name [Type]
         if (m = content.match(/@param\s+(\S+)\s+\[/))
           return m[1]
         end
 
+        if (m = content.match(/@param\s+\[/))
+          rest = content[(m.end(0) - 1)..]
+          type_end = find_matching_close_bracket(rest)
+          return name_after_type_bracket(rest, type_end) if type_end
+        end
         nil
+      end
+
+      # @note module_function: when included, also defines #name_after_type_bracket (instance visibility: private)
+      # @param [Object] rest
+      # @param [Object] type_end
+      # @return [Object]
+      def name_after_type_bracket(rest, type_end)
+        rest[(type_end + 1)..].to_s.strip.split(/\s+/).first
       end
 
       # Extract param type from param line
       #
-      # @note module_function: when included, also defines #extract_param_type_from_param_line (instance visibility: private)
+      # @note module_function: when included, also defines #extract_param_type_from_param_line
+      #   (instance visibility: private)
       # @param [String] line a `@param` tag line
       # @return [String, nil]
       def extract_param_type_from_param_line(line)
         content = line.sub(/^\s*#\s*/, '')
-        # @param [Type] name
-        if (m = content.match(/@param\s+\[/))
-          rest = content[(m.end(0) - 1)..]
-          type_end = find_matching_close_bracket(rest)
-          return rest[1...type_end] if type_end
-        end
-        # @param name [Type]
-        if (m = content.match(/@param\s+\S+\s+\[/))
+        if (m = content.match(/@param\s+(\S+\s+)?\[/))
           rest = content[(m.end(0) - 1)..]
           type_end = find_matching_close_bracket(rest)
           return rest[1...type_end] if type_end
@@ -1826,7 +1836,8 @@ module Docscribe
 
       # Collect missing rescue returns
       #
-      # @note module_function: when included, also defines #collect_missing_rescue_returns! (instance visibility: private)
+      # @note module_function: when included, also defines #collect_missing_rescue_returns!
+      #   (instance visibility: private)
       # @param [Array<String>] lines array of output doc lines being accumulated
       # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
       # @param [Object] ctx merged context hash with info and indent

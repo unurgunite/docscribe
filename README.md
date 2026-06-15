@@ -1168,6 +1168,18 @@ Sample plugins available at [examples](examples/plugins):
 
 Docscribe can be configured via a YAML file (`docscribe.yml` by default, or pass `--config PATH`).
 
+### Anonymous block parameters
+
+Ruby 3.2+ allows anonymous block arguments (`def foo(&)`). By default, Docscribe generates `@param [Proc] block` for these — but since the parameter has no name, the tag is misleading.
+
+To suppress the `@param` tag for anonymous block arguments:
+
+```yaml
+skip_anonymous_block_params: true
+```
+
+When `false` (default), anonymous block params generate `@param [Proc] block`.
+
 ### Filtering
 
 Docscribe can filter both *files* and *methods*.

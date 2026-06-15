@@ -455,21 +455,24 @@ module Docscribe
       # @return [String?]
       def extract_param_name(line)
         content = line.sub(/^\s*#\s*/, '')
-        # @param [Type] name
-        if (m = content.match(/@param\s+\[/))
-          rest = content[(m.end(0) - 1)..]
-          type_end = matching_close_bracket(rest)
-          if type_end
-            after = rest[(type_end + 1)..]&.strip
-            return after.split(/\s+/).first if after
-          end
-        end
-        # @param name [Type]
         if (m = content.match(/@param\s+(\S+)\s+\[/))
           return m[1]
         end
 
+        if (m = content.match(/@param\s+\[/))
+          rest = content[(m.end(0) - 1)..]
+          type_end = matching_close_bracket(rest)
+          return name_after_bracket(rest, type_end) if type_end
+        end
         nil
+      end
+
+      # @note module_function: when included, also defines #name_after_bracket (instance visibility: private)
+      # @param [Object] rest
+      # @param [Object] type_end
+      # @return [Object]
+      def name_after_bracket(rest, type_end)
+        rest[(type_end + 1)..].to_s.strip.split(/\s+/).first
       end
 
       # Find the index of the matching close bracket for an outermost `[`.
