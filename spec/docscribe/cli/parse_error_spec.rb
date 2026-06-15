@@ -30,8 +30,8 @@ RSpec.describe Docscribe::CLI do
     RUBY
   end
 
-  it 'exits non-zero' do
-    expect(result[2].success?).to be(false)
+  it 'exits with code 2 (execution error)' do
+    expect(result[2].exitstatus).to eq(2)
   end
 
   it 'shows progress with E' do

@@ -27,7 +27,7 @@ module Docscribe
 
       def self.finalize_run: (Hash[Symbol, untyped] options, Hash[Symbol, untyped] state) -> void
 
-      def self.run_exit_code: (Hash[Symbol, untyped] options, Hash[Symbol, untyped] state) -> (1 | 0)
+      def self.run_exit_code: (Hash[Symbol, untyped] options, Hash[Symbol, untyped] state) -> (0 | 1 | 2)
 
       def self.initial_run_state: () -> Hash[Symbol, untyped]
 

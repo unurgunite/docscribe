@@ -12,6 +12,7 @@ module Docscribe
         strategy: :safe,    # :safe, :aggressive
         verbose: false,
         explain: false,
+        quiet: false,
         config: nil,
         include: [], #: Array[String]
         exclude: [], #: Array[String]
@@ -60,8 +61,9 @@ module Docscribe
 
         Output:
                 --verbose                  Print per-file actions
-            -e, --explain                  Show detailed reasons for changes
-            -k, --keep-descriptions        Preserve existing @param/@return descriptions (aggressive mode only)
+            -e, --explain                  Show detailed reasons for changes (default)
+            -q, --quiet                    Only show status, no details
+
 
         Other:
             -v, --version                  Print version and exit
@@ -308,6 +310,7 @@ module Docscribe
       def define_output_options(opts, options)
         define_verbose_option(opts, options)
         define_explain_option(opts, options)
+        define_quiet_option(opts, options)
         define_keep_descriptions_option(opts, options)
         define_no_boilerplate_option(opts, options)
       end
@@ -333,6 +336,18 @@ module Docscribe
       def define_explain_option(opts, options)
         opts.on('-e', '--explain', 'Show detailed reasons for changes') do
           options[:explain] = true
+        end
+      end
+
+      # Define quiet option
+      #
+      # @note module_function: when included, also defines #define_quiet_option (instance visibility: private)
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
+      # @return [void]
+      def define_quiet_option(opts, options)
+        opts.on('-q', '--quiet', 'Only show status, no details') do
+          options[:quiet] = true
         end
       end
 

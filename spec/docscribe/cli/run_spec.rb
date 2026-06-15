@@ -114,6 +114,45 @@ RSpec.describe Docscribe::CLI::Run do
     it_behaves_like 'correct exit status'
   end
 
+  describe 'check mode with --quiet' do
+    let(:args) { %w[--quiet foo.rb] }
+
+    it 'prints Would update to stdout' do
+      expect(result[0]).to match(/^Would update:/)
+    end
+
+    it 'does not print change reasons in summary' do
+      output = result[0]
+      expect(output).not_to include('missing docs')
+    end
+
+    it_behaves_like 'correct exit status'
+  end
+
+  describe 'write mode with --quiet' do
+    let(:args) { %w[-a --quiet foo.rb] }
+
+    it 'prints C marker to stderr' do
+      expect(result[1]).to include('C')
+    end
+
+    it 'prints Updated:' do
+      expect(result[0]).to include('Updated:')
+    end
+
+    it 'does not print change reasons in write mode' do
+      expect(result[0]).not_to include('missing docs')
+    end
+
+    it 'prints update summary to stdout' do
+      expect(result[0]).to match(/updated \d+ file/)
+    end
+
+    it 'exits 0' do
+      expect(result[2].exitstatus).to eq(0)
+    end
+  end
+
   describe 'write mode' do
     let(:args) { %w[-a foo.rb] }
 
