@@ -65,6 +65,8 @@ module Docscribe
 
         def self?.format_named: (named_rbs_type type, collapse_generics: bool, collapse_object_generics: bool) -> String
 
+        def self?.format_generic_args: (String name, Array[untyped] args, collapse_generics: bool, collapse_object_generics: bool) -> String
+
         def self?.literal_to_yard: (top lit) -> String
 
         def self?.to_yard: ((rbs_type | nil) type, ?collapse_generics: bool, ?collapse_object_generics: bool) -> String

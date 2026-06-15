@@ -293,17 +293,30 @@ module Docscribe
           args = type.respond_to?(:args) ? type.args : [] #: Array[untyped]
 
           if args && !args.empty?
-            return name if collapse_generics
-
-            formatted = args.map do |a|
-              to_yard(a, collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
-            end
-            return name if collapse_object_generics && formatted.all? { |s| s == 'Object' }
-
-            "#{name}<#{formatted.join(', ')}>"
+            format_generic_args(name, args, collapse_generics: collapse_generics,
+                                            collapse_object_generics: collapse_object_generics)
           else
             name
           end
+        end
+
+        # Format generic type arguments for a named type.
+        #
+        # @note module_function: when included, also defines #format_generic_args (instance visibility: private)
+        # @param [String] name the type name
+        # @param [Array<untyped>] args the generic type arguments
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics whether to collapse generics when all inner types are Object
+        # @return [String]
+        def format_generic_args(name, args, collapse_generics:, collapse_object_generics:)
+          return name if collapse_generics
+
+          formatted = args.map do |a|
+            to_yard(a, collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
+          end
+          return name if collapse_object_generics && formatted.all? { |s| s == 'Object' }
+
+          "#{name}<#{formatted.join(', ')}>"
         end
 
         # Convert a Ruby literal value to its YARD type name string.
