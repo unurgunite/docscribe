@@ -36,12 +36,12 @@ module Docscribe
     class << self
       # Insert comments
       #
-      # @param [Object] code Ruby source
-      # @param [nil] strategy :safe or :aggressive
-      # @param [nil] rewrite compatibility alias for aggressive strategy
-      # @param [nil] merge compatibility alias for safe strategy
-      # @param [Hash] options additional keyword arguments forwarded to rewrite_with_report
-      # @return [Object]
+      # @param [String] code Ruby source
+      # @param [Symbol?] strategy :safe or :aggressive
+      # @param [Boolean?] rewrite compatibility alias for aggressive strategy
+      # @param [Boolean?] merge compatibility alias for safe strategy
+      # @param [Object] options additional keyword arguments forwarded to rewrite_with_report
+      # @return [String]
       def insert_comments(code, strategy: nil, rewrite: nil, merge: nil, **options)
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
 
@@ -50,12 +50,12 @@ module Docscribe
 
       # Rewrite with report
       #
-      # @param [Object] code Ruby source
-      # @param [nil] strategy :safe or :aggressive
-      # @param [nil] rewrite compatibility alias for aggressive strategy
-      # @param [nil] merge compatibility alias for safe strategy
-      # @param [Hash] options additional keyword arguments forwarded to downstream helpers
-      # @return [Hash]
+      # @param [String] code Ruby source
+      # @param [Symbol?] strategy :safe or :aggressive
+      # @param [Boolean?] rewrite compatibility alias for aggressive strategy
+      # @param [Boolean?] merge compatibility alias for safe strategy
+      # @param [Object] options additional keyword arguments forwarded to downstream helpers
+      # @return [Hash<Symbol, String, Array<Hash<Symbol, Object>>>]
       def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, **options)
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
         validate_strategy!(strategy)
@@ -70,9 +70,9 @@ module Docscribe
 
       # Build rewrite pipeline
       #
-      # @param [Object] buffer the source buffer being rewritten
-      # @param [Object] ast the parsed AST of the source code
-      # @return [Hash]
+      # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
+      # @param [Parser::AST::Node] ast the parsed AST of the source code
+      # @return [Hash<Symbol, Object>]
       def build_rewrite_pipeline(buffer, ast)
         all = collect_insertions(buffer, ast)
         method_overrides_by_pos = {} #: Hash[Integer, untyped]
@@ -87,10 +87,10 @@ module Docscribe
 
       # Dispatch rewrite insertions
       #
-      # @param [Object] pipeline the pipeline hash with rewriter, insertions, and tracking state
-      # @param [Object] buffer the source buffer being rewritten
-      # @param [Hash] options additional kwargs (config, signature_provider, core_rbs_provider, strategy, file)
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] pipeline the pipeline hash with rewriter, insertions, and tracking state
+      # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
+      # @param [Object] options additional kwargs (config, signature_provider, core_rbs_provider, strategy, file)
+      # @return [void]
       def dispatch_rewrite_insertions(pipeline, buffer, **options)
         pipeline[:all].sort_by { |(kind, ins)| plugin_insertion_pos(kind, ins) }
                       .reverse_each do |kind, ins|
@@ -103,11 +103,11 @@ module Docscribe
 
       # Dispatch method insertion
       #
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] pipeline the pipeline hash with rewriter, insertions, and tracking state
-      # @param [Object] buffer the source buffer
-      # @param [Hash] options the full keyword options hash
-      # @return [Object]
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] ins the attribute insertion object
+      # @param [Hash<Symbol, Object>] pipeline the pipeline hash with rewriter, insertions, and tracking state
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Object] options the full keyword options hash
+      # @return [void]
       def dispatch_method_insertion(ins, pipeline, buffer, **options)
         pos = plugin_insertion_pos(:method, ins)
         method_override = pipeline[:method_overrides_by_pos][pos]
@@ -123,11 +123,11 @@ module Docscribe
 
       # Dispatch attr insertion
       #
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] pipeline the pipeline hash with rewriter, insertions, and tracking state
-      # @param [Object] buffer the source buffer
-      # @param [Hash] options the full keyword options hash
-      # @return [Object]
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @param [Hash<Symbol, Object>] pipeline the pipeline hash with rewriter, insertions, and tracking state
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Object] options the full keyword options hash
+      # @return [void]
       def dispatch_attr_insertion(ins, pipeline, buffer, **options)
         apply_attr_insertion!(
           rewriter: pipeline[:rewriter], buffer: buffer, insertion: ins,
@@ -138,11 +138,11 @@ module Docscribe
 
       # Dispatch plugin insertion
       #
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] pipeline the pipeline hash with rewriter, insertions, and tracking state
-      # @param [Object] buffer the source buffer
-      # @param [Hash] options the full keyword options hash
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] ins the attribute insertion object
+      # @param [Hash<Symbol, Object>] pipeline the pipeline hash with rewriter, insertions, and tracking state
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Object] options the full keyword options hash
+      # @return [void]
       def dispatch_plugin_insertion(ins, pipeline, buffer, **options)
         apply_plugin_insertion!(
           rewriter: pipeline[:rewriter], buffer: buffer, insertion: ins,
@@ -155,10 +155,10 @@ module Docscribe
       # Setup rewrite env
       #
       # @private
-      # @param [Object] code the Ruby source code string to parse and rewrite
-      # @param [Object] options hash containing :config, :file, and :core_rbs_provider
+      # @param [String] code the Ruby source code string to parse and rewrite
+      # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
       # @raise [Docscribe::ParseError]
-      # @return [Hash]
+      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node, Docscribe::Types::ProviderChain, nil, Object, nil>]
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
         file = (options[:file] || '(inline)').to_s
@@ -175,10 +175,10 @@ module Docscribe
       # Load core rbs provider
       #
       # @private
-      # @param [Object] config the active Docscribe::Config
-      # @param [Object] core_rbs_provider optional externally-provided core RBS provider
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @param [Object, nil] core_rbs_provider optional externally-provided core RBS provider
       # @raise [StandardError]
-      # @return [Object, Object?] if StandardError
+      # @return [Object, nil] if StandardError
       # @return [nil] if StandardError
       def load_core_rbs_provider(config, core_rbs_provider)
         core_rbs_provider || (config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil)
@@ -190,9 +190,9 @@ module Docscribe
       # Collect insertions
       #
       # @private
-      # @param [Object] buffer the source buffer to collect insertions from
-      # @param [Object] ast the parsed AST to traverse for collection
-      # @return [Object]
+      # @param [Parser::Source::Buffer] buffer the source buffer to collect insertions from
+      # @param [Parser::AST::Node] ast the parsed AST to traverse for collection
+      # @return [Array<Object>]
       def collect_insertions(buffer, ast)
         collector = Docscribe::InlineRewriter::Collector.new(buffer)
         collector.process(ast)
@@ -207,9 +207,9 @@ module Docscribe
       # Deduplicate insertions
       #
       # @private
-      # @param [Object] insertions Param documentation.
-      # @param [nil] method_overrides_by_pos method-level overrides keyed by insertion position
-      # @return [Object]
+      # @param [Array<(Symbol, Object)>] insertions Param documentation.
+      # @param [Hash<Integer, Object>, nil?] method_overrides_by_pos method-level overrides keyed by insertion position
+      # @return [Array<(Symbol, Object)>]
       def deduplicate_insertions(insertions, method_overrides_by_pos: nil)
         group_by_position(insertions).each_with_object([]) do |(pos, items), result|
           process_dedup_group(pos, items, result, method_overrides_by_pos)
@@ -219,11 +219,11 @@ module Docscribe
       # Process dedup group
       #
       # @private
-      # @param [Object] pos the source begin_pos for the group
-      # @param [Object] items Param documentation.
-      # @param [Object] result Param documentation.
-      # @param [Object] method_overrides_by_pos hash mapping position to method override data
-      # @return [Object]
+      # @param [Integer] pos the source begin_pos for the group
+      # @param [Array<(Symbol, Object)>] items Param documentation.
+      # @param [Array<(Symbol, Object)>] result Param documentation.
+      # @param [Hash<Integer, Object>, nil] method_overrides_by_pos hash mapping position to method override data
+      # @return [void]
       def process_dedup_group(pos, items, result, method_overrides_by_pos)
         plugin_items = items.select { |pair| pair.first == :plugin }
         return result.concat(items) if plugin_items.empty?
@@ -240,8 +240,8 @@ module Docscribe
       # Group by position
       #
       # @private
-      # @param [Object] insertions Param documentation.
-      # @return [Hash]
+      # @param [Array<(Symbol, Object)>] insertions Param documentation.
+      # @return [Hash<Integer, Array<(Symbol, Object)>>]
       def group_by_position(insertions)
         groups = {} #: Hash[Integer, untyped]
         insertions.each do |kind, ins|
@@ -254,8 +254,8 @@ module Docscribe
       # Find override items
       #
       # @private
-      # @param [Object] plugin_items Param documentation.
-      # @return [Array<String>]
+      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
+      # @return [Array<(Symbol, Object)>]
       def find_override_items(plugin_items)
         plugin_items.select do |_k, ins|
           ins.is_a?(Hash) && ins[:method_override].is_a?(Hash)
@@ -265,12 +265,12 @@ module Docscribe
       # Handle override case
       #
       # @private
-      # @param [Object] result Param documentation.
-      # @param [Object] items Param documentation.
-      # @param [Object] override_items Param documentation.
-      # @param [Object] method_overrides_by_pos hash mapping position to method override data
-      # @param [Object] pos the source position of the conflict
-      # @return [Object]
+      # @param [Array<(Symbol, Object)>] result Param documentation.
+      # @param [Array<(Symbol, Object)>] items Param documentation.
+      # @param [Array<(Symbol, Object)>] override_items Param documentation.
+      # @param [Hash<Integer, Object>, nil] method_overrides_by_pos hash mapping position to method override data
+      # @param [Integer] pos the source position of the conflict
+      # @return [void]
       def handle_override_case(result, items, override_items, method_overrides_by_pos, pos)
         if method_overrides_by_pos
           winning_ins = pick_highest_priority_override_insertion(override_items, pos: pos)
@@ -284,11 +284,11 @@ module Docscribe
       # Deduplicate items
       #
       # @private
-      # @param [Object] items Param documentation.
-      # @param [Object] plugin_items Param documentation.
-      # @param [Object] pos the source position of the conflict
-      # @param [Object] _method_items Param documentation.
-      # @return [Object]
+      # @param [Array<(Symbol, Object)>] items Param documentation.
+      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
+      # @param [Integer] pos the source position of the conflict
+      # @param [Array<(Symbol, Object)>] _method_items Param documentation.
+      # @return [Array<(Symbol, Object)>]
       def deduplicate_items(items, plugin_items, pos, _method_items)
         plugin_doc_items = plugin_items.select { |pair| plugin_doc_item?(pair) }
 
@@ -302,8 +302,8 @@ module Docscribe
       # Plugin doc item
       #
       # @private
-      # @param [Object] pair Param documentation.
-      # @return [Object, Boolean]
+      # @param [(Symbol, Object)] pair Param documentation.
+      # @return [Boolean]
       def plugin_doc_item?(pair)
         _k, ins = pair
         ins.is_a?(Hash) && ins[:doc] && !ins[:doc].empty?
@@ -312,10 +312,10 @@ module Docscribe
       # Deduplicate plugin doc case
       #
       # @private
-      # @param [Object] items Param documentation.
-      # @param [Object] plugin_doc_items Param documentation.
-      # @param [Object] pos the source position of the conflict
-      # @return [Object]
+      # @param [Array<(Symbol, Object)>] items Param documentation.
+      # @param [Array<(Symbol, Object)>] plugin_doc_items Param documentation.
+      # @param [Integer] pos the source position of the conflict
+      # @return [Array<(Symbol, Object)>]
       def deduplicate_plugin_doc_case(items, plugin_doc_items, pos)
         items = items.reject { |k, _| k == :method }
         items = items.reject { |pair| override_or_plugin_method?(pair) }
@@ -332,8 +332,8 @@ module Docscribe
       # Override or plugin method
       #
       # @private
-      # @param [Object] pair Param documentation.
-      # @return [Object]
+      # @param [(Symbol, Object)] pair Param documentation.
+      # @return [Boolean]
       def override_or_plugin_method?(pair)
         k, ins = pair
         k == :plugin && ins.is_a?(Hash) && ins.key?(:method_override)
@@ -342,8 +342,8 @@ module Docscribe
       # Max plugin priority
       #
       # @private
-      # @param [Object] plugin_items Param documentation.
-      # @return [Object, Integer]
+      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
+      # @return [Integer]
       def max_plugin_priority(plugin_items)
         plugin_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
       end
@@ -351,9 +351,9 @@ module Docscribe
       # Filter lower priority plugins
       #
       # @private
-      # @param [Object] items Param documentation.
-      # @param [Object] threshold Param documentation.
-      # @return [Array<String>]
+      # @param [Array<(Symbol, Object)>] items Param documentation.
+      # @param [Integer] threshold Param documentation.
+      # @return [Array<(Symbol, Object)>]
       def filter_lower_priority_plugins(items, threshold)
         items.select do |k, ins|
           k == :plugin && ins.is_a?(Hash) && ins[:doc] && plugin_insertion_priority(ins) < threshold
@@ -363,11 +363,11 @@ module Docscribe
       # Warn plugin conflict
       #
       # @private
-      # @param [Object] dropped Param documentation.
-      # @param [Object] plugin_items Param documentation.
-      # @param [Object] max_prio the maximum priority value
-      # @param [Object] pos the source position of the conflict
-      # @return [Object]
+      # @param [Array<(Symbol, Object)>] dropped Param documentation.
+      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
+      # @param [Integer] max_prio the maximum priority value
+      # @param [Integer] pos the source position of the conflict
+      # @return [void]
       def warn_plugin_conflict!(dropped, plugin_items, max_prio, pos)
         kept_labels = plugin_items.map { |_k, ins| plugin_insertion_label(ins) }.uniq
         dropped_labels = dropped.map { |_k, ins| plugin_insertion_label(ins) }.uniq
@@ -381,8 +381,8 @@ module Docscribe
       # Conflict location str
       #
       # @private
-      # @param [Object] pos the source position of the conflict
-      # @param [Object] plugin_items Param documentation.
+      # @param [Integer] pos the source position of the conflict
+      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
       # @return [String]
       def conflict_location_str(pos, plugin_items)
         line = plugin_insertion_line(plugin_items.first[1])
@@ -392,9 +392,9 @@ module Docscribe
       # Pick highest priority override insertion
       #
       # @private
-      # @param [Object] override_items Param documentation.
-      # @param [Object] pos begin_pos (used only for debug output)
-      # @return [Object] winning insertion hash (the one whose override will be applied)
+      # @param [Array<(Symbol, Object)>] override_items Param documentation.
+      # @param [Integer] pos begin_pos (used only for debug output)
+      # @return [Hash<Symbol, Object>, nil] winning insertion hash (the one whose override will be applied)
       def pick_highest_priority_override_insertion(override_items, pos:)
         return nil if override_items.empty?
 
@@ -410,8 +410,8 @@ module Docscribe
       # Max plugin priority for
       #
       # @private
-      # @param [Object] override_items Param documentation.
-      # @return [Object, Integer]
+      # @param [Array<(Symbol, Object)>] override_items Param documentation.
+      # @return [Integer]
       def max_plugin_priority_for(override_items)
         override_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
       end
@@ -419,8 +419,8 @@ module Docscribe
       # Sort winners by order
       #
       # @private
-      # @param [Object] winners Param documentation.
-      # @return [Object, nil, Integer]
+      # @param [Array<(Symbol, Object)>] winners Param documentation.
+      # @return [Array<(Symbol, Object)>]
       def sort_winners_by_order(winners)
         winners.sort_by do |_k, ins|
           order = ins.is_a?(Hash) ? ins[:__docscribe_plugin_order] : nil
@@ -431,10 +431,10 @@ module Docscribe
       # Warn override conflict
       #
       # @private
-      # @param [Object] winners_sorted Param documentation.
-      # @param [Object] max_prio the maximum priority value
-      # @param [Object] pos the source position of the conflict
-      # @return [Object]
+      # @param [Array<(Symbol, Object)>] winners_sorted Param documentation.
+      # @param [Integer] max_prio the maximum priority value
+      # @param [Integer] pos the source position of the conflict
+      # @return [void]
       def warn_override_conflict!(winners_sorted, max_prio, pos)
         return unless Docscribe::Plugin.debug?
 
@@ -451,9 +451,9 @@ module Docscribe
       # Plugin insertion priority
       #
       # @private
-      # @param [Object] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>] insertion the collected method insertion
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [Integer] if StandardError
       # @return [Integer] if StandardError
       def plugin_insertion_priority(insertion)
         return 0 unless insertion.is_a?(Hash)
@@ -466,7 +466,7 @@ module Docscribe
       # Plugin insertion label
       #
       # @private
-      # @param [Object] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>] insertion the collected method insertion
       # @raise [StandardError]
       # @return [String] if StandardError
       # @return [String] if StandardError
@@ -482,9 +482,9 @@ module Docscribe
       # Plugin insertion line
       #
       # @private
-      # @param [Object] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>] insertion the collected method insertion
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [Integer, nil] if StandardError
       # @return [nil] if StandardError
       def plugin_insertion_line(insertion)
         return nil unless insertion.is_a?(Hash)
@@ -501,7 +501,7 @@ module Docscribe
       # @private
       # @param [Object] kind :method, :attr, or :plugin
       # @param [Object] ins Param documentation.
-      # @return [Object]
+      # @return [Integer]
       def plugin_insertion_pos(kind, ins)
         case kind
         when :plugin
@@ -516,12 +516,12 @@ module Docscribe
       # Apply plugin insertion
       #
       # @private
-      # @param [Object] rewriter the TreeRewriter accumulating source transformations
-      # @param [Object] buffer the source buffer
-      # @param [Object] insertion { anchor_node:, doc: }
-      # @param [Object] strategy :safe or :aggressive rewrite mode
-      # @param [Object] config the active configuration
-      # @return [Object]
+      # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Hash<Symbol, Object>] insertion { anchor_node:, doc: }
+      # @param [Symbol] strategy :safe or :aggressive rewrite mode
+      # @param [Docscribe::Config] config the active configuration
+      # @return [void]
       def apply_plugin_insertion!(rewriter:, buffer:, insertion:, strategy:, config:)
         anchor_node, doc = insertion.values_at(:anchor_node, :doc)
         return unless anchor_node && doc && !doc.empty?
@@ -535,12 +535,12 @@ module Docscribe
       # Insert plugin doc
       #
       # @private
-      # @param [Object] rewriter the TreeRewriter accumulating source transformations
-      # @param [Object] buffer the source buffer being rewritten
-      # @param [Object] bol_range the beginning-of-line range for the anchor node
-      # @param [Object] doc the normalized documentation string to insert
-      # @param [Object] strategy :safe or :aggressive rewrite mode
-      # @return [Object]
+      # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
+      # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
+      # @param [Parser::Source::Range] bol_range the beginning-of-line range for the anchor node
+      # @param [String] doc the normalized documentation string to insert
+      # @param [Symbol] strategy :safe or :aggressive rewrite mode
+      # @return [void]
       def insert_plugin_doc(rewriter, buffer, bol_range, doc, strategy)
         case strategy
         when :aggressive
@@ -557,9 +557,9 @@ module Docscribe
       # Any comment block removal range
       #
       # @private
-      # @param [Object] buffer the source buffer
-      # @param [Object] bol_pos beginning-of-line position of anchor_node
-      # @return [Range]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Integer] bol_pos beginning-of-line position of anchor_node
+      # @return [Parser::Source::Range, nil]
       def any_comment_block_removal_range(buffer, bol_pos)
         src   = buffer.source
         lines = src.lines
@@ -578,10 +578,10 @@ module Docscribe
       # Nearest comment line index
       #
       # @private
-      # @param [Object] src the full source string of the buffer
-      # @param [Object] lines array of source code lines
-      # @param [Object] bol_pos character position of the beginning of the anchor line
-      # @return [Integer]
+      # @param [String] src the full source string of the buffer
+      # @param [Array<String>] lines array of source code lines
+      # @param [Integer] bol_pos character position of the beginning of the anchor line
+      # @return [Integer, nil]
       def nearest_comment_line_index(src, lines, bol_pos)
         def_line_idx = (src[0...bol_pos] || '').count("\n")
         i = def_line_idx - 1
@@ -594,8 +594,8 @@ module Docscribe
       # Comment block start index
       #
       # @private
-      # @param [Object] lines array of source code lines
-      # @param [Object] def_line_idx the index in lines of the method definition (anchor) line
+      # @param [Array<String>] lines array of source code lines
+      # @param [Integer] def_line_idx the index in lines of the method definition (anchor) line
       # @return [Integer]
       def comment_block_start_index(lines, def_line_idx)
         start_idx = def_line_idx
@@ -606,9 +606,9 @@ module Docscribe
       # Skip preserved lines
       #
       # @private
-      # @param [Object] lines array of source code lines
-      # @param [Object] start_idx index of the first line of the comment block
-      # @param [Object] def_line_idx the index in lines of the method definition (anchor) line
+      # @param [Array<String>] lines array of source code lines
+      # @param [Integer] start_idx index of the first line of the comment block
+      # @param [Integer] def_line_idx the index in lines of the method definition (anchor) line
       # @return [Integer]
       def skip_preserved_lines(lines, start_idx, def_line_idx)
         idx = start_idx
@@ -619,11 +619,11 @@ module Docscribe
       # Normalize plugin doc
       #
       # @private
-      # @param [Object] doc Raw doc string returned by a CollectorPlugin insertion (`:doc`)
-      # @param [Object] indent Indentation to apply to every doc line
-      # @param [Object] config Effective Docscribe config for this run
-      # @param [Object] anchor_node AST node used as insertion anchor
-      # @return [Object] Normalized doc string ready to be inserted
+      # @param [String] doc Raw doc string returned by a CollectorPlugin insertion (`:doc`)
+      # @param [String] indent Indentation to apply to every doc line
+      # @param [Docscribe::Config] config Effective Docscribe config for this run
+      # @param [Parser::AST::Node, nil] anchor_node AST node used as insertion anchor
+      # @return [String] Normalized doc string ready to be inserted
       def normalize_plugin_doc(doc, indent, config:, anchor_node:)
         doc = normalize_plugin_doc_indent(doc, indent)
         doc = trim_trailing_blank_lines(doc)
@@ -636,8 +636,8 @@ module Docscribe
       # Trim trailing blank lines
       #
       # @private
-      # @param [Object] doc the documentation string to trim
-      # @return [Object, String]
+      # @param [String] doc the documentation string to trim
+      # @return [String]
       def trim_trailing_blank_lines(doc)
         lines = doc.lines
         lines.pop while lines.any? && lines.last.strip.empty?
@@ -648,11 +648,11 @@ module Docscribe
       # Prepend default message if no prose
       #
       # @private
-      # @param [Object] doc the plugin-generated documentation string
-      # @param [Object] anchor_node the AST node used as the insertion anchor
-      # @param [Object] indent whitespace indentation prefix derived from the anchor node
-      # @param [Object] config the active Docscribe::Config
-      # @return [Object]
+      # @param [String] doc the plugin-generated documentation string
+      # @param [Parser::AST::Node] anchor_node the AST node used as the insertion anchor
+      # @param [String] indent whitespace indentation prefix derived from the anchor node
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @return [String]
       def prepend_default_message_if_no_prose(doc, anchor_node, indent, config)
         return doc if doc_has_prose?(doc)
 
@@ -664,7 +664,7 @@ module Docscribe
       # Doc has prose
       #
       # @private
-      # @param [Object] doc the documentation string to inspect
+      # @param [String] doc the documentation string to inspect
       # @return [Boolean]
       def doc_has_prose?(doc)
         doc.lines.any? do |l|
@@ -680,9 +680,9 @@ module Docscribe
       # Normalize plugin doc indent
       #
       # @private
-      # @param [Object] doc raw doc string from plugin
-      # @param [Object] indent indentation prefix to apply
-      # @return [Object]
+      # @param [String] doc raw doc string from plugin
+      # @param [String] indent indentation prefix to apply
+      # @return [String]
       def normalize_plugin_doc_indent(doc, indent)
         doc.lines.map do |line|
           stripped = line.lstrip
@@ -693,9 +693,9 @@ module Docscribe
       # Normalize strategy
       #
       # @private
-      # @param [Object] strategy :safe or :aggressive rewrite mode
-      # @param [Object] rewrite compatibility alias for aggressive strategy
-      # @param [Object] merge compatibility alias for safe strategy
+      # @param [Symbol, nil] strategy :safe or :aggressive rewrite mode
+      # @param [Boolean, nil] rewrite compatibility alias for aggressive strategy
+      # @param [Boolean, nil] merge compatibility alias for safe strategy
       # @return [Symbol]
       def normalize_strategy(strategy:, rewrite:, merge:)
         return strategy if strategy
@@ -708,9 +708,9 @@ module Docscribe
       # Validate strategy
       #
       # @private
-      # @param [Object] strategy :safe or :aggressive rewrite mode
+      # @param [Symbol] strategy :safe or :aggressive rewrite mode
       # @raise [ArgumentError]
-      # @return [Object]
+      # @return [void]
       def validate_strategy!(strategy)
         return if %i[safe aggressive].include?(strategy)
 
@@ -720,8 +720,8 @@ module Docscribe
       # Apply method insertion
       #
       # @private
-      # @param [Hash] options kwargs with insertion, config, rewriter, buffer, strategy, changes, file, doc params
-      # @return [Object]
+      # @param [Object] options kwargs with insertion, config, rewriter, buffer, strategy, changes, file, doc params
+      # @return [void]
       def apply_method_insertion!(**options)
         insertion = options[:insertion]
         config = options[:config]
@@ -738,11 +738,11 @@ module Docscribe
       # Dispatch method insertion by strategy
       #
       # @private
-      # @param [Object] anchor_bol_range the beginning-of-line range for the anchor node
-      # @param [Object] options the full keyword options hash passed to apply_method_insertion!
-      # @param [Object] params precomputed insertion parameters (types, overrides, config)
-      # @param [Object] doc the generated documentation block string
-      # @return [Object]
+      # @param [Parser::Source::Range] anchor_bol_range the beginning-of-line range for the anchor node
+      # @param [Hash<Symbol, Object>] options the full keyword options hash passed to apply_method_insertion!
+      # @param [Hash<Symbol, Object>] params precomputed insertion parameters (types, overrides, config)
+      # @param [String, nil] doc the generated documentation block string
+      # @return [void]
       def dispatch_method_insertion_by_strategy!(anchor_bol_range, options, params, doc)
         base = { anchor_bol_range: anchor_bol_range, insertion: options[:insertion],
                  rewriter: options[:rewriter], buffer: options[:buffer],
@@ -756,9 +756,9 @@ module Docscribe
       # Method insertion allowed
       #
       # @private
-      # @param [Object] insertion the collected method insertion
-      # @param [Object] config the active configuration
-      # @return [Object] true if insertion should proceed
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @param [Docscribe::Config] config the active configuration
+      # @return [Boolean] true if insertion should proceed
       def method_insertion_allowed?(insertion, config)
         name = SourceHelpers.node_name(insertion.node) #: Symbol
         config.process_method?(container: insertion.container, scope: insertion.scope,
@@ -768,12 +768,12 @@ module Docscribe
       # Extract existing descriptions
       #
       # @private
-      # @param [Object] buffer the source buffer
-      # @param [Object] insertion the collected method insertion
-      # @param [Object] params precomputed attribute insertion parameters
-      # @param [Object] strategy :safe or :aggressive rewrite mode
-      # @param [Object] config the active configuration
-      # @return [Object]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>] params precomputed attribute insertion parameters
+      # @param [Symbol] strategy :safe or :aggressive rewrite mode
+      # @param [Docscribe::Config] config the active configuration
+      # @return [void]
       def extract_existing_descriptions!(buffer, insertion, params, strategy, config)
         return unless strategy == :aggressive && config.keep_descriptions?
 
@@ -786,9 +786,9 @@ module Docscribe
       # Merge parsed descriptions into insertion params
       #
       # @private
-      # @param [Object] params insertion params
-      # @param [Object] parsed parsed tag info
-      # @return [Object?]
+      # @param [Hash<Symbol, Object>] params insertion params
+      # @param [Hash<Symbol, Object>] parsed parsed tag info
+      # @return [void]
       def merge_existing_descriptions!(params, parsed)
         params[:param_descriptions] = parsed[:param_descriptions] if parsed[:param_descriptions].any?
         params[:return_description] = parsed[:return_description] if parsed[:return_description]
@@ -798,12 +798,12 @@ module Docscribe
       # Build method insertion params
       #
       # @private
-      # @param [Object] insertion the collected method insertion
-      # @param [Object] config the active configuration
-      # @param [Object] signature_provider RBS signature provider
-      # @param [Object] core_rbs_provider optional externally-provided core RBS provider
-      # @param [Object] method_override the raw override data
-      # @return [Hash]
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @param [Docscribe::Config] config the active configuration
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider RBS signature provider
+      # @param [Object, nil] core_rbs_provider optional externally-provided core RBS provider
+      # @param [Hash<Symbol, Object>, nil] method_override the raw override data
+      # @return [Hash<Symbol, Object>]
       def build_method_insertion_params(insertion, config, signature_provider, core_rbs_provider, method_override)
         override = extract_method_override!(method_override)
         effective = build_effective_params(insertion, config: config, signature_provider: signature_provider,
@@ -815,9 +815,9 @@ module Docscribe
       # Build effective params
       #
       # @private
-      # @param [Object] insertion the collected method insertion
-      # @param [Hash] options keyword options
-      # @return [Hash]
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @param [Object] options keyword options
+      # @return [Hash<Symbol, Hash<Object, Object>, nil, Object, Array<Object>>]
       def build_effective_params(insertion, **options)
         external_sig = resolve_external_signature(insertion, options[:signature_provider])
         param_types = resolve_param_types(insertion, external_sig, options[:config])
@@ -831,9 +831,9 @@ module Docscribe
       # Resolve external signature
       #
       # @private
-      # @param [Object] insertion the collected method insertion
-      # @param [Object] signature_provider external RBS signature provider
-      # @return [Object]
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
+      # @return [Docscribe::Types::MethodSignature, nil]
       def resolve_external_signature(insertion, signature_provider)
         node_name = SourceHelpers.node_name(insertion.node) #: Symbol
         signature_provider&.signature_for(
@@ -846,10 +846,10 @@ module Docscribe
       # Resolve param types
       #
       # @private
-      # @param [Object] insertion the collected method insertion
-      # @param [Object] external_sig the resolved signature from the signature provider
-      # @param [Object] config the active Docscribe::Config
-      # @return [Object]
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig the resolved signature from the signature provider
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @return [Hash<String, String>, nil]
       def resolve_param_types(insertion, external_sig, config)
         external_sig&.param_types || DocBuilder.build_param_types_from_node(
           insertion.node, external_sig: external_sig, config: config
@@ -859,8 +859,8 @@ module Docscribe
       # Apply method insertion aggressive
       #
       # @private
-      # @param [Hash] options keyword options
-      # @return [Object]
+      # @param [Object] options keyword options
+      # @return [void]
       def apply_method_insertion_aggressive!(**options)
         rewriter = options[:rewriter]
         buffer = options[:buffer]
@@ -878,10 +878,10 @@ module Docscribe
       # Remove method comment block
       #
       # @private
-      # @param [Object] rewriter the TreeRewriter accumulating source transformations
-      # @param [Object] buffer the source buffer being rewritten
-      # @param [Object] insertion the collected method insertion
-      # @return [Object?]
+      # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
+      # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @return [void]
       def remove_method_comment_block(rewriter, buffer, insertion)
         range = method_comment_block_removal_range(buffer, insertion)
         rewriter.remove(range) if range
@@ -890,8 +890,8 @@ module Docscribe
       # Apply method insertion safe
       #
       # @private
-      # @param [Hash] options keyword options
-      # @return [Object]
+      # @param [Object] options keyword options
+      # @return [void]
       def apply_method_insertion_safe!(**options)
         info = method_doc_comment_info(options[:buffer], options[:insertion])
 
@@ -905,8 +905,8 @@ module Docscribe
       # Apply method insertion safe with info
       #
       # @private
-      # @param [Hash] options keyword options
-      # @return [Object]
+      # @param [Object] options keyword options
+      # @return [void]
       def apply_method_insertion_safe_with_info!(**options)
         i = options[:info]
         dp = filter_doc_params(options)
@@ -922,12 +922,12 @@ module Docscribe
       # Commit safe doc outcome
       #
       # @private
-      # @param [Object] rewriter the TreeRewriter accumulating source transformations
-      # @param [Object] buffer the source buffer being rewritten
-      # @param [Object] info hash containing existing doc comment block data
-      # @param [Object] new_block the newly constructed replacement doc block string
-      # @param [Hash] rest additional kwargs (old_block, merge_result,
-      # @return [Object]
+      # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
+      # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
+      # @param [Hash<Symbol, Object>] info hash containing existing doc comment block data
+      # @param [String] new_block the newly constructed replacement doc block string
+      # @param [Object] rest additional kwargs (old_block, merge_result,
+      # @return [void]
       def commit_safe_doc_outcome(rewriter, buffer, info, new_block, **rest)
         handle_doc_replacement(rewriter, buffer, info, new_block,
                                insertion: rest[:insertion], changes: rest[:changes],
@@ -941,8 +941,8 @@ module Docscribe
       # Filter doc params
       #
       # @private
-      # @param [Object] options the full options hash to filter
-      # @return [Boolean]
+      # @param [Hash<Symbol, Object>] options the full options hash to filter
+      # @return [Hash<Symbol, Object>]
       def filter_doc_params(options)
         options.reject { |k, _| %i[rewriter buffer insertion anchor_bol_range info changes file strategy].include?(k) }
       end
@@ -950,12 +950,12 @@ module Docscribe
       # Handle doc replacement
       #
       # @private
-      # @param [Object] rewriter the TreeRewriter accumulating source transformations
-      # @param [Object] buffer the source buffer being rewritten
-      # @param [Object] info hash containing existing doc comment block data (start_pos, end_pos, lines)
-      # @param [Object] new_block the newly constructed replacement doc block string
-      # @param [Hash] log_opts additional keyword arguments for logging and recording changes
-      # @return [Object]
+      # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
+      # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
+      # @param [Hash<Symbol, Object>] info hash containing existing doc comment block data (start_pos, end_pos, lines)
+      # @param [String] new_block the newly constructed replacement doc block string
+      # @param [Object] log_opts additional keyword arguments for logging and recording changes
+      # @return [void]
       def handle_doc_replacement(rewriter, buffer, info, new_block, **log_opts)
         range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
         rewriter.replace(range, new_block)
@@ -970,10 +970,10 @@ module Docscribe
       # Compute doc replacement
       #
       # @private
-      # @param [Object] info existing doc info
-      # @param [Object] missing_lines Param documentation.
-      # @param [Hash] options keyword options
-      # @return [Array]
+      # @param [Hash<Symbol, Object>] info existing doc info
+      # @param [Array<String>] missing_lines Param documentation.
+      # @param [Object] options keyword options
+      # @return [(Boolean, String, String)]
       def compute_doc_replacement(info, missing_lines, **options)
         dc = options[:config]
         sorted = Docscribe::InlineRewriter::DocBlock.merge(
@@ -988,10 +988,10 @@ module Docscribe
       # Log method doc changes
       #
       # @private
-      # @param [Object] insertion the collected method insertion
-      # @param [Object] merge_result Param documentation.
-      # @param [Hash] rest additional keyword arguments forwarded to add_change
-      # @return [Object]
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>] merge_result Param documentation.
+      # @param [Object] rest additional keyword arguments forwarded to add_change
+      # @return [void]
       def log_method_doc_changes!(insertion:, merge_result:, **rest)
         reason_specs = merge_result[:reasons] || []
         type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return].include?(r[:type]) }
@@ -1007,8 +1007,8 @@ module Docscribe
       # Apply method insertion safe without info
       #
       # @private
-      # @param [Hash] options keyword options
-      # @return [Object]
+      # @param [Object] options keyword options
+      # @return [void]
       def apply_method_insertion_safe_without_info!(**options)
         rewriter = options[:rewriter]
         insertion = options[:insertion]
@@ -1031,8 +1031,8 @@ module Docscribe
       # Add change
       #
       # @private
-      # @param [Hash] options kwargs for change record (type, file, line, method, message, insertion, changes, extra)
-      # @return [Object]
+      # @param [Object] options kwargs for change record (type, file, line, method, message, insertion, changes, extra)
+      # @return [void]
       def add_change(**options)
         changes = options[:changes]
         changes << {
@@ -1047,7 +1047,7 @@ module Docscribe
       # Method id for
       #
       # @private
-      # @param [Object] insertion the collected method insertion
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
       # @return [String]
       def method_id_for(insertion)
         name = SourceHelpers.node_name(insertion.node)
@@ -1057,8 +1057,8 @@ module Docscribe
       # Apply attr insertion
       #
       # @private
-      # @param [Hash] options kwargs (insertion, config, rewriter, buffer, strategy,
-      # @return [Object]
+      # @param [Object] options kwargs (insertion, config, rewriter, buffer, strategy,
+      # @return [void]
       def apply_attr_insertion!(**options)
         config = options[:config]
         return unless config.respond_to?(:emit_attributes?) && config.emit_attributes?
@@ -1072,11 +1072,11 @@ module Docscribe
       # Attr insertion params
       #
       # @private
-      # @param [Object] insertion the collected attribute insertion
-      # @param [Object] config the active Docscribe::Config
-      # @param [Object] signature_provider external RBS signature provider
-      # @param [Object] bol_range the beginning-of-line range for the attribute node
-      # @return [Hash]
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected attribute insertion
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
+      # @param [Parser::Source::Range] bol_range the beginning-of-line range for the attribute node
+      # @return [Hash<Symbol, Docscribe::InlineRewriter::Collector::AttrInsertion, Docscribe::Config, Docscribe::Types::ProviderChain, nil, Parser::Source::Range>]
       def attr_insertion_params(insertion, config, signature_provider, bol_range)
         {
           insertion: insertion, config: config,
@@ -1087,9 +1087,9 @@ module Docscribe
       # Dispatch attr strategy
       #
       # @private
-      # @param [Object] params precomputed attribute insertion parameters
-      # @param [Object] options the full keyword options hash
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] params precomputed attribute insertion parameters
+      # @param [Hash<Symbol, Object>] options the full keyword options hash
+      # @return [void]
       def dispatch_attr_strategy(params, options)
         case options[:strategy]
         when :aggressive then apply_attr_aggressive!(params, options[:rewriter], options[:buffer])
@@ -1100,10 +1100,10 @@ module Docscribe
       # Apply attr aggressive
       #
       # @private
-      # @param [Object] params precomputed attribute insertion parameters
-      # @param [Object] rewriter the TreeRewriter accumulating source transformations
-      # @param [Object] buffer the source buffer
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] params precomputed attribute insertion parameters
+      # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @return [void]
       def apply_attr_aggressive!(params, rewriter, buffer)
         if (range = SourceHelpers.comment_block_removal_range(buffer, params[:bol_range].begin_pos))
           rewriter.remove(range)
@@ -1119,11 +1119,11 @@ module Docscribe
       # Apply attr safe
       #
       # @private
-      # @param [Object] params precomputed attribute insertion parameters
-      # @param [Object] merge_inserts Param documentation.
-      # @param [Object] rewriter the TreeRewriter accumulating source transformations
-      # @param [Object] buffer the source buffer being rewritten
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] params precomputed attribute insertion parameters
+      # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts Param documentation.
+      # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
+      # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
+      # @return [void]
       def apply_attr_safe!(params, merge_inserts, rewriter, buffer)
         info = SourceHelpers.doc_comment_block_info(buffer, params[:bol_range].begin_pos)
 
@@ -1143,12 +1143,12 @@ module Docscribe
       # Merge attr additions
       #
       # @private
-      # @param [Object] insertion the collected attribute insertion
-      # @param [Object] info hash containing existing doc comment block data
-      # @param [Object] merge_inserts Param documentation.
-      # @param [Object] config the active Docscribe::Config
-      # @param [Object] signature_provider external RBS signature provider
-      # @return [self]
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected attribute insertion
+      # @param [Hash<Symbol, Object>] info hash containing existing doc comment block data
+      # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts Param documentation.
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
+      # @return [void]
       def merge_attr_additions!(insertion:, info:, merge_inserts:, config:, signature_provider:)
         additions = build_attr_merge_additions(ins: insertion, existing_lines: info[:lines],
                                                config: config, signature_provider: signature_provider)
@@ -1160,10 +1160,10 @@ module Docscribe
       # Apply merge inserts
       #
       # @private
-      # @param [Object] rewriter the TreeRewriter accumulating source transformations
-      # @param [Object] buffer the source buffer being rewritten
-      # @param [Object] merge_inserts Param documentation.
-      # @return [Object]
+      # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
+      # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
+      # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts Param documentation.
+      # @return [void]
       def apply_merge_inserts!(rewriter:, buffer:, merge_inserts:)
         merge_inserts.keys.sort.reverse_each do |end_pos|
           text = merge_text_for_pos(merge_inserts[end_pos])
@@ -1177,8 +1177,8 @@ module Docscribe
       # Merge text for pos
       #
       # @private
-      # @param [Object] chunks Param documentation.
-      # @return [String?]
+      # @param [Array<(Integer, String)>] chunks Param documentation.
+      # @return [String, nil]
       def merge_text_for_pos(chunks)
         return nil if chunks.empty?
 
@@ -1199,10 +1199,10 @@ module Docscribe
       # Merge chunk into out
       #
       # @private
-      # @param [Object] chunk the doc text string to merge
-      # @param [Object] out_lines the accumulated output lines array
-      # @param [Object] sep_re regex matching separator comment lines (# followed by newline)
-      # @return [Object]
+      # @param [String] chunk the doc text string to merge
+      # @param [Array<String>] out_lines the accumulated output lines array
+      # @param [Regexp] sep_re regex matching separator comment lines (# followed by newline)
+      # @return [void]
       def merge_chunk_into_out(chunk, out_lines, sep_re)
         lines = chunk.lines
         seps = extract_separators(lines, sep_re)
@@ -1214,9 +1214,9 @@ module Docscribe
       # Extract separators
       #
       # @private
-      # @param [Object] lines array of lines from the chunk
-      # @param [Object] sep_re regex matching separator comment lines
-      # @return [Array]
+      # @param [Array<String>] lines array of lines from the chunk
+      # @param [Regexp] sep_re regex matching separator comment lines
+      # @return [Array<String>]
       def extract_separators(lines, sep_re)
         seps = [] #: Array[String]
         seps << lines.shift while !lines.empty? && lines.first.match?(sep_re)
@@ -1226,12 +1226,12 @@ module Docscribe
       # Build attr merge additions
       #
       # @private
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] existing_lines array of existing doc comment lines
-      # @param [Object] config the active Docscribe::Config
-      # @param [Object] signature_provider external RBS signature provider
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @param [Array<String>] existing_lines array of existing doc comment lines
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [String, nil] if StandardError
       # @return [nil] if StandardError
       def build_attr_merge_additions(ins:, existing_lines:, config:, signature_provider:)
         missing = missing_attr_names(ins, existing_lines)
@@ -1250,9 +1250,9 @@ module Docscribe
       # Missing attr names
       #
       # @private
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] existing_lines array of existing doc comment lines
-      # @return [Object]
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @param [Array<String>] existing_lines array of existing doc comment lines
+      # @return [Array<Symbol>]
       def missing_attr_names(ins, existing_lines)
         existing = existing_attr_names(existing_lines)
         ins.names.reject { |name_sym| existing[name_sym.to_s] }
@@ -1261,8 +1261,8 @@ module Docscribe
       # Existing attr names
       #
       # @private
-      # @param [Object] lines array of existing doc comment lines
-      # @return [Hash]
+      # @param [Array<String>] lines array of existing doc comment lines
+      # @return [Hash<String, nil, Boolean>]
       def existing_attr_names(lines)
         names = {} #: Hash[String, bool]
 
@@ -1278,9 +1278,9 @@ module Docscribe
       # Attribute allowed
       #
       # @private
-      # @param [Object] config the active configuration
-      # @param [Object] ins the attribute insertion object
-      # @return [Object]
+      # @param [Docscribe::Config] config the active configuration
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @return [Boolean]
       def attribute_allowed?(config, ins)
         ins.names.any? do |name_sym|
           allowed_for_access?(config, ins, name_sym)
@@ -1290,9 +1290,9 @@ module Docscribe
       # Allowed for access
       #
       # @private
-      # @param [Object] config the active Docscribe::Config
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] name_sym the attribute name as a Symbol
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @param [Symbol] name_sym the attribute name as a Symbol
       # @return [Boolean]
       def allowed_for_access?(config, ins, name_sym)
         ok = false
@@ -1313,11 +1313,11 @@ module Docscribe
       # Build attr doc for node
       #
       # @private
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] config the active Docscribe::Config
-      # @param [Object] signature_provider external RBS signature provider
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [String, nil] if StandardError
       # @return [nil] if StandardError
       def build_attr_doc_for_node(ins, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
@@ -1330,12 +1330,12 @@ module Docscribe
       # Build attr doc lines
       #
       # @private
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] indent whitespace indentation prefix derived from the attribute node
-      # @param [Object] config the active Docscribe::Config
-      # @param [Object] signature_provider external RBS signature provider
-      # @param [nil] names optional subset of attribute names to document (defaults to all names)
-      # @return [Array]
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @param [String] indent whitespace indentation prefix derived from the attribute node
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
+      # @param [Array<Symbol>, nil?] names optional subset of attribute names to document (defaults to all names)
+      # @return [Array<String>]
       def build_attr_doc_lines(ins, indent:, config:, signature_provider:, names: nil)
         names ||= ins.names
         lines = [] #: Array[untyped]
@@ -1352,11 +1352,11 @@ module Docscribe
       # Build single attr lines
       #
       # @private
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] name_sym the attribute name as a Symbol
-      # @param [Object] indent whitespace indentation prefix
-      # @param [Hash] opts additional keyword arguments forwarded from build_attr_doc_lines
-      # @return [Array]
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @param [Symbol] name_sym the attribute name as a Symbol
+      # @param [String] indent whitespace indentation prefix
+      # @param [Object] opts additional keyword arguments forwarded from build_attr_doc_lines
+      # @return [Array<String>]
       def build_single_attr_lines(ins, name_sym, indent:, **opts)
         cfg = opts[:config]
         attr_type = attribute_type(ins, name_sym, cfg, signature_provider: opts[:signature_provider])
@@ -1371,11 +1371,11 @@ module Docscribe
       # Append attr return tag
       #
       # @private
-      # @param [Object] lines the doc lines array being built
-      # @param [Object] indent whitespace indentation prefix
-      # @param [Object] attr_type the resolved type string for the attribute
-      # @param [Object] access the access level (:r, :w, or :rw)
-      # @return [self?]
+      # @param [Array<String>] lines the doc lines array being built
+      # @param [String] indent whitespace indentation prefix
+      # @param [String] attr_type the resolved type string for the attribute
+      # @param [Symbol] access the access level (:r, :w, or :rw)
+      # @return [void]
       def append_attr_return_tag(lines, indent, attr_type, access)
         lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(access)
       end
@@ -1383,12 +1383,12 @@ module Docscribe
       # Append attr param tag
       #
       # @private
-      # @param [Object] lines the doc lines array being built
-      # @param [Object] indent whitespace indentation prefix
-      # @param [Object] attr_type the resolved type string for the attribute
-      # @param [Object] access the access level (:r, :w, or :rw)
-      # @param [Object] cfg the active Docscribe::Config
-      # @return [Object]
+      # @param [Array<String>] lines the doc lines array being built
+      # @param [String] indent whitespace indentation prefix
+      # @param [String] attr_type the resolved type string for the attribute
+      # @param [Symbol] access the access level (:r, :w, or :rw)
+      # @param [Docscribe::Config] cfg the active Docscribe::Config
+      # @return [void]
       def append_attr_param_tag(lines, indent, attr_type, access, cfg)
         return unless %i[w rw].include?(access)
 
@@ -1398,10 +1398,10 @@ module Docscribe
       # Attr visibility lines
       #
       # @private
-      # @param [Object] indent whitespace indentation prefix
-      # @param [Object] config the active Docscribe::Config
-      # @param [Object] ins the attribute insertion object
-      # @return [Array]
+      # @param [String] indent whitespace indentation prefix
+      # @param [Docscribe::Config] config the active Docscribe::Config
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @return [Array<String>]
       def attr_visibility_lines(indent, config, ins)
         return [] unless config.emit_visibility_tags?
 
@@ -1414,10 +1414,10 @@ module Docscribe
       # Format attribute param tag
       #
       # @private
-      # @param [Object] indent leading whitespace
-      # @param [Object] name attribute name
-      # @param [Object] type attribute type
-      # @param [Object] style param tag style (`"name_type"` or `"type_name"`)
+      # @param [String] indent leading whitespace
+      # @param [String] name attribute name
+      # @param [String] type attribute type
+      # @param [String, Symbol] style param tag style (`"name_type"` or `"type_name"`)
       # @return [String] formatted doc line
       def format_attribute_param_tag(indent, name, type, style:)
         type = type.to_s
@@ -1433,12 +1433,12 @@ module Docscribe
       # Attribute type
       #
       # @private
-      # @param [Object] ins the attribute insertion object
-      # @param [Object] name_sym the attribute name as a Symbol
-      # @param [Object] config the active configuration
-      # @param [Object] signature_provider RBS signature provider
+      # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
+      # @param [Symbol] name_sym the attribute name as a Symbol
+      # @param [Docscribe::Config] config the active configuration
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider RBS signature provider
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [String] if StandardError
       # @return [Object] if StandardError
       def attribute_type(ins, name_sym, config, signature_provider:)
         ty = config.fallback_type
@@ -1453,11 +1453,11 @@ module Docscribe
       # Build signature provider
       #
       # @private
-      # @param [Object] config the active configuration
-      # @param [Object] code the source code being processed
-      # @param [Object] file the file name
+      # @param [Docscribe::Config] config the active configuration
+      # @param [String] code the source code being processed
+      # @param [String] file the file name
       # @raise [StandardError]
-      # @return [Object, Object, Object?] if StandardError
+      # @return [Object, nil] if StandardError
       # @return [Object?] if StandardError
       def build_signature_provider(config, code, file)
         if config.respond_to?(:signature_provider_for)
@@ -1474,9 +1474,9 @@ module Docscribe
       # Method doc comment info
       #
       # @private
-      # @param [Object] buffer the source buffer
-      # @param [Object] insertion the collected method insertion
-      # @return [Object] doc comment block info or nil
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @return [Hash<Symbol, Object>, nil] doc comment block info or nil
       def method_doc_comment_info(buffer, insertion)
         anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
 
@@ -1487,9 +1487,9 @@ module Docscribe
       # Method comment block removal range
       #
       # @private
-      # @param [Object] buffer the source buffer
-      # @param [Object] insertion the collected method insertion
-      # @return [Object]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @return [Parser::Source::Range, nil]
       def method_comment_block_removal_range(buffer, insertion)
         anchor_bol_range, def_bol_range = method_bol_ranges(buffer, insertion)
 
@@ -1500,9 +1500,9 @@ module Docscribe
       # Method bol ranges
       #
       # @private
-      # @param [Object] buffer the source buffer
-      # @param [Object] insertion the collected method insertion
-      # @return [Array]
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @return [(Parser::Source::Range, Parser::Source::Range)]
       def method_bol_ranges(buffer, insertion)
         anchor_node = anchor_node_for(insertion)
         [
@@ -1514,9 +1514,9 @@ module Docscribe
       # Method line for
       #
       # @private
-      # @param [Object] insertion the collected method insertion
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [Integer] if StandardError
       # @return [Object] if StandardError
       def method_line_for(insertion)
         anchor_node_for(insertion).loc.expression.line
@@ -1527,8 +1527,8 @@ module Docscribe
       # Anchor node for
       #
       # @private
-      # @param [Object] insertion the collected method insertion
-      # @return [Object]
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @return [Parser::AST::Node]
       def anchor_node_for(insertion)
         if insertion.respond_to?(:anchor_node) && insertion.anchor_node
           insertion.anchor_node
@@ -1541,7 +1541,7 @@ module Docscribe
       #
       # @private
       # @param [Object] method_override the raw override data
-      # @return [Hash] normalized override hash
+      # @return [Hash<Symbol, Object>] normalized override hash
       def extract_method_override!(method_override)
         return {} unless method_override.is_a?(Hash)
 
@@ -1555,8 +1555,8 @@ module Docscribe
       # Normalize override tags
       #
       # @private
-      # @param [Object] tags raw tag values
-      # @return [Object, Tag]
+      # @param [Array<Object>] tags raw tag values
+      # @return [Array<Docscribe::Plugin::Tag>]
       def normalize_override_tags(tags)
         Array(tags).filter_map do |tag|
           case tag

@@ -3,38 +3,38 @@
 module Docscribe
   module Types
     # @!attribute [rw] return_type
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [String]
+    #   @param [String] value
     #
     # @!attribute [rw] param_types
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [Hash<String, String>]
+    #   @param [Hash<String, String>] value
     #
     # @!attribute [rw] rest_positional
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [Docscribe::Types::RestPositional, nil]
+    #   @param [Docscribe::Types::RestPositional, nil] value
     #
     # @!attribute [rw] rest_keywords
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [Docscribe::Types::RestKeywords, nil]
+    #   @param [Docscribe::Types::RestKeywords, nil] value
     MethodSignature = Struct.new(:return_type, :param_types, :rest_positional, :rest_keywords, keyword_init: true)
 
     # @!attribute [rw] name
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [String, nil]
+    #   @param [String, nil] value
     #
     # @!attribute [rw] element_type
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [String]
+    #   @param [String] value
     RestPositional = Struct.new(:name, :element_type, keyword_init: true)
 
     # @!attribute [rw] name
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [String, nil]
+    #   @param [String, nil] value
     #
     # @!attribute [rw] type
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [String]
+    #   @param [String] value
     RestKeywords = Struct.new(:name, :type, keyword_init: true)
   end
 end

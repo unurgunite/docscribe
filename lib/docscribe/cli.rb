@@ -18,8 +18,8 @@ module Docscribe
       # - `docscribe generate ...` to the plugin skeleton generator
       # - all other commands to the main option parser and runner
       #
-      # @param [Object] argv raw command-line arguments
-      # @return [Object] process exit code
+      # @param [Array<String>] argv raw command-line arguments
+      # @return [Integer] process exit code
       def run(argv)
         argv = argv.dup
         return dispatch_subcommand(argv) if subcommand?(argv.first)
@@ -33,7 +33,7 @@ module Docscribe
       # Subcommand
       #
       # @private
-      # @param [Object] cmd Param documentation.
+      # @param [String?] cmd Param documentation.
       # @return [Boolean]
       def subcommand?(cmd)
         %w[init generate sigs rbs].include?(cmd)
@@ -42,8 +42,8 @@ module Docscribe
       # Dispatch subcommand
       #
       # @private
-      # @param [Object] argv raw command-line arguments
-      # @return [Object, Integer]
+      # @param [Array<String>] argv raw command-line arguments
+      # @return [Integer]
       def dispatch_subcommand(argv)
         cmd = argv.shift
         case cmd

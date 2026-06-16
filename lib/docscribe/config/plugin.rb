@@ -13,7 +13,7 @@ module Docscribe
     # continues without the plugin.
     #
     # @raise [LoadError]
-    # @return [Object]
+    # @return [void]
     def load_plugins!
       paths = Array(raw.dig('plugins', 'require')).compact #: Array[String]
       return if paths.empty?

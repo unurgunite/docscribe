@@ -61,7 +61,7 @@ module Docscribe
         # @private
         # @param [Object] state
         # @param [Object] _format
-        # @return [Hash<String, Object>]
+        # @return [Hash<String, Symbol, Object>]
         def build_sarif_document(state, _format)
           {
             '$schema' => SARIF_SCHEMA,

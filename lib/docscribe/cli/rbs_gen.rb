@@ -22,6 +22,8 @@ module Docscribe
       MethodDef = Data.define(:name, :scope, :container, :file, :line, :yard_tags)
 
       class << self
+        # @param [Object] argv
+        # @return [Integer]
         def run(argv)
           options = parse_options(argv)
           paths = expand_paths(argv)
@@ -32,6 +34,9 @@ module Docscribe
 
         private
 
+        # @private
+        # @param [Object] argv
+        # @return [Hash<Symbol, Object>]
         def parse_options(argv)
           options = { output_dir: 'sig', dry_run: false, force: false }
 
@@ -49,6 +54,9 @@ module Docscribe
           options
         end
 
+        # @private
+        # @param [Object] args
+        # @return [Array<String>]
         def expand_paths(args)
           files = [] #: Array[String]
           args = ['.'] if args.empty?
@@ -56,6 +64,10 @@ module Docscribe
           files.uniq.sort
         end
 
+        # @private
+        # @param [Object] files
+        # @param [Object] path
+        # @return [void]
         def expand_single_path(files, path)
           if File.directory?(path)
             files.concat(Dir.glob(File.join(path, '**', '*.rb')))
@@ -66,11 +78,17 @@ module Docscribe
           end
         end
 
+        # @private
+        # @return [Integer]
         def no_files_found
           warn 'No files found. Pass files or directories (e.g. `docscribe rbs lib`).'
           2
         end
 
+        # @private
+        # @param [Object] options
+        # @param [Object] paths
+        # @return [Integer]
         def run_with(options, paths)
           errors = 0
           paths.each do |path|
@@ -79,6 +97,14 @@ module Docscribe
           errors.zero? ? 0 : 1
         end
 
+        # @private
+        # @param [Object] path
+        # @param [Object] options
+        # @raise [Parser::SyntaxError]
+        # @raise [StandardError]
+        # @return [Boolean] if StandardError
+        # @return [Boolean] if Parser::SyntaxError
+        # @return [Boolean] if StandardError
         def generate_for_file(path, options)
           src = File.read(path)
           src_lines = src.lines
@@ -108,6 +134,9 @@ module Docscribe
           false
         end
 
+        # @private
+        # @param [Object] comments
+        # @return [Hash<Integer, String>]
         def build_comment_map(comments)
           map = {} #: Hash[Integer, String]
           return map unless comments
@@ -118,6 +147,15 @@ module Docscribe
           map
         end
 
+        # @private
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
+        # @param [Object] comment_map
+        # @param [Object] src_lines
+        # @param [Boolean] inside_sclass
+        # @return [void]
         def walk_for_methods(node, containers, methods, path, comment_map, src_lines, inside_sclass: false)
           return unless node.is_a?(Parser::AST::Node)
 
@@ -131,24 +169,58 @@ module Docscribe
           end
         end
 
+        # @private
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
+        # @param [Object] comment_map
+        # @param [Object] src_lines
+        # @return [void]
         def walk_class_module(node, containers, methods, path, comment_map, src_lines)
           containers.push(const_name(node.children[0]))
           node.children.drop(1).each { |c| walk_for_methods(c, containers, methods, path, comment_map, src_lines) }
           containers.pop
         end
 
+        # @private
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
+        # @param [Object] comment_map
+        # @param [Object] src_lines
+        # @return [void]
         def walk_sclass(node, containers, methods, path, comment_map, src_lines)
           node.children.drop(1).each do |c|
             walk_for_methods(c, containers, methods, path, comment_map, src_lines, inside_sclass: true)
           end
         end
 
+        # @private
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
+        # @param [Object] comment_map
+        # @param [Object] src_lines
+        # @param [Boolean] inside_sclass
+        # @return [void]
         def walk_children(node, containers, methods, path, comment_map, src_lines, inside_sclass: false)
           node.children.each do |c|
             walk_for_methods(c, containers, methods, path, comment_map, src_lines, inside_sclass: inside_sclass)
           end
         end
 
+        # @private
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
+        # @param [Object] comment_map
+        # @param [Object] src_lines
+        # @param [Boolean] inside_sclass
+        # @return [void]
         def collect_def(node, containers, methods, path, comment_map, src_lines, inside_sclass: false)
           line = node.loc&.line || 1
           yard_block = find_yard_block(line, comment_map, src_lines)
@@ -164,6 +236,14 @@ module Docscribe
           )
         end
 
+        # @private
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
+        # @param [Object] comment_map
+        # @param [Object] src_lines
+        # @return [void]
         def collect_defs(node, containers, methods, path, comment_map, src_lines)
           line = node.loc&.line || 1
           yard_block = find_yard_block(line, comment_map, src_lines)
@@ -179,6 +259,11 @@ module Docscribe
           )
         end
 
+        # @private
+        # @param [Object] line
+        # @param [Object] comment_map
+        # @param [Object] src_lines
+        # @return [Array<String>]
         def find_yard_block(line, comment_map, src_lines)
           block = [] #: Array[String]
           idx = line - 2
@@ -198,6 +283,9 @@ module Docscribe
           block
         end
 
+        # @private
+        # @param [Object] comment_lines
+        # @return [Docscribe::CLI::RbsGen::YardTags]
         def parse_yard_tags(comment_lines)
           params = [] #: Array[ParamTag]
           options = [] #: Array[ParamTag]
@@ -220,10 +308,16 @@ module Docscribe
           YardTags.new(params: params, return_type: return_type, options: options)
         end
 
+        # @private
+        # @param [Object] containers
+        # @return [String?]
         def container_name(containers)
           containers.empty? ? nil : containers.join('::')
         end
 
+        # @private
+        # @param [Object] node
+        # @return [String]
         def const_name(node)
           return node.to_s unless node.is_a?(Parser::AST::Node)
           return node.children[1].to_s if node.type == :const
@@ -231,6 +325,9 @@ module Docscribe
           node.children.map { |c| c.is_a?(Parser::AST::Node) ? const_name(c) : c.to_s }.join('::')
         end
 
+        # @private
+        # @param [Object] method_defs
+        # @return [String]
         def build_rbs_content(method_defs)
           grouped = method_defs.group_by { |m| m.container || '' }
 
@@ -249,6 +346,9 @@ module Docscribe
           "#{lines.join("\n")}\n"
         end
 
+        # @private
+        # @param [Object] method
+        # @return [String]
         def format_method_sig(method)
           prefix = method.scope == :class ? 'self.' : ''
           ret = method.yard_tags&.return_type ? type_to_rbs(method.yard_tags.return_type) : 'untyped'
@@ -265,11 +365,19 @@ module Docscribe
           end
         end
 
+        # @private
+        # @param [Object] yard_type
+        # @return [String]
         def type_to_rbs(yard_type)
           ast = Docscribe::Types::Yard.parse(yard_type)
           Docscribe::Types::Yard::Formatter.to_rbs(ast)
         end
 
+        # @private
+        # @param [Object] content
+        # @param [Object] source_path
+        # @param [Object] options
+        # @return [void]
         def write_file(content, source_path, options)
           abs = File.expand_path(source_path)
           pwd = File.expand_path(Dir.pwd)

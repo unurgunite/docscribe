@@ -8,15 +8,15 @@ module Docscribe
   # Application configuration with deep-merge defaults and overrides.
   class Config
     # @!attribute [r] raw
-    #   @return [Object]
+    #   @return [Hash<String, Object>]
     attr_reader :raw
 
     # Create a configuration object from a raw config hash.
     #
     # Missing keys are filled from {DEFAULT} via deep merge.
     #
-    # @param [Hash] raw user-provided config hash
-    # @return [Object]
+    # @param [Hash<String, Object>] raw user-provided config hash
+    # @return [void]
     def initialize(raw = {})
       @raw = deep_merge(DEFAULT, raw || {})
     end

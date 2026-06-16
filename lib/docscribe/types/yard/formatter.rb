@@ -8,6 +8,9 @@ module Docscribe
       module Formatter
         module_function
 
+        # @note module_function: defines #to_rbs (visibility: private)
+        # @param [Object] node
+        # @return [String]
         def to_rbs(node)
           return 'untyped' if node.nil?
 
@@ -24,6 +27,9 @@ module Docscribe
           end
         end
 
+        # @note module_function: defines #format_named (visibility: private)
+        # @param [Object] node
+        # @return [String]
         def format_named(node)
           case node.name
           when 'Boolean' then 'bool'
@@ -32,30 +38,51 @@ module Docscribe
           end
         end
 
+        # @note module_function: defines #format_generic (visibility: private)
+        # @param [Object] node
+        # @return [String]
         def format_generic(node)
           "#{node.base}[#{node.args.map { |a| to_rbs(a) }.join(', ')}]"
         end
 
+        # @note module_function: defines #format_union (visibility: private)
+        # @param [Object] node
+        # @return [String]
         def format_union(node)
           node.types.map { |t| to_rbs(t) }.join(' | ')
         end
 
+        # @note module_function: defines #format_intersection (visibility: private)
+        # @param [Object] node
+        # @return [String]
         def format_intersection(node)
           node.types.map { |t| to_rbs(t) }.join(' & ')
         end
 
+        # @note module_function: defines #format_optional (visibility: private)
+        # @param [Object] node
+        # @return [String]
         def format_optional(node)
           "#{to_rbs(node.type)}?"
         end
 
+        # @note module_function: defines #format_tuple (visibility: private)
+        # @param [Object] node
+        # @return [String]
         def format_tuple(node)
           "[#{node.types.map { |t| to_rbs(t) }.join(', ')}]"
         end
 
+        # @note module_function: defines #format_hash_map (visibility: private)
+        # @param [Object] node
+        # @return [String]
         def format_hash_map(node)
           "Hash[#{to_rbs(node.key_type)}, #{to_rbs(node.value_type)}]"
         end
 
+        # @note module_function: defines #format_literal (visibility: private)
+        # @param [Object] node
+        # @return [String]
         def format_literal(node)
           case node.value
           when 'void' then 'void'

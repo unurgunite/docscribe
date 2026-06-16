@@ -23,9 +23,9 @@ module Docscribe
     # Errors in individual plugins are caught so one broken plugin does not
     # abort the entire run.
     #
-    # @param [Object] context Param documentation.
+    # @param [Docscribe::Plugin::Context] context Param documentation.
     # @raise [StandardError]
-    # @return [Object, Array, Object]
+    # @return [Array<Docscribe::Plugin::Tag>]
     def self.run_tag_plugins(context)
       Registry.tag_entries
               # Higher number => higher priority (run earlier).
@@ -43,9 +43,9 @@ module Docscribe
 
     # Run all registered CollectorPlugins for one file's AST.
     #
-    # @param [Object] ast Param documentation.
-    # @param [Object] buffer Param documentation.
-    # @return [Object]
+    # @param [Parser::AST::Node] ast Param documentation.
+    # @param [Parser::Source::Buffer] buffer Param documentation.
+    # @return [Array<Hash<Symbol, Object>>]
     def self.run_collector_plugins(ast, buffer)
       Registry.collector_entries.flat_map { |entry| process_single_plugin_result(entry, ast, buffer) }
     end
@@ -54,11 +54,11 @@ module Docscribe
     #
     # Merges plugin metadata into each hash insertion and handles errors.
     #
-    # @param [Object] entry registry entry with priority and order metadata
-    # @param [Object] ast Param documentation.
-    # @param [Object] buffer Param documentation.
+    # @param [Docscribe::Plugin::Registry::Entry] entry registry entry with priority and order metadata
+    # @param [Parser::AST::Node] ast Param documentation.
+    # @param [Parser::Source::Buffer] buffer Param documentation.
     # @raise [StandardError]
-    # @return [Object] if StandardError
+    # @return [Array<Hash<Symbol, Object>>] if StandardError
     # @return [Array] if StandardError
     def self.process_single_plugin_result(entry, ast, buffer)
       plugin = entry.plugin
@@ -71,10 +71,10 @@ module Docscribe
 
     # Merge plugin metadata into collector results and filter invalid ones.
     #
-    # @param [Object] results collector plugin results to process
-    # @param [Object] entry registry entry with priority and order metadata
-    # @param [Object] plugin the collector plugin instance
-    # @return [Object]
+    # @param [Array<Object>] results collector plugin results to process
+    # @param [Docscribe::Plugin::Registry::Entry] entry registry entry with priority and order metadata
+    # @param [Docscribe::Plugin::Base::CollectorPlugin] plugin the collector plugin instance
+    # @return [Array<Hash<Symbol, Object>>]
     def self.process_plugin_insertions(results, entry, plugin)
       results.map do |insertion|
         next nil unless valid_plugin_result?(insertion, plugin)

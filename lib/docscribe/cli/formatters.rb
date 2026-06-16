@@ -6,9 +6,9 @@ module Docscribe
     module Formatters
       # Method documentation.
       #
-      # @param [Object] format Param documentation.
+      # @param [Docscribe::CLI::Formatters::format] format Param documentation.
       # @raise [ArgumentError]
-      # @return [Text, Json, Object]
+      # @return [Docscribe::CLI::Formatters::Text, Docscribe::CLI::Formatters::Json, Docscribe::CLI::Formatters::Sarif]
       def self.for(format)
         case format
         when :text then Text.new

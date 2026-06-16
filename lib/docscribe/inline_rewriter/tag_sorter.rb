@@ -35,9 +35,9 @@ module Docscribe
       # Sort
       #
       # @note module_function: defines #sort (visibility: private)
-      # @param [Object] lines comment block lines
-      # @param [Object] tag_order configured tag order
-      # @return [Object]
+      # @param [Array<String>] lines comment block lines
+      # @param [Array<String>] tag_order configured tag order
+      # @return [Array<String>]
       def sort(lines, tag_order:)
         priority = build_priority(tag_order)
         segments = parse_segments(lines)
@@ -47,8 +47,8 @@ module Docscribe
       # Build priority
       #
       # @note module_function: defines #build_priority (visibility: private)
-      # @param [Object] tag_order configured tag order
-      # @return [Object]
+      # @param [Array<String>] tag_order configured tag order
+      # @return [Hash<String, Integer>]
       def build_priority(tag_order)
         Array(tag_order).map { |t| t.to_s.sub(/\A@/, '') }
                         .each_with_index
@@ -58,8 +58,8 @@ module Docscribe
       # Parse segments
       #
       # @note module_function: defines #parse_segments (visibility: private)
-      # @param [Object] lines comment block lines
-      # @return [Array]
+      # @param [Array<String>] lines comment block lines
+      # @return [Array<Hash<Symbol, Object>>]
       def parse_segments(lines)
         segments = [] #: Array[untyped]
         i = 0
@@ -72,10 +72,10 @@ module Docscribe
       # Advance parse
       #
       # @note module_function: defines #advance_parse (visibility: private)
-      # @param [Object] lines comment block lines
-      # @param [Object] idx current parse index
-      # @param [Object] segments accumulated parsed segments
-      # @return [Object, Integer] new index after processing
+      # @param [Array<String>] lines comment block lines
+      # @param [Integer] idx current parse index
+      # @param [Array<Hash<Symbol, Object>>] segments accumulated parsed segments
+      # @return [Integer] new index after processing
       def advance_parse(lines, idx, segments)
         if top_level_tag_line?(lines[idx])
           consume_tag_run(lines, idx, segments)
@@ -88,10 +88,10 @@ module Docscribe
       # Consume tag run
       #
       # @note module_function: defines #consume_tag_run (visibility: private)
-      # @param [Object] lines comment block lines
-      # @param [Object] idx current index
-      # @param [Object] segments accumulated segments
-      # @return [Object] new index after consuming the run
+      # @param [Array<String>] lines comment block lines
+      # @param [Integer] idx current index
+      # @param [Array<Hash<Symbol, Object>>] segments accumulated segments
+      # @return [Integer] new index after consuming the run
       def consume_tag_run(lines, idx, segments)
         entries = [] #: Array[untyped]
         while idx < lines.length && top_level_tag_line?(lines[idx])
@@ -105,9 +105,9 @@ module Docscribe
       # Sort segment
       #
       # @note module_function: defines #sort_segment (visibility: private)
-      # @param [Object] segment Param documentation.
-      # @param [Object] priority Param documentation.
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] segment Param documentation.
+      # @param [Hash<String, Integer>] priority Param documentation.
+      # @return [Array<String>]
       def sort_segment(segment, priority:)
         return segment[:lines] unless segment[:type] == :tag_run
 
@@ -123,9 +123,9 @@ module Docscribe
       # Group priority
       #
       # @note module_function: defines #group_priority (visibility: private)
-      # @param [Object] group Param documentation.
-      # @param [Object] priority Param documentation.
-      # @return [Object]
+      # @param [Array<Object>] group Param documentation.
+      # @param [Hash<String, Integer>] priority Param documentation.
+      # @return [Integer]
       def group_priority(group, priority)
         first = group.first
         priority.fetch(first.tag, priority.length)
@@ -134,9 +134,9 @@ module Docscribe
       # Consume entry
       #
       # @note module_function: defines #consume_entry (visibility: private)
-      # @param [Object] lines comment block lines
-      # @param [Object] start_idx original index of the first line
-      # @return [Array]
+      # @param [Array<String>] lines comment block lines
+      # @param [Integer] start_idx original index of the first line
+      # @return [(Object, Integer)]
       def consume_entry(lines, start_idx)
         first = lines[start_idx]
         tag = extract_tag_name(first)
@@ -151,11 +151,11 @@ module Docscribe
       # Build entry
       #
       # @note module_function: defines #build_entry (visibility: private)
-      # @param [Object] tag the extracted tag name
-      # @param [Object] entry_lines all lines belonging to this entry
-      # @param [Object] first the first (tag) line
-      # @param [Object] start_idx original index of the first line
-      # @return [Entry]
+      # @param [String, nil] tag the extracted tag name
+      # @param [Array<String>] entry_lines all lines belonging to this entry
+      # @param [String] first the first (tag) line
+      # @param [Integer] start_idx original index of the first line
+      # @return [Object]
       def build_entry(tag, entry_lines, first, start_idx)
         Entry.new(
           tag: tag,
@@ -169,9 +169,9 @@ module Docscribe
       # Collect continuation lines
       #
       # @note module_function: defines #collect_continuation_lines (visibility: private)
-      # @param [Object] lines comment block lines
-      # @param [Object] start_idx original index of the first line
-      # @return [Array]
+      # @param [Array<String>] lines comment block lines
+      # @param [Integer] start_idx original index of the first line
+      # @return [Array<String>]
       def collect_continuation_lines(lines, start_idx)
         result = [] #: Array[String]
         i = start_idx
@@ -190,8 +190,8 @@ module Docscribe
       # Group entries
       #
       # @note module_function: defines #group_entries (visibility: private)
-      # @param [Object] entries parsed tag entries
-      # @return [Array]
+      # @param [Array<Object>] entries parsed tag entries
+      # @return [Array<Array<Object>>]
       def group_entries(entries)
         groups = [] #: Array[untyped]
         i = 0
@@ -207,9 +207,9 @@ module Docscribe
       # Group entry
       #
       # @note module_function: defines #group_entry (visibility: private)
-      # @param [Object] entries parsed tag entries
-      # @param [Object] idx index of the entry to group
-      # @return [Array<Elem, U>, Array] the entry group
+      # @param [Array<Object>] entries parsed tag entries
+      # @param [Integer] idx index of the entry to group
+      # @return [Array<Object>] the entry group
       def group_entry(entries, idx)
         entry = entries[idx]
         if entry.tag == 'param'
@@ -222,10 +222,10 @@ module Docscribe
       # Collect option entries
       #
       # @note module_function: defines #collect_option_entries (visibility: private)
-      # @param [Object] entries parsed tag entries
-      # @param [Object] start_idx original index of the first line
-      # @param [Object] param_name Param documentation.
-      # @return [Array]
+      # @param [Array<Object>] entries parsed tag entries
+      # @param [Integer] start_idx original index of the first line
+      # @param [String] param_name Param documentation.
+      # @return [Array<Object>]
       def collect_option_entries(entries, start_idx, param_name)
         result = [] #: Array[untyped]
         i = start_idx
@@ -244,7 +244,7 @@ module Docscribe
       # Top level tag line
       #
       # @note module_function: defines #top_level_tag_line? (visibility: private)
-      # @param [Object] line Param documentation.
+      # @param [String] line Param documentation.
       # @return [Boolean]
       def top_level_tag_line?(line)
         !!(line =~ /^\s*#\s*@\w+/)
@@ -253,7 +253,7 @@ module Docscribe
       # Comment line
       #
       # @note module_function: defines #comment_line? (visibility: private)
-      # @param [Object] line Param documentation.
+      # @param [String] line Param documentation.
       # @return [Boolean]
       def comment_line?(line)
         !!(line =~ /^\s*#/)
@@ -262,7 +262,7 @@ module Docscribe
       # Blank comment line
       #
       # @note module_function: defines #blank_comment_line? (visibility: private)
-      # @param [Object] line Param documentation.
+      # @param [String] line Param documentation.
       # @return [Boolean]
       def blank_comment_line?(line)
         !!(line =~ /^\s*#\s*$/)
@@ -271,8 +271,8 @@ module Docscribe
       # Extract tag name
       #
       # @note module_function: defines #extract_tag_name (visibility: private)
-      # @param [Object] line Param documentation.
-      # @return [Object]
+      # @param [String] line Param documentation.
+      # @return [String, nil]
       def extract_tag_name(line)
         line[/^\s*#\s*@(\w+)/, 1]
       end
@@ -280,8 +280,8 @@ module Docscribe
       # Extract param name
       #
       # @note module_function: defines #extract_param_name (visibility: private)
-      # @param [Object] line Param documentation.
-      # @return [nil]
+      # @param [String] line Param documentation.
+      # @return [String, nil]
       def extract_param_name(line)
         return Regexp.last_match(1) if line =~ /^\s*#\s*@param\b\s+\[[^\]]+\]\s+(\S+)/
         return Regexp.last_match(1) if line =~ /^\s*#\s*@param\b\s+(\S+)\s+\[[^\]]+\]/
@@ -292,8 +292,8 @@ module Docscribe
       # Extract option owner
       #
       # @note module_function: defines #extract_option_owner (visibility: private)
-      # @param [Object] line Param documentation.
-      # @return [Object]
+      # @param [String] line Param documentation.
+      # @return [String, nil]
       def extract_option_owner(line)
         line[/^\s*#\s*@option\b\s+(\S+)/, 1]
       end

@@ -7,9 +7,9 @@ module Docscribe
       class Text
         # Method documentation.
         #
-        # @param [Object] state Param documentation.
-        # @param [Hash] options Param documentation.
-        # @return [Object]
+        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [Hash<Symbol, Object>] options Param documentation.
+        # @return [void]
         def format_check_summary(state:, options:)
           puts
           format_fail_paths(state, options)
@@ -20,9 +20,9 @@ module Docscribe
 
         # Method documentation.
         #
-        # @param [Object] state Param documentation.
-        # @param [Hash] options Param documentation.
-        # @return [Object]
+        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [Hash<Symbol, Object>] options Param documentation.
+        # @return [void]
         def format_write_summary(state:, options:)
           puts
           puts "Docscribe: updated #{state[:corrected]} file(s)" if state[:corrected].positive?
@@ -36,9 +36,9 @@ module Docscribe
 
         # Method documentation.
         #
-        # @param [Object] state Param documentation.
+        # @param [Hash<Symbol, Object>] state Param documentation.
         # @param [Object] options Param documentation.
-        # @return [Object]
+        # @return [void]
         def format_fail_paths(state, options)
           state[:fail_paths].each do |p|
             puts "Would update: #{p}"
@@ -53,8 +53,8 @@ module Docscribe
 
         # Method documentation.
         #
-        # @param [Object] state Param documentation.
-        # @return [Object]
+        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @return [void]
         def format_check_status_line(state)
           checked_error = state[:error_paths].size
           type_mismatch_count = state[:type_mismatch_paths].size
@@ -70,9 +70,9 @@ module Docscribe
 
         # Method documentation.
         #
-        # @param [Object] state Param documentation.
+        # @param [Hash<Symbol, Object>] state Param documentation.
         # @param [Object] options Param documentation.
-        # @return [Object]
+        # @return [void]
         def format_type_mismatch_paths(state, options)
           return if options[:quiet]
           return unless options[:verbose] || options[:explain]
@@ -87,9 +87,9 @@ module Docscribe
 
         # Method documentation.
         #
-        # @param [Object] state Param documentation.
+        # @param [Hash<Symbol, Object>] state Param documentation.
         # @param [Object] options Param documentation.
-        # @return [Object]
+        # @return [void]
         def format_corrected_paths(state, options)
           state[:corrected_paths].each do |p|
             puts "Updated: #{p}"
@@ -104,8 +104,8 @@ module Docscribe
 
         # Method documentation.
         #
-        # @param [Object] state Param documentation.
-        # @return [Object?]
+        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @return [void]
         def format_error_paths(state)
           return if state[:error_paths].empty?
 
@@ -121,10 +121,10 @@ module Docscribe
         # Method documentation.
         #
         # @private
-        # @param [Object] state Param documentation.
-        # @param [Object] checked_error Param documentation.
-        # @param [Object] type_mismatch_count Param documentation.
-        # @return [Object]
+        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [Integer] checked_error Param documentation.
+        # @param [Integer] type_mismatch_count Param documentation.
+        # @return [Boolean]
         def all_fine?(state, checked_error, type_mismatch_count)
           state[:checked_fail].zero? && checked_error.zero? && type_mismatch_count.zero?
         end
@@ -132,9 +132,9 @@ module Docscribe
         # Method documentation.
         #
         # @private
-        # @param [Object] state Param documentation.
-        # @param [Object] checked_error Param documentation.
-        # @return [Object]
+        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [Integer] checked_error Param documentation.
+        # @return [Boolean]
         def mismatch_only?(state, checked_error)
           state[:checked_fail].zero? && checked_error.zero?
         end
@@ -142,9 +142,9 @@ module Docscribe
         # Method documentation.
         #
         # @private
-        # @param [Object] state Param documentation.
-        # @param [Object] type_mismatch_count Param documentation.
-        # @param [Object] checked_error Param documentation.
+        # @param [Hash<Symbol, Object>] state Param documentation.
+        # @param [Integer] type_mismatch_count Param documentation.
+        # @param [Integer] checked_error Param documentation.
         # @return [String]
         def failure_line(state, type_mismatch_count, checked_error)
           parts = ["#{state[:checked_fail]} need updates"]
@@ -157,7 +157,7 @@ module Docscribe
         # Method documentation.
         #
         # @private
-        # @param [Object] change Param documentation.
+        # @param [Hash<Symbol, Object>] change Param documentation.
         # @return [String]
         def format_change_reason(change)
           line = change_line_suffix(change)
@@ -172,7 +172,7 @@ module Docscribe
         # Method documentation.
         #
         # @private
-        # @param [Object] change Param documentation.
+        # @param [Hash<Symbol, Object>] change Param documentation.
         # @return [String]
         def change_line_suffix(change)
           change[:line] ? " at line #{change[:line]}" : ''
@@ -181,7 +181,7 @@ module Docscribe
         # Method documentation.
         #
         # @private
-        # @param [Object] change Param documentation.
+        # @param [Hash<Symbol, Object>] change Param documentation.
         # @return [String]
         def change_method_suffix(change)
           change[:method] ? " for #{change[:method]}" : ''
@@ -190,7 +190,7 @@ module Docscribe
         # Method documentation.
         #
         # @private
-        # @param [Object] change Param documentation.
+        # @param [Hash<Symbol, Object>] change Param documentation.
         # @return [Boolean]
         def direct_message_change?(change)
           %i[

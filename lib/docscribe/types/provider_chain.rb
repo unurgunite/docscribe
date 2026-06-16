@@ -14,18 +14,18 @@ module Docscribe
     class ProviderChain
       # Initialize
       #
-      # @param [Array] providers ordered signature providers
-      # @return [Object]
+      # @param [Array<Object>] providers ordered signature providers
+      # @return [void]
       def initialize(*providers)
         @providers = providers.compact
       end
 
       # Resolve a method signature from the first provider that can supply it.
       #
-      # @param [Object] container e.g. "MyModule::MyClass"
-      # @param [Object] scope :instance or :class
-      # @param [Object] name method name
-      # @return [nil]
+      # @param [String] container e.g. "MyModule::MyClass"
+      # @param [Symbol] scope :instance or :class
+      # @param [Symbol, String] name method name
+      # @return [Docscribe::Types::MethodSignature, nil]
       def signature_for(container:, scope:, name:)
         @providers.each do |provider|
           sig = provider.signature_for(container: container, scope: scope, name: name)
