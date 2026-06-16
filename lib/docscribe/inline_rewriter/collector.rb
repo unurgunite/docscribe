@@ -364,6 +364,7 @@ module Docscribe
       # @private
       # @param [Parser::AST::Node] node an AST node
       # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
+      # @param [Parser::AST::Node?] pending_sig_anchor
       # @return [void]
       def process_sclass_stmt(node, ctx, pending_sig_anchor: nil) # rubocop:disable Lint/UnusedMethodArgument
         # `class << self` — affects default visibility for singleton methods and changes scope.

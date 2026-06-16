@@ -678,6 +678,12 @@ module Docscribe
         nil: 'NilClass'
       }.freeze
 
+      # @note module_function: when included, also defines #receiver_rbs_type_name (instance visibility: private)
+      # @param [Parser::AST::Node, nil] recv
+      # @param [Object, nil] core_rbs_provider
+      # @param [Hash<Object, Object>, nil] local_var_types
+      # @param [Hash<String, String>, nil] param_types
+      # @return [String, nil]
       def receiver_rbs_type_name(recv, core_rbs_provider, local_var_types, param_types)
         return unless recv
         return LITERAL_RBS_TYPES[recv.type] if LITERAL_RBS_TYPES.key?(recv.type)
