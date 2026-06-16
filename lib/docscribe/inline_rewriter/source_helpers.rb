@@ -13,7 +13,7 @@ module Docscribe
       # Extract the method name from a `:def` or `:defs` node.
       #
       # @note module_function: defines #node_name (visibility: private)
-      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Parser::AST::Node] node def or defs AST node
       # @return [Symbol, nil]
       def node_name(node)
         case node.type
@@ -27,8 +27,8 @@ module Docscribe
       # Used as the insertion point for generated documentation.
       #
       # @note module_function: defines #line_start_range (visibility: private)
-      # @param [Parser::Source::Buffer] buffer Param documentation.
-      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Parser::Source::Buffer] buffer source buffer for range
+      # @param [Parser::AST::Node] node target AST node
       # @return [Parser::Source::Range]
       def line_start_range(buffer, node)
         start_pos = node.loc.expression.begin_pos
@@ -48,7 +48,7 @@ module Docscribe
       # Returns nil if no doc-like block is present.
       #
       # @note module_function: defines #doc_comment_block_info (visibility: private)
-      # @param [Parser::Source::Buffer] buffer Param documentation.
+      # @param [Parser::Source::Buffer] buffer source buffer to scan
       # @param [Integer] def_bol_pos beginning-of-line position of the target def
       # @return [Hash<Symbol, Object>, nil]
       def doc_comment_block_info(buffer, def_bol_pos)
@@ -71,7 +71,7 @@ module Docscribe
       # from the returned range.
       #
       # @note module_function: defines #comment_block_removal_range (visibility: private)
-      # @param [Parser::Source::Buffer] buffer Param documentation.
+      # @param [Parser::Source::Buffer] buffer source buffer to scan
       # @param [Integer] def_bol_pos beginning-of-line position of the target def
       # @return [Parser::Source::Range, nil]
       def comment_block_removal_range(buffer, def_bol_pos)
@@ -93,8 +93,8 @@ module Docscribe
       # contiguous comment lines.
       #
       # @note module_function: defines #find_comment_block_range (visibility: private)
-      # @param [Array<String>] lines Param documentation.
-      # @param [Integer] def_line_idx Param documentation.
+      # @param [Array<String>] lines source code lines
+      # @param [Integer] def_line_idx def line index
       # @return [Hash<Symbol, Integer>, nil]
       def find_comment_block_range(lines, def_line_idx)
         i = def_line_idx - 1
@@ -114,9 +114,9 @@ module Docscribe
       # Preserved lines include RuboCop directives and Ruby magic comments.
       #
       # @note module_function: defines #find_preserved_start_idx (visibility: private)
-      # @param [Array<String>] lines Param documentation.
-      # @param [Integer] start_idx Param documentation.
-      # @param [Integer] end_idx Param documentation.
+      # @param [Array<String>] lines source code lines
+      # @param [Integer] start_idx block start index
+      # @param [Integer] end_idx block end index
       # @return [Integer]
       def find_preserved_start_idx(lines, start_idx, end_idx)
         idx = start_idx
@@ -127,7 +127,7 @@ module Docscribe
       # Whether a comment block range contains documentation markers.
       #
       # @note module_function: defines #doc_marker? (visibility: private)
-      # @param [Array<String>] lines Param documentation.
+      # @param [Array<String>] lines source code lines
       # @param [Range<Integer>] range line index range
       # @return [Boolean]
       def doc_marker?(lines, range)
@@ -137,10 +137,10 @@ module Docscribe
       # Build block info hash from computed line ranges.
       #
       # @note module_function: defines #build_block_info (visibility: private)
-      # @param [Array<String>] lines Param documentation.
-      # @param [Integer] start_idx Param documentation.
-      # @param [Integer] preserved_start_idx Param documentation.
-      # @param [Integer] end_idx Param documentation.
+      # @param [Array<String>] lines source code lines
+      # @param [Integer] start_idx block start index
+      # @param [Integer] preserved_start_idx preserved start index
+      # @param [Integer] end_idx block end index
       # @return [Hash<Symbol, Object>]
       def build_block_info(lines, start_idx, preserved_start_idx, end_idx)
         positions = compute_positions(lines, start_idx, preserved_start_idx, end_idx)
@@ -155,9 +155,9 @@ module Docscribe
       # Compute the removal range for preserved start position.
       #
       # @note module_function: defines #compute_removal_range (visibility: private)
-      # @param [Parser::Source::Buffer] buffer Param documentation.
-      # @param [Array<String>] lines Param documentation.
-      # @param [Integer] preserved_start_idx Param documentation.
+      # @param [Parser::Source::Buffer] buffer source buffer for position
+      # @param [Array<String>] lines source code lines
+      # @param [Integer] preserved_start_idx preserved start index
       # @param [Integer] def_bol_pos beginning-of-line position of the target def
       # @return [Parser::Source::Range]
       def compute_removal_range(buffer, lines, preserved_start_idx, def_bol_pos)
@@ -168,10 +168,10 @@ module Docscribe
       # Compute source positions for a comment block.
       #
       # @note module_function: defines #compute_positions (visibility: private)
-      # @param [Array<String>] lines Param documentation.
-      # @param [Integer] start_idx Param documentation.
-      # @param [Integer] doc_start_idx Param documentation.
-      # @param [Integer] end_pos_idx Param documentation.
+      # @param [Array<String>] lines source code lines
+      # @param [Integer] start_idx block start index
+      # @param [Integer] doc_start_idx doc content start index
+      # @param [Integer] end_pos_idx block end position index
       # @return [Hash<Symbol, Integer>]
       def compute_positions(lines, start_idx, doc_start_idx, end_pos_idx)
         start_pos = start_idx.positive? ? (lines[0...start_idx] || []).join.length : 0
@@ -188,7 +188,7 @@ module Docscribe
       # - tool directives such as `:nocov:` / `:stopdoc:`
       #
       # @note module_function: defines #preserved_comment_line? (visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line comment line to check
       # @return [Boolean]
       def preserved_comment_line?(line)
         # RuboCop directives
@@ -214,7 +214,7 @@ module Docscribe
       # - YARD tags/directives beginning with `@`
       #
       # @note module_function: defines #doc_marker_line? (visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line comment line to check
       # @return [Boolean]
       def doc_marker_line?(line)
         # Docscribe header line:
@@ -239,8 +239,8 @@ module Docscribe
       # This helper is retained for compatibility/legacy behavior checks.
       #
       # @note module_function: defines #already_has_doc_immediately_above? (visibility: private)
-      # @param [Parser::Source::Buffer] buffer Param documentation.
-      # @param [Integer] insert_pos Param documentation.
+      # @param [Parser::Source::Buffer] buffer source buffer to check
+      # @param [Integer] insert_pos insertion position
       # @return [Boolean]
       def already_has_doc_immediately_above?(buffer, insert_pos)
         src = buffer.source
@@ -258,7 +258,7 @@ module Docscribe
       # Tabs and spaces are preserved exactly.
       #
       # @note module_function: defines #line_indent (visibility: private)
-      # @param [Parser::AST::Node] node Param documentation.
+      # @param [Parser::AST::Node] node target AST node
       # @raise [StandardError]
       # @return [String] if StandardError
       # @return [String] if StandardError

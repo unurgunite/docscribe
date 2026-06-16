@@ -5,15 +5,12 @@ require_relative 'types'
 module Docscribe
   module Types
     module Yard
-      module_function
+      class << self
+        def parse(string)
+          return nil if string.nil? || string.strip.empty?
 
-      # @note module_function: defines #parse (visibility: private)
-      # @param [Object] string
-      # @return [Object]
-      def parse(string)
-        return nil if string.nil? || string.strip.empty?
-
-        Parser.new(string).parse
+          Parser.new(string).parse
+        end
       end
 
       class Parser
@@ -112,7 +109,7 @@ module Docscribe
         # @private
         # @return [Array<Object>]
         def parse_generic_args
-          args = []
+          args = [] #: Array[untyped]
           skip_space
           while @i < @s.length && @s[@i] != '>'
             args << parse_union
@@ -129,7 +126,7 @@ module Docscribe
         # @return [Object]
         def parse_tuple
           @i += 1
-          types = []
+          types = [] #: Array[untyped]
           skip_space
           while @i < @s.length && @s[@i] != ')'
             types << parse_tuple_element
@@ -193,7 +190,7 @@ module Docscribe
         # @private
         # @return [Object]
         def parse_duck_type
-          methods = []
+          methods = [] #: Array[String]
           while @i < @s.length && @s[@i] == '#'
             @i += 1
             name = scan_name

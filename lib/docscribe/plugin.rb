@@ -23,7 +23,7 @@ module Docscribe
     # Errors in individual plugins are caught so one broken plugin does not
     # abort the entire run.
     #
-    # @param [Docscribe::Plugin::Context] context Param documentation.
+    # @param [Docscribe::Plugin::Context] context plugin execution context
     # @raise [StandardError]
     # @return [Array<Docscribe::Plugin::Tag>]
     def self.run_tag_plugins(context)
@@ -43,8 +43,8 @@ module Docscribe
 
     # Run all registered CollectorPlugins for one file's AST.
     #
-    # @param [Parser::AST::Node] ast Param documentation.
-    # @param [Parser::Source::Buffer] buffer Param documentation.
+    # @param [Parser::AST::Node] ast parsed AST root node
+    # @param [Parser::Source::Buffer] buffer source buffer for AST
     # @return [Array<Hash<Symbol, Object>>]
     def self.run_collector_plugins(ast, buffer)
       Registry.collector_entries.flat_map { |entry| process_single_plugin_result(entry, ast, buffer) }
@@ -55,8 +55,8 @@ module Docscribe
     # Merges plugin metadata into each hash insertion and handles errors.
     #
     # @param [Docscribe::Plugin::Registry::Entry] entry registry entry with priority and order metadata
-    # @param [Parser::AST::Node] ast Param documentation.
-    # @param [Parser::Source::Buffer] buffer Param documentation.
+    # @param [Parser::AST::Node] ast parsed AST root node
+    # @param [Parser::Source::Buffer] buffer source buffer for AST
     # @raise [StandardError]
     # @return [Array<Hash<Symbol, Object>>] if StandardError
     # @return [Array] if StandardError
@@ -89,7 +89,7 @@ module Docscribe
 
     # Validate a CollectorPlugin result is a Hash.
     #
-    # @param [Object] insertion Param documentation.
+    # @param [Object] insertion collector plugin result
     # @param [Object] plugin the collector plugin instance
     # @return [Boolean]
     def self.valid_plugin_result?(insertion, plugin)

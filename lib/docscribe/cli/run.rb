@@ -407,7 +407,7 @@ module Docscribe
         #
         # @private
         # @param [String] path file path
-        # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches Param documentation.
+        # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches type mismatch changes to record
         # @param [String] display_path path shown in CLI output
         # @param [Docscribe::CLI::Formatters::opts] options CLI options
         # @param [Docscribe::CLI::Formatters::state] state shared processing state
@@ -496,7 +496,7 @@ module Docscribe
         # Log a write-mode verdict.
         #
         # @private
-        # @param [String] verdict Param documentation.
+        # @param [String] verdict verdict string to display
         # @param [String] display_path path shown in CLI output
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes structured change records
         # @param [Docscribe::CLI::Formatters::opts] options CLI options
@@ -542,7 +542,7 @@ module Docscribe
         # Log a per-file check verdict.
         #
         # @private
-        # @param [String] verdict Param documentation.
+        # @param [String] verdict verdict string to display
         # @param [String] display_path path shown in CLI output
         # @param [Docscribe::CLI::Formatters::opts] options CLI options
         # @return [void]

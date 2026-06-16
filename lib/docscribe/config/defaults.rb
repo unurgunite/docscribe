@@ -25,9 +25,9 @@ module Docscribe
         'attributes' => false
       },
       'doc' => {
-        'default_message' => 'Method documentation.',
+        'default_message' => 'Generated method description.',
         'param_tag_style' => 'type_name',
-        'param_documentation' => 'Param documentation.',
+        'param_documentation' => 'Generated param description.',
         'sort_tags' => true,
         'tag_order' => %w[todo note api private protected param option yieldparam raise return]
       },

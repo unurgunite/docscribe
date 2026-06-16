@@ -364,7 +364,7 @@ module Docscribe
       # @private
       # @param [Parser::AST::Node] node an AST node
       # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
-      # @param [Parser::AST::Node?] pending_sig_anchor Param documentation.
+      # @param [Parser::AST::Node?] pending_sig_anchor pending Sorbet sig anchor
       # @return [void]
       def process_sclass_stmt(node, ctx, pending_sig_anchor: nil) # rubocop:disable Lint/UnusedMethodArgument
         # `class << self` — affects default visibility for singleton methods and changes scope.
@@ -768,7 +768,7 @@ module Docscribe
       # Process an inline visibility modifier (private def foo).
       #
       # @private
-      # @param [Parser::AST::Node] def_node Param documentation.
+      # @param [Parser::AST::Node] def_node method definition node
       # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
       # @param [Symbol] meth the visibility method (:private, :protected, :public)
       # @param [String] container the container name
@@ -788,7 +788,7 @@ module Docscribe
       # Process an inline def under a visibility modifier.
       #
       # @private
-      # @param [Parser::AST::Node] def_node Param documentation.
+      # @param [Parser::AST::Node] def_node method definition node
       # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
       # @param [Symbol] meth the visibility method (:private, :protected, :public)
       # @param [String] container the container name

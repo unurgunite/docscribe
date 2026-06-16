@@ -1,20 +1,22 @@
 module Docscribe
   module CLI
     module RbsGen
-      class YardTags < Data
+      BANNER: String
+
+      class YardTags
         def initialize: (params: Array[untyped], return_type: String?, options: Array[untyped]) -> void
         def params: () -> Array[untyped]
         def return_type: () -> String?
         def options: () -> Array[untyped]
       end
 
-      class ParamTag < Data
+      class ParamTag
         def initialize: (name: String, type: String) -> void
         def name: () -> String
         def type: () -> String
       end
 
-      class MethodDef < Data
+      class MethodDef
         def initialize: (name: Symbol, scope: Symbol, container: String?, file: String, line: Integer, yard_tags: YardTags?) -> void
         def name: () -> Symbol
         def scope: () -> Symbol
@@ -45,6 +47,7 @@ module Docscribe
       def self.const_name: (untyped) -> String
       def self.build_rbs_content: (Array[MethodDef]) -> String
       def self.format_method_sig: (MethodDef) -> String
+      def self.return_type_rbs: (MethodDef) -> String
       def self.type_to_rbs: (String) -> String
       def self.write_file: (String, String, Hash[Symbol, untyped]) -> void
     end

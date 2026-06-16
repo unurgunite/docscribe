@@ -158,7 +158,8 @@ module Docscribe
       # @param [String] code the Ruby source code string to parse and rewrite
       # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
       # @raise [Docscribe::ParseError]
-      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node, Docscribe::Types::ProviderChain, nil, Object, nil>]
+      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node,
+      #   Docscribe::Types::ProviderChain, nil, Object, nil>]
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
         file = (options[:file] || '(inline)').to_s
@@ -207,7 +208,7 @@ module Docscribe
       # Deduplicate insertions
       #
       # @private
-      # @param [Array<(Symbol, Object)>] insertions Param documentation.
+      # @param [Array<(Symbol, Object)>] insertions insertions to deduplicate
       # @param [Hash<Integer, Object>, nil?] method_overrides_by_pos method-level overrides keyed by insertion position
       # @return [Array<(Symbol, Object)>]
       def deduplicate_insertions(insertions, method_overrides_by_pos: nil)
@@ -220,8 +221,8 @@ module Docscribe
       #
       # @private
       # @param [Integer] pos the source begin_pos for the group
-      # @param [Array<(Symbol, Object)>] items Param documentation.
-      # @param [Array<(Symbol, Object)>] result Param documentation.
+      # @param [Array<(Symbol, Object)>] items grouped items to process
+      # @param [Array<(Symbol, Object)>] result accumulated result array
       # @param [Hash<Integer, Object>, nil] method_overrides_by_pos hash mapping position to method override data
       # @return [void]
       def process_dedup_group(pos, items, result, method_overrides_by_pos)
@@ -240,7 +241,7 @@ module Docscribe
       # Group by position
       #
       # @private
-      # @param [Array<(Symbol, Object)>] insertions Param documentation.
+      # @param [Array<(Symbol, Object)>] insertions insertions to group
       # @return [Hash<Integer, Array<(Symbol, Object)>>]
       def group_by_position(insertions)
         groups = {} #: Hash[Integer, untyped]
@@ -254,7 +255,7 @@ module Docscribe
       # Find override items
       #
       # @private
-      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
+      # @param [Array<(Symbol, Object)>] plugin_items plugin items to check
       # @return [Array<(Symbol, Object)>]
       def find_override_items(plugin_items)
         plugin_items.select do |_k, ins|
@@ -265,9 +266,9 @@ module Docscribe
       # Handle override case
       #
       # @private
-      # @param [Array<(Symbol, Object)>] result Param documentation.
-      # @param [Array<(Symbol, Object)>] items Param documentation.
-      # @param [Array<(Symbol, Object)>] override_items Param documentation.
+      # @param [Array<(Symbol, Object)>] result accumulated result array
+      # @param [Array<(Symbol, Object)>] items all items in group
+      # @param [Array<(Symbol, Object)>] override_items override plugin items
       # @param [Hash<Integer, Object>, nil] method_overrides_by_pos hash mapping position to method override data
       # @param [Integer] pos the source position of the conflict
       # @return [void]
@@ -284,10 +285,10 @@ module Docscribe
       # Deduplicate items
       #
       # @private
-      # @param [Array<(Symbol, Object)>] items Param documentation.
-      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
+      # @param [Array<(Symbol, Object)>] items all items in group
+      # @param [Array<(Symbol, Object)>] plugin_items plugin items in group
       # @param [Integer] pos the source position of the conflict
-      # @param [Array<(Symbol, Object)>] _method_items Param documentation.
+      # @param [Array<(Symbol, Object)>] _method_items method items in group
       # @return [Array<(Symbol, Object)>]
       def deduplicate_items(items, plugin_items, pos, _method_items)
         plugin_doc_items = plugin_items.select { |pair| plugin_doc_item?(pair) }
@@ -302,7 +303,7 @@ module Docscribe
       # Plugin doc item
       #
       # @private
-      # @param [(Symbol, Object)] pair Param documentation.
+      # @param [(Symbol, Object)] pair insertion pair to check
       # @return [Boolean]
       def plugin_doc_item?(pair)
         _k, ins = pair
@@ -312,8 +313,8 @@ module Docscribe
       # Deduplicate plugin doc case
       #
       # @private
-      # @param [Array<(Symbol, Object)>] items Param documentation.
-      # @param [Array<(Symbol, Object)>] plugin_doc_items Param documentation.
+      # @param [Array<(Symbol, Object)>] items all items in group
+      # @param [Array<(Symbol, Object)>] plugin_doc_items plugin doc items
       # @param [Integer] pos the source position of the conflict
       # @return [Array<(Symbol, Object)>]
       def deduplicate_plugin_doc_case(items, plugin_doc_items, pos)
@@ -332,7 +333,7 @@ module Docscribe
       # Override or plugin method
       #
       # @private
-      # @param [(Symbol, Object)] pair Param documentation.
+      # @param [(Symbol, Object)] pair insertion pair to check
       # @return [Boolean]
       def override_or_plugin_method?(pair)
         k, ins = pair
@@ -342,7 +343,7 @@ module Docscribe
       # Max plugin priority
       #
       # @private
-      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
+      # @param [Array<(Symbol, Object)>] plugin_items plugin items to scan
       # @return [Integer]
       def max_plugin_priority(plugin_items)
         plugin_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
@@ -351,8 +352,8 @@ module Docscribe
       # Filter lower priority plugins
       #
       # @private
-      # @param [Array<(Symbol, Object)>] items Param documentation.
-      # @param [Integer] threshold Param documentation.
+      # @param [Array<(Symbol, Object)>] items items to filter
+      # @param [Integer] threshold minimum priority threshold
       # @return [Array<(Symbol, Object)>]
       def filter_lower_priority_plugins(items, threshold)
         items.select do |k, ins|
@@ -363,8 +364,8 @@ module Docscribe
       # Warn plugin conflict
       #
       # @private
-      # @param [Array<(Symbol, Object)>] dropped Param documentation.
-      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
+      # @param [Array<(Symbol, Object)>] dropped dropped plugin items
+      # @param [Array<(Symbol, Object)>] plugin_items kept plugin items
       # @param [Integer] max_prio the maximum priority value
       # @param [Integer] pos the source position of the conflict
       # @return [void]
@@ -382,7 +383,7 @@ module Docscribe
       #
       # @private
       # @param [Integer] pos the source position of the conflict
-      # @param [Array<(Symbol, Object)>] plugin_items Param documentation.
+      # @param [Array<(Symbol, Object)>] plugin_items plugin items for location
       # @return [String]
       def conflict_location_str(pos, plugin_items)
         line = plugin_insertion_line(plugin_items.first[1])
@@ -392,7 +393,7 @@ module Docscribe
       # Pick highest priority override insertion
       #
       # @private
-      # @param [Array<(Symbol, Object)>] override_items Param documentation.
+      # @param [Array<(Symbol, Object)>] override_items override items to prioritize
       # @param [Integer] pos begin_pos (used only for debug output)
       # @return [Hash<Symbol, Object>, nil] winning insertion hash (the one whose override will be applied)
       def pick_highest_priority_override_insertion(override_items, pos:)
@@ -410,7 +411,7 @@ module Docscribe
       # Max plugin priority for
       #
       # @private
-      # @param [Array<(Symbol, Object)>] override_items Param documentation.
+      # @param [Array<(Symbol, Object)>] override_items override items to evaluate
       # @return [Integer]
       def max_plugin_priority_for(override_items)
         override_items.map { |_k, ins| plugin_insertion_priority(ins) }.max || 0
@@ -419,7 +420,7 @@ module Docscribe
       # Sort winners by order
       #
       # @private
-      # @param [Array<(Symbol, Object)>] winners Param documentation.
+      # @param [Array<(Symbol, Object)>] winners winning items to sort
       # @return [Array<(Symbol, Object)>]
       def sort_winners_by_order(winners)
         winners.sort_by do |_k, ins|
@@ -431,7 +432,7 @@ module Docscribe
       # Warn override conflict
       #
       # @private
-      # @param [Array<(Symbol, Object)>] winners_sorted Param documentation.
+      # @param [Array<(Symbol, Object)>] winners_sorted sorted winning items
       # @param [Integer] max_prio the maximum priority value
       # @param [Integer] pos the source position of the conflict
       # @return [void]
@@ -500,7 +501,7 @@ module Docscribe
       #
       # @private
       # @param [Object] kind :method, :attr, or :plugin
-      # @param [Object] ins Param documentation.
+      # @param [Object] ins insertion to locate
       # @return [Integer]
       def plugin_insertion_pos(kind, ins)
         case kind
@@ -971,7 +972,7 @@ module Docscribe
       #
       # @private
       # @param [Hash<Symbol, Object>] info existing doc info
-      # @param [Array<String>] missing_lines Param documentation.
+      # @param [Array<String>] missing_lines new doc lines to add
       # @param [Object] options keyword options
       # @return [(Boolean, String, String)]
       def compute_doc_replacement(info, missing_lines, **options)
@@ -989,7 +990,7 @@ module Docscribe
       #
       # @private
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
-      # @param [Hash<Symbol, Object>] merge_result Param documentation.
+      # @param [Hash<Symbol, Object>] merge_result merge operation result
       # @param [Object] rest additional keyword arguments forwarded to add_change
       # @return [void]
       def log_method_doc_changes!(insertion:, merge_result:, **rest)
@@ -1076,7 +1077,8 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @param [Parser::Source::Range] bol_range the beginning-of-line range for the attribute node
-      # @return [Hash<Symbol, Docscribe::InlineRewriter::Collector::AttrInsertion, Docscribe::Config, Docscribe::Types::ProviderChain, nil, Parser::Source::Range>]
+      # @return [Hash<Symbol, Docscribe::InlineRewriter::Collector::AttrInsertion, Docscribe::Config,
+      #   Docscribe::Types::ProviderChain, nil, Parser::Source::Range>]
       def attr_insertion_params(insertion, config, signature_provider, bol_range)
         {
           insertion: insertion, config: config,
@@ -1120,7 +1122,7 @@ module Docscribe
       #
       # @private
       # @param [Hash<Symbol, Object>] params precomputed attribute insertion parameters
-      # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts Param documentation.
+      # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts deferred merge inserts
       # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
       # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
       # @return [void]
@@ -1145,7 +1147,7 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected attribute insertion
       # @param [Hash<Symbol, Object>] info hash containing existing doc comment block data
-      # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts Param documentation.
+      # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts deferred merge inserts
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @return [void]
@@ -1162,7 +1164,7 @@ module Docscribe
       # @private
       # @param [Parser::Source::TreeRewriter] rewriter the TreeRewriter accumulating source transformations
       # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
-      # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts Param documentation.
+      # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts deferred merge inserts
       # @return [void]
       def apply_merge_inserts!(rewriter:, buffer:, merge_inserts:)
         merge_inserts.keys.sort.reverse_each do |end_pos|
@@ -1177,7 +1179,7 @@ module Docscribe
       # Merge text for pos
       #
       # @private
-      # @param [Array<(Integer, String)>] chunks Param documentation.
+      # @param [Array<(Integer, String)>] chunks merge chunks at position
       # @return [String, nil]
       def merge_text_for_pos(chunks)
         return nil if chunks.empty?

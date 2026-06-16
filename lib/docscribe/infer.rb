@@ -48,8 +48,8 @@ module Docscribe
       #
       # @param [String] name internal parameter name representation
       # @param [String?] default_str source for the default expression
-      # @param [String] fallback_type Param documentation.
-      # @param [Boolean] treat_options_keyword_as_hash Param documentation.
+      # @param [String] fallback_type default type when uncertain
+      # @param [Boolean] treat_options_keyword_as_hash treat options: as Hash
       # @return [String]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
         Params.infer_param_type(
@@ -62,7 +62,7 @@ module Docscribe
 
       # Parse a standalone expression source string for inference helpers.
       #
-      # @param [String?] src Param documentation.
+      # @param [String?] src expression source to parse
       # @return [Parser::AST::Node, nil]
       def parse_expr(src)
         Params.parse_expr(src)
@@ -70,7 +70,7 @@ module Docscribe
 
       # Infer a return type from full method source.
       #
-      # @param [String?] method_source Param documentation.
+      # @param [String?] method_source method definition source
       # @return [String]
       def infer_return_type(method_source)
         Returns.infer_return_type(method_source)
@@ -91,8 +91,8 @@ module Docscribe
       # - `:rescues` => rescue-branch conditional return info
       #
       # @param [Parser::AST::Node] node constant AST node to resolve
-      # @param [String] fallback_type Param documentation.
-      # @param [Boolean] nil_as_optional Param documentation.
+      # @param [String] fallback_type default type when uncertain
+      # @param [Boolean] nil_as_optional render nil as optional
       # @param [Object?] core_rbs_provider core RBS type lookup provider
       # @param [Hash<String, String>?] param_types parameter name -> type map
       # @return [Object]
@@ -110,8 +110,8 @@ module Docscribe
       # Infer the type of the last expression in an AST node.
       #
       # @param [Parser::AST::Node, nil] node constant AST node to resolve
-      # @param [String] fallback_type Param documentation.
-      # @param [Boolean] nil_as_optional Param documentation.
+      # @param [String] fallback_type default type when uncertain
+      # @param [Boolean] nil_as_optional render nil as optional
       # @return [String, nil]
       def last_expr_type(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         Returns.last_expr_type(
@@ -132,7 +132,7 @@ module Docscribe
       # Infer a YARD-ish type string from a literal AST node.
       #
       # @param [Parser::AST::Node, nil] node constant AST node to resolve
-      # @param [String] fallback_type Param documentation.
+      # @param [String] fallback_type default type when uncertain
       # @return [String]
       def type_from_literal(node, fallback_type: FALLBACK_TYPE)
         Literals.type_from_literal(node, fallback_type: fallback_type)
@@ -140,10 +140,10 @@ module Docscribe
 
       # Unify two inferred type strings conservatively.
       #
-      # @param [String, nil] type_a Param documentation.
-      # @param [String, nil] type_b Param documentation.
-      # @param [String] fallback_type Param documentation.
-      # @param [Boolean] nil_as_optional Param documentation.
+      # @param [String, nil] type_a first type to unify
+      # @param [String, nil] type_b second type to unify
+      # @param [String] fallback_type default type when uncertain
+      # @param [Boolean] nil_as_optional render nil as optional
       # @return [String]
       def unify_types(type_a, type_b, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         Returns.unify_types(

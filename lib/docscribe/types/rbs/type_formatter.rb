@@ -145,7 +145,7 @@ module Docscribe
         # @note module_function: defines #format_optional (visibility: private)
         # @param [RBS::Types::Optional] type the optional type to format
         # @param [Boolean] collapse_generics whether to omit generic type arguments
-        # @param [Boolean] collapse_object_generics Param documentation.
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
         # @return [String]
         def format_optional(type, collapse_generics:, collapse_object_generics:)
           "#{to_yard(type.type, collapse_generics: collapse_generics,
@@ -182,7 +182,7 @@ module Docscribe
         # @note module_function: defines #format_tuple (visibility: private)
         # @param [RBS::Types::Tuple] type the tuple type to format
         # @param [Boolean] collapse_generics whether to omit generic type arguments
-        # @param [Boolean] collapse_object_generics Param documentation.
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
         # @return [String]
         def format_tuple(type, collapse_generics:, collapse_object_generics:)
           "(#{type.types.map do |t|
@@ -244,7 +244,7 @@ module Docscribe
         # @note module_function: defines #format_record (visibility: private)
         # @param [RBS::Types::Record] type the record type
         # @param [Boolean] collapse_generics whether to omit generic type arguments
-        # @param [Boolean] collapse_object_generics Param documentation.
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
         # @return [String]
         def format_record(type, collapse_generics:, collapse_object_generics:)
           value_types = type.all_fields.values.map do |(ty, _)|
@@ -258,7 +258,7 @@ module Docscribe
         # @note module_function: defines #format_intersection (visibility: private)
         # @param [RBS::Types::Intersection] type the intersection type
         # @param [Boolean] collapse_generics whether to omit generic type arguments
-        # @param [Boolean] collapse_object_generics Param documentation.
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
         # @return [String]
         def format_intersection(type, collapse_generics:, collapse_object_generics:)
           type.types.map do |t|
@@ -271,7 +271,7 @@ module Docscribe
         # @note module_function: defines #format_union (visibility: private)
         # @param [RBS::Types::Union] type the union type to format
         # @param [Boolean] collapse_generics whether to omit generic type arguments
-        # @param [Boolean] collapse_object_generics Param documentation.
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
         # @return [String]
         def format_union(type, collapse_generics:, collapse_object_generics:)
           type.types.map do |t|

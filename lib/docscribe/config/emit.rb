@@ -75,7 +75,7 @@ module Docscribe
         'default_message',
         default: raw.dig('doc', 'default_message') ||
                  DEFAULT.dig('doc', 'default_message') ||
-                 'Method documentation.'
+                 'Generated method description.'
       )
     end
 
@@ -125,7 +125,7 @@ module Docscribe
     end
 
     # Whether to include the default placeholder line:
-    #   # Method documentation.
+    #   # Generated method description.
     #
     # @return [Boolean]
     def include_default_message?
@@ -133,7 +133,7 @@ module Docscribe
     end
 
     # Whether to append placeholder text to generated @param tags:
-    #   # @param [String] name Param documentation.
+    #   # @param [String] name Generated param description.
     #
     # @return [Boolean]
     def include_param_documentation?

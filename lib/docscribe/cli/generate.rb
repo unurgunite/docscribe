@@ -34,7 +34,7 @@ module Docscribe
       class << self
         # Run the `generate` subcommand.
         #
-        # @param [Array<String>] argv Param documentation.
+        # @param [Array<String>] argv command line arguments
         # @return [Integer] exit code
         def run(argv)
           opts, parser = parse_generate_options(argv)
@@ -53,7 +53,7 @@ module Docscribe
         # Parse options for the generate subcommand.
         #
         # @private
-        # @param [Array<String>] argv Param documentation.
+        # @param [Array<String>] argv command line arguments
         # @raise [OptionParser::InvalidOption]
         # @return [(Hash<Symbol, Object>, OptionParser)]
         def parse_generate_options(argv)
@@ -73,7 +73,7 @@ module Docscribe
         # Extract plugin_type and class_name from remaining argv.
         #
         # @private
-        # @param [Array<String>] argv Param documentation.
+        # @param [Array<String>] argv command line arguments
         # @return [(String?, String?)]
         def extract_generate_args(argv)
           [argv.shift, argv.shift]
@@ -84,7 +84,7 @@ module Docscribe
         # @private
         # @param [String?] plugin_type 'tag' or 'collector'
         # @param [String?] class_name CamelCase plugin class name
-        # @param [OptionParser] parser Param documentation.
+        # @param [OptionParser] parser option parser instance
         # @return [Integer, nil] exit code or nil if valid
         def validate_generate_args(plugin_type, class_name, parser)
           return 1 unless args_provided?(plugin_type, class_name, parser)
@@ -301,7 +301,7 @@ module Docscribe
         # Register the --output option on the OptionParser.
         #
         # @private
-        # @param [OptionParser] opt Param documentation.
+        # @param [OptionParser] opt option parser instance
         # @param [Hash<Symbol, Object>] opts mutable parsed options hash
         # @return [void]
         def register_output_option(opt, opts)
@@ -311,7 +311,7 @@ module Docscribe
         # Register the --stdout option on the OptionParser.
         #
         # @private
-        # @param [OptionParser] opt Param documentation.
+        # @param [OptionParser] opt option parser instance
         # @param [Hash<Symbol, Object>] opts mutable parsed options hash
         # @return [void]
         def register_stdout_option(opt, opts)
@@ -321,7 +321,7 @@ module Docscribe
         # Register the -h/--help option on the OptionParser.
         #
         # @private
-        # @param [OptionParser] opt Param documentation.
+        # @param [OptionParser] opt option parser instance
         # @param [Hash<Symbol, Object>] opts mutable parsed options hash
         # @return [void]
         def register_help_option(opt, opts)
@@ -335,7 +335,7 @@ module Docscribe
         # @private
         # @param [String?] plugin_type plugin type argument
         # @param [String?] class_name plugin class name argument
-        # @param [OptionParser] parser Param documentation.
+        # @param [OptionParser] parser option parser instance
         # @return [Boolean]
         def args_provided?(plugin_type, class_name, parser)
           return true if plugin_type && class_name
@@ -372,7 +372,7 @@ module Docscribe
         # Check whether a string is a valid Ruby constant name.
         #
         # @private
-        # @param [String?] str Param documentation.
+        # @param [String?] str string constant to validate
         # @return [Boolean]
         def valid_constant?(str)
           !!(str =~ /\A[A-Z][A-Za-z0-9]*(?:::[A-Z][A-Za-z0-9]*)*\z/)
@@ -391,7 +391,7 @@ module Docscribe
         # Convert CamelCase to snake_case for file naming.
         #
         # @private
-        # @param [String] str Param documentation.
+        # @param [String] str CamelCase string to convert
         # @return [String]
         def underscore(str)
           str

@@ -126,11 +126,11 @@ module Docscribe
             write_file(rbs_content, path, options)
           end
           true
-        rescue Parser::SyntaxError # steep:ignore
-          warn "Syntax error in #{path}: #{$ERROR_INFO.message}"
+        rescue Parser::SyntaxError => e # steep:ignore
+          warn "Syntax error in #{path}: #{e.message}"
           false
-        rescue StandardError
-          warn "Error processing #{path}: #{$ERROR_INFO.class}: #{$ERROR_INFO.message}"
+        rescue StandardError => e
+          warn "Error processing #{path}: #{e.class}: #{e.message}"
           false
         end
 
@@ -295,11 +295,11 @@ module Docscribe
             text = line.sub(/\A#\s*/, '')
             case text
             when /\A@param\s+\[([^\]]+)\]\s+(\S+)\s*/
-              params << ParamTag.new(name: ::Regexp.last_match(2), type: ::Regexp.last_match(1))
+              params << ParamTag.new(name: ::Regexp.last_match(2).to_s, type: ::Regexp.last_match(1).to_s)
             when /\A@param\s+(\S+)\s+\[([^\]]+)\]\s*/
-              params << ParamTag.new(name: ::Regexp.last_match(1), type: ::Regexp.last_match(2))
+              params << ParamTag.new(name: ::Regexp.last_match(1).to_s, type: ::Regexp.last_match(2).to_s)
             when /\A@option\s+\S+\s+\[([^\]]+)\]\s+:?(\S+)\s*/
-              options << ParamTag.new(name: ::Regexp.last_match(2), type: ::Regexp.last_match(1))
+              options << ParamTag.new(name: ::Regexp.last_match(2).to_s, type: ::Regexp.last_match(1).to_s)
             when /\A@return\s+\[([^\]]+)\]\s*/
               return_type = ::Regexp.last_match(1)
             end
@@ -351,7 +351,7 @@ module Docscribe
         # @return [String]
         def format_method_sig(method)
           prefix = method.scope == :class ? 'self.' : ''
-          ret = method.yard_tags&.return_type ? type_to_rbs(method.yard_tags.return_type) : 'untyped'
+          ret = return_type_rbs(method)
           params = method.yard_tags&.params || []
           options = method.yard_tags&.options || []
 
@@ -363,6 +363,14 @@ module Docscribe
           else
             "def #{prefix}#{method.name}: () -> #{ret}"
           end
+        end
+
+        def return_type_rbs(method)
+          tags = method.yard_tags
+          rt = tags&.return_type
+          return 'untyped' unless rt
+
+          type_to_rbs(rt)
         end
 
         # @private

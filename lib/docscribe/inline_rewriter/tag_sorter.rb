@@ -105,8 +105,8 @@ module Docscribe
       # Sort segment
       #
       # @note module_function: defines #sort_segment (visibility: private)
-      # @param [Hash<Symbol, Object>] segment Param documentation.
-      # @param [Hash<String, Integer>] priority Param documentation.
+      # @param [Hash<Symbol, Object>] segment parsed comment segment
+      # @param [Hash<String, Integer>] priority tag priority map
       # @return [Array<String>]
       def sort_segment(segment, priority:)
         return segment[:lines] unless segment[:type] == :tag_run
@@ -123,8 +123,8 @@ module Docscribe
       # Group priority
       #
       # @note module_function: defines #group_priority (visibility: private)
-      # @param [Array<Object>] group Param documentation.
-      # @param [Hash<String, Integer>] priority Param documentation.
+      # @param [Array<Object>] group entry group array
+      # @param [Hash<String, Integer>] priority tag priority map
       # @return [Integer]
       def group_priority(group, priority)
         first = group.first
@@ -224,7 +224,7 @@ module Docscribe
       # @note module_function: defines #collect_option_entries (visibility: private)
       # @param [Array<Object>] entries parsed tag entries
       # @param [Integer] start_idx original index of the first line
-      # @param [String] param_name Param documentation.
+      # @param [String] param_name parent param name
       # @return [Array<Object>]
       def collect_option_entries(entries, start_idx, param_name)
         result = [] #: Array[untyped]
@@ -244,7 +244,7 @@ module Docscribe
       # Top level tag line
       #
       # @note module_function: defines #top_level_tag_line? (visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line comment line to check
       # @return [Boolean]
       def top_level_tag_line?(line)
         !!(line =~ /^\s*#\s*@\w+/)
@@ -253,7 +253,7 @@ module Docscribe
       # Comment line
       #
       # @note module_function: defines #comment_line? (visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line comment line to check
       # @return [Boolean]
       def comment_line?(line)
         !!(line =~ /^\s*#/)
@@ -262,7 +262,7 @@ module Docscribe
       # Blank comment line
       #
       # @note module_function: defines #blank_comment_line? (visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line comment line to check
       # @return [Boolean]
       def blank_comment_line?(line)
         !!(line =~ /^\s*#\s*$/)
@@ -271,7 +271,7 @@ module Docscribe
       # Extract tag name
       #
       # @note module_function: defines #extract_tag_name (visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line comment line to parse
       # @return [String, nil]
       def extract_tag_name(line)
         line[/^\s*#\s*@(\w+)/, 1]
@@ -280,7 +280,7 @@ module Docscribe
       # Extract param name
       #
       # @note module_function: defines #extract_param_name (visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line param tag line to parse
       # @return [String, nil]
       def extract_param_name(line)
         return Regexp.last_match(1) if line =~ /^\s*#\s*@param\b\s+\[[^\]]+\]\s+(\S+)/
@@ -292,7 +292,7 @@ module Docscribe
       # Extract option owner
       #
       # @note module_function: defines #extract_option_owner (visibility: private)
-      # @param [String] line Param documentation.
+      # @param [String] line option tag line to parse
       # @return [String, nil]
       def extract_option_owner(line)
         line[/^\s*#\s*@option\b\s+(\S+)/, 1]

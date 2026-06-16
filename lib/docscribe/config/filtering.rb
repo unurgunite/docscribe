@@ -86,7 +86,7 @@ module Docscribe
     # - `"spec/"` => `"spec/**/*"`
     # - `"spec"` => `"spec/**/*"` if `spec` exists as a directory
     #
-    # @param [String] pattern Param documentation.
+    # @param [String] pattern file pattern to expand
     # @return [Array<String>]
     def expand_directory_shorthand(pattern)
       pat = pattern.dup
@@ -102,7 +102,7 @@ module Docscribe
 
     # Check whether a file path matches any configured file pattern.
     #
-    # @param [Array<String>] patterns Param documentation.
+    # @param [Array<String>] patterns file filter patterns
     # @param [String] path file path to test
     # @return [Boolean]
     def file_matches_any?(patterns, path)
@@ -116,7 +116,7 @@ module Docscribe
     # - globs
     # - recursive glob shorthand normalization
     #
-    # @param [String] pattern Param documentation.
+    # @param [String] pattern file filter pattern
     # @param [String] path file path to test
     # @return [Boolean]
     def file_match_pattern?(pattern, path)

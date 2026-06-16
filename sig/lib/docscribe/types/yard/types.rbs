@@ -1,49 +1,49 @@
 module Docscribe
   module Types
     module Yard
-      class Named < Data
+      class Named
         def initialize: (name: String) -> void
         def name: () -> String
       end
 
-      class Generic < Data
+      class Generic
         def initialize: (base: String, args: Array[untyped]) -> void
         def base: () -> String
         def args: () -> Array[untyped]
       end
 
-      class Union < Data
+      class Union
         def initialize: (types: Array[untyped]) -> void
         def types: () -> Array[untyped]
       end
 
-      class Intersection < Data
+      class Intersection
         def initialize: (types: Array[untyped]) -> void
         def types: () -> Array[untyped]
       end
 
-      class Optional < Data
+      class Optional
         def initialize: (type: untyped) -> void
         def type: () -> untyped
       end
 
-      class Tuple < Data
+      class Tuple
         def initialize: (types: Array[untyped]) -> void
         def types: () -> Array[untyped]
       end
 
-      class HashMap < Data
+      class HashMap
         def initialize: (key_type: untyped, value_type: untyped) -> void
         def key_type: () -> untyped
         def value_type: () -> untyped
       end
 
-      class Duck < Data
+      class Duck
         def initialize: (method_names: Array[String]) -> void
         def method_names: () -> Array[String]
       end
 
-      class Literal < Data
+      class Literal
         def initialize: (value: String) -> void
         def value: () -> String
       end

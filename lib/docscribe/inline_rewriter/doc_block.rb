@@ -319,7 +319,7 @@ module Docscribe
       # Compute the priority of a grouped sortable unit.
       #
       # @note module_function: defines #group_priority (visibility: private)
-      # @param [Array<Object>] group Param documentation.
+      # @param [Array<Object>] group tag group array
       # @param [Hash<String, Integer>] priority tag priority map
       # @return [Integer]
       def group_priority(group, priority)
@@ -467,11 +467,11 @@ module Docscribe
         nil
       end
 
-      # Method documentation.
+      # Extract name after type bracket
       #
       # @note module_function: defines #name_after_bracket (visibility: private)
-      # @param [String] rest Param documentation.
-      # @param [Integer] type_end Param documentation.
+      # @param [String] rest remaining tag content
+      # @param [Integer] type_end closing bracket position
       # @return [String?]
       def name_after_bracket(rest, type_end)
         rest[(type_end + 1)..].to_s.strip.split(/\s+/).first
@@ -480,7 +480,7 @@ module Docscribe
       # Find the index of the matching close bracket for an outermost `[`.
       #
       # @note module_function: defines #matching_close_bracket (visibility: private)
-      # @param [String] str Param documentation.
+      # @param [String] str string to scan
       # @return [Integer?]
       def matching_close_bracket(str)
         depth = 0

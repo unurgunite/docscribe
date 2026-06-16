@@ -678,13 +678,13 @@ module Docscribe
         nil: 'NilClass'
       }.freeze
 
-      # Method documentation.
+      # Map receiver AST node to RBS type name.
       #
       # @note module_function: defines #receiver_rbs_type_name (visibility: private)
-      # @param [Parser::AST::Node, nil] recv Param documentation.
-      # @param [Object, nil] core_rbs_provider Param documentation.
-      # @param [Hash<Object, Object>, nil] local_var_types Param documentation.
-      # @param [Hash<String, String>, nil] param_types Param documentation.
+      # @param [Parser::AST::Node, nil] recv the receiver AST node
+      # @param [Object, nil] core_rbs_provider core RBS type provider
+      # @param [Hash<Object, Object>, nil] local_var_types inferred local variable types
+      # @param [Hash<String, String>, nil] param_types parameter name-to-type map
       # @return [String, nil]
       def receiver_rbs_type_name(recv, core_rbs_provider, local_var_types, param_types)
         return unless recv
@@ -729,7 +729,7 @@ module Docscribe
       # is not a literal or yields no type.
       #
       # @note module_function: defines #type_from_literal_safe (visibility: private)
-      # @param [Parser::AST::Node, nil] node Param documentation.
+      # @param [Parser::AST::Node, nil] node literal AST node
       # @return [String, nil]
       def type_from_literal_safe(node)
         return nil unless node

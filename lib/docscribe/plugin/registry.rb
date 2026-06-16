@@ -76,7 +76,7 @@ module Docscribe
       # Route entry to tag or collector list.
       #
       # @note module_function: defines #route_entry (visibility: private)
-      # @param [Docscribe::Plugin::Registry::Entry] entry Param documentation.
+      # @param [Docscribe::Plugin::Registry::Entry] entry the entry to route
       # @param [Object] plugin plugin instance
       # @raise [ArgumentError]
       # @return [void]

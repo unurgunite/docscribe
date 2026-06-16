@@ -4,9 +4,9 @@ module Docscribe
   module CLI
     # Factory for output formatters.
     module Formatters
-      # Method documentation.
+      # Select formatter by format type.
       #
-      # @param [Docscribe::CLI::Formatters::format] format Param documentation.
+      # @param [Docscribe::CLI::Formatters::format] format output format symbol
       # @raise [ArgumentError]
       # @return [Docscribe::CLI::Formatters::Text, Docscribe::CLI::Formatters::Json, Docscribe::CLI::Formatters::Sarif]
       def self.for(format)

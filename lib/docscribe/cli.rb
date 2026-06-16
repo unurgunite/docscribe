@@ -33,7 +33,7 @@ module Docscribe
       # Subcommand
       #
       # @private
-      # @param [String?] cmd Param documentation.
+      # @param [String?] cmd potential subcommand name
       # @return [Boolean]
       def subcommand?(cmd)
         %w[init generate sigs rbs].include?(cmd)

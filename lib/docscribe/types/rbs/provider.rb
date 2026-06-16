@@ -19,7 +19,7 @@ module Docscribe
         # @param [Array<String>] sig_dirs directories containing `.rbs` files
         # @param [Array<String>] collection_dirs RBS collection directories
         # @param [Boolean] collapse_generics whether generic container types
-        # @param [Boolean] collapse_object_generics Param documentation.
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
         # @return [void]
         def initialize(sig_dirs:, collection_dirs: [], collapse_generics: false, collapse_object_generics: false)
           require 'rbs'
@@ -120,7 +120,7 @@ module Docscribe
         # Build an RBS environment from the given directories.
         #
         # @private
-        # @param [Array<String>] dirs Param documentation.
+        # @param [Array<String>] dirs directories to load RBS from
         # @return [RBS::Environment]
         def build_env(dirs)
           loader = ::RBS::EnvironmentLoader.new
@@ -180,7 +180,7 @@ module Docscribe
         # model.
         #
         # @private
-        # @param [RBS::Types::Function] func Param documentation.
+        # @param [RBS::Types::Function] func RBS function type to convert
         # @return [Docscribe::Types::MethodSignature]
         def build_signature(func)
           MethodSignature.new(
@@ -194,7 +194,7 @@ module Docscribe
         # Build a name => type map for positional and keyword parameters.
         #
         # @private
-        # @param [RBS::Types::Function] func Param documentation.
+        # @param [RBS::Types::Function] func RBS function to extract params
         # @return [Hash<String, String>]
         def build_param_types(func)
           param_types = {} #: Hash[String, String]
@@ -212,8 +212,8 @@ module Docscribe
         # Add keyword parameters to the normalized parameter map.
         #
         # @private
-        # @param [Hash<String, String>] param_types Param documentation.
-        # @param [Hash<Symbol, Object>] keywords Param documentation.
+        # @param [Hash<String, String>] param_types normalized param type map
+        # @param [Hash<Symbol, Object>] keywords keyword parameter entries
         # @return [void]
         def add_keywords!(param_types, keywords)
           keywords.each do |kw, p|
@@ -224,8 +224,8 @@ module Docscribe
         # Add named positional parameters to the normalized parameter map.
         #
         # @private
-        # @param [Hash<String, String>] param_types Param documentation.
-        # @param [Array<Object>] list Param documentation.
+        # @param [Hash<String, String>] param_types normalized param type map
+        # @param [Array<Object>] list positional parameter objects
         # @return [void]
         def add_positionals!(param_types, list)
           list.each do |p|
@@ -238,7 +238,7 @@ module Docscribe
         # Build normalized `*args` metadata.
         #
         # @private
-        # @param [RBS::Types::Function] func Param documentation.
+        # @param [RBS::Types::Function] func RBS function for rest params
         # @return [Docscribe::Types::RestPositional, nil]
         def build_rest_positional(func)
           rp = func.rest_positionals
@@ -253,7 +253,7 @@ module Docscribe
         # Build normalized `**kwargs` metadata.
         #
         # @private
-        # @param [RBS::Types::Function] func Param documentation.
+        # @param [RBS::Types::Function] func RBS function for rest keywords
         # @return [Docscribe::Types::RestKeywords, nil]
         def build_rest_keywords(func)
           rk = func.rest_keywords
@@ -269,7 +269,7 @@ module Docscribe
         # generated comments.
         #
         # @private
-        # @param [Object] type Param documentation.
+        # @param [Object] type RBS type object to format
         # @return [String]
         def format_type(type)
           Docscribe::Types::RBS::TypeFormatter.to_yard(
@@ -300,7 +300,7 @@ module Docscribe
         # Print one debug warning per provider instance when debugging is enabled.
         #
         # @private
-        # @param [String] msg Param documentation.
+        # @param [String] msg warning message text
         # @return [void]
         def warn_once(msg)
           return unless ENV['DOCSCRIBE_RBS_DEBUG'] == '1'

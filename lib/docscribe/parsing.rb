@@ -39,7 +39,7 @@ module Docscribe
       # Returns +nil+ when the source cannot be parsed (syntax errors or
       # internal parser crashes).
       #
-      # @param [Parser::Source::Buffer] buffer Param documentation.
+      # @param [Parser::Source::Buffer] buffer prepared source buffer
       # @param [Symbol] backend :auto, :parser, or :prism
       # @raise [NoMethodError]
       # @return [Parser::AST::Node, nil] if NoMethodError
@@ -68,7 +68,7 @@ module Docscribe
       #
       # Returns +nil+ when the source cannot be parsed.
       #
-      # @param [Parser::Source::Buffer] buffer Param documentation.
+      # @param [Parser::Source::Buffer] buffer prepared source buffer
       # @param [Symbol] backend :auto, :parser, or :prism
       # @raise [NoMethodError]
       # @return [(Parser::AST::Node, Array<Parser::Source::Comment>)] if NoMethodError
