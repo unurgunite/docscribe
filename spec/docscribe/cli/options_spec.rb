@@ -118,4 +118,19 @@ RSpec.describe Docscribe::CLI::Options do
     opts = described_class.parse!(%w[--quiet --explain lib])
     expect(opts[:explain]).to be(true)
   end
+
+  it 'parses --progress flag' do
+    opts = described_class.parse!(%w[--progress lib])
+    expect(opts[:progress]).to be(true)
+  end
+
+  it 'does not set progress by default' do
+    opts = described_class.parse!(%w[lib])
+    expect(opts[:progress]).to be(false)
+  end
+
+  it 'auto-enables progress with --verbose' do
+    opts = described_class.parse!(%w[--verbose lib])
+    expect(opts).to include(progress: true, verbose: true)
+  end
 end

@@ -3,8 +3,6 @@ module Docscribe
     module DocBuilder
       PARAM_TYPE_COLLECTORS: Hash[Symbol, ^(untyped, untyped, untyped, untyped) -> untyped]
 
-      PARAM_BUILDERS: Hash[Symbol, ^(untyped, untyped, untyped, untyped, **untyped) -> untyped]
-
       def self?.build: (untyped insertion, config: Config, **untyped) -> (String | nil)
 
       def self?.build_merge_additions: (untyped insertion, existing_lines: Array[String], config: Config, **untyped) -> (String | nil)
@@ -230,6 +228,10 @@ module Docscribe
       def self?.join_multiline_tags: (Array[String] lines) -> Array[String]
 
       def self?.parse_existing_tag_line: (String line, Hash[Symbol, untyped] info, bool tags_started) -> bool
+
+      def self?.start_note_tag: (String line, Hash[Symbol, untyped] info) -> void
+
+      def self?.append_note_continuation: (String line, Hash[Symbol, untyped] info) -> untyped
 
       def self?.consume_tag_or_copy: (Array[String] lines, Integer idx, Array[String] result) -> Integer
 

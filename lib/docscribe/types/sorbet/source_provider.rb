@@ -12,10 +12,10 @@ module Docscribe
       class SourceProvider < BaseProvider
         # Initialize
         #
-        # @param [String] source Ruby source containing inline `sig` declarations
-        # @param [String] file source label used in diagnostics/debug warnings
+        # @param [Object] source Ruby source containing inline `sig` declarations
+        # @param [Object] file source label used in diagnostics/debug warnings
         # @param [Boolean] collapse_generics whether generic container types
-        # @return [void]
+        # @return [Object]
         def initialize(source:, file:, collapse_generics: false)
           super(collapse_generics: collapse_generics)
           load_from_string(source, label: file)

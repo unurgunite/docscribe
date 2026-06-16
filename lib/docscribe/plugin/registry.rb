@@ -16,12 +16,12 @@ module Docscribe
       #   @param [Object] value
       #
       # @!attribute [rw] priority
-      #   @return [Integer]
-      #   @param [Integer] value
+      #   @return [Object]
+      #   @param [Object] value
       #
       # @!attribute [rw] order
-      #   @return [Integer]
-      #   @param [Integer] value
+      #   @return [Object]
+      #   @param [Object] value
       Entry = Struct.new(:plugin, :priority, :order, keyword_init: true)
 
       @tag_entries = []
@@ -38,10 +38,10 @@ module Docscribe
       # - responds to #call                 => tag plugin (duck typing)
       # - responds to #collect              => collector plugin (duck typing)
       #
-      # @note module_function: when included, also defines #register (instance visibility: private)
+      # @note module_function: defines #register (visibility: private)
       # @param [Object] plugin plugin instance
       # @param [Integer] priority plugin priority (higher wins for conflicts)
-      # @return [void]
+      # @return [Object]
       def register(plugin, priority: 0)
         prio = parse_priority(priority)
         entry = create_entry(plugin, prio)
@@ -50,11 +50,11 @@ module Docscribe
 
       # Parse and validate plugin priority.
       #
-      # @note module_function: when included, also defines #parse_priority (instance visibility: private)
+      # @note module_function: defines #parse_priority (visibility: private)
       # @param [Object] priority plugin priority (higher wins for conflicts)
       # @raise [StandardError]
       # @raise [ArgumentError]
-      # @return [Integer] if StandardError
+      # @return [Object] if StandardError
       # @return [Object] if StandardError
       def parse_priority(priority)
         Integer(priority)
@@ -64,10 +64,10 @@ module Docscribe
 
       # Create a new Entry with the next order number.
       #
-      # @note module_function: when included, also defines #create_entry (instance visibility: private)
+      # @note module_function: defines #create_entry (visibility: private)
       # @param [Object] plugin plugin instance
-      # @param [Integer] priority plugin priority (higher wins for conflicts)
-      # @return [Docscribe::Plugin::Registry::Entry]
+      # @param [Object] priority plugin priority (higher wins for conflicts)
+      # @return [Entry]
       def create_entry(plugin, priority)
         @order_seq += 1
         Entry.new(plugin: plugin, priority: priority, order: @order_seq)
@@ -75,11 +75,11 @@ module Docscribe
 
       # Route entry to tag or collector list.
       #
-      # @note module_function: when included, also defines #route_entry (instance visibility: private)
-      # @param [Docscribe::Plugin::Registry::Entry] entry
+      # @note module_function: defines #route_entry (visibility: private)
+      # @param [Object] entry Param documentation.
       # @param [Object] plugin plugin instance
       # @raise [ArgumentError]
-      # @return [void]
+      # @return [Object]
       def route_entry(entry, plugin)
         if plugin.is_a?(Base::CollectorPlugin) || plugin.respond_to?(:collect)
           @collector_entries << entry
@@ -92,32 +92,32 @@ module Docscribe
 
       # All registered tag plugins in registration order.
       #
-      # @note module_function: when included, also defines #tag_plugins (instance visibility: private)
-      # @return [Array<Object>]
+      # @note module_function: defines #tag_plugins (visibility: private)
+      # @return [Object]
       def tag_plugins
         @tag_entries.map(&:plugin)
       end
 
       # All registered collector plugins in registration order.
       #
-      # @note module_function: when included, also defines #collector_plugins (instance visibility: private)
-      # @return [Array<Object>]
+      # @note module_function: defines #collector_plugins (visibility: private)
+      # @return [Object]
       def collector_plugins
         @collector_entries.map(&:plugin)
       end
 
       # All registered tag plugin entries (plugin + priority metadata).
       #
-      # @note module_function: when included, also defines #tag_entries (instance visibility: private)
-      # @return [Array<Docscribe::Plugin::Registry::Entry>]
+      # @note module_function: defines #tag_entries (visibility: private)
+      # @return [Object]
       def tag_entries
         @tag_entries.dup
       end
 
       # All registered collector plugin entries (plugin + priority metadata).
       #
-      # @note module_function: when included, also defines #collector_entries (instance visibility: private)
-      # @return [Array<Docscribe::Plugin::Registry::Entry>]
+      # @note module_function: defines #collector_entries (visibility: private)
+      # @return [Object]
       def collector_entries
         @collector_entries.dup
       end
@@ -126,8 +126,8 @@ module Docscribe
       #
       # Primarily used in tests to reset state between examples.
       #
-      # @note module_function: when included, also defines #clear! (instance visibility: private)
-      # @return [void]
+      # @note module_function: defines #clear! (visibility: private)
+      # @return [Integer]
       def clear!
         @tag_entries.clear
         @collector_entries.clear

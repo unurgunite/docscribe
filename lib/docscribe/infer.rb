@@ -31,8 +31,8 @@ module Docscribe
     class << self
       # Infer exception classes raised or rescued within an AST node.
       #
-      # @param [Parser::AST::Node] node constant AST node to resolve
-      # @return [Array<String>]
+      # @param [Object] node constant AST node to resolve
+      # @return [Object]
       def infer_raises_from_node(node)
         Raises.infer_raises_from_node(node)
       end
@@ -46,11 +46,11 @@ module Docscribe
       # - `&` for block args
       # - trailing `:` for keyword args
       #
-      # @param [String] name internal parameter name representation
-      # @param [String?] default_str source for the default expression
-      # @param [String] fallback_type
-      # @param [Boolean] treat_options_keyword_as_hash
-      # @return [String]
+      # @param [Object] name internal parameter name representation
+      # @param [Object] default_str source for the default expression
+      # @param [FALLBACK_TYPE] fallback_type Param documentation.
+      # @param [Boolean] treat_options_keyword_as_hash Param documentation.
+      # @return [Object]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
         Params.infer_param_type(
           name,
@@ -62,24 +62,24 @@ module Docscribe
 
       # Parse a standalone expression source string for inference helpers.
       #
-      # @param [String?] src
-      # @return [Parser::AST::Node, nil]
+      # @param [Object] src Param documentation.
+      # @return [Object]
       def parse_expr(src)
         Params.parse_expr(src)
       end
 
       # Infer a return type from full method source.
       #
-      # @param [String?] method_source
-      # @return [String]
+      # @param [Object] method_source Param documentation.
+      # @return [Object]
       def infer_return_type(method_source)
         Returns.infer_return_type(method_source)
       end
 
       # Infer a return type from an already parsed `:def` / `:defs` node.
       #
-      # @param [Parser::AST::Node] node constant AST node to resolve
-      # @return [String]
+      # @param [Object] node constant AST node to resolve
+      # @return [Object]
       def infer_return_type_from_node(node)
         Returns.infer_return_type_from_node(node)
       end
@@ -90,11 +90,11 @@ module Docscribe
       # - `:normal` => the normal return type
       # - `:rescues` => rescue-branch conditional return info
       #
-      # @param [Parser::AST::Node] node constant AST node to resolve
-      # @param [String] fallback_type
-      # @param [Boolean] nil_as_optional
-      # @param [Object?] core_rbs_provider core RBS type lookup provider
-      # @param [Hash<String, String>?] param_types parameter name -> type map
+      # @param [Object] node constant AST node to resolve
+      # @param [FALLBACK_TYPE] fallback_type Param documentation.
+      # @param [Boolean] nil_as_optional Param documentation.
+      # @param [nil] core_rbs_provider core RBS type lookup provider
+      # @param [nil] param_types parameter name -> type map
       # @return [Object]
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
                                  param_types: nil)
@@ -109,10 +109,10 @@ module Docscribe
 
       # Infer the type of the last expression in an AST node.
       #
-      # @param [Parser::AST::Node, nil] node constant AST node to resolve
-      # @param [String] fallback_type
-      # @param [Boolean] nil_as_optional
-      # @return [String, nil]
+      # @param [Object] node constant AST node to resolve
+      # @param [FALLBACK_TYPE] fallback_type Param documentation.
+      # @param [Boolean] nil_as_optional Param documentation.
+      # @return [Object]
       def last_expr_type(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         Returns.last_expr_type(
           node,
@@ -123,28 +123,28 @@ module Docscribe
 
       # Convert a constant AST node into its fully qualified name.
       #
-      # @param [Parser::AST::Node, nil] node constant AST node to resolve
-      # @return [String, nil]
+      # @param [Object] node constant AST node to resolve
+      # @return [Object]
       def const_full_name(node)
         Names.const_full_name(node)
       end
 
       # Infer a YARD-ish type string from a literal AST node.
       #
-      # @param [Parser::AST::Node, nil] node constant AST node to resolve
-      # @param [String] fallback_type
-      # @return [String]
+      # @param [Object] node constant AST node to resolve
+      # @param [FALLBACK_TYPE] fallback_type Param documentation.
+      # @return [Object]
       def type_from_literal(node, fallback_type: FALLBACK_TYPE)
         Literals.type_from_literal(node, fallback_type: fallback_type)
       end
 
       # Unify two inferred type strings conservatively.
       #
-      # @param [String, nil] type_a
-      # @param [String, nil] type_b
-      # @param [String] fallback_type
-      # @param [Boolean] nil_as_optional
-      # @return [String]
+      # @param [Object] type_a Param documentation.
+      # @param [Object] type_b Param documentation.
+      # @param [FALLBACK_TYPE] fallback_type Param documentation.
+      # @param [Boolean] nil_as_optional Param documentation.
+      # @return [Object]
       def unify_types(type_a, type_b, fallback_type: FALLBACK_TYPE, nil_as_optional: true)
         Returns.unify_types(
           type_a,

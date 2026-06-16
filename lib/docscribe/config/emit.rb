@@ -6,28 +6,28 @@ module Docscribe
     # Whether to emit method header lines such as:
     #   # +MyClass#foo+ -> Integer
     #
-    # @return [Boolean]
+    # @return [Object]
     def emit_header?
       fetch_bool(%w[emit header], true)
     end
 
     # Whether to emit `@param` tags.
     #
-    # @return [Boolean]
+    # @return [Object]
     def emit_param_tags?
       fetch_bool(%w[emit param_tags], true)
     end
 
     # Whether to emit visibility tags such as `@private` and `@protected`.
     #
-    # @return [Boolean]
+    # @return [Object]
     def emit_visibility_tags?
       fetch_bool(%w[emit visibility_tags], true)
     end
 
     # Whether to emit inferred `@raise` tags.
     #
-    # @return [Boolean]
+    # @return [Object]
     def emit_raise_tags?
       fetch_bool(%w[emit raise_tags], true)
     end
@@ -35,14 +35,14 @@ module Docscribe
     # Whether to emit conditional rescue-return tags like:
     #   # @return [String] if FooError
     #
-    # @return [Boolean]
+    # @return [Object]
     def emit_rescue_conditional_returns?
       fetch_bool(%w[emit rescue_conditional_returns], true)
     end
 
     # Whether to emit YARD `@!attribute` docs for `attr_*` macros.
     #
-    # @return [Boolean]
+    # @return [Object]
     def emit_attributes?
       fetch_bool(%w[emit attributes], false)
     end
@@ -50,9 +50,9 @@ module Docscribe
     # Whether to emit the `@return` tag for a method, taking per-scope and
     # per-visibility overrides into account.
     #
-    # @param [Symbol] scope :instance or :class
-    # @param [Symbol] visibility :public, :protected, or :private
-    # @return [Boolean]
+    # @param [Object] scope :instance or :class
+    # @param [Object] visibility :public, :protected, or :private
+    # @return [Object]
     def emit_return_tag?(scope, visibility)
       method_override_bool(
         scope,
@@ -65,9 +65,9 @@ module Docscribe
     # Default text inserted into generated doc blocks, taking per-scope and
     # per-visibility overrides into account.
     #
-    # @param [Symbol] scope :instance or :class
-    # @param [Symbol] visibility :public, :protected, or :private
-    # @return [String]
+    # @param [Object] scope :instance or :class
+    # @param [Object] visibility :public, :protected, or :private
+    # @return [Object]
     def default_message(scope, visibility)
       method_override_str(
         scope,
@@ -81,7 +81,7 @@ module Docscribe
 
     # Fallback type used when inference cannot determine a more specific type.
     #
-    # @return [String]
+    # @return [Object, String]
     def fallback_type
       raw.dig('inference', 'fallback_type') ||
         DEFAULT.dig('inference', 'fallback_type') ||
@@ -93,7 +93,7 @@ module Docscribe
     # For example, `String, nil` may become `String?` depending on formatter
     # behavior.
     #
-    # @return [Boolean]
+    # @return [Object]
     def nil_as_optional?
       fetch_bool(%w[inference nil_as_optional], true)
     end
@@ -101,7 +101,7 @@ module Docscribe
     # Whether keyword arguments named `options` / `options:` should be treated
     # specially as Hash values during inference.
     #
-    # @return [Boolean]
+    # @return [Object]
     def treat_options_keyword_as_hash?
       fetch_bool(%w[inference treat_options_keyword_as_hash], true)
     end
@@ -112,14 +112,14 @@ module Docscribe
     # - `"type_name"` => `@param [String] name`
     # - `"name_type"` => `@param name [String]`
     #
-    # @return [String]
+    # @return [Object]
     def param_tag_style
       raw.dig('doc', 'param_tag_style') || DEFAULT.dig('doc', 'param_tag_style')
     end
 
     # Default generated parameter description text.
     #
-    # @return [String]
+    # @return [Object]
     def param_documentation
       raw.dig('doc', 'param_documentation') || DEFAULT.dig('doc', 'param_documentation')
     end
@@ -127,7 +127,7 @@ module Docscribe
     # Whether to include the default placeholder line:
     #   # Method documentation.
     #
-    # @return [Boolean]
+    # @return [Object]
     def include_default_message?
       fetch_bool(%w[emit include_default_message], true)
     end
@@ -135,14 +135,14 @@ module Docscribe
     # Whether to append placeholder text to generated @param tags:
     #   # @param [String] name Param documentation.
     #
-    # @return [Boolean]
+    # @return [Object]
     def include_param_documentation?
       fetch_bool(%w[emit include_param_documentation], true)
     end
 
     # Whether to preserve existing @param/@return descriptions in aggressive mode.
     #
-    # @return [Boolean]
+    # @return [Object]
     def keep_descriptions?
       fetch_bool(%w[keep_descriptions], false)
     end
@@ -152,7 +152,7 @@ module Docscribe
     # Ruby 3.2+ allows `def foo(&)`. When enabled, no @param is generated
     # for anonymous block parameters since they have no name to reference.
     #
-    # @return [Boolean]
+    # @return [Object]
     def skip_anonymous_block_params?
       fetch_bool(%w[skip_anonymous_block_params], false)
     end

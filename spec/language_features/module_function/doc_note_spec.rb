@@ -16,7 +16,7 @@ RSpec.describe Docscribe::InlineRewriter do
     end
 
     it 'notes included instance visibility is private by default', :aggregate_failures do
-      expect(out).to include('# @note module_function: when included, also defines #foo (instance visibility: private)')
+      expect(out).to include('# @note module_function: defines #foo (visibility: private)')
       expect(out).to include('# +M.foo+')
     end
   end
@@ -32,7 +32,7 @@ RSpec.describe Docscribe::InlineRewriter do
     end
 
     it 'notes included instance visibility can be overridden with public def', :aggregate_failures do
-      expect(out).to include('# @note module_function: when included, also defines #foo (instance visibility: public)')
+      expect(out).to include('# @note module_function: defines #foo (visibility: public)')
       expect(out).to include('# +M.foo+')
     end
   end

@@ -11,10 +11,10 @@ module Docscribe
       # Yields each node exactly once, descending recursively through child nodes.
       # Non-AST values are ignored.
       #
-      # @note module_function: when included, also defines #walk (instance visibility: private)
-      # @param [Parser::AST::Node, nil] node root AST node
+      # @note module_function: defines #walk (visibility: private)
+      # @param [Object] node root AST node
       # @param [Proc] block visitor block
-      # @return [void]
+      # @return [Object?]
       def walk(node, &block)
         return unless node.is_a?(Parser::AST::Node)
 

@@ -3,16 +3,16 @@
 module Docscribe
   module Plugin
     # @!attribute [rw] name
-    #   @return [String]
-    #   @param [String] value
+    #   @return [Object]
+    #   @param [Object] value
     #
     # @!attribute [rw] text
-    #   @return [String, nil]
-    #   @param [String, nil] value
+    #   @return [Object]
+    #   @param [Object] value
     #
     # @!attribute [rw] types
-    #   @return [Array<String>, nil]
-    #   @param [Array<String>, nil] value
+    #   @return [Object]
+    #   @param [Object] value
     Tag = Struct.new(:name, :text, :types, keyword_init: true)
   end
 end

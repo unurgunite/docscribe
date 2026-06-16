@@ -33,6 +33,8 @@ module Docscribe
 
       def self.process_one_file: (String path, options: Formatters::opts, conf: Config, pwd: Pathname, state: Formatters::state) -> void
 
+      def self.report_progress: (Formatters::state state, Formatters::opts options, String display_path) -> void
+
       def self.dispatch_file_result: (String path, src: String, out: String, file_changes: Array[Formatters::change], **untyped ctx) -> void
 
       def self.display_path_for: (String path, pwd: Pathname) -> String
@@ -52,6 +54,10 @@ module Docscribe
       def self.handle_check_failed: (String path, file_changes: Array[Formatters::change], display_path: String, options: Formatters::opts, state: Formatters::state) -> void
 
       def self.handle_write_result: (String path, src: String, out: String, file_changes: Array[Formatters::change], **untyped ctx) -> void
+
+      def self.apply_correction: (String path, String out, Array[Formatters::change] file_changes, Hash[Symbol, untyped] ctx) -> void
+
+      def self.update_correction_state: (Formatters::state state, String display_path, Array[Formatters::change] file_changes) -> void
 
       def self.log_write_verdict: (String verdict, String display_path, Array[Formatters::change] file_changes, Formatters::opts options) -> void
 

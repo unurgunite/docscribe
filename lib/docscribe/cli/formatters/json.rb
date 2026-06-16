@@ -35,34 +35,42 @@ module Docscribe
           updated_return: 'Docscribe/UpdatedReturn'
         }.freeze
 
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @param [Docscribe::CLI::Formatters::opts] options
-        # @return [void]
+        # Method documentation.
+        #
+        # @param [Object] state Param documentation.
+        # @param [Hash] options Param documentation.
+        # @return [Object]
         def format_check_summary(state:, options:)
           puts JSON.generate(build_document(state, options))
         end
 
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @param [Docscribe::CLI::Formatters::opts] options
-        # @return [void]
+        # Method documentation.
+        #
+        # @param [Object] state Param documentation.
+        # @param [Hash] options Param documentation.
+        # @return [Object]
         def format_write_summary(state:, options:)
           puts JSON.generate(build_document(state, options))
         end
 
         private
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @param [Docscribe::CLI::Formatters::opts] _options
-        # @return [Hash<Object, Object>]
+        # @param [Object] state Param documentation.
+        # @param [Object] _options Param documentation.
+        # @return [Object]
         def build_document(state, _options)
           document_hash(build_files(state), state)
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Array<Hash<Object, Object>>] files
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @return [Hash<Object, Object>]
+        # @param [Object] files Param documentation.
+        # @param [Object] state Param documentation.
+        # @return [Hash]
         def document_hash(files, state)
           {
             metadata: metadata_hash,
@@ -71,8 +79,10 @@ module Docscribe
           }
         end
 
+        # Method documentation.
+        #
         # @private
-        # @return [Hash<Symbol, Object>]
+        # @return [Hash]
         def metadata_hash
           {
             docscribe_version: Docscribe::VERSION,
@@ -80,10 +90,12 @@ module Docscribe
           }
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Array<Hash<Object, Object>>] files
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @return [Hash<Symbol, Integer>]
+        # @param [Object] files Param documentation.
+        # @param [Object] state Param documentation.
+        # @return [Hash]
         def summary_hash(files, state)
           {
             offense_count: files.sum { |f| f[:offenses].size },
@@ -93,9 +105,11 @@ module Docscribe
           }
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @return [Array<Hash<Object, Object>>]
+        # @param [Object] state Param documentation.
+        # @return [Array]
         def build_files(state)
           files = [] #: Array[Hash[untyped, untyped]]
 
@@ -106,10 +120,12 @@ module Docscribe
           files
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @param [Array<Hash<Object, Object>>] files
-        # @return [void]
+        # @param [Object] state Param documentation.
+        # @param [Object] files Param documentation.
+        # @return [Object]
         def append_check_files(state, files)
           state[:fail_paths].each do |path|
             files << file_entry(path, state[:fail_changes][path] || [])
@@ -120,31 +136,37 @@ module Docscribe
           end
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @param [Array<Hash<Object, Object>>] files
-        # @return [void]
+        # @param [Object] state Param documentation.
+        # @param [Object] files Param documentation.
+        # @return [Object]
         def append_corrected_files(state, files)
           state[:corrected_paths].each do |path|
             merge_or_append(files, path, state[:corrected_changes][path] || [])
           end
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @param [Array<Hash<Object, Object>>] files
-        # @return [void]
+        # @param [Object] state Param documentation.
+        # @param [Object] files Param documentation.
+        # @return [Object]
         def append_error_files(state, files)
           state[:error_paths].each do |path|
             merge_or_append(files, path, [error_offense(state, path)])
           end
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Array<Hash<Object, Object>>] files
-        # @param [String] path
-        # @param [Array<Hash<Object, Object>>] offenses
-        # @return [void]
+        # @param [Object] files Param documentation.
+        # @param [Object] path Param documentation.
+        # @param [Object] offenses Param documentation.
+        # @return [Object]
         def merge_or_append(files, path, offenses)
           existing = files.find { |f| f[:path] == path }
 
@@ -155,49 +177,61 @@ module Docscribe
           end
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [String] path
-        # @param [Array<Docscribe::CLI::Formatters::change>] changes
-        # @param [String?] severity
-        # @return [Hash<Symbol, Object>]
+        # @param [Object] path Param documentation.
+        # @param [Object] changes Param documentation.
+        # @param [nil] severity Param documentation.
+        # @return [Hash]
         def file_entry(path, changes, severity: nil)
           { path: path, offenses: build_offenses(changes, severity: severity) }
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @param [String] path
-        # @return [Hash<Symbol, Object>]
+        # @param [Object] state Param documentation.
+        # @param [Object] path Param documentation.
+        # @return [Object]
         def error_offense(state, path)
           error_offense_hash(state[:error_messages][path] || 'Unknown error')
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [String] message
-        # @return [Hash<Symbol, Object>]
+        # @param [Object] message Param documentation.
+        # @return [Hash]
         def error_offense_hash(message)
           { severity: 'fatal', cop_name: 'Docscribe/ProcessingError', message: message,
             corrected: false, correctable: false, location: default_location }
         end
 
+        # Method documentation.
+        #
         # @private
-        # @return [Hash<Symbol, Integer>]
+        # @return [Hash]
         def default_location
           { start_line: 1, start_column: 1, last_line: 1, last_column: 1 }
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Array<Docscribe::CLI::Formatters::change>] changes
-        # @param [String?] severity
-        # @return [Array<Hash<Symbol, Object>>]
+        # @param [Object] changes Param documentation.
+        # @param [nil] severity Param documentation.
+        # @return [Object]
         def build_offenses(changes, severity: nil)
           changes.map { |change| build_offense(change, severity) }
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::change] change
-        # @param [String?] severity
-        # @return [Hash<Symbol, Object>]
+        # @param [Object] change Param documentation.
+        # @param [Object] severity Param documentation.
+        # @return [Hash]
         def build_offense(change, severity)
           {
             severity: severity || SEVERITY_MAP[change[:type]] || 'convention',
@@ -209,24 +243,30 @@ module Docscribe
           }
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::change] change
-        # @return [Hash<Symbol, Integer>]
+        # @param [Object] change Param documentation.
+        # @return [Hash]
         def location_for(change)
           line = change[:line] || 1
           { start_line: line, start_column: 1, last_line: line, last_column: 1 }
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::change] change
+        # @param [Object] change Param documentation.
         # @return [String]
         def cop_name_fallback(change)
           name = change[:type].to_s.tr('_', '_').capitalize
           "Docscribe/#{name}"
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::change] change
+        # @param [Object] change Param documentation.
         # @return [String]
         def build_message(change)
           method = change[:method] ? " for #{change[:method]}" : ''
@@ -238,9 +278,11 @@ module Docscribe
           "#{msg}#{method}#{line}"
         end
 
+        # Method documentation.
+        #
         # @private
-        # @param [Docscribe::CLI::Formatters::state] state
-        # @return [Integer]
+        # @param [Object] state Param documentation.
+        # @return [Object]
         def inspected_count(state)
           total = state[:checked_ok] + state[:checked_fail] + state[:type_mismatch_paths].size
           total = state[:corrected] if total.zero? && state[:corrected].positive?

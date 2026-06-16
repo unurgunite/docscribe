@@ -26,8 +26,8 @@ module Docscribe
         # Called once per documented method. Return [] if this plugin has
         # nothing to add for this particular method.
         #
-        # @param [Docscribe::Plugin::Context] _context method context snapshot (unused in default)
-        # @return [Array<Docscribe::Plugin::Tag>]
+        # @param [Object] _context method context snapshot (unused in default)
+        # @return [Array]
         def call(_context)
           []
         end

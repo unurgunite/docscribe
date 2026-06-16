@@ -4,6 +4,17 @@ require 'tmpdir'
 require 'fileutils'
 
 RSpec.describe Docscribe::InlineRewriter do
+  def idempotent_reinsert(out, rbs_content)
+    Dir.mktmpdir do |dir|
+      d = File.join(dir, 'sig')
+      FileUtils.mkdir_p(d)
+      File.write(File.join(d, 'demo.rbs'), rbs_content)
+
+      c = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => [d] }, 'keep_descriptions' => true)
+      described_class.insert_comments(out, strategy: :aggressive, config: c)
+    end
+  end
+
   describe 'aggressive mode (default)' do
     subject(:out) { inline(code, strategy: :aggressive) }
 
@@ -245,24 +256,9 @@ RSpec.describe Docscribe::InlineRewriter do
       expect(out).to include('# Say hello')
     end
 
-    # rubocop:disable RSpec/ExampleLength
     it 'does not accumulate brackets on repeated runs' do
-      Dir.mktmpdir do |dir|
-        sig_dir = File.join(dir, 'sig')
-        FileUtils.mkdir_p(sig_dir)
-        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
-
-        twice = described_class.insert_comments(
-          out, strategy: :aggressive,
-               config: Docscribe::Config.new(
-                 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] },
-                 'keep_descriptions' => true
-               )
-        )
-        expect(twice).to eq(out)
-      end
+      expect(idempotent_reinsert(out, rbs)).to eq(out)
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'aggressive mode keep_descriptions: true — with nested Tuple types' do
@@ -315,24 +311,9 @@ RSpec.describe Docscribe::InlineRewriter do
       expect(out).to include('stats')
     end
 
-    # rubocop:disable RSpec/ExampleLength
     it 'is idempotent across runs' do
-      Dir.mktmpdir do |dir|
-        sig_dir = File.join(dir, 'sig')
-        FileUtils.mkdir_p(sig_dir)
-        File.write(File.join(sig_dir, 'demo.rbs'), rbs)
-
-        twice = described_class.insert_comments(
-          out, strategy: :aggressive,
-               config: Docscribe::Config.new(
-                 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] },
-                 'keep_descriptions' => true
-               )
-        )
-        expect(twice).to eq(out)
-      end
+      expect(idempotent_reinsert(out, rbs)).to eq(out)
     end
-    # rubocop:enable RSpec/ExampleLength
   end
 
   describe 'via CLI' do

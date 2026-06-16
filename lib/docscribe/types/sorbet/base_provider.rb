@@ -18,7 +18,7 @@ module Docscribe
         # Initialize
         #
         # @param [Boolean] collapse_generics whether generic container details
-        # @return [void]
+        # @return [Boolean]
         def initialize(collapse_generics: false)
           require 'rbs'
           @collapse_generics = !!collapse_generics
@@ -28,10 +28,10 @@ module Docscribe
 
         # Look up a normalized method signature by container, scope, and name.
         #
-        # @param [String] container e.g. "MyModule::MyClass"
-        # @param [Symbol] scope :instance or :class
-        # @param [Symbol, String] name method name
-        # @return [Docscribe::Types::MethodSignature, nil]
+        # @param [Object] container e.g. "MyModule::MyClass"
+        # @param [Object] scope :instance or :class
+        # @param [Object] name method name
+        # @return [Object]
         def signature_for(container:, scope:, name:)
           @index[[normalize_container(container), scope.to_sym, name.to_sym]]
         end
@@ -44,13 +44,13 @@ module Docscribe
         # other providers or plain inference.
         #
         # @private
-        # @param [String] source source text to parse
-        # @param [String] label file label used in debug warnings
+        # @param [Object] source source text to parse
+        # @param [Object] label file label used in debug warnings
         # @raise [LoadError]
         # @raise [::RBS::BaseError]
         # @raise [SyntaxError]
         # @raise [StandardError]
-        # @return [void] if ::RBS::BaseError, SyntaxError, StandardError
+        # @return [Object] if ::RBS::BaseError, SyntaxError, StandardError
         # @return [nil] if LoadError
         # @return [nil] if ::RBS::BaseError, SyntaxError, StandardError
         def load_from_string(source, label:)
@@ -69,8 +69,8 @@ module Docscribe
         # Index parsed declarations into the provider lookup table.
         #
         # @private
-        # @param [Array<Object>] decls parsed RBS declarations
-        # @return [void]
+        # @param [Object] decls parsed RBS declarations
+        # @return [Object]
         def index_decls(decls)
           Array(decls).each do |decl|
             next unless decl.respond_to?(:name)
@@ -84,9 +84,9 @@ module Docscribe
         # Process a single method definition member into the index.
         #
         # @private
-        # @param [String] container normalized container name
-        # @param [Object] member
-        # @return [void]
+        # @param [Object] container normalized container name
+        # @param [Object] member Param documentation.
+        # @return [Object]
         def process_method_member(container, member)
           return unless method_definition_member?(member)
 
@@ -101,8 +101,8 @@ module Docscribe
         # Method definition member
         #
         # @private
-        # @param [Object] member
-        # @return [Boolean]
+        # @param [Object] member Param documentation.
+        # @return [String?, Boolean]
         def method_definition_member?(member)
           defined?(::RBS::AST::Members::MethodDefinition) &&
             member.is_a?(::RBS::AST::Members::MethodDefinition)
@@ -111,8 +111,8 @@ module Docscribe
         # Convert an RBS function type into Docscribe's simplified signature model.
         #
         # @private
-        # @param [RBS::Types::Function] func
-        # @return [Docscribe::Types::MethodSignature]
+        # @param [Object] func Param documentation.
+        # @return [MethodSignature]
         def build_signature(func)
           MethodSignature.new(
             return_type: format_type(func.return_type),
@@ -125,8 +125,8 @@ module Docscribe
         # Build a name => type map for ordinary positional/keyword parameters.
         #
         # @private
-        # @param [RBS::Types::Function] func
-        # @return [Hash<String, String>]
+        # @param [Object] func Param documentation.
+        # @return [Hash]
         def build_param_types(func)
           param_types = {} #: Hash[String, String]
 
@@ -143,9 +143,9 @@ module Docscribe
         # Add keyword parameters to the normalized parameter map.
         #
         # @private
-        # @param [Hash<String, String>] param_types
-        # @param [Hash<Symbol, Object>] keywords
-        # @return [void]
+        # @param [Object] param_types Param documentation.
+        # @param [Object] keywords Param documentation.
+        # @return [Object]
         def add_keywords!(param_types, keywords)
           keywords.each do |kw, p|
             param_types[kw.to_s] = format_type(p.type)
@@ -155,9 +155,9 @@ module Docscribe
         # Add positional parameters with names to the normalized param map.
         #
         # @private
-        # @param [Hash<String, String>] param_types
-        # @param [Array<Object>] list
-        # @return [void]
+        # @param [Object] param_types Param documentation.
+        # @param [Object] list Param documentation.
+        # @return [Object]
         def add_positionals!(param_types, list)
           list.each do |p|
             next unless p.name
@@ -169,8 +169,8 @@ module Docscribe
         # Build normalized `*args` metadata.
         #
         # @private
-        # @param [RBS::Types::Function] func
-        # @return [Docscribe::Types::RestPositional, nil]
+        # @param [Object] func Param documentation.
+        # @return [RestPositional]
         def build_rest_positional(func)
           rp = func.rest_positionals
           return nil unless rp
@@ -187,8 +187,8 @@ module Docscribe
         # YARD output, we expose that as a Hash keyed by Symbol.
         #
         # @private
-        # @param [RBS::Types::Function] func
-        # @return [Docscribe::Types::RestKeywords, nil]
+        # @param [Object] func Param documentation.
+        # @return [RestKeywords]
         def build_rest_keywords(func)
           rk = func.rest_keywords
           return nil unless rk
@@ -205,8 +205,8 @@ module Docscribe
         # generated comments.
         #
         # @private
-        # @param [Object] type
-        # @return [String]
+        # @param [Object] type Param documentation.
+        # @return [Object]
         def format_type(type)
           Docscribe::Types::RBS::TypeFormatter.to_yard(
             type,
@@ -217,7 +217,7 @@ module Docscribe
         # Normalize container names so lookups are consistent.
         #
         # @private
-        # @param [String] name method name
+        # @param [Object] name method name
         # @return [String]
         def normalize_container(name)
           name.to_s.delete_prefix('::')
@@ -226,8 +226,8 @@ module Docscribe
         # Print one debug warning per provider instance when debugging is enabled.
         #
         # @private
-        # @param [String] msg
-        # @return [void]
+        # @param [Object] msg Param documentation.
+        # @return [Object]
         def warn_once(msg)
           return unless ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
           return if @warned

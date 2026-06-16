@@ -94,7 +94,61 @@ RSpec.describe Docscribe::CLI::Run do
       expect(result[1]).to include('missing docs for Foo#bar')
     end
 
+    it 'shows progress [N/total] on stderr' do
+      expect(result[1]).to match(%r{\[1/1\] foo\.rb})
+    end
+
     it_behaves_like 'correct exit status'
+  end
+
+  describe 'check mode with --progress' do
+    let(:args) { %w[--progress foo.rb] }
+
+    it 'shows progress [N/total] on stderr' do
+      expect(result[1]).to match(%r{\[1/1\] foo\.rb})
+    end
+
+    it 'still prints progress markers to stderr alongside progress' do
+      expect(result[1]).to include('[1/1]').and include('F')
+    end
+
+    it 'prints Would update to stdout' do
+      expect(result[0]).to match(/^Would update:/)
+    end
+
+    it_behaves_like 'correct exit status'
+  end
+
+  describe 'check mode with --progress --quiet' do
+    let(:args) { %w[--progress --quiet foo.rb] }
+
+    it 'shows progress even when quiet' do
+      expect(result[1]).to match(%r{\[1/1\] foo\.rb})
+    end
+
+    it 'prints Would update to stdout' do
+      expect(result[0]).to match(/^Would update:/)
+    end
+  end
+
+  describe 'write mode with --progress' do
+    let(:args) { %w[--progress -a foo.rb] }
+
+    it 'shows progress on stderr' do
+      expect(result[1]).to match(%r{\[1/1\] foo\.rb})
+    end
+
+    it 'prints C marker to stderr' do
+      expect(result[1]).to include('C')
+    end
+
+    it 'prints update summary to stdout' do
+      expect(result[0]).to match(/updated \d+ file/)
+    end
+
+    it 'exits 0' do
+      expect(result[2].exitstatus).to eq(0)
+    end
   end
 
   describe 'check mode with --explain' do

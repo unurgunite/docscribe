@@ -26,7 +26,9 @@ module Docscribe
         error_paths: Array[String],
         error_messages: Hash[String, String],
         type_mismatch_paths: Array[String],
-        type_mismatch_changes: Hash[String, Array[change]]
+        type_mismatch_changes: Hash[String, Array[change]],
+        total: Integer,
+        processed: Integer
       }
 
       type opts = {
@@ -48,6 +50,7 @@ module Docscribe
         rbs_collection: bool,
         keep_descriptions: bool,
         no_boilerplate: bool,
+        progress: bool,
         stdin: bool
       }
 

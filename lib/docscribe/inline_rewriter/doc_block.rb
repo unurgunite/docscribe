@@ -55,13 +55,13 @@ module Docscribe
       # Existing text is preserved exactly. If sorting is enabled, only sortable tag runs
       # are normalized according to the configured tag order.
       #
-      # @note module_function: when included, also defines #merge (instance visibility: private)
-      # @param [Array<String>] existing_lines existing doc block lines
-      # @param [Array<String>] missing_lines generated tag lines to add
-      # @param [Boolean] sort_tags whether sortable tags should be reordered
-      # @param [Array<String>] tag_order configured sortable tag order
-      # @param [Hash<Symbol, Object>] filter_existing tags to filter from existing block
-      # @return [Array<String>]
+      # @note module_function: defines #merge (visibility: private)
+      # @param [Object] existing_lines existing doc block lines
+      # @param [Object] missing_lines generated tag lines to add
+      # @param [Object] sort_tags whether sortable tags should be reordered
+      # @param [Object] tag_order configured sortable tag order
+      # @param [Hash] filter_existing tags to filter from existing block
+      # @return [Object]
       def merge(existing_lines, missing_lines:, sort_tags:, tag_order:, filter_existing: {})
         existing_entries = parse(existing_lines, tag_order: tag_order)
         missing_entries = parse_generated(missing_lines, tag_order: tag_order)
@@ -73,10 +73,10 @@ module Docscribe
 
       # Parse generated missing tag lines and mark them as generated entries.
       #
-      # @note module_function: when included, also defines #parse_generated (instance visibility: private)
-      # @param [Array<String>] lines generated lines
-      # @param [Array<String>] tag_order configured sortable tag order
-      # @return [Array<Object>]
+      # @note module_function: defines #parse_generated (visibility: private)
+      # @param [Object] lines generated lines
+      # @param [Object] tag_order configured sortable tag order
+      # @return [Object]
       def parse_generated(lines, tag_order:)
         parse(lines, tag_order: tag_order).map do |entry|
           entry.generated = true if entry.kind == :tag
@@ -86,10 +86,10 @@ module Docscribe
 
       # Remove existing entries matching the filter criteria (param names or return tag).
       #
-      # @note module_function: when included, also defines #filter_existing_entries (instance visibility: private)
-      # @param [Array<Object>] entries parsed existing entries
-      # @param [Hash<Symbol, Object>] filter_existing filter specification with :param_names and :return keys
-      # @return [Array<Object>] filtered entries
+      # @note module_function: defines #filter_existing_entries (visibility: private)
+      # @param [Object] entries parsed existing entries
+      # @param [Object] filter_existing filter specification with :param_names and :return keys
+      # @return [Object] filtered entries
       def filter_existing_entries(entries, filter_existing)
         filter_param_names = filter_existing[:param_names] || []
         filter_return = !!filter_existing[:return]
@@ -100,20 +100,20 @@ module Docscribe
 
       # Check whether an entry is a @param tag whose name is in the filter list.
       #
-      # @note module_function: when included, also defines #filter_param_entry? (instance visibility: private)
+      # @note module_function: defines #filter_param_entry? (visibility: private)
       # @param [Object] entry the entry to check
-      # @param [Array<String>] param_names parameter names to filter
-      # @return [Boolean]
+      # @param [Object] param_names parameter names to filter
+      # @return [Boolean, Object]
       def filter_param_entry?(entry, param_names)
         entry.kind == :tag && entry.tag == 'param' && param_names.include?(entry.subject)
       end
 
       # Check whether an entry is a @return tag that should be filtered.
       #
-      # @note module_function: when included, also defines #filter_return_entry? (instance visibility: private)
+      # @note module_function: defines #filter_return_entry? (visibility: private)
       # @param [Object] entry the entry to check
-      # @param [Boolean] filter_return whether return tags should be filtered
-      # @return [Boolean]
+      # @param [Object] filter_return whether return tags should be filtered
+      # @return [Boolean, Object]
       def filter_return_entry?(entry, filter_return)
         entry.kind == :tag && entry.tag == 'return' && filter_return
       end
@@ -123,10 +123,10 @@ module Docscribe
       # Only tags listed in `tag_order` are treated as sortable tag entries.
       # Other lines become `:other` entries and act as sort boundaries.
       #
-      # @note module_function: when included, also defines #parse (instance visibility: private)
-      # @param [Array<String>] lines comment block lines
-      # @param [Array<String>] tag_order configured sortable tag order
-      # @return [Array<Object>]
+      # @note module_function: defines #parse (visibility: private)
+      # @param [Object] lines comment block lines
+      # @param [Object] tag_order configured sortable tag order
+      # @return [Object]
       def parse(lines, tag_order:)
         sortable_tags = normalized_tag_order(tag_order)
         parse_lines(lines, sortable_tags, entries: [], index: 0)
@@ -134,12 +134,12 @@ module Docscribe
 
       # Iterate through all lines and parse each one into a structured entry.
       #
-      # @note module_function: when included, also defines #parse_lines (instance visibility: private)
-      # @param [Array<String>] lines comment block lines
-      # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @param [Array<Object>] entries accumulated parsed entries
-      # @param [Integer] index stable ordering index for entries
-      # @return [Array<Object>]
+      # @note module_function: defines #parse_lines (visibility: private)
+      # @param [Object] lines comment block lines
+      # @param [Object] sortable_tags tag names treated as sortable
+      # @param [Object] entries accumulated parsed entries
+      # @param [Object] index stable ordering index for entries
+      # @return [Object]
       def parse_lines(lines, sortable_tags, entries:, index:)
         idx = 0
         while idx < lines.length
@@ -151,12 +151,12 @@ module Docscribe
 
       # Parse a single line as a sortable tag entry or non-tag content.
       #
-      # @note module_function: when included, also defines #parse_one_line (instance visibility: private)
-      # @param [Array<String>] lines comment block lines
-      # @param [Integer] idx current line index
-      # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @param [Array<Object>] entries accumulated parsed entries
-      # @param [Integer] index stable ordering index for entries
+      # @note module_function: defines #parse_one_line (visibility: private)
+      # @param [Object] lines comment block lines
+      # @param [Object] idx current line index
+      # @param [Object] sortable_tags tag names treated as sortable
+      # @param [Object] entries accumulated parsed entries
+      # @param [Object] index stable ordering index for entries
       # @return [Integer] next line index after parsing
       def parse_one_line(lines, idx, sortable_tags, entries, index)
         if sortable_top_level_tag_line?(lines[idx], sortable_tags)
@@ -171,20 +171,20 @@ module Docscribe
 
       # Create an :other entry for a non-tag line (prose, blank separators, etc.).
       #
-      # @note module_function: when included, also defines #build_other_entry (instance visibility: private)
-      # @param [String] line the comment line
-      # @param [Integer] index stable ordering index
-      # @return [Object]
+      # @note module_function: defines #build_other_entry (visibility: private)
+      # @param [Object] line the comment line
+      # @param [Object] index stable ordering index
+      # @return [Entry]
       def build_other_entry(line, index)
         Entry.new(kind: :other, lines: [line], generated: false, index: index)
       end
 
       # Sort parsed entries by configured tag order, preserving boundaries between tag runs.
       #
-      # @note module_function: when included, also defines #sort (instance visibility: private)
-      # @param [Array<Object>] entries parsed entries
-      # @param [Array<String>] tag_order configured sortable tag order
-      # @return [Array<Object>]
+      # @note module_function: defines #sort (visibility: private)
+      # @param [Object] entries parsed entries
+      # @param [Object] tag_order configured sortable tag order
+      # @return [Array]
       def sort(entries, tag_order:)
         out = [] #: Array[untyped]
         priority = build_priority(tag_order)
@@ -194,11 +194,11 @@ module Docscribe
 
       # Iterate entries, sorting contiguous tag runs while preserving non-tag boundaries.
       #
-      # @note module_function: when included, also defines #sort_loop (instance visibility: private)
-      # @param [Array<Object>] entries parsed entries to sort
-      # @param [Array<Object>] out output array for sorted entries
-      # @param [Hash<String, Integer>] priority tag priority map
-      # @return [void]
+      # @note module_function: defines #sort_loop (visibility: private)
+      # @param [Object] entries parsed entries to sort
+      # @param [Object] out output array for sorted entries
+      # @param [Object] priority tag priority map
+      # @return [Object]
       def sort_loop(entries, out, priority)
         idx = 0
 
@@ -215,10 +215,10 @@ module Docscribe
 
       # Collect a contiguous run of :tag entries starting at idx.
       #
-      # @note module_function: when included, also defines #consume_tag_run (instance visibility: private)
-      # @param [Array<Object>] entries parsed entries
-      # @param [Integer] idx start index
-      # @return [(Array<Object>, Integer)]
+      # @note module_function: defines #consume_tag_run (visibility: private)
+      # @param [Object] entries parsed entries
+      # @param [Object] idx start index
+      # @return [Array]
       def consume_tag_run(entries, idx)
         run = [] #: Array[untyped]
         while idx < entries.length && entries[idx].kind == :tag
@@ -230,19 +230,19 @@ module Docscribe
 
       # Render parsed entries back into comment lines.
       #
-      # @note module_function: when included, also defines #render (instance visibility: private)
-      # @param [Array<Object>] entries contiguous tag run entries
-      # @return [Array<String>]
+      # @note module_function: defines #render (visibility: private)
+      # @param [Object] entries contiguous tag run entries
+      # @return [Object]
       def render(entries)
         entries.flat_map(&:lines)
       end
 
       # Sort one contiguous run of sortable tag entries.
       #
-      # @note module_function: when included, also defines #sort_run (instance visibility: private)
-      # @param [Array<Object>] entries contiguous tag run
-      # @param [Hash<String, Integer>] priority tag priority map
-      # @return [Array<Object>]
+      # @note module_function: defines #sort_run (visibility: private)
+      # @param [Object] entries contiguous tag run
+      # @param [Object] priority tag priority map
+      # @return [Object]
       def sort_run(entries, priority:)
         groups = build_groups(entries)
 
@@ -255,9 +255,9 @@ module Docscribe
 
       # Group entries so related `@option` tags stay attached to their owning `@param`.
       #
-      # @note module_function: when included, also defines #build_groups (instance visibility: private)
-      # @param [Array<Object>] entries contiguous tag run entries
-      # @return [Array<Array<Object>>]
+      # @note module_function: defines #build_groups (visibility: private)
+      # @param [Object] entries contiguous tag run entries
+      # @return [Array]
       def build_groups(entries)
         groups = [] #: Array[untyped]
         group_entries_loop(entries, groups)
@@ -266,10 +266,10 @@ module Docscribe
 
       # Iterate entries to build sorted groups, attaching @option entries to their @param.
       #
-      # @note module_function: when included, also defines #group_entries_loop (instance visibility: private)
-      # @param [Array<Object>] entries contiguous tag run entries
-      # @param [Array<Array<Object>>] groups accumulated groups
-      # @return [void]
+      # @note module_function: defines #group_entries_loop (visibility: private)
+      # @param [Object] entries contiguous tag run entries
+      # @param [Object] groups accumulated groups
+      # @return [Object]
       def group_entries_loop(entries, groups)
         idx = 0
         idx = group_one_entry(entries, idx, groups) while idx < entries.length
@@ -277,11 +277,11 @@ module Docscribe
 
       # Group a single entry, creating a param group with @option children if applicable.
       #
-      # @note module_function: when included, also defines #group_one_entry (instance visibility: private)
-      # @param [Array<Object>] entries contiguous tag run entries
-      # @param [Integer] idx current entry index
-      # @param [Array<Array<Object>>] groups accumulated groups
-      # @return [Integer] next index after processing the group
+      # @note module_function: defines #group_one_entry (visibility: private)
+      # @param [Object] entries contiguous tag run entries
+      # @param [Object] idx current entry index
+      # @param [Object] groups accumulated groups
+      # @return [Object, Integer] next index after processing the group
       def group_one_entry(entries, idx, groups)
         entry = entries[idx]
         if entry.tag == 'param'
@@ -296,11 +296,11 @@ module Docscribe
 
       # Build a group starting with a @param entry and including its following @option entries.
       #
-      # @note module_function: when included, also defines #build_param_group (instance visibility: private)
-      # @param [Array<Object>] entries contiguous tag run entries
-      # @param [Integer] idx index of the @param entry
+      # @note module_function: defines #build_param_group (visibility: private)
+      # @param [Object] entries contiguous tag run entries
+      # @param [Object] idx index of the @param entry
       # @param [Object] entry the @param entry
-      # @return [Array<Object>] the param group including @option children
+      # @return [Array] the param group including @option children
       def build_param_group(entries, idx, entry)
         group = [entry]
         idx += 1
@@ -318,28 +318,28 @@ module Docscribe
 
       # Compute the priority of a grouped sortable unit.
       #
-      # @note module_function: when included, also defines #group_priority (instance visibility: private)
-      # @param [Array<Object>] group
-      # @param [Hash<String, Integer>] priority tag priority map
-      # @return [Integer]
+      # @note module_function: defines #group_priority (visibility: private)
+      # @param [Object] group Param documentation.
+      # @param [Object] priority tag priority map
+      # @return [Object]
       def group_priority(group, priority)
         priority.fetch(group.first.tag, priority.length)
       end
 
       # Build a tag priority map from configured order.
       #
-      # @note module_function: when included, also defines #build_priority (instance visibility: private)
-      # @param [Array<String>] tag_order configured sortable tag order
-      # @return [Hash<String, Integer>]
+      # @note module_function: defines #build_priority (visibility: private)
+      # @param [Object] tag_order configured sortable tag order
+      # @return [Object]
       def build_priority(tag_order)
         normalized_tag_order(tag_order).each_with_index.to_h
       end
 
       # Normalize configured tag names by removing leading `@`.
       #
-      # @note module_function: when included, also defines #normalized_tag_order (instance visibility: private)
-      # @param [Array<String>] tag_order configured sortable tag order
-      # @return [Array<String>]
+      # @note module_function: defines #normalized_tag_order (visibility: private)
+      # @param [Object] tag_order configured sortable tag order
+      # @return [Object]
       def normalized_tag_order(tag_order)
         Array(tag_order).map { |t| t.to_s.sub(/\A@/, '') }
       end
@@ -349,12 +349,12 @@ module Docscribe
       # Continuation lines are comment lines that belong to the same logical tag entry
       # until a new sortable tag line or a blank comment separator is encountered.
       #
-      # @note module_function: when included, also defines #consume_tag_entry (instance visibility: private)
-      # @param [Array<String>] lines comment block lines
-      # @param [Integer] start_idx index to start scanning from
-      # @param [Integer] index stable original index
-      # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @return [(Object, Integer)]
+      # @note module_function: defines #consume_tag_entry (visibility: private)
+      # @param [Object] lines comment block lines
+      # @param [Object] start_idx index to start scanning from
+      # @param [Object] index stable original index
+      # @param [Object] sortable_tags tag names treated as sortable
+      # @return [Array]
       def consume_tag_entry(lines, start_idx, index:, sortable_tags:)
         first = lines[start_idx]
         tag = extract_tag(first)
@@ -366,12 +366,12 @@ module Docscribe
 
       # Collect the first tag line and all continuation lines belonging to the same entry.
       #
-      # @note module_function: when included, also defines #collect_continuation_lines (instance visibility: private)
-      # @param [Array<String>] lines comment block lines
-      # @param [Integer] start_idx index after the tag line
-      # @param [String] first the tag line itself
-      # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @return [Array<String>] all lines belonging to this entry
+      # @note module_function: defines #collect_continuation_lines (visibility: private)
+      # @param [Object] lines comment block lines
+      # @param [Object] start_idx index after the tag line
+      # @param [Object] first the tag line itself
+      # @param [Object] sortable_tags tag names treated as sortable
+      # @return [Array] all lines belonging to this entry
       def collect_continuation_lines(lines, start_idx, first, sortable_tags)
         result = [first]
         add_continuation_lines(lines, start_idx, result, sortable_tags)
@@ -380,12 +380,12 @@ module Docscribe
 
       # Append continuation lines to the result array until a non-continuation line is found.
       #
-      # @note module_function: when included, also defines #add_continuation_lines (instance visibility: private)
-      # @param [Array<String>] lines comment block lines
-      # @param [Integer] start_idx index to start scanning from
-      # @param [Array<String>] result accumulated entry lines
-      # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @return [void]
+      # @note module_function: defines #add_continuation_lines (visibility: private)
+      # @param [Object] lines comment block lines
+      # @param [Object] start_idx index to start scanning from
+      # @param [Object] result accumulated entry lines
+      # @param [Object] sortable_tags tag names treated as sortable
+      # @return [Object]
       def add_continuation_lines(lines, start_idx, result, sortable_tags)
         i = start_idx
         while i < lines.length
@@ -399,10 +399,10 @@ module Docscribe
 
       # Check whether a line can serve as a continuation of the current tag entry.
       #
-      # @note module_function: when included, also defines #continuation_candidate? (instance visibility: private)
-      # @param [String] line the line to check
-      # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @return [Boolean]
+      # @note module_function: defines #continuation_candidate? (visibility: private)
+      # @param [Object] line the line to check
+      # @param [Object] sortable_tags tag names treated as sortable
+      # @return [Boolean, Object]
       def continuation_candidate?(line, sortable_tags)
         !sortable_top_level_tag_line?(line, sortable_tags) &&
           !blank_comment_line?(line) &&
@@ -411,12 +411,12 @@ module Docscribe
 
       # Build a tag Entry struct with metadata from the parsed tag line and continuation lines.
       #
-      # @note module_function: when included, also defines #build_tag_entry (instance visibility: private)
-      # @param [String] first the first (tag) line
-      # @param [String?] tag the extracted tag name
-      # @param [Array<String>] entry_lines all lines belonging to this entry
-      # @param [Integer] index stable ordering index
-      # @return [Object]
+      # @note module_function: defines #build_tag_entry (visibility: private)
+      # @param [Object] first the first (tag) line
+      # @param [Object] tag the extracted tag name
+      # @param [Object] entry_lines all lines belonging to this entry
+      # @param [Object] index stable ordering index
+      # @return [Entry]
       def build_tag_entry(first, tag, entry_lines, index)
         Entry.new(
           kind: :tag,
@@ -433,10 +433,10 @@ module Docscribe
       #
       # Currently only `@param` entries carry a subject, used to keep `@option` tags attached.
       #
-      # @note module_function: when included, also defines #extract_subject (instance visibility: private)
-      # @param [String] line the line to check
-      # @param [String?] tag the extracted tag name
-      # @return [String?]
+      # @note module_function: defines #extract_subject (visibility: private)
+      # @param [Object] line the line to check
+      # @param [Object] tag the extracted tag name
+      # @return [Object]
       def extract_subject(line, tag)
         case tag
         when 'param'
@@ -450,9 +450,9 @@ module Docscribe
       # - `@param [Type] name`
       # - `@param name [Type]`
       #
-      # @note module_function: when included, also defines #extract_param_name (instance visibility: private)
-      # @param [String] line the line to check
-      # @return [String?]
+      # @note module_function: defines #extract_param_name (visibility: private)
+      # @param [Object] line the line to check
+      # @return [nil]
       def extract_param_name(line)
         content = line.sub(/^\s*#\s*/, '')
         if (m = content.match(/@param\s+(\S+)\s+\[/))
@@ -467,9 +467,11 @@ module Docscribe
         nil
       end
 
-      # @note module_function: when included, also defines #name_after_bracket (instance visibility: private)
-      # @param [Object] rest
-      # @param [Object] type_end
+      # Method documentation.
+      #
+      # @note module_function: defines #name_after_bracket (visibility: private)
+      # @param [Object] rest Param documentation.
+      # @param [Object] type_end Param documentation.
       # @return [Object]
       def name_after_bracket(rest, type_end)
         rest[(type_end + 1)..].to_s.strip.split(/\s+/).first
@@ -477,8 +479,8 @@ module Docscribe
 
       # Find the index of the matching close bracket for an outermost `[`.
       #
-      # @note module_function: when included, also defines #matching_close_bracket (instance visibility: private)
-      # @param [Object] str
+      # @note module_function: defines #matching_close_bracket (visibility: private)
+      # @param [Object] str Param documentation.
       # @return [nil]
       def matching_close_bracket(str)
         depth = 0
@@ -495,19 +497,19 @@ module Docscribe
 
       # Extract the owning options-hash param name from an `@option` line.
       #
-      # @note module_function: when included, also defines #extract_option_owner (instance visibility: private)
-      # @param [String] line the line to check
-      # @return [String?]
+      # @note module_function: defines #extract_option_owner (visibility: private)
+      # @param [Object] line the line to check
+      # @return [Object]
       def extract_option_owner(line)
         line[/^\s*#\s*@option\b\s+(\S+)/, 1]
       end
 
       # Whether a line is a sortable top-level tag line.
       #
-      # @note module_function: when included, also defines #sortable_top_level_tag_line? (instance visibility: private)
-      # @param [String] line the line to check
-      # @param [Array<String>] sortable_tags tag names treated as sortable
-      # @return [Boolean]
+      # @note module_function: defines #sortable_top_level_tag_line? (visibility: private)
+      # @param [Object] line the line to check
+      # @param [Object] sortable_tags tag names treated as sortable
+      # @return [Object]
       def sortable_top_level_tag_line?(line, sortable_tags)
         return false unless top_level_tag_line?(line)
 
@@ -516,17 +518,17 @@ module Docscribe
 
       # Extract a top-level tag name without the leading `@`.
       #
-      # @note module_function: when included, also defines #extract_tag (instance visibility: private)
-      # @param [String] line the line to check
-      # @return [String?]
+      # @note module_function: defines #extract_tag (visibility: private)
+      # @param [Object] line the line to check
+      # @return [Object]
       def extract_tag(line)
         line[/^\s*#\s*@(\w+)/, 1]
       end
 
       # Whether a line begins a top-level YARD-style tag.
       #
-      # @note module_function: when included, also defines #top_level_tag_line? (instance visibility: private)
-      # @param [String] line the line to check
+      # @note module_function: defines #top_level_tag_line? (visibility: private)
+      # @param [Object] line the line to check
       # @return [Boolean]
       def top_level_tag_line?(line)
         !!(line =~ /^\s*#\s*@\w+/)
@@ -534,8 +536,8 @@ module Docscribe
 
       # Whether a line is any comment line.
       #
-      # @note module_function: when included, also defines #comment_line? (instance visibility: private)
-      # @param [String] line the line to check
+      # @note module_function: defines #comment_line? (visibility: private)
+      # @param [Object] line the line to check
       # @return [Boolean]
       def comment_line?(line)
         !!(line =~ /^\s*#/)
@@ -543,8 +545,8 @@ module Docscribe
 
       # Whether a line is a blank comment separator such as `#`.
       #
-      # @note module_function: when included, also defines #blank_comment_line? (instance visibility: private)
-      # @param [String] line the line to check
+      # @note module_function: defines #blank_comment_line? (visibility: private)
+      # @param [Object] line the line to check
       # @return [Boolean]
       def blank_comment_line?(line)
         !!(line =~ /^\s*#\s*$/)
@@ -552,8 +554,8 @@ module Docscribe
 
       # Whether a comment line should be treated as a continuation of the previous tag entry.
       #
-      # @note module_function: when included, also defines #continuation_comment_line? (instance visibility: private)
-      # @param [String] line the line to check
+      # @note module_function: defines #continuation_comment_line? (visibility: private)
+      # @param [Object] line the line to check
       # @return [Boolean]
       def continuation_comment_line?(line)
         !!(line =~ /^\s*#[ \t]{2,}\S/)
