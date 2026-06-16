@@ -4,6 +4,7 @@ require_relative 'types'
 
 module Docscribe
   module Types
+    # YARD type parser
     module Yard
       class << self
         # @param [Object] string
@@ -15,6 +16,7 @@ module Docscribe
         end
       end
 
+      # Parses YARD type strings into an AST
       class Parser
         # @param [Object] string
         # @return [void]
@@ -83,18 +85,23 @@ module Docscribe
           when '{' then parse_hash_map
           when '#' then parse_duck_type
           else
-            name = scan_name
-            return Literal.new(value: name) if literal?(name)
+            parse_named_type
+          end
+        end
 
-            named = Named.new(name: name)
-            skip_space
-            if @i < @s.length && @s[@i] == '<'
-              parse_generic(named)
-            elsif @i < @s.length && @s[@i] == '{'
-              parse_named_hash_map
-            else
-              named
-            end
+        # @private
+        # @return [Object]
+        def parse_named_type
+          name = scan_name
+          return Literal.new(value: name) if literal?(name)
+
+          skip_space
+          if @i < @s.length && @s[@i] == '<'
+            parse_generic(Named.new(name: name))
+          elsif @i < @s.length && @s[@i] == '{'
+            parse_named_hash_map
+          else
+            Named.new(name: name)
           end
         end
 
@@ -129,16 +136,11 @@ module Docscribe
         def parse_tuple
           @i += 1
           types = [] #: Array[untyped]
-          skip_space
           while @i < @s.length && @s[@i] != ')'
             types << parse_tuple_element
-            skip_space
-            break unless @i < @s.length && @s[@i] == ','
-
-            @i += 1
-            skip_space
+            @i += 1 and skip_space if @s[@i] == ','
           end
-          @i += 1 if @i < @s.length && @s[@i] == ')'
+          @i += 1 if @s[@i] == ')'
           Tuple.new(types: types)
         end
 
@@ -159,34 +161,17 @@ module Docscribe
         # @return [Object]
         def parse_hash_map
           @i += 1
-          skip_space
           key = parse_union
-          skip_space
-          if @i + 1 < @s.length && @s[@i..(@i + 1)] == '=>'
-            @i += 2
-            skip_space
-          end
+          @i += 2 if @s[@i..(@i + 1)] == '=>'
           value = parse_union
-          skip_space
-          @i += 1 if @i < @s.length && @s[@i] == '}'
+          @i += 1 if @s[@i] == '}'
           HashMap.new(key_type: key, value_type: value)
         end
 
         # @private
         # @return [Object]
         def parse_named_hash_map
-          @i += 1
-          skip_space
-          key = parse_union
-          skip_space
-          if @i + 1 < @s.length && @s[@i..(@i + 1)] == '=>'
-            @i += 2
-            skip_space
-          end
-          value = parse_union
-          skip_space
-          @i += 1 if @i < @s.length && @s[@i] == '}'
-          HashMap.new(key_type: key, value_type: value)
+          parse_hash_map
         end
 
         # @private

@@ -9,4 +9,25 @@ module StreamHelper
   ensure
     $stdout = orig
   end
+
+  def capture_stderr
+    orig = $stderr
+    $stderr = StringIO.new
+    yield
+    $stderr.string
+  ensure
+    $stderr = orig
+  end
+
+  def capture_stdout_stderr
+    orig_out = $stdout
+    orig_err = $stderr
+    $stdout = StringIO.new
+    $stderr = StringIO.new
+    result = yield
+    [result, $stdout.string, $stderr.string]
+  ensure
+    $stdout = orig_out
+    $stderr = orig_err
+  end
 end

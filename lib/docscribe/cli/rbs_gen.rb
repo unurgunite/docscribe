@@ -9,6 +9,7 @@ require 'docscribe/types/yard/formatter'
 
 module Docscribe
   module CLI
+    # CLI subcommand to generate RBS files from YARD documentation
     module RbsGen
       BANNER = <<~TEXT
         Usage: docscribe rbs [options] [files...]
@@ -20,6 +21,7 @@ module Docscribe
       YardTags = Data.define(:params, :return_type, :options)
       ParamTag = Data.define(:name, :type)
       MethodDef = Data.define(:name, :scope, :container, :file, :line, :yard_tags)
+      WalkContext = Data.define(:containers, :method_defs, :path, :comment_map, :src_lines, :inside_sclass)
 
       class << self
         # @param [Object] argv
@@ -39,18 +41,12 @@ module Docscribe
         # @return [Hash<Symbol, Object>]
         def parse_options(argv)
           options = { output_dir: 'sig', dry_run: false, force: false }
-
-          OptionParser.new do |opts|
-            opts.banner = BANNER
+          OptionParser.new(BANNER) do |opts|
             opts.on('-o', '--output DIR', 'Output directory (default: sig)') { |d| options[:output_dir] = d }
             opts.on('-n', '--dry-run', 'Print generated RBS to stdout') { options[:dry_run] = true }
             opts.on('-f', '--force', 'Overwrite existing files') { options[:force] = true }
-            opts.on('-h', '--help', 'Show this help') do
-              puts opts
-              exit 0
-            end
+            opts.on('-h', '--help', 'Show this help') { puts opts or exit 0 }
           end.parse!(argv)
-
           options
         end
 
@@ -102,37 +98,62 @@ module Docscribe
         # @param [Object] options
         # @raise [Parser::SyntaxError]
         # @raise [StandardError]
-        # @return [Boolean] if StandardError
-        # @return [Boolean] if Parser::SyntaxError
-        # @return [Boolean] if StandardError
-        def generate_for_file(path, options) # rubocop:disable Metrics/MethodLength
-          src = File.read(path)
-          src_lines = src.lines
-          res = Docscribe::Parsing.parse_with_comments(src, file: path)
-          return false unless res
-
-          ast = res[0] #: Parser::AST::Node # steep:ignore
-          comments = res[1] #: Array[Parser::Source::Comment]
-          comment_map = build_comment_map(comments)
-          method_defs = [] #: Array[MethodDef]
-          walk_for_methods(ast, [], method_defs, path, comment_map, src_lines)
-          return true if method_defs.empty?
-
-          rbs_content = build_rbs_content(method_defs)
-          return false unless rbs_content
-
-          if options[:dry_run]
-            puts rbs_content
-          else
-            write_file(rbs_content, path, options)
-          end
-          true
+        # @return [Boolean]
+        def generate_for_file(path, options)
+          process_source?(File.read(path), path, options)
         rescue Parser::SyntaxError => e # steep:ignore
           warn "Syntax error in #{path}: #{e.message}"
           false
         rescue StandardError => e
           warn "Error processing #{path}: #{e.class}: #{e.message}"
           false
+        end
+
+        # @private
+        # @param [Object] src
+        # @param [Object] path
+        # @param [Object] options
+        # @return [Boolean]
+        def process_source?(src, path, options)
+          src_lines = src.lines
+          res = Docscribe::Parsing.parse_with_comments(src, file: path)
+          return false unless res
+
+          method_defs = walk_source(res[0], res[1], path, src_lines)
+          return true if method_defs.empty?
+
+          content = build_rbs_content(method_defs)
+          return false unless content
+
+          output_rbs(content, path, options)
+          true
+        end
+
+        # @private
+        # @param [Object] ast
+        # @param [Object] comments
+        # @param [Object] path
+        # @param [Object] src_lines
+        # @return [Array<MethodDef>]
+        def walk_source(ast, comments, path, src_lines)
+          comment_map = build_comment_map(comments)
+          ctx = WalkContext.new(containers: [], method_defs: [], path: path,
+                                comment_map: comment_map, src_lines: src_lines, inside_sclass: false)
+          walk_for_methods(ast, ctx)
+          ctx.method_defs
+        end
+
+        # @private
+        # @param [Object] content
+        # @param [Object] path
+        # @param [Object] options
+        # @return [void]
+        def output_rbs(content, path, options)
+          if options[:dry_run]
+            puts content
+          else
+            write_file(content, path, options)
+          end
         end
 
         # @private
@@ -150,88 +171,60 @@ module Docscribe
 
         # @private
         # @param [Object] node
-        # @param [Object] containers
-        # @param [Object] methods
-        # @param [Object] path
-        # @param [Object] comment_map
-        # @param [Object] src_lines
-        # @param [Boolean] inside_sclass
+        # @param [WalkContext] ctx
         # @return [void]
-        def walk_for_methods(node, containers, methods, path, comment_map, src_lines, inside_sclass: false)
+        def walk_for_methods(node, ctx)
           return unless node.is_a?(Parser::AST::Node)
 
           case node.type
-          when :class, :module then walk_class_module(node, containers, methods, path, comment_map, src_lines)
-          when :sclass then walk_sclass(node, containers, methods, path, comment_map, src_lines)
-          when :def then collect_def(node, containers, methods, path, comment_map, src_lines,
-                                     inside_sclass: inside_sclass)
-          when :defs then collect_defs(node, containers, methods, path, comment_map, src_lines)
-          else walk_children(node, containers, methods, path, comment_map, src_lines, inside_sclass: inside_sclass)
+          when :class, :module then walk_class_module(node, ctx)
+          when :sclass then walk_sclass(node, ctx)
+          when :def then collect_def(node, ctx)
+          when :defs then collect_defs(node, ctx)
+          else walk_children(node, ctx)
           end
         end
 
         # @private
         # @param [Object] node
-        # @param [Object] containers
-        # @param [Object] methods
-        # @param [Object] path
-        # @param [Object] comment_map
-        # @param [Object] src_lines
+        # @param [WalkContext] ctx
         # @return [void]
-        def walk_class_module(node, containers, methods, path, comment_map, src_lines)
-          containers.push(const_name(node.children[0]))
-          node.children.drop(1).each { |c| walk_for_methods(c, containers, methods, path, comment_map, src_lines) }
-          containers.pop
+        def walk_class_module(node, ctx)
+          ctx.containers.push(const_name(node.children[0]))
+          node.children.drop(1).each { |c| walk_for_methods(c, ctx) }
+          ctx.containers.pop
         end
 
         # @private
         # @param [Object] node
-        # @param [Object] containers
-        # @param [Object] methods
-        # @param [Object] path
-        # @param [Object] comment_map
-        # @param [Object] src_lines
+        # @param [WalkContext] ctx
         # @return [void]
-        def walk_sclass(node, containers, methods, path, comment_map, src_lines)
-          node.children.drop(1).each do |c|
-            walk_for_methods(c, containers, methods, path, comment_map, src_lines, inside_sclass: true)
-          end
+        def walk_sclass(node, ctx)
+          sc_ctx = ctx.with(inside_sclass: true)
+          node.children.drop(1).each { |c| walk_for_methods(c, sc_ctx) }
         end
 
         # @private
         # @param [Object] node
-        # @param [Object] containers
-        # @param [Object] methods
-        # @param [Object] path
-        # @param [Object] comment_map
-        # @param [Object] src_lines
-        # @param [Boolean] inside_sclass
+        # @param [WalkContext] ctx
         # @return [void]
-        def walk_children(node, containers, methods, path, comment_map, src_lines, inside_sclass: false)
-          node.children.each do |c|
-            walk_for_methods(c, containers, methods, path, comment_map, src_lines, inside_sclass: inside_sclass)
-          end
+        def walk_children(node, ctx)
+          node.children.each { |c| walk_for_methods(c, ctx) }
         end
 
         # @private
         # @param [Object] node
-        # @param [Object] containers
-        # @param [Object] methods
-        # @param [Object] path
-        # @param [Object] comment_map
-        # @param [Object] src_lines
-        # @param [Boolean] inside_sclass
+        # @param [WalkContext] ctx
         # @return [void]
-        def collect_def(node, containers, methods, path, comment_map, src_lines, inside_sclass: false)
+        def collect_def(node, ctx)
           line = node.loc&.line || 1
-          yard_block = find_yard_block(line, comment_map, src_lines)
-          yard_tags = yard_block.any? ? parse_yard_tags(yard_block) : nil
+          yard_tags = parse_yard_tags_for_line(line, ctx)
 
-          methods << MethodDef.new(
+          ctx.method_defs << MethodDef.new(
             name: node.children[0],
-            scope: inside_sclass ? :class : :instance,
-            container: container_name(containers),
-            file: path,
+            scope: ctx.inside_sclass ? :class : :instance,
+            container: container_name(ctx.containers),
+            file: ctx.path,
             line: line,
             yard_tags: yard_tags
           )
@@ -239,25 +232,29 @@ module Docscribe
 
         # @private
         # @param [Object] node
-        # @param [Object] containers
-        # @param [Object] methods
-        # @param [Object] path
-        # @param [Object] comment_map
-        # @param [Object] src_lines
+        # @param [WalkContext] ctx
         # @return [void]
-        def collect_defs(node, containers, methods, path, comment_map, src_lines)
+        def collect_defs(node, ctx)
           line = node.loc&.line || 1
-          yard_block = find_yard_block(line, comment_map, src_lines)
-          yard_tags = yard_block.any? ? parse_yard_tags(yard_block) : nil
+          yard_tags = parse_yard_tags_for_line(line, ctx)
 
-          methods << MethodDef.new(
+          ctx.method_defs << MethodDef.new(
             name: node.children[1],
             scope: :class,
-            container: container_name(containers),
-            file: path,
+            container: container_name(ctx.containers),
+            file: ctx.path,
             line: line,
             yard_tags: yard_tags
           )
+        end
+
+        # @private
+        # @param [Object] line
+        # @param [WalkContext] ctx
+        # @return [YardTags?]
+        def parse_yard_tags_for_line(line, ctx)
+          yard_block = find_yard_block(line, ctx.comment_map, ctx.src_lines)
+          yard_block.any? ? parse_yard_tags(yard_block) : nil
         end
 
         # @private
@@ -269,17 +266,12 @@ module Docscribe
           block = [] #: Array[String]
           idx = line - 2
           while idx >= 0
-            src_line = src_lines[idx]&.strip
-            break if src_line.nil? || src_line.empty?
+            break if src_lines[idx].to_s.strip.empty?
 
-            if comment_map.key?(idx + 1)
-              block.unshift(comment_map[idx + 1])
-              idx -= 1
-            elsif block.empty?
-              idx -= 1
-            else
-              break
-            end
+            block.unshift(comment_map[idx + 1]) if comment_map.key?(idx + 1)
+            break unless comment_map.key?(idx + 1) || block.empty?
+
+            idx -= 1
           end
           block
         end
@@ -288,25 +280,50 @@ module Docscribe
         # @param [Object] comment_lines
         # @return [Docscribe::CLI::RbsGen::YardTags]
         def parse_yard_tags(comment_lines)
-          params = [] #: Array[ParamTag]
-          options = [] #: Array[ParamTag]
-          return_type = nil
+          state = { params: [], options: [], return_type: nil }
+          comment_lines.each { |line| parse_yard_line(line, state) }
+          YardTags.new(**state)
+        end
 
-          comment_lines.each do |line|
-            text = line.sub(/\A#\s*/, '')
-            case text
-            when /\A@param\s+\[([^\]]+)\]\s+(\S+)\s*/
-              params << ParamTag.new(name: ::Regexp.last_match(2).to_s, type: ::Regexp.last_match(1).to_s)
-            when /\A@param\s+(\S+)\s+\[([^\]]+)\]\s*/
-              params << ParamTag.new(name: ::Regexp.last_match(1).to_s, type: ::Regexp.last_match(2).to_s)
-            when /\A@option\s+\S+\s+\[([^\]]+)\]\s+:?(\S+)\s*/
-              options << ParamTag.new(name: ::Regexp.last_match(2).to_s, type: ::Regexp.last_match(1).to_s)
-            when /\A@return\s+\[([^\]]+)\]\s*/
-              return_type = ::Regexp.last_match(1)
-            end
+        # @private
+        # @param [Object] line
+        # @param [Hash] state
+        # @return [void]
+        def parse_yard_line(line, state)
+          text = line.sub(/\A#\s*/, '')
+          parse_param_tag(text, state) || parse_option_tag(text, state) || parse_return_tag(text, state)
+        end
+
+        # @private
+        # @param [Object] text
+        # @param [Hash] state
+        # @return [Object, nil]
+        def parse_param_tag(text, state)
+          if (m = text.match(/\A@param\s+\[([^\]]+)\]\s+(\S+)\s*/))
+            state[:params] << ParamTag.new(name: m[2], type: m[1])
+          elsif (m = text.match(/\A@param\s+(\S+)\s+\[([^\]]+)\]\s*/))
+            state[:params] << ParamTag.new(name: m[1], type: m[2])
           end
+        end
 
-          YardTags.new(params: params, return_type: return_type, options: options)
+        # @private
+        # @param [Object] text
+        # @param [Hash] state
+        # @return [Object, nil]
+        def parse_option_tag(text, state)
+          return unless (m = text.match(/\A@option\s+\S+\s+\[([^\]]+)\]\s+:?(\S+)\s*/))
+
+          state[:options] << ParamTag.new(name: m[2], type: m[1])
+        end
+
+        # @private
+        # @param [Object] text
+        # @param [Hash] state
+        # @return [Object, nil]
+        def parse_return_tag(text, state)
+          return unless (m = text.match(/\A@return\s+\[([^\]]+)\]\s*/))
+
+          state[:return_type] = m[1]
         end
 
         # @private
@@ -333,18 +350,25 @@ module Docscribe
           grouped = method_defs.group_by { |m| m.container || '' }
 
           lines = [] #: Array[String]
-          grouped.each do |container, methods|
-            lines << '' unless lines.empty?
-            if container.empty?
-              methods.each { |m| lines << format_method_sig(m) }
-            else
-              lines << "class #{container}"
-              methods.each { |m| lines << "  #{format_method_sig(m)}" }
-              lines << 'end'
-            end
-          end
+          grouped.each { |container, methods| append_group(lines, container, methods) }
 
           "#{lines.join("\n")}\n"
+        end
+
+        # @private
+        # @param [Array<String>] lines
+        # @param [Object] container
+        # @param [Array<MethodDef>] methods
+        # @return [void]
+        def append_group(lines, container, methods)
+          lines << '' unless lines.empty?
+          if container.empty?
+            methods.each { |m| lines << format_method_sig(m) }
+          else
+            lines << "class #{container}"
+            methods.each { |m| lines << "  #{format_method_sig(m)}" }
+            lines << 'end'
+          end
         end
 
         # @private
@@ -353,17 +377,23 @@ module Docscribe
         def format_method_sig(method)
           prefix = method.scope == :class ? 'self.' : ''
           ret = return_type_rbs(method)
-          params = method.yard_tags&.params || []
-          options = method.yard_tags&.options || []
-
-          param_strs = params.map { |p| "#{type_to_rbs(p.type)} #{p.name}" }
-          options.each { |o| param_strs << "?#{type_to_rbs(o.type)} #{o.name}" }
+          param_strs = build_param_strs(method)
 
           if param_strs.any?
             "def #{prefix}#{method.name}: (#{param_strs.join(', ')}) -> #{ret}"
           else
             "def #{prefix}#{method.name}: () -> #{ret}"
           end
+        end
+
+        # @private
+        # @param [Object] method
+        # @return [Array<String>]
+        def build_param_strs(method)
+          tags = method.yard_tags
+          strs = (tags&.params || []).map { |p| "#{type_to_rbs(p.type)} #{p.name}" }
+          (tags&.options || []).each { |o| strs << "?#{type_to_rbs(o.type)} #{o.name}" }
+          strs
         end
 
         # @private
@@ -391,11 +421,7 @@ module Docscribe
         # @param [Object] options
         # @return [void]
         def write_file(content, source_path, options)
-          abs = File.expand_path(source_path)
-          pwd = File.expand_path(Dir.pwd)
-          rel = abs.start_with?(pwd) ? abs.sub("#{pwd}/", '') : File.basename(abs)
-          rbs_path = rel.sub(/\.rb\z/, '.rbs')
-          out_path = File.join(options[:output_dir], rbs_path)
+          out_path = rbs_output_path(source_path, options)
           dir = File.dirname(out_path)
 
           if File.exist?(out_path) && !options[:force]
@@ -406,6 +432,17 @@ module Docscribe
           FileUtils.mkdir_p(dir)
           File.write(out_path, content)
           puts "Generated #{out_path}"
+        end
+
+        # @private
+        # @param [Object] source_path
+        # @param [Object] options
+        # @return [String]
+        def rbs_output_path(source_path, options)
+          abs = File.expand_path(source_path)
+          pwd = File.expand_path(Dir.pwd)
+          rel = abs.start_with?(pwd) ? abs.sub("#{pwd}/", '') : File.basename(abs)
+          rel.sub(/\.rb\z/, '.rbs').then { |r| File.join(options[:output_dir], r) }
         end
       end
     end

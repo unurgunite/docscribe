@@ -5,11 +5,12 @@ require_relative 'types'
 module Docscribe
   module Types
     module Yard
+      # Converts YARD type AST to RBS type strings
       module Formatter
         class << self
           # @param [Object] node
           # @return [String]
-          def to_rbs(node)
+          def to_rbs(node) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength
             return 'untyped' if node.nil?
 
             case node

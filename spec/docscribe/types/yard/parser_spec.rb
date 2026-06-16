@@ -26,15 +26,19 @@ RSpec.describe Docscribe::Types::Yard do
     end
 
     it 'parses a simple named type' do
-      node = parse('String')
-      expect(node).to be_a(Docscribe::Types::Yard::Named)
-      expect(node.name).to eq('String')
+      aggregate_failures do
+        node = parse('String')
+        expect(node).to be_a(Docscribe::Types::Yard::Named)
+        expect(node.name).to eq('String')
+      end
     end
 
     it 'parses namespaced type' do
-      node = parse('Foo::Bar')
-      expect(node).to be_a(Docscribe::Types::Yard::Named)
-      expect(node.name).to eq('Foo::Bar')
+      aggregate_failures do
+        node = parse('Foo::Bar')
+        expect(node).to be_a(Docscribe::Types::Yard::Named)
+        expect(node.name).to eq('Foo::Bar')
+      end
     end
 
     it 'parses Boolean as named' do
@@ -43,101 +47,115 @@ RSpec.describe Docscribe::Types::Yard do
     end
 
     it 'parses void as literal' do
-      node = parse('void')
-      expect(node).to be_a(Docscribe::Types::Yard::Literal)
-      expect(node.value).to eq('void')
+      aggregate_failures do
+        node = parse('void')
+        expect(node).to be_a(Docscribe::Types::Yard::Literal)
+        expect(node.value).to eq('void')
+      end
     end
 
     it 'parses nil as literal' do
-      node = parse('nil')
-      expect(node).to be_a(Docscribe::Types::Yard::Literal)
-      expect(node.value).to eq('nil')
+      aggregate_failures do
+        node = parse('nil')
+        expect(node).to be_a(Docscribe::Types::Yard::Literal)
+        expect(node.value).to eq('nil')
+      end
     end
 
     it 'parses self as literal' do
-      node = parse('self')
-      expect(node).to be_a(Docscribe::Types::Yard::Literal)
-      expect(node.value).to eq('self')
+      aggregate_failures do
+        node = parse('self')
+        expect(node).to be_a(Docscribe::Types::Yard::Literal)
+        expect(node.value).to eq('self')
+      end
     end
 
     it 'parses generic Array<String>' do
-      node = parse('Array<String>')
-      expect(node).to be_a(Docscribe::Types::Yard::Generic)
-      expect(node.base).to eq('Array')
-      expect(node.args.size).to eq(1)
-      expect(node.args.first).to be_a(Docscribe::Types::Yard::Named)
-      expect(node.args.first.name).to eq('String')
+      aggregate_failures do
+        node = parse('Array<String>')
+        expect(node).to be_a(Docscribe::Types::Yard::Generic).and have_attributes(base: 'Array')
+        expect(node.args.first).to be_a(Docscribe::Types::Yard::Named).and have_attributes(name: 'String')
+      end
     end
 
     it 'parses generic with union arg' do
-      node = parse('Hash<String, Integer>')
-      expect(node).to be_a(Docscribe::Types::Yard::Generic)
-      expect(node.base).to eq('Hash')
-      expect(node.args.size).to eq(1)
-      expect(node.args.first).to be_a(Docscribe::Types::Yard::Union)
+      aggregate_failures do
+        node = parse('Hash<String, Integer>')
+        expect(node).to be_a(Docscribe::Types::Yard::Generic).and have_attributes(base: 'Hash')
+        expect(node.args.first).to be_a(Docscribe::Types::Yard::Union)
+      end
     end
 
     it 'parses generic with nested generics' do
-      node = parse('Array<Array<String>>')
-      expect(node).to be_a(Docscribe::Types::Yard::Generic)
-      expect(node.base).to eq('Array')
-      inner = node.args.first
-      expect(inner).to be_a(Docscribe::Types::Yard::Generic)
-      expect(inner.base).to eq('Array')
-      expect(inner.args.first.name).to eq('String')
+      aggregate_failures do
+        node = parse('Array<Array<String>>')
+        expect(node).to be_a(Docscribe::Types::Yard::Generic).and have_attributes(base: 'Array')
+        expect(node.args.first.args.first.name).to eq('String')
+      end
     end
 
     it 'parses hash map syntax' do
-      node = parse('Hash{String => Integer}')
-      expect(node).to be_a(Docscribe::Types::Yard::HashMap)
-      expect(node.key_type.name).to eq('String')
-      expect(node.value_type.name).to eq('Integer')
+      aggregate_failures do
+        node = parse('Hash{String => Integer}')
+        expect(node).to be_a(Docscribe::Types::Yard::HashMap)
+        expect([node.key_type.name, node.value_type.name]).to eq(%w[String Integer])
+      end
     end
 
     it 'parses bare hash map' do
-      node = parse('{String => Integer}')
-      expect(node).to be_a(Docscribe::Types::Yard::HashMap)
-      expect(node.key_type.name).to eq('String')
-      expect(node.value_type.name).to eq('Integer')
+      aggregate_failures do
+        node = parse('{String => Integer}')
+        expect(node).to be_a(Docscribe::Types::Yard::HashMap)
+        expect([node.key_type.name, node.value_type.name]).to eq(%w[String Integer])
+      end
     end
 
     it 'parses union with comma' do
-      node = parse('String, Integer')
-      expect(node).to be_a(Docscribe::Types::Yard::Union)
-      expect(node.types.size).to eq(2)
+      aggregate_failures do
+        node = parse('String, Integer')
+        expect(node).to be_a(Docscribe::Types::Yard::Union)
+        expect(node.types.size).to eq(2)
+      end
     end
 
     it 'parses union with three types' do
-      node = parse('String, Integer, nil')
-      expect(node).to be_a(Docscribe::Types::Yard::Union)
-      expect(node.types.size).to eq(3)
+      aggregate_failures do
+        node = parse('String, Integer, nil')
+        expect(node).to be_a(Docscribe::Types::Yard::Union)
+        expect(node.types.size).to eq(3)
+      end
     end
 
     it 'parses optional' do
-      node = parse('String?')
-      expect(node).to be_a(Docscribe::Types::Yard::Optional)
-      expect(node.type).to be_a(Docscribe::Types::Yard::Named)
-      expect(node.type.name).to eq('String')
+      aggregate_failures do
+        node = parse('String?')
+        expect(node).to be_a(Docscribe::Types::Yard::Optional)
+        expect(node.type).to be_a(Docscribe::Types::Yard::Named).and have_attributes(name: 'String')
+      end
     end
 
     it 'parses tuple' do
-      node = parse('(String, Integer)')
-      expect(node).to be_a(Docscribe::Types::Yard::Tuple)
-      expect(node.types.size).to eq(2)
-      expect(node.types[0].name).to eq('String')
-      expect(node.types[1].name).to eq('Integer')
+      aggregate_failures do
+        node = parse('(String, Integer)')
+        expect(node).to be_a(Docscribe::Types::Yard::Tuple)
+        expect(node.types).to match([have_attributes(name: 'String'), have_attributes(name: 'Integer')])
+      end
     end
 
     it 'parses intersection' do
-      node = parse('String & Integer')
-      expect(node).to be_a(Docscribe::Types::Yard::Intersection)
-      expect(node.types.size).to eq(2)
+      aggregate_failures do
+        node = parse('String & Integer')
+        expect(node).to be_a(Docscribe::Types::Yard::Intersection)
+        expect(node.types.size).to eq(2)
+      end
     end
 
     it 'parses duck type' do
-      node = parse('#foo')
-      expect(node).to be_a(Docscribe::Types::Yard::Duck)
-      expect(node.method_names).to eq(%w[foo])
+      aggregate_failures do
+        node = parse('#foo')
+        expect(node).to be_a(Docscribe::Types::Yard::Duck)
+        expect(node.method_names).to eq(%w[foo])
+      end
     end
   end
 

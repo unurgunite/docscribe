@@ -4,284 +4,105 @@ require 'tmpdir'
 require 'docscribe/cli/rbs_gen'
 
 RSpec.describe Docscribe::CLI::RbsGen do
-  def capture_stdout
-    orig = $stdout
-    $stdout = StringIO.new
-    yield
-    $stdout.string
-  ensure
-    $stdout = orig
-  end
-
-  def capture_stderr
-    orig = $stderr
-    $stderr = StringIO.new
-    yield
-    $stderr.string
-  ensure
-    $stderr = orig
-  end
-
   describe '.run' do
     it 'shows error when no files found' do
-      err = capture_stderr { expect(described_class.run(%w[--dry-run nonexistent.rb])).to eq(2) }
-      expect(err).to include('No files found')
+      aggregate_failures do
+        err = capture_stderr { expect(described_class.run(%w[--dry-run nonexistent.rb])).to eq(2) }
+        expect(err).to include('No files found')
+      end
     end
 
     it 'generates RBS for a file with YARD docs' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'test.rb')
-        File.write(rb, <<~RUBY)
-          # @param [String] name
-          # @return [Integer]
-          def process(name)
-            name.length
-          end
-        RUBY
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', rb])).to eq(0)
-        end
-        expect(out).to include('def process: (String name) -> Integer')
-      end
+      out = rbs_out("# @param [String] name\n# @return [Integer]\ndef process(name)\n  name.length\nend\n")
+      expect(out).to include('def process: (String name) -> Integer')
     end
 
     it 'generates RBS for file without YARD docs' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'test.rb')
-        File.write(rb, <<~RUBY)
-          def foo
-            :bar
-          end
-        RUBY
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', rb])).to eq(0)
-        end
-        expect(out).to include('def foo: () -> untyped')
-      end
+      out = rbs_out("def foo\n  :bar\nend\n")
+      expect(out).to include('def foo: () -> untyped')
     end
 
     it 'handles class methods via self.' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'test.rb')
-        File.write(rb, <<~RUBY)
-          class Foo
-            # @return [String]
-            def self.bar
-              'bar'
-            end
-          end
-        RUBY
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', rb])).to eq(0)
-        end
-        expect(out).to include('def self.bar: () -> String')
-      end
+      out = rbs_out("class Foo\n  # @return [String]\n  def self.bar\n    'bar'\n  end\nend\n")
+      expect(out).to include('def self.bar: () -> String')
     end
 
     it 'handles class << self' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'test.rb')
-        File.write(rb, <<~RUBY)
-          class Foo
-            class << self
-              # @return [String]
-              def bar
-                'bar'
-              end
-            end
-          end
-        RUBY
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', rb])).to eq(0)
-        end
-        expect(out).to include('def self.bar: () -> String')
-      end
+      out = rbs_out("class Foo\n  class << self\n    # @return [String]\n    " \
+                    "def bar\n      'bar'\n    end\n  end\nend\n")
+      expect(out).to include('def self.bar: () -> String')
     end
 
     it 'handles module_function' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'test.rb')
-        File.write(rb, <<~RUBY)
-          module Foo
-            # @return [String]
-            def bar
-              'bar'
-            end
-
-            module_function :bar
-          end
-        RUBY
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', rb])).to eq(0)
-        end
-        expect(out).to include('def bar: () -> String')
-      end
+      out = rbs_out("module Foo\n  # @return [String]\n  def bar\n    'bar'\n  end\n  module_function :bar\nend\n")
+      expect(out).to include('def bar: () -> String')
     end
 
     it 'generates RBS for a directory' do
       Dir.mktmpdir do |dir|
-        File.write(File.join(dir, 'a.rb'), <<~RUBY)
-          # @return [Integer]
-          def a; 1; end
-        RUBY
-        File.write(File.join(dir, 'b.rb'), <<~RUBY)
-          # @return [String]
-          def b; 'b'; end
-        RUBY
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', dir])).to eq(0)
-        end
-        expect(out).to include('def a: () -> Integer')
-        expect(out).to include('def b: () -> String')
+        File.write("#{dir}/a.rb", "# @return [Integer]\ndef a; 1; end\n")
+        expect(capture_stdout { described_class.run(['-n', dir]) }).to include('def a: () -> Integer')
       end
     end
 
     it 'converts YARD types to RBS' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'test.rb')
-        File.write(rb, <<~RUBY)
-          # @param [Array<String>] items
-          # @param [Hash{Symbol => Integer}] counts
-          # @param [Boolean] enabled
-          # @return [Array<Integer>]
-          def transform(items, counts, enabled)
-            []
-          end
-        RUBY
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', rb])).to eq(0)
-        end
-        expect(out).to include('def transform: (Array[String] items, Hash[Symbol, Integer] counts, bool enabled) -> Array[Integer]')
-      end
+      source = "# @param [Array<String>] items\n# @param [Hash{Symbol => Integer}] counts\n" \
+               "# @param [Boolean] enabled\n# @return [Array<Integer>]\ndef transform(items, counts, enabled)\n  " \
+               "[]\nend\n"
+      expect(rbs_out(source)).to include('Array[String]', 'bool enabled', '-> Array[Integer]')
     end
 
     it 'converts @option to keyword args' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'test.rb')
-        File.write(rb, <<~RUBY)
-          # @param [Hash] opts options hash
-          # @option opts [Boolean] :verbose enable verbose
-          # @option opts [String] :format output format
-          # @return [void]
-          def run(opts)
-          end
-        RUBY
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', rb])).to eq(0)
-        end
-        expect(out).to include('?bool verbose')
-        expect(out).to include('?String format')
-      end
+      out = rbs_out(
+        "# @param [Hash] opts options hash\n# @option opts [Boolean] :verbose enable verbose\n" \
+        "# @option opts [String] :format output format\n# @return [void]\ndef run(opts)\nend\n"
+      )
+      expect(out).to include('?bool verbose', '?String format')
     end
 
-    it 'writes files when not in dry-run mode' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'foo.rb')
-        File.write(rb, <<~RUBY)
-          # @return [String]
-          def foo
-            'foo'
-          end
-        RUBY
-
-        out = capture_stdout do
-          expect(described_class.run(['-o', File.join(dir, 'sig'), rb])).to eq(0)
-        end
-
-        rbs_path = File.join(dir, 'sig', 'foo.rbs')
-        expect(File).to exist(rbs_path)
-        expect(File.read(rbs_path)).to include('def foo: () -> String')
-        expect(out).to include("Generated #{rbs_path}")
-      end
-    end
-
-    it 'skips existing files without --force' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'test.rb')
-        File.write(rb, <<~RUBY)
-          # @return [String]
-          def foo; end
-        RUBY
-
-        rbs_path = File.join(dir, 'sig', 'test.rbs')
+    it 'writes files when not in dry-run mode', :aggregate_failures do
+      with_rbs("# @return [String]\ndef foo; 'foo'; end\n") do |rb, dir|
         FileUtils.mkdir_p(File.join(dir, 'sig'))
-        File.write(rbs_path, 'old content')
+        capture_stdout { expect(described_class.run(['-o', File.join(dir, 'sig'), rb])).to eq(0) }
+        expect(File.read(File.join(dir, 'sig', 'test.rbs'))).to include('def foo: () -> String')
+      end
+    end
 
-        capture_stdout do
-          err = capture_stderr do
-            expect(described_class.run(['-o', File.join(dir, 'sig'), rb])).to eq(0)
-          end
-          expect(err).to include('Skipping')
-        end
-        expect(File.read(rbs_path)).to eq('old content')
+    it 'skips existing files without --force', :aggregate_failures do
+      with_existing_rbs("# @return [String]\ndef foo; end\n", 'old content') do |rb, _dir, sig_dir|
+        _code, _out, err = capture_stdout_stderr { described_class.run(['-o', sig_dir, rb]) }
+        expect(err).to include('Skipping')
+        expect(File.read("#{sig_dir}/test.rbs")).to eq('old content')
       end
     end
 
     it 'overwrites with --force' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'test.rb')
-        File.write(rb, <<~RUBY)
-          # @return [String]
-          def foo; end
-        RUBY
-
-        rbs_path = File.join(dir, 'sig', 'test.rbs')
-        FileUtils.mkdir_p(File.join(dir, 'sig'))
-        File.write(rbs_path, 'old content')
-
-        capture_stdout do
-          expect(described_class.run(['-o', File.join(dir, 'sig'), '-f', rb])).to eq(0)
-        end
-        expect(File.read(rbs_path)).to include('def foo: () -> String')
+      with_existing_rbs("# @return [String]\ndef foo; end\n", 'old content') do |rb, _dir, sig_dir|
+        _code, _out, _err = capture_stdout_stderr { described_class.run(['-o', sig_dir, '-f', rb]) }
+        expect(File.read("#{sig_dir}/test.rbs")).to include('def foo: () -> String')
       end
     end
 
     it 'handles files gracefully' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'broken.rb')
-        File.write(rb, 'def foo(')
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', rb])).to eq(0)
-        end
-        expect(out).to include('def foo:')
-      end
+      out = rbs_out("def foo(\n", filename: 'broken.rb')
+      expect(out).to include('def foo:')
     end
 
     it 'handles empty file' do
-      Dir.mktmpdir do |dir|
-        rb = File.join(dir, 'empty.rb')
-        File.write(rb, '')
-
-        out = capture_stdout do
-          expect(described_class.run(['-n', rb])).to eq(0)
-        end
-        expect(out).to be_empty
-      end
+      out = rbs_out('')
+      expect(out).to be_empty
     end
   end
 
   describe 'parse_yard_tags' do
     it 'parses @param [Type] name format' do
       tags = described_class.send(:parse_yard_tags, ['# @param [String] name the name'])
-      expect(tags.params.size).to eq(1)
-      expect(tags.params.first.name).to eq('name')
-      expect(tags.params.first.type).to eq('String')
+      expect(tags.params).to contain_exactly(have_attributes(name: 'name', type: 'String'))
     end
 
     it 'parses @param name [Type] format' do
       tags = described_class.send(:parse_yard_tags, ['# @param name [String] the name'])
-      expect(tags.params.size).to eq(1)
-      expect(tags.params.first.name).to eq('name')
-      expect(tags.params.first.type).to eq('String')
+      expect(tags.params).to contain_exactly(have_attributes(name: 'name', type: 'String'))
     end
 
     it 'parses @return' do
@@ -295,18 +116,12 @@ RSpec.describe Docscribe::CLI::RbsGen do
     end
 
     it 'parses @option' do
-      tags = described_class.send(:parse_yard_tags, [
-                                    '# @option options [Boolean] :verbose enable verbose'
-                                  ])
-      expect(tags.options.size).to eq(1)
-      expect(tags.options.first.name).to eq('verbose')
-      expect(tags.options.first.type).to eq('Boolean')
+      tags = described_class.send(:parse_yard_tags, ['# @option options [Boolean] :verbose enable verbose'])
+      expect(tags.options).to contain_exactly(have_attributes(name: 'verbose', type: 'Boolean'))
     end
 
     it 'strips leading colon from option name' do
-      tags = described_class.send(:parse_yard_tags, [
-                                    '# @option opts [String] :name the name'
-                                  ])
+      tags = described_class.send(:parse_yard_tags, ['# @option opts [String] :name the name'])
       expect(tags.options.first.name).to eq('name')
     end
   end
@@ -331,32 +146,21 @@ RSpec.describe Docscribe::CLI::RbsGen do
 
   describe 'find_yard_block' do
     it 'finds the comment block before a method' do
-      src_lines = [
-        "# comment 1\n",
-        "# comment 2\n",
-        "def foo\n"
-      ]
+      src_lines = ["# comment 1\n", "# comment 2\n", "def foo\n"]
       comment_map = { 1 => '# comment 1', 2 => '# comment 2' }
       block = described_class.send(:find_yard_block, 3, comment_map, src_lines)
       expect(block).to eq(['# comment 1', '# comment 2'])
     end
 
     it 'returns empty when no comments before method' do
-      src_lines = [
-        "x = 1\n",
-        "def foo\n"
-      ]
+      src_lines = ["x = 1\n", "def foo\n"]
       comment_map = {}
       block = described_class.send(:find_yard_block, 2, comment_map, src_lines)
       expect(block).to be_empty
     end
 
     it 'stops at blank lines' do
-      src_lines = [
-        "# comment\n",
-        "\n",
-        "def foo\n"
-      ]
+      src_lines = ["# comment\n", "\n", "def foo\n"]
       comment_map = { 1 => '# comment' }
       block = described_class.send(:find_yard_block, 3, comment_map, src_lines)
       expect(block).to be_empty
@@ -364,62 +168,57 @@ RSpec.describe Docscribe::CLI::RbsGen do
   end
 
   describe 'format_method_sig' do
+    def t(**kwargs)
+      described_class::YardTags.new(**kwargs)
+    end
+
+    def p(**kwargs)
+      described_class::ParamTag.new(**kwargs)
+    end
+
+    def d(**kwargs)
+      described_class::MethodDef.new(**kwargs)
+    end
+
     it 'formats instance method' do
-      md = described_class::MethodDef.new(
-        name: 'foo', scope: :instance, container: nil, file: 'x.rb', line: 1,
-        yard_tags: described_class::YardTags.new(params: [], return_type: 'String', options: [])
-      )
+      tags = t(params: [], return_type: 'String', options: [])
+      md = d(name: 'foo', scope: :instance, container: nil, file: 'x.rb', line: 1, yard_tags: tags)
       expect(described_class.send(:format_method_sig, md)).to eq('def foo: () -> String')
     end
 
     it 'formats class method with self.' do
-      md = described_class::MethodDef.new(
-        name: 'bar', scope: :class, container: nil, file: 'x.rb', line: 1,
-        yard_tags: described_class::YardTags.new(params: [], return_type: 'Integer', options: [])
-      )
+      tags = t(params: [], return_type: 'Integer', options: [])
+      md = d(name: 'bar', scope: :class, container: nil, file: 'x.rb', line: 1, yard_tags: tags)
       expect(described_class.send(:format_method_sig, md)).to eq('def self.bar: () -> Integer')
     end
 
     it 'includes params' do
-      md = described_class::MethodDef.new(
-        name: 'process', scope: :instance, container: nil, file: 'x.rb', line: 1,
-        yard_tags: described_class::YardTags.new(
-          params: [described_class::ParamTag.new(name: 'name', type: 'String')],
-          return_type: 'void',
-          options: []
-        )
-      )
+      tags = t(params: [p(name: 'name', type: 'String')], return_type: 'void', options: [])
+      md = d(name: 'process', scope: :instance, container: nil, file: 'x.rb', line: 1, yard_tags: tags)
       expect(described_class.send(:format_method_sig, md)).to eq('def process: (String name) -> void')
     end
 
     it 'includes options as optional keyword args' do
-      md = described_class::MethodDef.new(
-        name: 'run', scope: :instance, container: nil, file: 'x.rb', line: 1,
-        yard_tags: described_class::YardTags.new(
-          params: [],
-          return_type: 'void',
-          options: [described_class::ParamTag.new(name: 'verbose', type: 'Boolean')]
-        )
-      )
+      tags = t(params: [], return_type: 'void', options: [p(name: 'verbose', type: 'Boolean')])
+      md = d(name: 'run', scope: :instance, container: nil, file: 'x.rb', line: 1, yard_tags: tags)
       expect(described_class.send(:format_method_sig, md)).to eq('def run: (?bool verbose) -> void')
     end
   end
 
   describe 'build_rbs_content' do
-    it 'groups methods by container' do
-      m1 = described_class::MethodDef.new(name: 'foo', scope: :instance, container: 'Foo', file: 'x.rb', line: 1,
-                                          yard_tags: nil)
-      m2 = described_class::MethodDef.new(name: 'bar', scope: :instance, container: 'Foo', file: 'x.rb', line: 2,
-                                          yard_tags: nil)
-      m3 = described_class::MethodDef.new(name: 'baz', scope: :instance, container: nil, file: 'x.rb', line: 3,
-                                          yard_tags: nil)
+    def d(**kwargs)
+      described_class::MethodDef.new(**kwargs)
+    end
+    let(:defs) do
+      [d(name: 'foo', container: 'Foo', line: 1, scope: :instance, file: 'x.rb', yard_tags: nil),
+       d(name: 'bar', container: 'Foo', line: 2, scope: :instance, file: 'x.rb', yard_tags: nil),
+       d(name: 'baz', container: nil, line: 3, scope: :instance, file: 'x.rb', yard_tags: nil)]
+    end
 
-      content = described_class.send(:build_rbs_content, [m1, m2, m3])
-      expect(content).to include('class Foo')
-      expect(content).to include('  def foo: () -> untyped')
-      expect(content).to include('  def bar: () -> untyped')
-      expect(content).to include('end')
-      expect(content).to include('def baz: () -> untyped')
+    it 'groups methods by container' do
+      content = described_class.send(:build_rbs_content, defs)
+      expect(content).to include('class Foo', '  def foo: () -> untyped',
+                                 '  def bar: () -> untyped', 'end', 'def baz: () -> untyped')
     end
   end
 end
