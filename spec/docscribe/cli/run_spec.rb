@@ -109,8 +109,7 @@ RSpec.describe Docscribe::CLI::Run do
     end
 
     it 'still prints progress markers to stderr alongside progress' do
-      expect(result[1]).to include('[1/1]')
-      expect(result[1]).to include('F')
+      expect(result[1]).to include('[1/1]').and include('F')
     end
 
     it 'prints Would update to stdout' do

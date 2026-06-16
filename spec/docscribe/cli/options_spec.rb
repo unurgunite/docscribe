@@ -131,7 +131,6 @@ RSpec.describe Docscribe::CLI::Options do
 
   it 'auto-enables progress with --verbose' do
     opts = described_class.parse!(%w[--verbose lib])
-    expect(opts[:progress]).to be(true)
-    expect(opts[:verbose]).to be(true)
+    expect(opts).to include(progress: true, verbose: true)
   end
 end

@@ -1,6 +1,8 @@
 module Docscribe
   module Infer
     module Returns
+      LITERAL_RBS_TYPES: Hash[Symbol, String]
+
       def self?.infer_return_type: (String? method_source) -> String
 
       def self?.parse_method_source: (String method_source) -> (Parser::AST::Node | nil)
@@ -25,6 +27,12 @@ module Docscribe
 
       def self?.assignment_name_and_value: (Parser::AST::Node node) -> [ (String | nil), (Parser::AST::Node | nil) ]
 
+      def self?.constant_name_and_value: (Parser::AST::Node node) -> [ (String | nil), (Parser::AST::Node | nil) ]
+
+      def self?.compound_name_and_value: (Parser::AST::Node node) -> [ (String | nil), (Parser::AST::Node | nil) ]
+
+      def self?.collect_rescue_branches: (Parser::AST::Node node, **untyped opts) -> Array[(String | nil)]
+
       def self?.handle_lvar_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
 
       def self?.handle_ivar_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
@@ -46,6 +54,26 @@ module Docscribe
       def self?.handle_or_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
 
       def self?.handle_and_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_kwbegin_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_rescue_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_ensure_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_defined_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_zsuper_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_super_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_yield_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_case_match_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.handle_in_pattern_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
+
+      def self?.process_pattern_branches: (Parser::AST::Node node, **untyped opts) -> Array[String]
 
       def self?.handle_begin_node: (Parser::AST::Node node, **untyped opts) -> (String | nil)
 
