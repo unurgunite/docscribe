@@ -4,13 +4,13 @@ module Docscribe
       BANNER: String
       EXIT_CODES: String
 
-      class MethodDef < Data
-        def self.new: (name: Symbol, scope: Symbol, container: String?, file: String, line: Integer) -> instance
-        attr_reader name: Symbol
-        attr_reader scope: Symbol
-        attr_reader container: String?
-        attr_reader file: String
-        attr_reader line: Integer
+      class MethodDef
+        def initialize: (name: Symbol, scope: Symbol, container: String?, file: String, line: Integer) -> void
+        def name: () -> Symbol
+        def scope: () -> Symbol
+        def container: () -> String?
+        def file: () -> String
+        def line: () -> Integer
       end
 
       def self.run: (Array[String] argv) -> Integer

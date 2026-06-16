@@ -27,7 +27,26 @@ module Docscribe
                    "1 - some methods lack signatures\n    " \
                    '2 - error occurred'
 
-      MethodDef = Data.define(:name, :scope, :container, :file, :line)
+      # @!attribute [rw] name
+      #   @return [Symbol]
+      #   @param [Symbol] value
+      #
+      # @!attribute [rw] scope
+      #   @return [Symbol]
+      #   @param [Symbol] value
+      #
+      # @!attribute [rw] container
+      #   @return [String?]
+      #   @param [String?] value
+      #
+      # @!attribute [rw] file
+      #   @return [String]
+      #   @param [String] value
+      #
+      # @!attribute [rw] line
+      #   @return [Integer]
+      #   @param [Integer] value
+      MethodDef = Struct.new(:name, :scope, :container, :file, :line, keyword_init: true)
 
       class << self
         # @param [Array<String>] argv
@@ -310,10 +329,11 @@ module Docscribe
         # @param [Docscribe::Types::RBS::Provider] provider
         # @return [Object, nil]
         def lookup_signature(method_def, provider)
-          return nil unless method_def.container
+          container = method_def.container
+          return nil unless container
 
           provider.signature_for(
-            container: method_def.container,
+            container: container,
             scope: method_def.scope,
             name: method_def.name
           )

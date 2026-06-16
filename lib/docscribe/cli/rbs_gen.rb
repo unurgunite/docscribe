@@ -18,10 +18,74 @@ module Docscribe
 
       TEXT
 
-      YardTags = Data.define(:params, :return_type, :options)
-      ParamTag = Data.define(:name, :type)
-      MethodDef = Data.define(:name, :scope, :container, :file, :line, :yard_tags)
-      WalkContext = Data.define(:containers, :method_defs, :path, :comment_map, :src_lines, :inside_sclass)
+      # @!attribute [rw] params
+      #   @return [Array<Docscribe::CLI::RbsGen::ParamTag>]
+      #   @param [Array<Docscribe::CLI::RbsGen::ParamTag>] value
+      #
+      # @!attribute [rw] return_type
+      #   @return [String?]
+      #   @param [String?] value
+      #
+      # @!attribute [rw] options
+      #   @return [Array<Docscribe::CLI::RbsGen::ParamTag>]
+      #   @param [Array<Docscribe::CLI::RbsGen::ParamTag>] value
+      YardTags = Struct.new(:params, :return_type, :options, keyword_init: true)
+      # @!attribute [rw] name
+      #   @return [String]
+      #   @param [String] value
+      #
+      # @!attribute [rw] type
+      #   @return [String]
+      #   @param [String] value
+      ParamTag = Struct.new(:name, :type, keyword_init: true)
+      # @!attribute [rw] name
+      #   @return [Symbol]
+      #   @param [Symbol] value
+      #
+      # @!attribute [rw] scope
+      #   @return [Symbol]
+      #   @param [Symbol] value
+      #
+      # @!attribute [rw] container
+      #   @return [String?]
+      #   @param [String?] value
+      #
+      # @!attribute [rw] file
+      #   @return [String]
+      #   @param [String] value
+      #
+      # @!attribute [rw] line
+      #   @return [Integer]
+      #   @param [Integer] value
+      #
+      # @!attribute [rw] yard_tags
+      #   @return [Docscribe::CLI::RbsGen::YardTags?]
+      #   @param [Docscribe::CLI::RbsGen::YardTags?] value
+      MethodDef = Struct.new(:name, :scope, :container, :file, :line, :yard_tags, keyword_init: true)
+      # @!attribute [rw] containers
+      #   @return [Array<String>]
+      #   @param [Array<String>] value
+      #
+      # @!attribute [rw] method_defs
+      #   @return [Array<Docscribe::CLI::RbsGen::MethodDef>]
+      #   @param [Array<Docscribe::CLI::RbsGen::MethodDef>] value
+      #
+      # @!attribute [rw] path
+      #   @return [String]
+      #   @param [String] value
+      #
+      # @!attribute [rw] comment_map
+      #   @return [Hash<Integer, String>]
+      #   @param [Hash<Integer, String>] value
+      #
+      # @!attribute [rw] src_lines
+      #   @return [Array<String>]
+      #   @param [Array<String>] value
+      #
+      # @!attribute [rw] inside_sclass
+      #   @return [Boolean]
+      #   @param [Boolean] value
+      WalkContext = Struct.new(:containers, :method_defs, :path, :comment_map, :src_lines, :inside_sclass, keyword_init: true)
 
       class << self
         # @param [Array<String>] argv
@@ -205,7 +269,14 @@ module Docscribe
         # @param [Docscribe::CLI::RbsGen::WalkContext] ctx
         # @return [void]
         def walk_sclass(node, ctx)
-          sc_ctx = ctx.with(inside_sclass: true)
+          sc_ctx = WalkContext.new(
+            containers: ctx.containers,
+            method_defs: ctx.method_defs,
+            path: ctx.path,
+            comment_map: ctx.comment_map,
+            src_lines: ctx.src_lines,
+            inside_sclass: true
+          )
           node.children.drop(1).each { |c| walk_for_methods(c, sc_ctx) }
         end
 
