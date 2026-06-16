@@ -1,0 +1,35 @@
+module Docscribe
+  module Types
+    module Yard
+      def self.parse: (String?) -> untyped
+    end
+  end
+end
+
+module Docscribe
+  module Types
+    module Yard
+      class Parser
+        def initialize: (String) -> void
+        def parse: () -> untyped
+        private
+        def parse_union: () -> untyped
+        def parse_intersection: () -> untyped
+        def parse_optional: () -> untyped
+        def parse_primary: () -> untyped
+        def parse_generic: (untyped) -> untyped
+        def parse_generic_args: () -> Array[untyped]
+        def parse_tuple: () -> untyped
+        def parse_tuple_element: () -> untyped
+        def parse_hash_map: () -> untyped
+        def parse_named_hash_map: () -> untyped
+        def parse_duck_type: () -> untyped
+        def scan_name: () -> String
+        def name_char?: (String) -> bool
+        def literal?: (String) -> bool
+        def skip_space: () -> void
+        def peek: () -> String?
+      end
+    end
+  end
+end

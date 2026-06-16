@@ -162,15 +162,15 @@ module Docscribe
         # @param [Object] methods
         # @param [Object] path
         # @return [Object]
-        def walk_for_methods(node, containers, methods, path)
+        def walk_for_methods(node, containers, methods, path, inside_sclass: false)
           return unless node.is_a?(Parser::AST::Node)
 
           case node.type
           when :class, :module then walk_class_module(node, containers, methods, path)
           when :sclass then walk_sclass(node, containers, methods, path)
-          when :def then collect_def(node, containers, methods, path)
+          when :def then collect_def(node, containers, methods, path, inside_sclass: inside_sclass)
           when :defs then collect_defs(node, containers, methods, path)
-          else walk_children(node, containers, methods, path)
+          else walk_children(node, containers, methods, path, inside_sclass: inside_sclass)
           end
         end
 
@@ -193,9 +193,7 @@ module Docscribe
         # @param [Object] path
         # @return [Object]
         def walk_sclass(node, containers, methods, path)
-          containers.push('')
-          node.children.drop(1).each { |c| walk_for_methods(c, containers, methods, path) }
-          containers.pop
+          node.children.drop(1).each { |c| walk_for_methods(c, containers, methods, path, inside_sclass: true) }
         end
 
         # @private
@@ -204,8 +202,8 @@ module Docscribe
         # @param [Object] methods
         # @param [Object] path
         # @return [Object]
-        def walk_children(node, containers, methods, path)
-          node.children.each { |c| walk_for_methods(c, containers, methods, path) }
+        def walk_children(node, containers, methods, path, inside_sclass: false)
+          node.children.each { |c| walk_for_methods(c, containers, methods, path, inside_sclass: inside_sclass) }
         end
 
         # @private
@@ -214,10 +212,10 @@ module Docscribe
         # @param [Object] methods
         # @param [Object] path
         # @return [Object]
-        def collect_def(node, containers, methods, path)
+        def collect_def(node, containers, methods, path, inside_sclass: false)
           methods << MethodDef.new(
             name: node.children[0],
-            scope: :instance,
+            scope: inside_sclass ? :class : :instance,
             container: container_name(containers),
             file: path,
             line: node.loc&.line || 1

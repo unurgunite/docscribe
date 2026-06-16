@@ -26,11 +26,11 @@ module Docscribe
       def self?.run_with: (Hash[Symbol, untyped] options, Array[MethodDef] methods) -> Integer
       def self?.extract_methods: (Array[String] paths) -> Array[MethodDef]
       def self?.extract_methods_from_file: (String path, Array[MethodDef] methods) -> void
-      def self?.walk_for_methods: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
+      def self?.walk_for_methods: (untyped node, Array[String] containers, Array[MethodDef] methods, String path, ?inside_sclass: bool) -> void
       def self?.walk_class_module: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
       def self?.walk_sclass: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
-      def self?.walk_children: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
-      def self?.collect_def: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
+      def self?.walk_children: (untyped node, Array[String] containers, Array[MethodDef] methods, String path, ?inside_sclass: bool) -> void
+      def self?.collect_def: (untyped node, Array[String] containers, Array[MethodDef] methods, String path, ?inside_sclass: bool) -> void
       def self?.collect_defs: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
       def self?.container_name: (Array[String] containers) -> String?
       def self?.const_name: (untyped node) -> String

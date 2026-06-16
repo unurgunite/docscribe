@@ -36,6 +36,7 @@ module Docscribe
                docscribe init [options]
                docscribe generate <type> <name> [options]
                docscribe sigs [options] [files...]
+               docscribe rbs [options] [files...]
 
         Default behavior:
           Inspect files and report what safe doc updates would be applied.

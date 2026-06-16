@@ -1,0 +1,52 @@
+module Docscribe
+  module CLI
+    module RbsGen
+      class YardTags < Data
+        def initialize: (params: Array[untyped], return_type: String?, options: Array[untyped]) -> void
+        def params: () -> Array[untyped]
+        def return_type: () -> String?
+        def options: () -> Array[untyped]
+      end
+
+      class ParamTag < Data
+        def initialize: (name: String, type: String) -> void
+        def name: () -> String
+        def type: () -> String
+      end
+
+      class MethodDef < Data
+        def initialize: (name: Symbol, scope: Symbol, container: String?, file: String, line: Integer, yard_tags: YardTags?) -> void
+        def name: () -> Symbol
+        def scope: () -> Symbol
+        def container: () -> String?
+        def file: () -> String
+        def line: () -> Integer
+        def yard_tags: () -> YardTags?
+      end
+
+      def self.run: (Array[String]) -> Integer
+      private
+      def self.parse_options: (Array[String]) -> Hash[Symbol, untyped]
+      def self.expand_paths: (Array[String]) -> Array[String]
+      def self.expand_single_path: (Array[String], String) -> void
+      def self.no_files_found: () -> Integer
+      def self.run_with: (Hash[Symbol, untyped], Array[String]) -> Integer
+      def self.generate_for_file: (String, Hash[Symbol, untyped]) -> bool
+      def self.build_comment_map: (Array[untyped]?) -> Hash[Integer, String]
+      def self.find_yard_block: (Integer, Hash[Integer, String], Array[String]) -> Array[String]
+      def self.parse_yard_tags: (Array[String]) -> YardTags
+      def self.walk_for_methods: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String], ?inside_sclass: bool) -> void
+      def self.walk_class_module: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String]) -> void
+      def self.walk_sclass: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String]) -> void
+      def self.walk_children: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String], ?inside_sclass: bool) -> void
+      def self.collect_def: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String], ?inside_sclass: bool) -> void
+      def self.collect_defs: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String]) -> void
+      def self.container_name: (Array[String]) -> String?
+      def self.const_name: (untyped) -> String
+      def self.build_rbs_content: (Array[MethodDef]) -> String
+      def self.format_method_sig: (MethodDef) -> String
+      def self.type_to_rbs: (String) -> String
+      def self.write_file: (String, String, Hash[Symbol, untyped]) -> void
+    end
+  end
+end
