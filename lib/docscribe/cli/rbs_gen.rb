@@ -173,7 +173,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [Object] ctx
+        # @param [WalkContext] ctx
         # @return [void]
         def walk_for_methods(node, ctx)
           return unless node.is_a?(Parser::AST::Node)
@@ -189,7 +189,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [Object] ctx
+        # @param [WalkContext] ctx
         # @return [void]
         def walk_class_module(node, ctx)
           ctx.containers.push(const_name(node.children[0]))
@@ -199,7 +199,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [Object] ctx
+        # @param [WalkContext] ctx
         # @return [void]
         def walk_sclass(node, ctx)
           sc_ctx = ctx.with(inside_sclass: true)
@@ -208,7 +208,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [Object] ctx
+        # @param [WalkContext] ctx
         # @return [void]
         def walk_children(node, ctx)
           node.children.each { |c| walk_for_methods(c, ctx) }
@@ -216,7 +216,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [Object] ctx
+        # @param [WalkContext] ctx
         # @return [void]
         def collect_def(node, ctx)
           line = node.loc&.line || 1
@@ -234,7 +234,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [Object] ctx
+        # @param [WalkContext] ctx
         # @return [void]
         def collect_defs(node, ctx)
           line = node.loc&.line || 1
@@ -252,7 +252,7 @@ module Docscribe
 
         # @private
         # @param [Integer] line
-        # @param [Object] ctx
+        # @param [WalkContext] ctx
         # @return [YardTags?]
         def parse_yard_tags_for_line(line, ctx)
           yard_block = find_yard_block(line, ctx.comment_map, ctx.src_lines)
@@ -290,7 +290,7 @@ module Docscribe
         # @private
         # @param [String] line
         # @param [Hash] state
-        # @return [Object, nil]
+        # @return [void]
         def parse_yard_line(line, state)
           text = line.sub(/\A#\s*/, '')
           parse_param_tag(text, state) || parse_option_tag(text, state) || parse_return_tag(text, state)
@@ -299,7 +299,7 @@ module Docscribe
         # @private
         # @param [String] text
         # @param [Hash] state
-        # @return [Object, nil]
+        # @return [void]
         def parse_param_tag(text, state)
           if (m = text.match(/\A@param\s+\[([^\]]+)\]\s+(\S+)\s*/))
             state[:params] << ParamTag.new(name: m[2], type: m[1])
@@ -311,7 +311,7 @@ module Docscribe
         # @private
         # @param [String] text
         # @param [Hash] state
-        # @return [Object, nil]
+        # @return [void]
         def parse_option_tag(text, state)
           return unless (m = text.match(/\A@option\s+\S+\s+\[([^\]]+)\]\s+:?(\S+)\s*/))
 
@@ -321,7 +321,7 @@ module Docscribe
         # @private
         # @param [String] text
         # @param [Hash] state
-        # @return [Object, nil]
+        # @return [void]
         def parse_return_tag(text, state)
           return unless (m = text.match(/\A@return\s+\[([^\]]+)\]\s*/))
 
