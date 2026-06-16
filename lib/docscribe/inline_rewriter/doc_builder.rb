@@ -247,6 +247,7 @@ module Docscribe
         tags_started = false
         joined_lines = join_multiline_tags(Array(lines))
         joined_lines.each_with_object(init) do |line, info|
+          extract_all_comment_tags(line, info)
           tags_started = parse_existing_tag_line(line, info, tags_started)
         end
       end
@@ -323,15 +324,13 @@ module Docscribe
       # @param [Object] tags_started whether @tags have been seen
       # @return [Boolean] updated tags_started
       def parse_existing_tag_line(line, info, tags_started)
-        extract_all_comment_tags(line, info)
-        if (content = line.sub(/^\s*# ?/, '').rstrip).start_with?('@')
-          tags_started = true
-          track_last_tag(content, info)
+        content = line.sub(/^\s*# ?/, '').rstrip
+        if content.start_with?('@')
+          tags_started = track_last_tag(content, info)
           start_note_tag(line, info) if content.start_with?('@note ')
         elsif tags_started && info[:last_tag]
-          append_note_continuation(line, info)
-          append_tag_continuation(content, info)
-        elsif content
+          append_note_continuation(line, info).tap { append_tag_continuation(content, info) }
+        else
           info[:description] << content
         end
         tags_started
@@ -1140,12 +1139,10 @@ module Docscribe
       # @return [Array]
       def core_body_tags(indent, setup, ctx)
         config, insertion = ctx.values_at(:config, :insertion)
-        note_lines = ctx.dig(:info, :note_lines) || []
         [
-          defaults_and_visibility(indent, config, setup[:scope], setup[:visibility],
-                                  description: ctx[:description]),
+          defaults_and_visibility(indent, config, setup[:scope], setup[:visibility], description: ctx[:description]),
           build_module_function_note_lines(indent, insertion, setup[:name]),
-          note_lines,
+          ctx.dig(:info, :note_lines) || [],
           build_raise_tag_lines(indent, ctx[:raise_types], config),
           build_return_line_if_needed(indent, setup, config, ctx),
           build_rescue_return_lines(indent, setup[:rescue_specs], config),
@@ -1210,16 +1207,14 @@ module Docscribe
       # @param [Hash] opts additional options for param formatting (fallback_type, param_tag_style, etc.)
       # @return [Array]
       def build_param_line(arg_node, indent, external_sig, param_types_override, **opts)
-        type = arg_node.type
-
-        method_name = :"build_#{type}_line"
+        method_name = :"build_#{arg_node.type}_line"
         if respond_to?(method_name, true)
-          return [] if type == :blockarg && opts[:skip_anonymous_block_params] && arg_node.children.first.nil?
+          return [] if arg_node.type == :blockarg && opts[:skip_anonymous_block_params] && arg_node.children.first.nil?
 
           return [send(method_name, arg_node, indent, external_sig, param_types_override, **opts)]
         end
 
-        method_name = :"build_#{type}_lines"
+        method_name = :"build_#{arg_node.type}_lines"
         if respond_to?(method_name, true)
           return send(method_name, arg_node, indent, external_sig, param_types_override, **opts)
         end

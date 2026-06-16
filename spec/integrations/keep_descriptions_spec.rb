@@ -6,17 +6,12 @@ require 'fileutils'
 RSpec.describe Docscribe::InlineRewriter do
   def idempotent_reinsert(out, rbs_content)
     Dir.mktmpdir do |dir|
-      sig_dir = File.join(dir, 'sig')
-      FileUtils.mkdir_p(sig_dir)
-      File.write(File.join(sig_dir, 'demo.rbs'), rbs_content)
+      d = File.join(dir, 'sig')
+      FileUtils.mkdir_p(d)
+      File.write(File.join(d, 'demo.rbs'), rbs_content)
 
-      described_class.insert_comments(
-        out, strategy: :aggressive,
-             config: Docscribe::Config.new(
-               'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] },
-               'keep_descriptions' => true
-             )
-      )
+      c = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => [d] }, 'keep_descriptions' => true)
+      described_class.insert_comments(out, strategy: :aggressive, config: c)
     end
   end
 

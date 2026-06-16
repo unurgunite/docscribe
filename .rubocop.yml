@@ -13,12 +13,6 @@ Metrics/ClassLength:
 Metrics/ModuleLength:
   Enabled: false
 
-Metrics/MethodLength:
-  Max: 15
-
-Metrics/AbcSize:
-  Max: 18
-
 Gemspec/DevelopmentDependencies:
   EnforcedStyle: gemspec
 
