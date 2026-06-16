@@ -186,30 +186,39 @@ module Docscribe
         # @param [RBS::Types::Function] func RBS function type to convert
         # @return [Docscribe::Types::MethodSignature]
         def build_signature(func)
+          param_types, positional_types = build_param_types(func)
           MethodSignature.new(
             return_type: format_type(func.return_type),
-            param_types: build_param_types(func),
+            param_types: param_types,
+            positional_types: positional_types,
             rest_positional: build_rest_positional(func),
             rest_keywords: build_rest_keywords(func)
           )
         end
 
-        # Build a name => type map for positional and keyword parameters.
+        # Build a name => type map and positional type list for all
+        # positional and keyword parameters.
+        #
+        # Returns [param_types (Hash), positional_types (Array)].
+        # positional_types includes ALL positional params in order (named
+        # and unnamed) so callers can fall back to positional matching when
+        # the RBS signature omits parameter names.
         #
         # @private
         # @param [RBS::Types::Function] func RBS function to extract params
         # @return [Hash<String, String>]
         def build_param_types(func)
           param_types = {} #: Hash[String, String]
+          positional_types = [] #: Array[String]
 
-          add_positionals!(param_types, func.required_positionals)
-          add_positionals!(param_types, func.optional_positionals)
-          add_positionals!(param_types, func.trailing_positionals)
+          collect_positionals!(param_types, positional_types, func.required_positionals)
+          collect_positionals!(param_types, positional_types, func.optional_positionals)
+          collect_positionals!(param_types, positional_types, func.trailing_positionals)
 
           add_keywords!(param_types, func.required_keywords)
           add_keywords!(param_types, func.optional_keywords)
 
-          param_types
+          [param_types, positional_types]
         end
 
         # Add keyword parameters to the normalized parameter map.
@@ -224,17 +233,19 @@ module Docscribe
           end
         end
 
-        # Add named positional parameters to the normalized parameter map.
+        # Collect positional parameter types into both the name-keyed hash
+        # (when a name is available) and the ordered-position list (always).
         #
         # @private
-        # @param [Hash<String, String>] param_types normalized param type map
-        # @param [Array<RBS::Types::Function::Param>] list positional parameter objects
-        # @return [void]
-        def add_positionals!(param_types, list)
+        # @param [Object] param_types normalized param type map
+        # @param [Object] positional_types ordered type list
+        # @param [Object] list positional parameter objects
+        # @return [Object?]
+        def collect_positionals!(param_types, positional_types, list)
           list.each do |p|
-            next unless p.name
-
-            param_types[p.name.to_s] = format_type(p.type)
+            type_str = format_type(p.type)
+            positional_types << type_str
+            param_types[p.name.to_s] = type_str if p.name
           end
         end
 

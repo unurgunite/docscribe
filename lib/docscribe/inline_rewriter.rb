@@ -208,7 +208,8 @@ module Docscribe
       #
       # @private
       # @param [Array<(Symbol, Object)>] insertions insertions to deduplicate
-      # @param [Hash<Integer, Hash<Symbol, Object>>, nil?] method_overrides_by_pos method-level overrides keyed by insertion position
+      # @param [Hash<Integer, Hash<Symbol, Object>>, nil?] method_overrides_by_pos method-level overrides keyed
+      #   by insertion position
       # @return [Array<(Symbol, Object)>]
       def deduplicate_insertions(insertions, method_overrides_by_pos: nil)
         group_by_position(insertions).each_with_object([]) do |(pos, items), result|
@@ -222,7 +223,8 @@ module Docscribe
       # @param [Integer] pos the source begin_pos for the group
       # @param [Array<(Symbol, Object)>] items grouped items to process
       # @param [Array<(Symbol, Object)>] result accumulated result array
-      # @param [Hash<Integer, Hash<Symbol, Object>>, nil] method_overrides_by_pos hash mapping position to method override data
+      # @param [Hash<Integer, Hash<Symbol, Object>>, nil] method_overrides_by_pos hash mapping position to method
+      #   override data
       # @return [void]
       def process_dedup_group(pos, items, result, method_overrides_by_pos)
         plugin_items = items.select { |pair| pair.first == :plugin }
@@ -268,7 +270,8 @@ module Docscribe
       # @param [Array<(Symbol, Object)>] result accumulated result array
       # @param [Array<(Symbol, Object)>] items all items in group
       # @param [Array<(Symbol, Object)>] override_items override plugin items
-      # @param [Hash<Integer, Hash<Symbol, Object>>, nil] method_overrides_by_pos hash mapping position to method override data
+      # @param [Hash<Integer, Hash<Symbol, Object>>, nil] method_overrides_by_pos hash mapping position to
+      #   method override data
       # @param [Integer] pos the source position of the conflict
       # @return [void]
       def handle_override_case(result, items, override_items, method_overrides_by_pos, pos)
@@ -451,7 +454,8 @@ module Docscribe
       # Plugin insertion priority
       #
       # @private
-      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the
+      #   collected method insertion
       # @raise [StandardError]
       # @return [Integer] if StandardError
       # @return [Integer] if StandardError
@@ -466,7 +470,8 @@ module Docscribe
       # Plugin insertion label
       #
       # @private
-      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the
+      #   collected method insertion
       # @raise [StandardError]
       # @return [String] if StandardError
       # @return [String] if StandardError
@@ -482,7 +487,8 @@ module Docscribe
       # Plugin insertion line
       #
       # @private
-      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the
+      #   collected method insertion
       # @raise [StandardError]
       # @return [Integer, nil] if StandardError
       # @return [nil] if StandardError
@@ -499,8 +505,8 @@ module Docscribe
       # Plugin insertion pos
       #
       # @private
-      # @param [Object] kind :method, :attr, or :plugin
-      # @param [Object] ins insertion to locate
+      # @param [Symbol] kind :method, :attr, or :plugin
+      # @param [Hash<Symbol, Object>] ins insertion to locate
       # @return [Integer]
       def plugin_insertion_pos(kind, ins)
         case kind
@@ -851,9 +857,15 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @return [Hash<String, String>, nil]
       def resolve_param_types(insertion, external_sig, config)
-        external_sig&.param_types || DocBuilder.build_param_types_from_node(
-          insertion.node, external_sig: external_sig, config: config
-        )
+        if external_sig
+          DocBuilder.build_param_types_from_node(
+            insertion.node, external_sig: external_sig, config: config
+          )
+        else
+          DocBuilder.build_param_types_from_node(
+            insertion.node, external_sig: nil, config: config
+          )
+        end
       end
 
       # Apply method insertion aggressive

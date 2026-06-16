@@ -10,6 +10,10 @@ module Docscribe
     #   @return [Hash<String, String>]
     #   @param [Hash<String, String>] value
     #
+    # @!attribute [rw] positional_types
+    #   @return [Object]
+    #   @param [Object] value
+    #
     # @!attribute [rw] rest_positional
     #   @return [Docscribe::Types::RestPositional, nil]
     #   @param [Docscribe::Types::RestPositional, nil] value
@@ -17,7 +21,8 @@ module Docscribe
     # @!attribute [rw] rest_keywords
     #   @return [Docscribe::Types::RestKeywords, nil]
     #   @param [Docscribe::Types::RestKeywords, nil] value
-    MethodSignature = Struct.new(:return_type, :param_types, :rest_positional, :rest_keywords, keyword_init: true)
+    MethodSignature = Struct.new(:return_type, :param_types, :positional_types, :rest_positional, :rest_keywords,
+                                 keyword_init: true)
 
     # @!attribute [rw] name
     #   @return [String, nil]

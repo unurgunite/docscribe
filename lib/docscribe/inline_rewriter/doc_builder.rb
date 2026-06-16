@@ -742,7 +742,14 @@ module Docscribe
       # @param [Docscribe::Config] config Docscribe configuration object
       # @return [void]
       def collect_all_param_types(args, param_types, external_sig, config)
-        (args.children || []).each do |a|
+        # Pre-seed param_types with positional (unnamed) RBS types so that
+        # collectors can keep them when external_sig lacks param names.
+        positional = external_sig&.positional_types || []
+        (args.children || []).each_with_index do |a, idx|
+          if (ptype = positional[idx])
+            pname = a.children.first
+            param_types[pname.to_s] = ptype if pname
+          end
           collector = PARAM_TYPE_COLLECTORS[a.type]
           collector&.call(a, param_types, external_sig, config)
         end
@@ -759,12 +766,13 @@ module Docscribe
       # @return [void]
       def collect_param_type(arg_node, param_types, external_sig, config, infer_name:)
         pname = arg_node.children.first.to_s
-        infer_pname = resolve_infer_name(pname, infer_name)
-        ty = external_sig&.param_types&.[](pname) ||
-             Infer.infer_param_type(infer_pname, nil,
-                                    fallback_type: config.fallback_type,
-                                    treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?)
-        param_types[pname] = ty
+        param_types[pname] ||= begin
+          infer_pname = resolve_infer_name(pname, infer_name)
+          external_sig&.param_types&.[](pname) ||
+            Infer.infer_param_type(infer_pname, nil,
+                                   fallback_type: config.fallback_type,
+                                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?)
+        end
       end
 
       # Collect optarg param type
@@ -779,13 +787,14 @@ module Docscribe
       def collect_optarg_param_type(arg_node, param_types, external_sig, config, infer_name:)
         pname, default = *arg_node
         pname = pname.to_s
-        default_src = source_from_node(default)
-        infer_pname = resolve_infer_name(pname, infer_name)
-        ty = external_sig&.param_types&.[](pname) ||
-             Infer.infer_param_type(infer_pname, default_src,
-                                    fallback_type: config.fallback_type,
-                                    treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?)
-        param_types[pname] = ty
+        param_types[pname] ||= begin
+          default_src = source_from_node(default)
+          infer_pname = resolve_infer_name(pname, infer_name)
+          external_sig&.param_types&.[](pname) ||
+            Infer.infer_param_type(infer_pname, default_src,
+                                   fallback_type: config.fallback_type,
+                                   treat_options_keyword_as_hash: config.treat_options_keyword_as_hash?)
+        end
       end
 
       # Merge visibility tag lines
