@@ -42,16 +42,26 @@ module Docscribe
         SARIF_SCHEMA = 'https://raw.githubusercontent.com/oasis-tcs/sarif-spec/' \
                        'master/Schemata/sarif-schema-2.1.0.json'
 
+        # @param [Docscribe::CLI::Formatters::state] state
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @return [void]
         def format_check_summary(state:, options:)
           puts JSON.generate(build_sarif_document(state, options[:format]))
         end
 
+        # @param [Docscribe::CLI::Formatters::state] state
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @return [void]
         def format_write_summary(state:, options:)
           puts JSON.generate(build_sarif_document(state, options[:format]))
         end
 
         private
 
+        # @private
+        # @param [Object] state
+        # @param [Object] _format
+        # @return [Hash<String, Object>]
         def build_sarif_document(state, _format)
           {
             '$schema' => SARIF_SCHEMA,
@@ -60,6 +70,9 @@ module Docscribe
           }
         end
 
+        # @private
+        # @param [Object] state
+        # @return [Hash<Symbol, Object>]
         def build_run(state)
           {
             tool: build_tool,
@@ -68,6 +81,8 @@ module Docscribe
           }
         end
 
+        # @private
+        # @return [Hash<Symbol, Object>]
         def build_tool
           {
             driver: {
@@ -78,6 +93,9 @@ module Docscribe
           }
         end
 
+        # @private
+        # @param [Object] state
+        # @return [Array<Hash<Symbol, Object>>]
         def build_results(state)
           results = []
 
@@ -88,11 +106,21 @@ module Docscribe
           results
         end
 
+        # @private
+        # @param [Object] state
+        # @param [Object] results
+        # @return [void]
         def append_check_results(state, results)
           append_changes(state[:fail_paths], state[:fail_changes], results)
           append_changes(state[:type_mismatch_paths], state[:type_mismatch_changes], results, level: 'warning')
         end
 
+        # @private
+        # @param [Object] paths
+        # @param [Object] changes_map
+        # @param [Object] results
+        # @param [String?] level
+        # @return [void]
         def append_changes(paths, changes_map, results, level: nil)
           paths.each do |path|
             (changes_map[path] || []).each do |change|
@@ -101,6 +129,10 @@ module Docscribe
           end
         end
 
+        # @private
+        # @param [Object] state
+        # @param [Object] results
+        # @return [void]
         def append_corrected_results(state, results)
           state[:corrected_paths].each do |path|
             changes = state[:corrected_changes][path] || []
@@ -110,6 +142,10 @@ module Docscribe
           end
         end
 
+        # @private
+        # @param [Object] state
+        # @param [Object] results
+        # @return [void]
         def append_error_results(state, results)
           state[:error_paths].each do |path|
             msg = state[:error_messages][path] || 'Unknown error'
@@ -117,6 +153,11 @@ module Docscribe
           end
         end
 
+        # @private
+        # @param [Object] change
+        # @param [Object] path
+        # @param [String?] level
+        # @return [Hash<Symbol, Object>]
         def build_result(change, path, level: nil)
           {
             ruleId: cop_name_for(change),
@@ -126,6 +167,10 @@ module Docscribe
           }
         end
 
+        # @private
+        # @param [Object] message
+        # @param [Object] path
+        # @return [Hash<Symbol, Object>]
         def build_error_result(message, path)
           {
             ruleId: 'Docscribe/ProcessingError',
@@ -135,6 +180,10 @@ module Docscribe
           }
         end
 
+        # @private
+        # @param [Object] path
+        # @param [Object] line
+        # @return [Hash<Symbol, Object>]
         def location(path, line)
           {
             physicalLocation: {
@@ -144,15 +193,24 @@ module Docscribe
           }
         end
 
+        # @private
+        # @param [Object] change
+        # @return [String]
         def cop_name_for(change)
           COP_NAME_MAP[change[:type]] || fallback_cop_name(change)
         end
 
+        # @private
+        # @param [Object] change
+        # @return [String]
         def fallback_cop_name(change)
           name = change[:type].to_s.tr('_', ' ').split.map(&:capitalize).join
           "Docscribe/#{name}"
         end
 
+        # @private
+        # @param [Object] change
+        # @return [String]
         def message_for(change)
           method = change[:method] ? " for #{change[:method]}" : ''
           line = change[:line] ? " at line #{change[:line]}" : ''
@@ -163,6 +221,9 @@ module Docscribe
           "#{msg}#{method}#{line}"
         end
 
+        # @private
+        # @param [Object] state
+        # @return [Hash<Symbol, Object>]
         def build_invocation(state)
           {
             executionSuccessful: !state[:had_errors]
