@@ -8,11 +8,11 @@ module Docscribe
     # Fetch a boolean method-level override for a given scope/visibility pair.
     #
     # @private
-    # @param [Symbol] scope :instance or :class
-    # @param [Symbol] vis :public, :protected, or :private
-    # @param [String] key override key
-    # @param [Boolean] default fallback value
-    # @return [Boolean]
+    # @param [Object] scope :instance or :class
+    # @param [Object] vis :public, :protected, or :private
+    # @param [Object] key override key
+    # @param [Object] default fallback value
+    # @return [Object, Boolean]
     def method_override_bool(scope, vis, key, default:)
       node = raw.dig('methods', scope_to_key(scope), vis.to_s, key)
       node.nil? ? default : !!node
@@ -21,11 +21,11 @@ module Docscribe
     # Fetch a string method-level override for a given scope/visibility pair.
     #
     # @private
-    # @param [Symbol] scope :instance or :class
-    # @param [Symbol] vis :public, :protected, or :private
-    # @param [String] key override key
-    # @param [String] default fallback value
-    # @return [String]
+    # @param [Object] scope :instance or :class
+    # @param [Object] vis :public, :protected, or :private
+    # @param [Object] key override key
+    # @param [Object] default fallback value
+    # @return [Object]
     def method_override_str(scope, vis, key, default:)
       node = raw.dig('methods', scope_to_key(scope), vis.to_s, key)
       node.nil? ? default : node.to_s
@@ -34,9 +34,9 @@ module Docscribe
     # Fetch a boolean config value by nested path with a default fallback.
     #
     # @private
-    # @param [Array<String>] path nested config keys
-    # @param [Boolean] default fallback value
-    # @return [Boolean]
+    # @param [Object] path nested config keys
+    # @param [Object] default fallback value
+    # @return [Object, Boolean]
     def fetch_bool(path, default)
       node = raw
       path.each { |k| node = node[k] if node }
@@ -46,7 +46,7 @@ module Docscribe
     # Convert an internal scope symbol into the config key used under `methods`.
     #
     # @private
-    # @param [Symbol] scope :instance or :class
+    # @param [Object] scope :instance or :class
     # @return [String]
     def scope_to_key(scope)
       scope == :class ? 'class' : 'instance'
@@ -55,9 +55,9 @@ module Docscribe
     # Check whether any pattern matches the given text.
     #
     # @private
-    # @param [Array<String>] patterns
-    # @param [String] text
-    # @return [Boolean]
+    # @param [Object] patterns Param documentation.
+    # @param [Object] text Param documentation.
+    # @return [Object]
     def matches_any?(patterns, text)
       patterns.any? { |pat| match_pattern?(pat, text) }
     end
@@ -69,9 +69,9 @@ module Docscribe
     # - shell-style glob patterns (with `/` translated to `#` since method IDs use `#`)
     #
     # @private
-    # @param [String] pattern
-    # @param [String] text
-    # @return [Boolean]
+    # @param [Object] pattern Param documentation.
+    # @param [Object] text Param documentation.
+    # @return [Boolean, Object]
     def match_pattern?(pattern, text)
       if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
         Regexp.new(pattern[1..-2]).match?(text) # steep:ignore
@@ -87,9 +87,9 @@ module Docscribe
     # Nested hashes are merged recursively; non-hash values are replaced.
     #
     # @private
-    # @param [Hash<Object, Object>] hash1 base hash
-    # @param [Hash<Object, Object>, nil] hash2 override hash
-    # @return [Hash<Object, Object>]
+    # @param [Object] hash1 base hash
+    # @param [Object] hash2 override hash
+    # @return [Object]
     def deep_merge(hash1, hash2)
       return hash1 unless hash2
 

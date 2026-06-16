@@ -229,6 +229,10 @@ module Docscribe
 
       def self?.parse_existing_tag_line: (String line, Hash[Symbol, untyped] info, bool tags_started) -> bool
 
+      def self?.start_note_tag: (String line, Hash[Symbol, untyped] info) -> void
+
+      def self?.append_note_continuation: (String line, Hash[Symbol, untyped] info) -> void
+
       def self?.consume_tag_or_copy: (Array[String] lines, Integer idx, Array[String] result) -> Integer
 
       def self?.join_tag_continuations: (Array[String] lines, Integer start) -> [String, Integer]

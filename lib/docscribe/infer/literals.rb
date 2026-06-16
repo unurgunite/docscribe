@@ -17,10 +17,10 @@ module Docscribe
       #
       # If the node does not match a supported pattern, the fallback type is returned.
       #
-      # @note module_function: when included, also defines #type_from_literal (instance visibility: private)
-      # @param [Parser::AST::Node, nil] node literal/value node
-      # @param [String] fallback_type type returned when inference is uncertain
-      # @return [String]
+      # @note module_function: defines #type_from_literal (visibility: private)
+      # @param [Object] node literal/value node
+      # @param [FALLBACK_TYPE] fallback_type type returned when inference is uncertain
+      # @return [Object]
       def type_from_literal(node, fallback_type: FALLBACK_TYPE)
         return fallback_type unless node
 
@@ -30,19 +30,19 @@ module Docscribe
 
       # Map a node type symbol to a known literal type name.
       #
-      # @note module_function: when included, also defines #literal_type_for (instance visibility: private)
-      # @param [Symbol] type node type
-      # @return [String, nil]
+      # @note module_function: defines #literal_type_for (visibility: private)
+      # @param [Object] type node type
+      # @return [Object]
       def literal_type_for(type)
         LITERAL_TYPE_MAP[type]
       end
 
       # Extract a constant name from a `:const` node.
       #
-      # @note module_function: when included, also defines #const_type_for (instance visibility: private)
-      # @param [Parser::AST::Node] node literal/value node
-      # @param [String] _fallback_type fallback type string (unused here)
-      # @return [String, nil]
+      # @note module_function: defines #const_type_for (visibility: private)
+      # @param [Object] node literal/value node
+      # @param [Object] _fallback_type fallback type string (unused here)
+      # @return [String]
       def const_type_for(node, _fallback_type)
         return unless node.type == :const
 
@@ -51,10 +51,10 @@ module Docscribe
 
       # Extract a type from a `Foo.new` send node.
       #
-      # @note module_function: when included, also defines #send_new_type_for (instance visibility: private)
-      # @param [Parser::AST::Node] node literal/value node
-      # @param [String] _fallback_type fallback type string (unused here)
-      # @return [String, nil]
+      # @note module_function: defines #send_new_type_for (visibility: private)
+      # @param [Object] node literal/value node
+      # @param [Object] _fallback_type fallback type string (unused here)
+      # @return [String]
       def send_new_type_for(node, _fallback_type)
         return unless node.type == :send
 

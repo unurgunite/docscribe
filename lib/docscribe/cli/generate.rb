@@ -34,8 +34,8 @@ module Docscribe
       class << self
         # Run the `generate` subcommand.
         #
-        # @param [Array<String>] argv
-        # @return [Integer] exit code
+        # @param [Object] argv Param documentation.
+        # @return [Object] exit code
         def run(argv)
           opts, parser = parse_generate_options(argv)
           return 0 if opts[:help]
@@ -53,9 +53,9 @@ module Docscribe
         # Parse options for the generate subcommand.
         #
         # @private
-        # @param [Array<String>] argv
         # @raise [OptionParser::InvalidOption]
-        # @return [(Hash<Symbol, Object>, OptionParser)]
+        # @param [Object] argv Param documentation.
+        # @return [Array]
         def parse_generate_options(argv)
           opts = { output: nil, stdout: false, help: false }
           parser = build_option_parser(opts)
@@ -73,8 +73,8 @@ module Docscribe
         # Extract plugin_type and class_name from remaining argv.
         #
         # @private
-        # @param [Array<String>] argv
-        # @return [(String?, String?)]
+        # @param [Object] argv Param documentation.
+        # @return [Array]
         def extract_generate_args(argv)
           [argv.shift, argv.shift]
         end
@@ -82,10 +82,10 @@ module Docscribe
         # Validate generate arguments and return exit code on failure.
         #
         # @private
-        # @param [String?] plugin_type 'tag' or 'collector'
-        # @param [String?] class_name CamelCase plugin class name
-        # @param [OptionParser] parser
-        # @return [Integer, nil] exit code or nil if valid
+        # @param [Object] plugin_type 'tag' or 'collector'
+        # @param [Object] class_name CamelCase plugin class name
+        # @param [Object] parser Param documentation.
+        # @return [nil] exit code or nil if valid
         def validate_generate_args(plugin_type, class_name, parser)
           return 1 unless args_provided?(plugin_type, class_name, parser)
           return 1 unless known_type?(plugin_type)
@@ -97,9 +97,9 @@ module Docscribe
         # Render plugin boilerplate for the given type and class name.
         #
         # @private
-        # @param [String?] plugin_type 'tag' or 'collector'
-        # @param [String?] class_name CamelCase plugin class name
-        # @return [String?]
+        # @param [Object] plugin_type 'tag' or 'collector'
+        # @param [Object] class_name CamelCase plugin class name
+        # @return [Object]
         def render(plugin_type, class_name)
           case plugin_type
           when 'tag'       then tag_template(class_name)
@@ -110,7 +110,7 @@ module Docscribe
         # Template for a TagPlugin.
         #
         # @private
-        # @param [String?] class_name CamelCase plugin class name
+        # @param [Object] class_name CamelCase plugin class name
         # @return [String]
         def tag_template(class_name)
           <<~RUBY
@@ -168,7 +168,7 @@ module Docscribe
         # Template for a CollectorPlugin.
         #
         # @private
-        # @param [String?] class_name CamelCase plugin class name
+        # @param [Object] class_name CamelCase plugin class name
         # @return [String]
         def collector_template(class_name)
           <<~RUBY
@@ -236,11 +236,11 @@ module Docscribe
         # Write generated plugin to a file or print to STDOUT based on options.
         #
         # @private
-        # @param [String?] content generated plugin source code
-        # @param [String?] plugin_type 'tag' or 'collector'
-        # @param [String?] class_name CamelCase plugin class name
-        # @param [Hash<Symbol, Object>] opts parsed options hash
-        # @return [Integer] exit code
+        # @param [Object] content generated plugin source code
+        # @param [Object] plugin_type 'tag' or 'collector'
+        # @param [Object] class_name CamelCase plugin class name
+        # @param [Object] opts parsed options hash
+        # @return [Object] exit code
         def dispatch_output(content, plugin_type, class_name, opts)
           if opts[:stdout]
             puts content
@@ -253,10 +253,10 @@ module Docscribe
         # Write the generated content to a file.
         #
         # @private
-        # @param [String?] content file content to write
-        # @param [String?] plugin_type 'tag' or 'collector'
-        # @param [String?] class_name CamelCase plugin class name
-        # @param [String?] output_dir output directory path
+        # @param [Object] content file content to write
+        # @param [Object] plugin_type 'tag' or 'collector'
+        # @param [Object] class_name CamelCase plugin class name
+        # @param [Object] output_dir output directory path
         # @return [Integer] exit code
         def write_plugin(content, plugin_type:, class_name:, output_dir:)
           path = plugin_path(class_name, output_dir)
@@ -271,8 +271,8 @@ module Docscribe
         # Build the OptionParser for the generate subcommand.
         #
         # @private
-        # @param [Hash<Symbol, Object>] opts mutable parsed options hash
-        # @return [OptionParser]
+        # @param [Object] opts mutable parsed options hash
+        # @return [Object]
         def build_option_parser(opts)
           OptionParser.new do |opt|
             opt.banner = parser_banner
@@ -301,9 +301,9 @@ module Docscribe
         # Register the --output option on the OptionParser.
         #
         # @private
-        # @param [OptionParser] opt
-        # @param [Hash<Symbol, Object>] opts mutable parsed options hash
-        # @return [void]
+        # @param [Object] opt Param documentation.
+        # @param [Object] opts mutable parsed options hash
+        # @return [Object]
         def register_output_option(opt, opts)
           opt.on('--output DIR', 'Directory to write the plugin file (default: .)') { |v| opts[:output] = v }
         end
@@ -311,9 +311,9 @@ module Docscribe
         # Register the --stdout option on the OptionParser.
         #
         # @private
-        # @param [OptionParser] opt
-        # @param [Hash<Symbol, Object>] opts mutable parsed options hash
-        # @return [void]
+        # @param [Object] opt Param documentation.
+        # @param [Object] opts mutable parsed options hash
+        # @return [Object]
         def register_stdout_option(opt, opts)
           opt.on('--stdout', 'Print the generated plugin to STDOUT instead of writing a file') { opts[:stdout] = true }
         end
@@ -321,9 +321,9 @@ module Docscribe
         # Register the -h/--help option on the OptionParser.
         #
         # @private
-        # @param [OptionParser] opt
-        # @param [Hash<Symbol, Object>] opts mutable parsed options hash
-        # @return [void]
+        # @param [Object] opt Param documentation.
+        # @param [Object] opts mutable parsed options hash
+        # @return [Object]
         def register_help_option(opt, opts)
           opt.on('-h', '--help', 'Show this help') do
             opts[:help] = true
@@ -333,9 +333,9 @@ module Docscribe
         # Validate that both plugin_type and class_name arguments were provided.
         #
         # @private
-        # @param [String?] plugin_type plugin type argument
-        # @param [String?] class_name plugin class name argument
-        # @param [OptionParser] parser
+        # @param [Object] plugin_type plugin type argument
+        # @param [Object] class_name plugin class name argument
+        # @param [Object] parser Param documentation.
         # @return [Boolean]
         def args_provided?(plugin_type, class_name, parser)
           return true if plugin_type && class_name
@@ -348,7 +348,7 @@ module Docscribe
         # Validate that the plugin type is one of the recognized types.
         #
         # @private
-        # @param [String?] plugin_type plugin type to validate
+        # @param [Object] plugin_type plugin type to validate
         # @return [Boolean]
         def known_type?(plugin_type)
           return true if PLUGIN_TYPES.include?(plugin_type)
@@ -360,7 +360,7 @@ module Docscribe
         # Validate that the class name is a valid Ruby constant name.
         #
         # @private
-        # @param [String?] class_name class name to validate
+        # @param [Object] class_name class name to validate
         # @return [Boolean]
         def valid_name?(class_name)
           return true if valid_constant?(class_name)
@@ -372,7 +372,7 @@ module Docscribe
         # Check whether a string is a valid Ruby constant name.
         #
         # @private
-        # @param [String?] str
+        # @param [Object] str Param documentation.
         # @return [Boolean]
         def valid_constant?(str)
           !!(str =~ /\A[A-Z][A-Za-z0-9]*(?:::[A-Z][A-Za-z0-9]*)*\z/)
@@ -381,9 +381,9 @@ module Docscribe
         # Build the file path for the generated plugin.
         #
         # @private
-        # @param [String?] class_name CamelCase plugin class name
-        # @param [String?] output_dir output directory
-        # @return [String] full file path
+        # @param [Object] class_name CamelCase plugin class name
+        # @param [Object] output_dir output directory
+        # @return [Object] full file path
         def plugin_path(class_name, output_dir)
           File.join(output_dir || '.', "#{underscore(class_name || '')}.rb")
         end
@@ -391,8 +391,8 @@ module Docscribe
         # Convert CamelCase to snake_case for file naming.
         #
         # @private
-        # @param [String] str
-        # @return [String]
+        # @param [Object] str Param documentation.
+        # @return [Object]
         def underscore(str)
           str
             .gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
@@ -403,7 +403,7 @@ module Docscribe
         # Check whether the target plugin file already exists and warn if so.
         #
         # @private
-        # @param [String] path file path to check
+        # @param [Object] path file path to check
         # @return [Boolean]
         def file_exists?(path)
           return false unless File.exist?(path)
@@ -415,10 +415,10 @@ module Docscribe
         # Create the output directory and write the plugin file.
         #
         # @private
-        # @param [String?] output_dir output directory path
-        # @param [String] path full plugin file path
-        # @param [String?] content file content to write
-        # @return [void]
+        # @param [Object] output_dir output directory path
+        # @param [Object] path full plugin file path
+        # @param [Object] content file content to write
+        # @return [Object]
         def write_to_file(output_dir, path, content)
           require 'fileutils'
           FileUtils.mkdir_p(output_dir || '.')
@@ -428,9 +428,9 @@ module Docscribe
         # Print the creation message and next steps after generating a plugin.
         #
         # @private
-        # @param [String?] plugin_type 'tag' or 'collector'
-        # @param [String] path file path of the created plugin
-        # @return [void]
+        # @param [Object] plugin_type 'tag' or 'collector'
+        # @param [Object] path file path of the created plugin
+        # @return [Object]
         def print_created(plugin_type, path)
           puts "Created: #{path}"
           puts
@@ -440,9 +440,9 @@ module Docscribe
         # Print registration instructions after file creation.
         #
         # @private
-        # @param [String?] plugin_type 'tag' or 'collector'
-        # @param [String] path file path
-        # @return [String]
+        # @param [Object] plugin_type 'tag' or 'collector'
+        # @param [Object] path file path
+        # @return [Object]
         def next_steps(plugin_type, path)
           format(NEXT_STEPS_TEMPLATE,
                  path: path,
@@ -454,8 +454,8 @@ module Docscribe
         # Derive a CamelCase base name from a snake_case file path.
         #
         # @private
-        # @param [String] path file path
-        # @return [String] CamelCase class name
+        # @param [Object] path file path
+        # @return [Object] CamelCase class name
         def plugin_base_name(path)
           File.basename(path, '.rb').split('_').map(&:capitalize).join
         end
@@ -463,8 +463,8 @@ module Docscribe
         # Generate an implementation hint string for the given plugin type.
         #
         # @private
-        # @param [String?] plugin_type 'tag' or 'collector'
-        # @return [String, nil] hint text
+        # @param [Object] plugin_type 'tag' or 'collector'
+        # @return [String] hint text
         def generate_implement_hint(plugin_type)
           case plugin_type
           when 'tag'

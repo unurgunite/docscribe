@@ -14,7 +14,7 @@ module Docscribe
     #
     # Tags are normalized without a leading `@`.
     #
-    # @return [Array<String>]
+    # @return [Object]
     def tag_order
       Array(raw.dig('doc', 'tag_order') || DEFAULT.dig('doc', 'tag_order')).map do |t|
         t.to_s.sub(/\A@/, '') # steep:ignore

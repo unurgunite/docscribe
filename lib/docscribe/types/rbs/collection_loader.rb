@@ -30,9 +30,9 @@ module Docscribe
         # - lock-file is absent (collection not initialized)
         # - resolved directory does not exist on disk (collection not installed)
         #
-        # @note module_function: when included, also defines #resolve (instance visibility: private)
-        # @param [String] root project root to search from
-        # @return [String, nil] absolute path to the collection directory, or nil
+        # @note module_function: defines #resolve (visibility: private)
+        # @param [Object] root project root to search from
+        # @return [String?] absolute path to the collection directory, or nil
         def resolve(root: Dir.pwd)
           lock = Pathname(root).join(LOCK_FILE)
           return nil unless lock.file?

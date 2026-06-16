@@ -16,8 +16,8 @@ module Docscribe
         # - overwrite an existing file via `--force`
         # - print the template to STDOUT via `--stdout`
         #
-        # @param [Array<String>] argv command-line arguments for `docscribe init`
-        # @return [Integer] process exit code
+        # @param [Object] argv command-line arguments for `docscribe init`
+        # @return [Object] process exit code
         def run(argv)
           opts = parse_init_options(argv)
           return 0 if opts[:help]
@@ -37,8 +37,8 @@ module Docscribe
         # Parse CLI options for `docscribe init`.
         #
         # @private
-        # @param [Array<String>] argv command-line arguments for `docscribe init`
-        # @return [Hash<Symbol, Object>] parsed options
+        # @param [Object] argv command-line arguments for `docscribe init`
+        # @return [Object] parsed options
         def parse_init_options(argv)
           opts = default_init_options
           build_init_parser(opts).parse!(argv)
@@ -48,7 +48,7 @@ module Docscribe
         # Return the default options hash for the init command.
         #
         # @private
-        # @return [Hash<Symbol, String, Boolean>]
+        # @return [Hash]
         def default_init_options
           { config: 'docscribe.yml', force: false, stdout: false, help: false }
         end
@@ -56,8 +56,8 @@ module Docscribe
         # Build and return an OptionParser for the init command.
         #
         # @private
-        # @param [Hash<Symbol, Object>] opts options hash that the parser populates
-        # @return [OptionParser]
+        # @param [Object] opts options hash that the parser populates
+        # @return [Object]
         def build_init_parser(opts)
           OptionParser.new do |o|
             o.banner = 'Usage: docscribe init [options]'
@@ -74,8 +74,8 @@ module Docscribe
         # Write the config template to a file.
         #
         # @private
-        # @param [Hash<Symbol, Object>] opts parsed options
-        # @param [String] yaml config template content
+        # @param [Object] opts parsed options
+        # @param [Object] yaml config template content
         # @return [Integer] exit code
         def write_init_config(opts, yaml)
           path = opts[:config]

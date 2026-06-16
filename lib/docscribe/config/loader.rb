@@ -10,8 +10,8 @@ module Docscribe
     # - `docscribe.yml` in the current directory, if present
     # - otherwise defaults only
     #
-    # @param [String?] path optional config path
-    # @return [Docscribe::Config]
+    # @param [nil] path optional config path
+    # @return [Object]
     def self.load(path = nil)
       raw = {} #: Hash[String, untyped]
       if path && File.file?(path)
@@ -27,8 +27,8 @@ module Docscribe
     # Uses `YAML.safe_load_file` when available, otherwise falls back to reading the file
     # and calling {safe_load_compat}.
     #
-    # @param [String] path file path
-    # @return [Hash<Object, Object>]
+    # @param [Object] path file path
+    # @return [Object, Hash]
     def self.safe_load_file_compat(path)
       if YAML.respond_to?(:safe_load_file) # steep:ignore
         pclasses = [] #: Array[String]
@@ -44,10 +44,10 @@ module Docscribe
 
     # Safely load YAML from a string across Psych API versions.
     #
-    # @param [String] yaml YAML document
-    # @param [String?] filename optional filename for diagnostics
     # @raise [ArgumentError]
-    # @return [Hash<Object, Object>] if ArgumentError
+    # @param [Object] yaml YAML document
+    # @param [nil] filename optional filename for diagnostics
+    # @return [Object] if ArgumentError
     # @return [Object] if ArgumentError
     def self.safe_load_compat(yaml, filename: nil)
       pclasses = [] #: Array[String]
