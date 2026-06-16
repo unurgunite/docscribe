@@ -78,11 +78,23 @@ RSpec.describe Docscribe::Types::Yard do
       end
     end
 
-    it 'parses generic with union arg' do
+    it 'parses generic with multiple args' do
       aggregate_failures do
-        node = parse('Hash<String, Integer>')
+        node = parse('Hash<Symbol, Object>')
         expect(node).to be_a(Docscribe::Types::Yard::Generic).and have_attributes(base: 'Hash')
-        expect(node.args.first).to be_a(Docscribe::Types::Yard::Union)
+        expect(node.args.size).to eq(2)
+        expect(node.args[0]).to be_a(Docscribe::Types::Yard::Named).and have_attributes(name: 'Symbol')
+        expect(node.args[1]).to be_a(Docscribe::Types::Yard::Named).and have_attributes(name: 'Object')
+      end
+    end
+
+    it 'parses generic arg with union' do
+      aggregate_failures do
+        node = parse('Hash<String | Integer, Object>')
+        expect(node).to be_a(Docscribe::Types::Yard::Generic).and have_attributes(base: 'Hash')
+        expect(node.args.size).to eq(2)
+        expect(node.args[0]).to be_a(Docscribe::Types::Yard::Union)
+        expect(node.args[0].types.map(&:name)).to eq(%w[String Integer])
       end
     end
 
@@ -214,6 +226,10 @@ RSpec.describe Docscribe::Types::Yard do
 
     it 'converts intersection' do
       expect(to_rbs(parse('String & Integer'))).to eq('String & Integer')
+    end
+
+    it 'converts Hash<Symbol, Object>' do
+      expect(to_rbs(parse('Hash<Symbol, Object>'))).to eq('Hash[Symbol, untyped]')
     end
 
     it 'converts nested generic with hash map' do

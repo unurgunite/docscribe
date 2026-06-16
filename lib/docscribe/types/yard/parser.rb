@@ -116,12 +116,26 @@ module Docscribe
         end
 
         # @private
+        # @return [Docscribe::Types::Yard::node]
+        def parse_generic_arg
+          types = [parse_intersection]
+          skip_space
+          while @i < @s.length && @s[@i] == '|'
+            @i += 1
+            skip_space
+            types << parse_intersection
+            skip_space
+          end
+          types.size == 1 ? types.first : Union.new(types: types)
+        end
+
+        # @private
         # @return [Array<Docscribe::Types::Yard::node>]
         def parse_generic_args
           args = [] #: Array[untyped]
           skip_space
           while @i < @s.length && @s[@i] != '>'
-            args << parse_union
+            args << parse_generic_arg
             skip_space
             next unless @i < @s.length && @s[@i] == ','
 
