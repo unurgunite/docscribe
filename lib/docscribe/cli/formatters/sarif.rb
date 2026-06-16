@@ -59,7 +59,7 @@ module Docscribe
         private
 
         # @private
-        # @param [Object] state
+        # @param [Docscribe::CLI::Formatters::state] state
         # @param [Object] _format
         # @return [Hash<String, Symbol, Object>]
         def build_sarif_document(state, _format)
@@ -71,7 +71,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] state
+        # @param [Docscribe::CLI::Formatters::state] state
         # @return [Hash<Symbol, Object>]
         def build_run(state)
           {
@@ -94,7 +94,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] state
+        # @param [Docscribe::CLI::Formatters::state] state
         # @return [Array<Hash<Symbol, Object>>]
         def build_results(state)
           results = [] #: Array[Hash[Symbol, top]]
@@ -107,8 +107,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] state
-        # @param [Object] results
+        # @param [Docscribe::CLI::Formatters::state] state
+        # @param [Array<Hash<Symbol, Object>>] results
         # @return [void]
         def append_check_results(state, results)
           append_changes(state[:fail_paths], state[:fail_changes], results)
@@ -116,9 +116,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] paths
-        # @param [Object] changes_map
-        # @param [Object] results
+        # @param [Array<String>] paths
+        # @param [Hash<String, Array<Docscribe::CLI::Formatters::change>>] changes_map
+        # @param [Array<Hash<Symbol, Object>>] results
         # @param [String?] level
         # @return [void]
         def append_changes(paths, changes_map, results, level: nil)
@@ -130,8 +130,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] state
-        # @param [Object] results
+        # @param [Docscribe::CLI::Formatters::state] state
+        # @param [Array<Hash<Symbol, Object>>] results
         # @return [void]
         def append_corrected_results(state, results)
           state[:corrected_paths].each do |path|
@@ -143,8 +143,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] state
-        # @param [Object] results
+        # @param [Docscribe::CLI::Formatters::state] state
+        # @param [Array<Hash<Symbol, Object>>] results
         # @return [void]
         def append_error_results(state, results)
           state[:error_paths].each do |path|
@@ -154,8 +154,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] change
-        # @param [Object] path
+        # @param [Docscribe::CLI::Formatters::change] change
+        # @param [String] path
         # @param [String?] level
         # @return [Hash<Symbol, Object>]
         def build_result(change, path, level: nil)
@@ -168,8 +168,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] message
-        # @param [Object] path
+        # @param [String] message
+        # @param [String] path
         # @return [Hash<Symbol, Object>]
         def build_error_result(message, path)
           {
@@ -181,8 +181,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] path
-        # @param [Object] line
+        # @param [String] path
+        # @param [Integer] line
         # @return [Hash<Symbol, Object>]
         def location(path, line)
           {
@@ -194,14 +194,14 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] change
+        # @param [Docscribe::CLI::Formatters::change] change
         # @return [String]
         def cop_name_for(change)
           COP_NAME_MAP[change[:type]] || fallback_cop_name(change)
         end
 
         # @private
-        # @param [Object] change
+        # @param [Docscribe::CLI::Formatters::change] change
         # @return [String]
         def fallback_cop_name(change)
           name = change[:type].to_s.tr('_', ' ').split.map(&:capitalize).join
@@ -209,7 +209,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] change
+        # @param [Docscribe::CLI::Formatters::change] change
         # @return [String]
         def message_for(change)
           method = change[:method] ? " for #{change[:method]}" : ''
@@ -222,7 +222,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] state
+        # @param [Docscribe::CLI::Formatters::state] state
         # @return [Hash<Symbol, Object>]
         def build_invocation(state)
           {

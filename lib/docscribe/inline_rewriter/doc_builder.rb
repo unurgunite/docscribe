@@ -305,7 +305,7 @@ module Docscribe
       # Check if bracket depth is positive (an opening `[` is unclosed).
       #
       # @note module_function: defines #unbalanced_bracket? (visibility: private)
-      # @param [Object] str string to check
+      # @param [String] str string to check
       # @return [Boolean]
       def unbalanced_bracket?(str)
         depth = 0
@@ -525,7 +525,7 @@ module Docscribe
       # Extract param info
       #
       # @note module_function: defines #extract_all_comment_tags (visibility: private)
-      # @param [Object] line single comment line
+      # @param [String] line single comment line
       # @param [Hash<Symbol, Object>] info parse info hash
       # @return [void]
       def extract_all_comment_tags(line, info)

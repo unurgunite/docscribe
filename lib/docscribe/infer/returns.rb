@@ -492,7 +492,7 @@ module Docscribe
       # if it is defined. The union type is `String?`.
       #
       # @note module_function: defines #handle_defined_node (visibility: private)
-      # @param [Object] _node the `:defined?` AST node
+      # @param [Parser::AST::Node] _node the `:defined?` AST node
       # @param [Object] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_defined_node(_node, **opts)
@@ -506,7 +506,7 @@ module Docscribe
       # fallback type otherwise.
       #
       # @note module_function: defines #handle_zsuper_node (visibility: private)
-      # @param [Object] _node the `:zsuper` AST node
+      # @param [Parser::AST::Node] _node the `:zsuper` AST node
       # @param [Object] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_zsuper_node(_node, **opts)
@@ -519,7 +519,7 @@ module Docscribe
       # fallback type otherwise.
       #
       # @note module_function: defines #handle_super_node (visibility: private)
-      # @param [Object] _node the `:super` AST node
+      # @param [Parser::AST::Node] _node the `:super` AST node
       # @param [Object] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_super_node(_node, **opts)
@@ -532,7 +532,7 @@ module Docscribe
       # or the fallback type otherwise.
       #
       # @note module_function: defines #handle_yield_node (visibility: private)
-      # @param [Object] _node the `:yield` AST node
+      # @param [Parser::AST::Node] _node the `:yield` AST node
       # @param [Object] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_yield_node(_node, **opts)

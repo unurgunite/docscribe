@@ -37,7 +37,7 @@ module Docscribe
         # Print files needing updates.
         #
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
-        # @param [Object] options runtime options hash
+        # @param [Docscribe::CLI::Formatters::opts] options runtime options hash
         # @return [void]
         def format_fail_paths(state, options)
           state[:fail_paths].each do |p|
@@ -71,7 +71,7 @@ module Docscribe
         # Print type mismatch warnings.
         #
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
-        # @param [Object] options runtime options hash
+        # @param [Docscribe::CLI::Formatters::opts] options runtime options hash
         # @return [void]
         def format_type_mismatch_paths(state, options)
           return if options[:quiet]
@@ -88,7 +88,7 @@ module Docscribe
         # Print updated file paths.
         #
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
-        # @param [Object] options runtime options hash
+        # @param [Docscribe::CLI::Formatters::opts] options runtime options hash
         # @return [void]
         def format_corrected_paths(state, options)
           state[:corrected_paths].each do |p|

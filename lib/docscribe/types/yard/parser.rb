@@ -7,7 +7,7 @@ module Docscribe
     # YARD type parser
     module Yard
       class << self
-        # @param [Object] string
+        # @param [String?] string
         # @return [Docscribe::Types::Yard::node?]
         def parse(string)
           return nil if string.nil? || string.strip.empty?
@@ -18,7 +18,7 @@ module Docscribe
 
       # Parses YARD type strings into an AST
       class Parser
-        # @param [Object] string
+        # @param [String] string
         # @return [void]
         def initialize(string)
           @s = string.strip
@@ -106,7 +106,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] base
+        # @param [Docscribe::Types::Yard::Named] base
         # @return [Docscribe::Types::Yard::Generic]
         def parse_generic(base)
           @i += 1
@@ -116,7 +116,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Docscribe::Types::Yard::node]
+        # @return [Elem, Union]
         def parse_generic_arg
           types = [parse_intersection]
           skip_space
@@ -210,14 +210,14 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] char
+        # @param [String] char
         # @return [Boolean]
         def name_char?(char)
           char.match?(/[a-zA-Z0-9_:]/)
         end
 
         # @private
-        # @param [Object] name
+        # @param [String] name
         # @return [Boolean]
         def literal?(name)
           %w[void nil self true false].include?(name)

@@ -158,7 +158,7 @@ module Docscribe
       # @param [String] code the Ruby source code string to parse and rewrite
       # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
       # @raise [Docscribe::ParseError]
-      # @return [Hash<Symbol, Object>]
+      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node, Docscribe::Types::ProviderChain, nil, Object, nil>]
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
         file = (options[:file] || '(inline)').to_s
@@ -454,7 +454,7 @@ module Docscribe
       # Plugin insertion priority
       #
       # @private
-      # @param [Hash, Insertion, AttrInsertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
       # @raise [StandardError]
       # @return [Integer] if StandardError
       # @return [Integer] if StandardError
@@ -469,7 +469,7 @@ module Docscribe
       # Plugin insertion label
       #
       # @private
-      # @param [Hash, Insertion, AttrInsertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
       # @raise [StandardError]
       # @return [String] if StandardError
       # @return [String] if StandardError
@@ -485,7 +485,7 @@ module Docscribe
       # Plugin insertion line
       #
       # @private
-      # @param [Hash, Insertion, AttrInsertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
       # @raise [StandardError]
       # @return [Integer, nil] if StandardError
       # @return [nil] if StandardError
@@ -1085,7 +1085,7 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @param [Parser::Source::Range] bol_range the beginning-of-line range for the attribute node
-      # @return [Hash<Symbol, Object>]
+      # @return [Hash<Symbol, Docscribe::InlineRewriter::Collector::AttrInsertion, Docscribe::Config, Docscribe::Types::ProviderChain, nil, Parser::Source::Range>]
       def attr_insertion_params(insertion, config, signature_provider, bol_range)
         {
           insertion: insertion, config: config,

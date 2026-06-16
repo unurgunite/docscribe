@@ -136,7 +136,7 @@ module Docscribe
         # @param [Array<Parser::Source::Comment>?] comments
         # @param [String] path
         # @param [Array<String>] src_lines
-        # @return [Array<MethodDef>]
+        # @return [Array<Docscribe::CLI::RbsGen::MethodDef>]
         def walk_source(ast, comments, path, src_lines)
           comment_map = build_comment_map(comments)
           ctx = WalkContext.new(containers: [], method_defs: [], path: path,
@@ -173,7 +173,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [WalkContext] ctx
+        # @param [Docscribe::CLI::RbsGen::WalkContext] ctx
         # @return [void]
         def walk_for_methods(node, ctx)
           return unless node.is_a?(Parser::AST::Node)
@@ -189,7 +189,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [WalkContext] ctx
+        # @param [Docscribe::CLI::RbsGen::WalkContext] ctx
         # @return [void]
         def walk_class_module(node, ctx)
           ctx.containers.push(const_name(node.children[0]))
@@ -199,7 +199,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [WalkContext] ctx
+        # @param [Docscribe::CLI::RbsGen::WalkContext] ctx
         # @return [void]
         def walk_sclass(node, ctx)
           sc_ctx = ctx.with(inside_sclass: true)
@@ -208,7 +208,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [WalkContext] ctx
+        # @param [Docscribe::CLI::RbsGen::WalkContext] ctx
         # @return [void]
         def walk_children(node, ctx)
           node.children.each { |c| walk_for_methods(c, ctx) }
@@ -216,7 +216,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [WalkContext] ctx
+        # @param [Docscribe::CLI::RbsGen::WalkContext] ctx
         # @return [void]
         def collect_def(node, ctx)
           line = node.loc&.line || 1
@@ -234,7 +234,7 @@ module Docscribe
 
         # @private
         # @param [Parser::AST::Node] node
-        # @param [WalkContext] ctx
+        # @param [Docscribe::CLI::RbsGen::WalkContext] ctx
         # @return [void]
         def collect_defs(node, ctx)
           line = node.loc&.line || 1
@@ -252,8 +252,8 @@ module Docscribe
 
         # @private
         # @param [Integer] line
-        # @param [WalkContext] ctx
-        # @return [YardTags?]
+        # @param [Docscribe::CLI::RbsGen::WalkContext] ctx
+        # @return [Docscribe::CLI::RbsGen::YardTags?]
         def parse_yard_tags_for_line(line, ctx)
           yard_block = find_yard_block(line, ctx.comment_map, ctx.src_lines)
           yard_block.any? ? parse_yard_tags(yard_block) : nil
@@ -289,7 +289,7 @@ module Docscribe
 
         # @private
         # @param [String] line
-        # @param [Hash] state
+        # @param [Hash<Symbol, Object>] state
         # @return [void]
         def parse_yard_line(line, state)
           text = line.sub(/\A#\s*/, '')
@@ -298,7 +298,7 @@ module Docscribe
 
         # @private
         # @param [String] text
-        # @param [Hash] state
+        # @param [Hash<Symbol, Object>] state
         # @return [void]
         def parse_param_tag(text, state)
           if (m = text.match(/\A@param\s+\[([^\]]+)\]\s+(\S+)\s*/))
@@ -310,7 +310,7 @@ module Docscribe
 
         # @private
         # @param [String] text
-        # @param [Hash] state
+        # @param [Hash<Symbol, Object>] state
         # @return [void]
         def parse_option_tag(text, state)
           return unless (m = text.match(/\A@option\s+\S+\s+\[([^\]]+)\]\s+:?(\S+)\s*/))
@@ -320,7 +320,7 @@ module Docscribe
 
         # @private
         # @param [String] text
-        # @param [Hash] state
+        # @param [Hash<Symbol, Object>] state
         # @return [void]
         def parse_return_tag(text, state)
           return unless (m = text.match(/\A@return\s+\[([^\]]+)\]\s*/))
@@ -346,7 +346,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Array<MethodDef>] method_defs
+        # @param [Array<Docscribe::CLI::RbsGen::MethodDef>] method_defs
         # @return [String]
         def build_rbs_content(method_defs)
           grouped = method_defs.group_by { |m| m.container || '' }
@@ -360,7 +360,7 @@ module Docscribe
         # @private
         # @param [Array<String>] lines
         # @param [String] container
-        # @param [Array<MethodDef>] methods
+        # @param [Array<Docscribe::CLI::RbsGen::MethodDef>] methods
         # @return [void]
         def append_group(lines, container, methods)
           lines << '' unless lines.empty?
@@ -374,7 +374,7 @@ module Docscribe
         end
 
         # @private
-        # @param [MethodDef] method
+        # @param [Docscribe::CLI::RbsGen::MethodDef] method
         # @return [String]
         def format_method_sig(method)
           prefix = method.scope == :class ? 'self.' : ''
@@ -389,8 +389,8 @@ module Docscribe
         end
 
         # @private
-        # @param [MethodDef] method
-        # @return [String]
+        # @param [Docscribe::CLI::RbsGen::MethodDef] method
+        # @return [Array<String>]
         def build_param_strs(method)
           tags = method.yard_tags
           strs = (tags&.params || []).map { |p| "#{type_to_rbs(p.type)} #{p.name}" }
@@ -399,7 +399,7 @@ module Docscribe
         end
 
         # @private
-        # @param [MethodDef] method
+        # @param [Docscribe::CLI::RbsGen::MethodDef] method
         # @return [String]
         def return_type_rbs(method)
           tags = method.yard_tags
