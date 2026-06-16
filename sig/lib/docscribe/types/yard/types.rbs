@@ -1,41 +1,43 @@
 module Docscribe
   module Types
     module Yard
+      type node = Named | Generic | Union | Intersection | Optional | Tuple | HashMap | Duck | Literal
+
       class Named
         def initialize: (name: String) -> void
         def name: () -> String
       end
 
       class Generic
-        def initialize: (base: String, args: Array[untyped]) -> void
+        def initialize: (base: String, args: Array[node]) -> void
         def base: () -> String
-        def args: () -> Array[untyped]
+        def args: () -> Array[node]
       end
 
       class Union
-        def initialize: (types: Array[untyped]) -> void
-        def types: () -> Array[untyped]
+        def initialize: (types: Array[node]) -> void
+        def types: () -> Array[node]
       end
 
       class Intersection
-        def initialize: (types: Array[untyped]) -> void
-        def types: () -> Array[untyped]
+        def initialize: (types: Array[node]) -> void
+        def types: () -> Array[node]
       end
 
       class Optional
-        def initialize: (type: untyped) -> void
-        def type: () -> untyped
+        def initialize: (type: node) -> void
+        def type: () -> node
       end
 
       class Tuple
-        def initialize: (types: Array[untyped]) -> void
-        def types: () -> Array[untyped]
+        def initialize: (types: Array[node]) -> void
+        def types: () -> Array[node]
       end
 
       class HashMap
-        def initialize: (key_type: untyped, value_type: untyped) -> void
-        def key_type: () -> untyped
-        def value_type: () -> untyped
+        def initialize: (key_type: node, value_type: node) -> void
+        def key_type: () -> node
+        def value_type: () -> node
       end
 
       class Duck

@@ -2,7 +2,7 @@ module Docscribe
   module Plugin
     module Base
       class CollectorPlugin
-        def collect: (Parser::AST::Node _ast, Parser::Source::Buffer _buffer) -> Array[Hash[Symbol, untyped]]
+        def collect: (Parser::AST::Node _ast, Parser::Source::Buffer _buffer) -> Array[Hash[Symbol, Object]]
       end
     end
   end

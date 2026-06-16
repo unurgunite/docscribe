@@ -85,13 +85,16 @@ module Docscribe
         # @return [Docscribe::Types::MethodSignature, nil]
         def lookup_signature(container, scope, name)
           definition = definition_for(container: container, scope: scope)
+          return nil unless definition
+
           method_def = definition.methods[name.to_sym]
           return nil unless method_def
 
           method_type = method_def.method_types.first
           return nil unless method_type
 
-          build_signature(method_type.type)
+          func = method_type.type #: ::RBS::Types::Function
+          build_signature(func)
         end
 
         # Try building an environment from combined dirs, falling back to

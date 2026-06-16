@@ -32,7 +32,7 @@ module Docscribe
 
         def build_env: (Array[String] dirs) -> ::RBS::Environment
 
-        def definition_for: (container: String, scope: Symbol) -> untyped
+        def definition_for: (container: String, scope: Symbol) -> (::RBS::Definition | nil)
 
         def parse_type_name: (String string) -> ::RBS::TypeName
 
@@ -42,17 +42,17 @@ module Docscribe
 
         def build_param_types: (::RBS::Types::Function func) -> Hash[String, String]
 
-        def add_keywords!: (Hash[String, String] param_types, Hash[Symbol, untyped] keywords) -> void
+        def add_keywords!: (Hash[String, String] param_types, Hash[Symbol, ::RBS::Types::Function::Param] keywords) -> void
 
-        def add_positionals!: (Hash[String, String] param_types, Array[untyped] list) -> void
+        def add_positionals!: (Hash[String, String] param_types, Array[::RBS::Types::Function::Param] list) -> void
 
         def build_rest_positional: (::RBS::Types::Function func) -> (Types::RestPositional | nil)
 
         def build_rest_keywords: (::RBS::Types::Function func) -> (Types::RestKeywords | nil)
 
-        def format_type: (untyped type) -> String
+        def format_type: (Docscribe::Types::RBS::TypeFormatter::rbs_type type) -> String
 
-        def handle_rbs_error: (untyped error, String context) -> void
+        def handle_rbs_error: ((::RBS::BaseError | StandardError) error, String context) -> void
 
         def warn_once: (String msg) -> void
       end

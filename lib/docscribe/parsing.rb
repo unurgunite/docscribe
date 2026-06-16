@@ -46,6 +46,8 @@ module Docscribe
       # @return [nil] if NoMethodError
       def parse_buffer(buffer, backend: :auto)
         parser = parser_for(backend: backend)
+        return nil unless parser
+
         parser.parse(buffer)
       rescue NoMethodError
         nil
@@ -75,6 +77,8 @@ module Docscribe
       # @return [nil] if NoMethodError
       def parse_with_comments_buffer(buffer, backend: :auto)
         parser = parser_for(backend: backend)
+        return nil unless parser
+
         parser.parse_with_comments(buffer)
       rescue NoMethodError
         nil

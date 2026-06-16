@@ -12,13 +12,13 @@ RSpec.describe Docscribe::InlineRewriter do
     merge_inserts[end_pos] << [
       10,
       "  #\n  " \
-      "# @param [Object] x Param documentation.\n"
+      "# @param [Object] x Generated param description.\n"
     ]
 
     merge_inserts[end_pos] << [
       20,
       "  #\n  " \
-      "# @param [Object] y Param documentation.\n"
+      "# @param [Object] y Generated param description.\n"
     ]
 
     described_class.send(

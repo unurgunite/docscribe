@@ -72,7 +72,7 @@ RSpec.describe Docscribe::InlineRewriter do
       Regexp.new(<<~'RX', Regexp::EXTENDED)
         ^\s*\#\s+\+Demo\#foo\+\s+->\s+Integer.*\n
         (?:^\s*\#.*\n)*?
-        ^\s*\#\s+@param\s+\[Boolean\]\s+verbose\s+Param\s+documentation\.\n
+        ^\s*\#\s+@param\s+\[Boolean\]\s+verbose\s+Generated\s+param\s+description\.\n
         (?:^\s*\#\s*\n)*?
         ^\s*\#\s+@return\s+\[Integer\]\s*\n
         ^\s*sig\s+\{\s*params\(verbose:\s*T::Boolean\)\.returns\(Integer\)\s*\}\s*\n

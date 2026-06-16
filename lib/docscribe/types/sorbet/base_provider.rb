@@ -94,7 +94,7 @@ module Docscribe
           overload = member.overloads&.first
           return unless overload
 
-          func = overload.method_type.type
+          func = overload.method_type.type #: ::RBS::Types::Function
           @index[[container, scope, member.name.to_s.to_sym]] = build_signature(func)
         end
 

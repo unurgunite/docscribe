@@ -59,7 +59,7 @@ module Docscribe
 
       def self?.resolve_mode_and_strategy!: (Hash[Symbol, untyped] options, (Symbol | nil) autocorrect_mode) -> void
 
-      def self?.route_include_exclude: (Hash[Symbol, untyped] options, Symbol kind, String value) -> void
+      def self?.route_include_exclude: (Hash[Symbol, untyped] options, (:include | :exclude) kind, String value) -> void
 
       def self?.looks_like_file_pattern?: (String pat) -> bool
     end

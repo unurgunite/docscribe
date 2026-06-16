@@ -105,13 +105,14 @@ module Docscribe
         # @return [Boolean] if StandardError
         # @return [Boolean] if Parser::SyntaxError
         # @return [Boolean] if StandardError
-        def generate_for_file(path, options)
+        def generate_for_file(path, options) # rubocop:disable Metrics/MethodLength
           src = File.read(path)
           src_lines = src.lines
-          result = Docscribe::Parsing.parse_with_comments(src, file: path)
-          return false unless result
+          res = Docscribe::Parsing.parse_with_comments(src, file: path)
+          return false unless res
 
-          ast, comments = result
+          ast = res[0] #: Parser::AST::Node # steep:ignore
+          comments = res[1] #: Array[Parser::Source::Comment]
           comment_map = build_comment_map(comments)
           method_defs = [] #: Array[MethodDef]
           walk_for_methods(ast, [], method_defs, path, comment_map, src_lines)

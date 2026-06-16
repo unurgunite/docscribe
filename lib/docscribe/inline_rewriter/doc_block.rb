@@ -357,7 +357,7 @@ module Docscribe
       # @return [(Object, Integer)]
       def consume_tag_entry(lines, start_idx, index:, sortable_tags:)
         first = lines[start_idx]
-        tag = extract_tag(first)
+        tag = extract_tag(first) || ''
         entry_lines = collect_continuation_lines(lines, start_idx + 1, first, sortable_tags)
         i = entry_lines.length + start_idx
         entry = build_tag_entry(first, tag, entry_lines, index)

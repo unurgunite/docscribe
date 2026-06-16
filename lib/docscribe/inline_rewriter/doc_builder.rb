@@ -1478,8 +1478,9 @@ module Docscribe
       # @return [String]
       def build_restarg_line(arg_node, indent, external_sig, param_types_override, **opts)
         pname = (arg_node.children.first || 'args').to_s
-        ty = if external_sig&.rest_positional&.element_type
-               "Array<#{external_sig.rest_positional.element_type}>"
+        rest_pos = external_sig&.rest_positional
+        ty = if rest_pos&.element_type
+               "Array<#{rest_pos.element_type}>"
              else
                lookup_param_type_by_infer(param_types_override, pname, "*#{pname}",
                                           opts[:fallback_type], opts[:treat_options_keyword_as_hash])

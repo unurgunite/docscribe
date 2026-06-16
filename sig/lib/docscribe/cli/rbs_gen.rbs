@@ -4,10 +4,10 @@ module Docscribe
       BANNER: String
 
       class YardTags
-        def initialize: (params: Array[untyped], return_type: String?, options: Array[untyped]) -> void
-        def params: () -> Array[untyped]
+        def initialize: (params: Array[ParamTag], return_type: String?, options: Array[ParamTag]) -> void
+        def params: () -> Array[ParamTag]
         def return_type: () -> String?
-        def options: () -> Array[untyped]
+        def options: () -> Array[ParamTag]
       end
 
       class ParamTag
@@ -34,17 +34,17 @@ module Docscribe
       def self.no_files_found: () -> Integer
       def self.run_with: (Hash[Symbol, untyped], Array[String]) -> Integer
       def self.generate_for_file: (String, Hash[Symbol, untyped]) -> bool
-      def self.build_comment_map: (Array[untyped]?) -> Hash[Integer, String]
+      def self.build_comment_map: (Array[Parser::Source::Comment]?) -> Hash[Integer, String]
       def self.find_yard_block: (Integer, Hash[Integer, String], Array[String]) -> Array[String]
       def self.parse_yard_tags: (Array[String]) -> YardTags
-      def self.walk_for_methods: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String], ?inside_sclass: bool) -> void
-      def self.walk_class_module: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String]) -> void
-      def self.walk_sclass: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String]) -> void
-      def self.walk_children: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String], ?inside_sclass: bool) -> void
-      def self.collect_def: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String], ?inside_sclass: bool) -> void
-      def self.collect_defs: (untyped, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String]) -> void
+      def self.walk_for_methods: (Parser::AST::Node, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String], ?inside_sclass: bool) -> void
+      def self.walk_class_module: (Parser::AST::Node, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String]) -> void
+      def self.walk_sclass: (Parser::AST::Node, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String]) -> void
+      def self.walk_children: (Parser::AST::Node, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String], ?inside_sclass: bool) -> void
+      def self.collect_def: (Parser::AST::Node, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String], ?inside_sclass: bool) -> void
+      def self.collect_defs: (Parser::AST::Node, Array[String], Array[MethodDef], String, Hash[Integer, String], Array[String]) -> void
       def self.container_name: (Array[String]) -> String?
-      def self.const_name: (untyped) -> String
+      def self.const_name: (Parser::AST::Node) -> String
       def self.build_rbs_content: (Array[MethodDef]) -> String
       def self.format_method_sig: (MethodDef) -> String
       def self.return_type_rbs: (MethodDef) -> String

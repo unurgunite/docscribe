@@ -3,7 +3,7 @@
 require 'docscribe/types/yard/parser'
 require 'docscribe/types/yard/formatter'
 
-RSpec.describe 'Docscribe::Types::Yard' do
+RSpec.describe Docscribe::Types::Yard do
   def parse(string)
     Docscribe::Types::Yard.parse(string)
   end

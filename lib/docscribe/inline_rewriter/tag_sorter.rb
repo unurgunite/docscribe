@@ -139,7 +139,7 @@ module Docscribe
       # @return [(Object, Integer)]
       def consume_entry(lines, start_idx)
         first = lines[start_idx]
-        tag = extract_tag_name(first)
+        tag = extract_tag_name(first) || ''
         entry_lines = collect_continuation_lines(lines, start_idx + 1)
         i = entry_lines.length + start_idx
 
@@ -213,7 +213,7 @@ module Docscribe
       def group_entry(entries, idx)
         entry = entries[idx]
         if entry.tag == 'param'
-          [entry] + collect_option_entries(entries, idx + 1, entry.param_name)
+          [entry] + collect_option_entries(entries, idx + 1, entry.param_name || '')
         else
           [entry]
         end
