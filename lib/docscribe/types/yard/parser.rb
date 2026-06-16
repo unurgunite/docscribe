@@ -90,7 +90,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Object, Object, Named]
+        # @return [Docscribe::Types::Yard::Named, Docscribe::Types::Yard::Literal, Docscribe::Types::Yard::Generic, Docscribe::Types::Yard::HashMap]
         def parse_named_type
           name = scan_name
           return Literal.new(value: name) if literal?(name)
@@ -116,7 +116,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Elem, Union]
+        # @return [Docscribe::Types::Yard::node]
         def parse_generic_arg
           types = [parse_intersection]
           skip_space

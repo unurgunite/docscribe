@@ -206,7 +206,7 @@ module Docscribe
         #
         # @private
         # @param [RBS::Types::Function] func RBS function to extract params
-        # @return [Hash<String, String>]
+        # @return [(Hash<String, String>, Array<String>)]
         def build_param_types(func)
           param_types = {} #: Hash[String, String]
           positional_types = [] #: Array[String]
@@ -237,10 +237,10 @@ module Docscribe
         # (when a name is available) and the ordered-position list (always).
         #
         # @private
-        # @param [Object] param_types normalized param type map
-        # @param [Object] positional_types ordered type list
-        # @param [Object] list positional parameter objects
-        # @return [Object?]
+        # @param [Hash<String, String>] param_types normalized param type map
+        # @param [Array<String>] positional_types ordered type list
+        # @param [Array<RBS::Types::Function::Param>] list positional parameter objects
+        # @return [void]
         def collect_positionals!(param_types, positional_types, list)
           list.each do |p|
             type_str = format_type(p.type)

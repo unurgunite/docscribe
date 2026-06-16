@@ -17,7 +17,9 @@ module Docscribe
         def parse_intersection: () -> node
         def parse_optional: () -> node
         def parse_primary: () -> node
+        def parse_named_type: () -> (Named | Literal | Generic | HashMap)
         def parse_generic: (Named) -> Generic
+        def parse_generic_arg: () -> node
         def parse_generic_args: () -> Array[node]
         def parse_tuple: () -> Tuple
         def parse_tuple_element: () -> node

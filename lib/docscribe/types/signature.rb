@@ -11,8 +11,8 @@ module Docscribe
     #   @param [Hash<String, String>] value
     #
     # @!attribute [rw] positional_types
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [Array<String>]
+    #   @param [Array<String>] value
     #
     # @!attribute [rw] rest_positional
     #   @return [Docscribe::Types::RestPositional, nil]

@@ -121,7 +121,8 @@ module Docscribe
           res = Docscribe::Parsing.parse_with_comments(src, file: path)
           return false unless res
 
-          method_defs = walk_source(res[0], res[1], path, src_lines)
+          ast = res[0]
+          method_defs = ast ? walk_source(ast, res[1], path, src_lines) : [] #: Array[MethodDef]
           return true if method_defs.empty?
 
           content = build_rbs_content(method_defs)
@@ -139,8 +140,10 @@ module Docscribe
         # @return [Array<Docscribe::CLI::RbsGen::MethodDef>]
         def walk_source(ast, comments, path, src_lines)
           comment_map = build_comment_map(comments)
-          ctx = WalkContext.new(containers: [], method_defs: [], path: path,
-                                comment_map: comment_map, src_lines: src_lines, inside_sclass: false)
+          containers = [] #: Array[String]
+          mdefs = [] #: Array[MethodDef]
+          ctx = WalkContext.new(containers: containers, method_defs: mdefs, path: path, comment_map: comment_map,
+                                src_lines: src_lines, inside_sclass: false)
           walk_for_methods(ast, ctx)
           ctx.method_defs
         end
@@ -282,9 +285,12 @@ module Docscribe
         # @param [Array<String>] comment_lines
         # @return [Docscribe::CLI::RbsGen::YardTags]
         def parse_yard_tags(comment_lines)
-          state = { params: [], options: [], return_type: nil }
+          params = [] #: Array[ParamTag]
+          opts = [] #: Array[ParamTag]
+          state = { params: params, options: opts, return_type: nil }
           comment_lines.each { |line| parse_yard_line(line, state) }
-          YardTags.new(**state)
+          return_type = state[:return_type] #: String?
+          YardTags.new(params: params, return_type: return_type, options: opts)
         end
 
         # @private
@@ -302,9 +308,9 @@ module Docscribe
         # @return [void]
         def parse_param_tag(text, state)
           if (m = text.match(/\A@param\s+\[([^\]]+)\]\s+(\S+)\s*/))
-            state[:params] << ParamTag.new(name: m[2], type: m[1])
+            state[:params] << ParamTag.new(name: m[2].to_s, type: m[1].to_s)
           elsif (m = text.match(/\A@param\s+(\S+)\s+\[([^\]]+)\]\s*/))
-            state[:params] << ParamTag.new(name: m[1], type: m[2])
+            state[:params] << ParamTag.new(name: m[1].to_s, type: m[2].to_s)
           end
         end
 
@@ -315,7 +321,7 @@ module Docscribe
         def parse_option_tag(text, state)
           return unless (m = text.match(/\A@option\s+\S+\s+\[([^\]]+)\]\s+:?(\S+)\s*/))
 
-          state[:options] << ParamTag.new(name: m[2], type: m[1])
+          state[:options] << ParamTag.new(name: m[2].to_s, type: m[1].to_s)
         end
 
         # @private

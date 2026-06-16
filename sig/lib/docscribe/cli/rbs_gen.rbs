@@ -26,7 +26,8 @@ module Docscribe
         def yard_tags: () -> YardTags?
       end
 
-      class WalkContext
+      class WalkContext < Data
+        def self.new: (containers: Array[String], method_defs: Array[MethodDef], path: String, comment_map: Hash[Integer, String], src_lines: Array[String], inside_sclass: bool) -> instance
         def initialize: (containers: Array[String], method_defs: Array[MethodDef], path: String, comment_map: Hash[Integer, String], src_lines: Array[String], inside_sclass: bool) -> void
         def containers: () -> Array[String]
         def method_defs: () -> Array[MethodDef]
@@ -34,6 +35,7 @@ module Docscribe
         def comment_map: () -> Hash[Integer, String]
         def src_lines: () -> Array[String]
         def inside_sclass: () -> bool
+        def with: (?containers: Array[String], ?method_defs: Array[MethodDef], ?path: String, ?comment_map: Hash[Integer, String], ?src_lines: Array[String], ?inside_sclass: bool) -> WalkContext
       end
 
       def self.run: (Array[String]) -> Integer
