@@ -13,6 +13,7 @@ module Docscribe
         case format
         when :text then Text.new
         when :json then Json.new
+        when :sarif then Sarif.new
         else raise ArgumentError, "Unknown format: #{format}"
         end
       end
@@ -22,3 +23,4 @@ end
 
 require_relative 'formatters/text'
 require_relative 'formatters/json'
+require_relative 'formatters/sarif'

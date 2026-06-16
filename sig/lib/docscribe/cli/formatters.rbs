@@ -2,7 +2,7 @@ module Docscribe
   module CLI
     # Factory for output formatters.
     module Formatters
-      type format = :text | :json
+      type format = :text | :json | :sarif
 
       type change = {
         type: Symbol,
@@ -54,7 +54,7 @@ module Docscribe
         stdin: bool
       }
 
-      def self.for: (format format) -> (Text | Json)
+      def self.for: (format format) -> (Text | Json | Sarif)
     end
   end
 end

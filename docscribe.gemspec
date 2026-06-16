@@ -42,6 +42,24 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rubocop-sorted_methods_by_call'
   spec.add_development_dependency 'yard', '>= 0.9.38'
 
+  spec.post_install_message = <<~MESSAGE
+    Thank you for installing docscribe #{Docscribe::VERSION}!
+
+    To get started:
+      $ docscribe --help
+
+    To check Ruby files for missing documentation:
+      $ docscribe lib/
+
+    To apply safe doc updates:
+      $ docscribe -a lib/
+
+    To use RBS type signatures:
+      $ docscribe --rbs lib/
+
+    See https://github.com/unurgunite/docscribe for details.
+  MESSAGE
+
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
 end

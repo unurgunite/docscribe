@@ -33,6 +33,9 @@ module Docscribe
 
       BANNER = <<~TEXT
         Usage: docscribe [options] [files...]
+               docscribe init [options]
+               docscribe generate <type> <name> [options]
+               docscribe sigs [options] [files...]
 
         Default behavior:
           Inspect files and report what safe doc updates would be applied.
@@ -66,7 +69,7 @@ module Docscribe
                 --progress                 Show progress [N/total] per file
             -e, --explain                  Show detailed reasons for changes (default)
             -q, --quiet                    Only show status, no details
-                --format FORMAT            Output format: text (default) or json
+                --format FORMAT            Output format: text (default), json, or sarif
 
 
         Other:
@@ -377,7 +380,8 @@ module Docscribe
       # @param [Object] options mutable parsed options hash
       # @return [Object]
       def define_format_option(opts, options)
-        opts.on('--format FORMAT', %i[text json], 'Output format: text (default) or json') do |v| # steep:ignore
+        opts.on('--format FORMAT', %i[text json sarif], # steep:ignore
+                'Output format: text (default), json, or sarif') do |v|
           options[:format] = v
         end
       end

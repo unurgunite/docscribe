@@ -4,6 +4,7 @@ require 'docscribe/cli/init'
 require 'docscribe/cli/generate'
 require 'docscribe/cli/options'
 require 'docscribe/cli/run'
+require 'docscribe/cli/sigs'
 
 module Docscribe
   # CLI entry point and command dispatch.
@@ -34,7 +35,7 @@ module Docscribe
       # @param [Object] cmd Param documentation.
       # @return [Boolean]
       def subcommand?(cmd)
-        %w[init generate].include?(cmd)
+        %w[init generate sigs].include?(cmd)
       end
 
       # Dispatch subcommand
@@ -43,15 +44,12 @@ module Docscribe
       # @param [Object] argv raw command-line arguments
       # @return [Object, Integer]
       def dispatch_subcommand(argv)
-        case argv.first
-        when 'init'
-          argv.shift
-          Docscribe::CLI::Init.run(argv)
-        when 'generate'
-          argv.shift
-          Docscribe::CLI::Generate.run(argv)
-        else
-          0
+        cmd = argv.shift
+        case cmd
+        when 'init' then Docscribe::CLI::Init.run(argv)
+        when 'generate' then Docscribe::CLI::Generate.run(argv)
+        when 'sigs' then Docscribe::CLI::Sigs.run(argv)
+        else 0
         end
       end
     end
