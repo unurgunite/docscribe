@@ -1,0 +1,45 @@
+module Docscribe
+  module CLI
+    module Sigs
+      BANNER: String
+      EXIT_CODES: String
+
+      class MethodDef < Data
+        def self.new: (name: Symbol, scope: Symbol, container: String?, file: String, line: Integer) -> instance
+        attr_reader name: Symbol
+        attr_reader scope: Symbol
+        attr_reader container: String?
+        attr_reader file: String
+        attr_reader line: Integer
+      end
+
+      def self.run: (Array[String] argv) -> Integer
+
+      private
+
+      def self?.warn_ruby_version: -> void
+      def self?.parse_options: (Array[String] argv) -> Hash[Symbol, untyped]
+      def self?.register_sig_options: (untyped opts, Hash[Symbol, untyped] options) -> void
+      def self?.expand_paths: (Array[String] args) -> Array[String]
+      def self?.expand_single_path: (Array[String] files, String path) -> void
+      def self?.no_files_found: -> Integer
+      def self?.run_with: (Hash[Symbol, untyped] options, Array[MethodDef] methods) -> Integer
+      def self?.extract_methods: (Array[String] paths) -> Array[MethodDef]
+      def self?.extract_methods_from_file: (String path, Array[MethodDef] methods) -> void
+      def self?.walk_for_methods: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
+      def self?.walk_class_module: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
+      def self?.walk_sclass: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
+      def self?.walk_children: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
+      def self?.collect_def: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
+      def self?.collect_defs: (untyped node, Array[String] containers, Array[MethodDef] methods, String path) -> void
+      def self?.container_name: (Array[String] containers) -> String?
+      def self?.const_name: (untyped node) -> String
+      def self?.build_provider: (Hash[Symbol, untyped] options) -> Docscribe::Types::RBS::Provider?
+      def self?.load_collection_dirs: -> Array[String]
+      def self?.check_sigs: (Array[MethodDef] methods, Docscribe::Types::RBS::Provider provider, verbose: bool) -> Array[MethodDef]
+      def self?.lookup_signature: (MethodDef method_def, Docscribe::Types::RBS::Provider provider) -> untyped
+      def self?.format_method: (MethodDef method_def) -> String
+      def self?.report_results: (Array[MethodDef] methods, Array[MethodDef] missing) -> void
+    end
+  end
+end

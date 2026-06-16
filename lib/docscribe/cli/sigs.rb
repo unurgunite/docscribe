@@ -85,7 +85,7 @@ module Docscribe
         # @param [Object] args
         # @return [Object]
         def expand_paths(args)
-          files = []
+          files = [] #: Array[String]
           args = ['.'] if args.empty?
           args.each { |path| expand_single_path(files, path) }
           files.uniq.sort
@@ -131,7 +131,7 @@ module Docscribe
         # @param [Object] paths
         # @return [Array]
         def extract_methods(paths)
-          methods = []
+          methods = [] #: Array[MethodDef]
           paths.each { |path| extract_methods_from_file(path, methods) }
           methods
         end
@@ -150,7 +150,7 @@ module Docscribe
           return unless ast
 
           walk_for_methods(ast, [], methods, path)
-        rescue Parser::SyntaxError => e
+        rescue Parser::SyntaxError => e # steep:ignore
           warn "Syntax error in #{path}: #{e.message}"
         rescue StandardError => e
           warn "Error parsing #{path}: #{e.class}: #{e.message}"
@@ -265,7 +265,7 @@ module Docscribe
         # @return [nil] if LoadError
         # @return [nil] if StandardError
         def build_provider(options)
-          dirs = options[:rbs_collection] ? load_collection_dirs : []
+          dirs = options[:rbs_collection] ? load_collection_dirs : [] #: Array[String]
           Docscribe::Types::RBS::Provider.new(sig_dirs: options[:sig_dirs], collection_dirs: dirs)
         rescue LoadError
           warn 'Docscribe: rbs gem is not installed. Add `gem "rbs"` to your Gemfile ' \
@@ -281,8 +281,8 @@ module Docscribe
         # @return [Object, Array]
         # @return [Array] if StandardError
         def load_collection_dirs
-          collection = Docscribe::Types::RBS::CollectionLoader.load
-          collection ? collection.collection_dirs : []
+          dir = Docscribe::Types::RBS::CollectionLoader.resolve
+          dir ? [dir] : []
         rescue StandardError => e
           warn "Docscribe: Failed to load RBS collection: #{e.class}: #{e.message}"
           []
@@ -294,7 +294,7 @@ module Docscribe
         # @param [Object] verbose
         # @return [Array]
         def check_sigs(methods, provider, verbose:)
-          missing = []
+          missing = [] #: Array[MethodDef]
           methods.each do |m|
             sig = lookup_signature(m, provider)
             puts "  OK  #{format_method(m)} (#{m.file}:#{m.line})" if sig && verbose

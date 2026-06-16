@@ -97,7 +97,7 @@ module Docscribe
         # @param [Object] state
         # @return [Array<Hash<Symbol, Object>>]
         def build_results(state)
-          results = []
+          results = [] #: Array[Hash[Symbol, top]]
 
           append_check_results(state, results)
           append_corrected_results(state, results)

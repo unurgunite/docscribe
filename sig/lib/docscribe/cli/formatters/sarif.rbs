@@ -11,7 +11,7 @@ module Docscribe
 
         private
 
-        def build_sarif_document: (state, top) -> Hash[String, top]
+        def build_sarif_document: (state, top) -> Hash[String | Symbol, top]
         def build_run: (state) -> Hash[Symbol, top]
         def build_tool: -> Hash[Symbol, top]
         def build_results: (state) -> Array[Hash[Symbol, top]]
