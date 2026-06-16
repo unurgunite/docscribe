@@ -4,6 +4,8 @@ require 'docscribe/cli/init'
 require 'docscribe/cli/generate'
 require 'docscribe/cli/options'
 require 'docscribe/cli/run'
+require 'docscribe/cli/sigs'
+require 'docscribe/cli/rbs_gen'
 
 module Docscribe
   # CLI entry point and command dispatch.
@@ -16,8 +18,8 @@ module Docscribe
       # - `docscribe generate ...` to the plugin skeleton generator
       # - all other commands to the main option parser and runner
       #
-      # @param [Object] argv raw command-line arguments
-      # @return [Object] process exit code
+      # @param [Array<String>] argv raw command-line arguments
+      # @return [Integer] process exit code
       def run(argv)
         argv = argv.dup
         return dispatch_subcommand(argv) if subcommand?(argv.first)
@@ -31,27 +33,25 @@ module Docscribe
       # Subcommand
       #
       # @private
-      # @param [Object] cmd Param documentation.
+      # @param [String?] cmd potential subcommand name
       # @return [Boolean]
       def subcommand?(cmd)
-        %w[init generate].include?(cmd)
+        %w[init generate sigs rbs].include?(cmd)
       end
 
       # Dispatch subcommand
       #
       # @private
-      # @param [Object] argv raw command-line arguments
-      # @return [Object, Integer]
+      # @param [Array<String>] argv raw command-line arguments
+      # @return [Integer]
       def dispatch_subcommand(argv)
-        case argv.first
-        when 'init'
-          argv.shift
-          Docscribe::CLI::Init.run(argv)
-        when 'generate'
-          argv.shift
-          Docscribe::CLI::Generate.run(argv)
-        else
-          0
+        cmd = argv.shift
+        case cmd
+        when 'init' then Docscribe::CLI::Init.run(argv)
+        when 'generate' then Docscribe::CLI::Generate.run(argv)
+        when 'sigs' then Docscribe::CLI::Sigs.run(argv)
+        when 'rbs' then Docscribe::CLI::RbsGen.run(argv)
+        else 0
         end
       end
     end

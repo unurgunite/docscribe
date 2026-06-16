@@ -16,11 +16,11 @@ module Docscribe
       class Provider
         # Initialize
         #
-        # @param [Object] sig_dirs directories containing `.rbs` files
-        # @param [Array] collection_dirs RBS collection directories
+        # @param [Array<String>] sig_dirs directories containing `.rbs` files
+        # @param [Array<String>] collection_dirs RBS collection directories
         # @param [Boolean] collapse_generics whether generic container types
-        # @param [Boolean] collapse_object_generics Param documentation.
-        # @return [Boolean]
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
+        # @return [void]
         def initialize(sig_dirs:, collection_dirs: [], collapse_generics: false, collapse_object_generics: false)
           require 'rbs'
           @sig_dirs = Array(sig_dirs).map(&:to_s)
@@ -37,12 +37,12 @@ module Docscribe
         #
         # Returns nil when the method cannot be resolved or when RBS lookup fails.
         #
-        # @param [Object] container e.g. "MyModule::MyClass"
-        # @param [Object] scope :instance or :class
-        # @param [Object] name method name
+        # @param [String] container e.g. "MyModule::MyClass"
+        # @param [Symbol] scope :instance or :class
+        # @param [Symbol, String] name method name
         # @raise [::RBS::BaseError]
         # @raise [StandardError]
-        # @return [Object] if StandardError
+        # @return [Docscribe::Types::MethodSignature, nil] if StandardError
         # @return [nil] if ::RBS::BaseError
         # @return [nil] if StandardError
         def signature_for(container:, scope:, name:)
@@ -66,7 +66,7 @@ module Docscribe
         # dirs are dropped and only user sig_dirs are used.
         #
         # @private
-        # @return [Object]
+        # @return [void]
         def load_env!
           return if @env && @builder
 
@@ -79,30 +79,33 @@ module Docscribe
         # Look up a method signature from the loaded RBS definition builder.
         #
         # @private
-        # @param [Object] container fully qualified class/module name
-        # @param [Object] scope :instance or :class
-        # @param [Object] name method name to look up
-        # @return [Object]
+        # @param [String] container fully qualified class/module name
+        # @param [Symbol] scope :instance or :class
+        # @param [Symbol, String] name method name to look up
+        # @return [Docscribe::Types::MethodSignature, nil]
         def lookup_signature(container, scope, name)
           definition = definition_for(container: container, scope: scope)
+          return nil unless definition
+
           method_def = definition.methods[name.to_sym]
           return nil unless method_def
 
           method_type = method_def.method_types.first
           return nil unless method_type
 
-          build_signature(method_type.type)
+          func = method_type.type #: ::RBS::Types::Function
+          build_signature(func)
         end
 
         # Try building an environment from combined dirs, falling back to
         # user-only dirs on failure when collection dirs are present.
         #
         # @private
-        # @param [Object] all_dirs combined sig and collection dirs
-        # @param [Object] collection_dirs RBS collection directories
+        # @param [Array<String>] all_dirs combined sig and collection dirs
+        # @param [Array<String>] collection_dirs RBS collection directories
         # @raise [::RBS::BaseError]
         # @raise [StandardError]
-        # @return [Object] if ::RBS::BaseError
+        # @return [RBS::Environment] if ::RBS::BaseError
         # @return [Object] if ::RBS::BaseError
         def try_with_fallback_build_env(all_dirs, collection_dirs)
           build_env(all_dirs)
@@ -120,8 +123,8 @@ module Docscribe
         # Build an RBS environment from the given directories.
         #
         # @private
-        # @param [Object] dirs Param documentation.
-        # @return [Object]
+        # @param [Array<String>] dirs directories to load RBS from
+        # @return [RBS::Environment]
         def build_env(dirs)
           loader = ::RBS::EnvironmentLoader.new
           # Load core types transitively
@@ -140,9 +143,9 @@ module Docscribe
         # Build the appropriate instance or singleton definition for a container.
         #
         # @private
-        # @param [Object] container fully qualified class/module name
-        # @param [Object] scope :instance or :class
-        # @return [Object]
+        # @param [String] container fully qualified class/module name
+        # @param [Symbol] scope :instance or :class
+        # @return [RBS::Definition, nil]
         def definition_for(container:, scope:)
           type_name = parse_type_name(absolute_const(container))
           scope == :class ? @builder&.build_singleton(type_name) : @builder&.build_instance(type_name)
@@ -154,8 +157,8 @@ module Docscribe
         # that may not expose `TypeName.parse`.
         #
         # @private
-        # @param [Object] string e.g. "::Irb::Autosuggestions"
-        # @return [TypeName]
+        # @param [String] string e.g. "::Irb::Autosuggestions"
+        # @return [RBS::TypeName]
         def parse_type_name(string)
           absolute = string.start_with?('::')
           *path, name = string.delete_prefix('::').split('::').map(&:to_sym)
@@ -169,7 +172,7 @@ module Docscribe
         # Normalize a container name into an absolute constant path.
         #
         # @private
-        # @param [Object] container fully qualified class/module name
+        # @param [String] container fully qualified class/module name
         # @return [String]
         def absolute_const(container)
           s = container.to_s
@@ -180,66 +183,77 @@ module Docscribe
         # model.
         #
         # @private
-        # @param [Object] func Param documentation.
-        # @return [MethodSignature]
+        # @param [RBS::Types::Function] func RBS function type to convert
+        # @return [Docscribe::Types::MethodSignature]
         def build_signature(func)
+          param_types, positional_types = build_param_types(func)
           MethodSignature.new(
             return_type: format_type(func.return_type),
-            param_types: build_param_types(func),
+            param_types: param_types,
+            positional_types: positional_types,
             rest_positional: build_rest_positional(func),
             rest_keywords: build_rest_keywords(func)
           )
         end
 
-        # Build a name => type map for positional and keyword parameters.
+        # Build a name => type map and positional type list for all
+        # positional and keyword parameters.
+        #
+        # Returns [param_types (Hash), positional_types (Array)].
+        # positional_types includes ALL positional params in order (named
+        # and unnamed) so callers can fall back to positional matching when
+        # the RBS signature omits parameter names.
         #
         # @private
-        # @param [Object] func Param documentation.
-        # @return [Hash]
+        # @param [RBS::Types::Function] func RBS function to extract params
+        # @return [(Hash<String, String>, Array<String>)]
         def build_param_types(func)
           param_types = {} #: Hash[String, String]
+          positional_types = [] #: Array[String]
 
-          add_positionals!(param_types, func.required_positionals)
-          add_positionals!(param_types, func.optional_positionals)
-          add_positionals!(param_types, func.trailing_positionals)
+          collect_positionals!(param_types, positional_types, func.required_positionals)
+          collect_positionals!(param_types, positional_types, func.optional_positionals)
+          collect_positionals!(param_types, positional_types, func.trailing_positionals)
 
           add_keywords!(param_types, func.required_keywords)
           add_keywords!(param_types, func.optional_keywords)
 
-          param_types
+          [param_types, positional_types]
         end
 
         # Add keyword parameters to the normalized parameter map.
         #
         # @private
-        # @param [Object] param_types Param documentation.
-        # @param [Object] keywords Param documentation.
-        # @return [Object]
+        # @param [Hash<String, String>] param_types normalized param type map
+        # @param [Hash<Symbol, RBS::Types::Function::Param>] keywords keyword parameter entries
+        # @return [void]
         def add_keywords!(param_types, keywords)
           keywords.each do |kw, p|
             param_types[kw.to_s] = format_type(p.type)
           end
         end
 
-        # Add named positional parameters to the normalized parameter map.
+        # Collect positional parameter types into both the name-keyed hash
+        # (when a name is available) and the ordered-position list (always).
         #
         # @private
-        # @param [Object] param_types Param documentation.
-        # @param [Object] list Param documentation.
-        # @return [Object]
-        def add_positionals!(param_types, list)
+        # @param [Hash<String, String>] param_types normalized param type map
+        # @param [Array<String>] positional_types ordered type list
+        # @param [Array<RBS::Types::Function::Param>] list positional parameter objects
+        # @return [void]
+        def collect_positionals!(param_types, positional_types, list)
           list.each do |p|
-            next unless p.name
-
-            param_types[p.name.to_s] = format_type(p.type)
+            type_str = format_type(p.type)
+            positional_types << type_str
+            param_types[p.name.to_s] = type_str if p.name
           end
         end
 
         # Build normalized `*args` metadata.
         #
         # @private
-        # @param [Object] func Param documentation.
-        # @return [RestPositional]
+        # @param [RBS::Types::Function] func RBS function for rest params
+        # @return [Docscribe::Types::RestPositional, nil]
         def build_rest_positional(func)
           rp = func.rest_positionals
           return nil unless rp
@@ -253,8 +267,8 @@ module Docscribe
         # Build normalized `**kwargs` metadata.
         #
         # @private
-        # @param [Object] func Param documentation.
-        # @return [RestKeywords]
+        # @param [RBS::Types::Function] func RBS function for rest keywords
+        # @return [Docscribe::Types::RestKeywords, nil]
         def build_rest_keywords(func)
           rk = func.rest_keywords
           return nil unless rk
@@ -269,8 +283,8 @@ module Docscribe
         # generated comments.
         #
         # @private
-        # @param [Object] type Param documentation.
-        # @return [Object]
+        # @param [Docscribe::Types::RBS::TypeFormatter::rbs_type] type RBS type object to format
+        # @return [String]
         def format_type(type)
           Docscribe::Types::RBS::TypeFormatter.to_yard(
             type,
@@ -282,9 +296,9 @@ module Docscribe
         # Emit a formatted RBS error warning with context-specific messaging.
         #
         # @private
-        # @param [Object] error the raised exception
-        # @param [Object] context human-readable context label
-        # @return [Object]
+        # @param [RBS::BaseError, StandardError] error the raised exception
+        # @param [String] context human-readable context label
+        # @return [void]
         def handle_rbs_error(error, context)
           case error
           when ::RBS::BaseError
@@ -300,8 +314,8 @@ module Docscribe
         # Print one debug warning per provider instance when debugging is enabled.
         #
         # @private
-        # @param [Object] msg Param documentation.
-        # @return [Object]
+        # @param [String] msg warning message text
+        # @return [void]
         def warn_once(msg)
           return unless ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
           return if @warned

@@ -11,7 +11,7 @@ module Docscribe
 
       def self.stdin_rewrite_result: (Formatters::opts options, Config conf) -> Hash[Symbol, untyped]
 
-      def self.core_rbs_provider_for: (Config conf) -> (untyped | nil)
+      def self.core_rbs_provider_for: (Config conf) -> (Docscribe::Types::RBS::Provider | nil)
 
       def self.filtered_paths: (Array[String] argv, Config conf) -> Array[String]
 
@@ -43,7 +43,7 @@ module Docscribe
 
       def self.rewrite_result_for_path: (String path, src: String, ctx: Hash[Symbol, untyped]) -> (Hash[Symbol, untyped] | nil)
 
-      def self.record_rewrite_error: (String path, untyped error, Hash[Symbol, untyped] ctx) -> void
+      def self.record_rewrite_error: (String path, StandardError error, Hash[Symbol, untyped] ctx) -> void
 
       def self.handle_check_result: (String path, src: String, out: String, file_changes: Array[Formatters::change], **untyped ctx) -> void
 
@@ -63,7 +63,7 @@ module Docscribe
 
       def self.print_check_explanations: (Array[Formatters::change] file_changes) -> void
 
-      def self.record_write_error: (String path, untyped error, display_path: String, options: Formatters::opts, state: Formatters::state) -> void
+      def self.record_write_error: (String path, StandardError error, display_path: String, options: Formatters::opts, state: Formatters::state) -> void
 
       def self.log_check_verdict: (String verdict, String display_path, Formatters::opts options) -> void
 

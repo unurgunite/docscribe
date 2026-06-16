@@ -9,7 +9,7 @@ module ParamTag
   # @param [String] description documentation text appended to the param line (empty for struct params)
   # @param [Integer] indent number of leading spaces (defaults to 1)
   # @return [String] formatted @param tag line
-  def param_tag(name, type, config: Docscribe::Config.new, description: 'Param documentation.', indent: 1)
+  def param_tag(name, type, config: Docscribe::Config.new, description: 'Generated param description.', indent: 1)
     style = config.raw.dig('doc', 'param_tag_style') || 'type_name'
 
     case style

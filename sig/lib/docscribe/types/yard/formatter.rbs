@@ -1,0 +1,18 @@
+module Docscribe
+  module Types
+    module Yard
+      module Formatter
+        def self.to_rbs: (node?) -> String
+        private
+        def self.format_named: (Named) -> String
+        def self.format_generic: (Generic) -> String
+        def self.format_union: (Union) -> String
+        def self.format_intersection: (Intersection) -> String
+        def self.format_optional: (Optional) -> String
+        def self.format_tuple: (Tuple) -> String
+        def self.format_hash_map: (HashMap) -> String
+        def self.format_literal: (Literal) -> String
+      end
+    end
+  end
+end

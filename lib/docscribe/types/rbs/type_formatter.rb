@@ -13,10 +13,10 @@ module Docscribe
         # Dispatch an RBS type object to the appropriate YARD formatter.
         #
         # @note module_function: defines #to_yard (visibility: private)
-        # @param [Object] type the RBS type object to convert
+        # @param [Docscribe::Types::RBS::TypeFormatter::rbs_type, nil] type the RBS type object to convert
         # @param [Boolean] collapse_generics whether to omit generic type arguments
         # @param [Boolean] collapse_object_generics whether to collapse generics when all inner types are Object
-        # @return [Object]
+        # @return [String]
         def to_yard(type, collapse_generics: false, collapse_object_generics: false)
           return 'Object' unless type
 
@@ -35,7 +35,7 @@ module Docscribe
         # Check if the given type object is a named RBS type (class, singleton, interface, or alias).
         #
         # @note module_function: defines #named_type? (visibility: private)
-        # @param [Object] type the RBS type object to check
+        # @param [Docscribe::Types::RBS::TypeFormatter::rbs_type] type the RBS type object to check
         # @return [Boolean]
         def named_type?(type)
           named_type_classes.any? { |klass| type.is_a?(klass) }
@@ -44,7 +44,7 @@ module Docscribe
         # Return or memoize the list of RBS type classes considered named types.
         #
         # @note module_function: defines #named_type_classes (visibility: private)
-        # @return [Object]
+        # @return [Array<Class>]
         def named_type_classes
           @named_type_classes ||= [
             ::RBS::Types::ClassInstance,
@@ -57,7 +57,7 @@ module Docscribe
         # Fallback conversion of an unrecognized RBS type to a cleaned string representation.
         #
         # @note module_function: defines #fallback_string (visibility: private)
-        # @param [Object] type the unrecognized RBS type object
+        # @param [Docscribe::Types::RBS::TypeFormatter::rbs_type] type the unrecognized RBS type object
         # @return [String]
         def fallback_string(type)
           type.to_s
@@ -69,7 +69,7 @@ module Docscribe
         # Return or memoize the dispatch hash mapping RBS type classes to formatter lambdas.
         #
         # @note module_function: defines #to_yard_formatters (visibility: private)
-        # @return [Object]
+        # @return [Hash<Class, Docscribe::Types::RBS::TypeFormatter::formatter_fn>]
         def to_yard_formatters
           @to_yard_formatters ||= formatter_pairs.to_h.freeze
         end
@@ -77,7 +77,7 @@ module Docscribe
         # Hash of RBS type classes and their YARD formatter lambdas.
         #
         # @note module_function: defines #formatter_pairs (visibility: private)
-        # @return [Object]
+        # @return [Hash<Class, Docscribe::Types::RBS::TypeFormatter::formatter_fn>]
         def formatter_pairs # steep:ignore # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
           @formatter_pairs ||= {
             ::RBS::Types::Bases::Any => ->(_, **) { format_any },
@@ -143,9 +143,9 @@ module Docscribe
         # Format an RBS Optional type as a YARD optional type with `?` suffix.
         #
         # @note module_function: defines #format_optional (visibility: private)
-        # @param [Object] type the optional type to format
-        # @param [Object] collapse_generics whether to omit generic type arguments
-        # @param [Object] collapse_object_generics Param documentation.
+        # @param [RBS::Types::Optional] type the optional type to format
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
         # @return [String]
         def format_optional(type, collapse_generics:, collapse_object_generics:)
           "#{to_yard(type.type, collapse_generics: collapse_generics,
@@ -155,7 +155,7 @@ module Docscribe
         # Map a Ruby literal value to its corresponding YARD type name.
         #
         # @note module_function: defines #format_literal (visibility: private)
-        # @param [Object] lit a Ruby literal value
+        # @param [RBS::Types::Literal] lit a Ruby literal value
         # @return [String]
         def format_literal(lit)
           case lit
@@ -180,9 +180,9 @@ module Docscribe
         # Format an RBS Tuple type as a parenthesized list of YARD types.
         #
         # @note module_function: defines #format_tuple (visibility: private)
-        # @param [Object] type the tuple type to format
-        # @param [Object] collapse_generics whether to omit generic type arguments
-        # @param [Object] collapse_object_generics Param documentation.
+        # @param [RBS::Types::Tuple] type the tuple type to format
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
         # @return [String]
         def format_tuple(type, collapse_generics:, collapse_object_generics:)
           "(#{type.types.map do |t|
@@ -233,7 +233,7 @@ module Docscribe
         # Format an RBS type variable as its name string.
         #
         # @note module_function: defines #format_variable (visibility: private)
-        # @param [Object] type the variable type
+        # @param [RBS::Types::Variable] type the variable type
         # @return [String]
         def format_variable(type)
           type.name.to_s
@@ -242,9 +242,9 @@ module Docscribe
         # Format an RBS Record type as a YARD `Hash<Symbol, ValueType>`.
         #
         # @note module_function: defines #format_record (visibility: private)
-        # @param [Object] type the record type
-        # @param [Object] collapse_generics whether to omit generic type arguments
-        # @param [Object] collapse_object_generics Param documentation.
+        # @param [RBS::Types::Record] type the record type
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
         # @return [String]
         def format_record(type, collapse_generics:, collapse_object_generics:)
           value_types = type.all_fields.values.map do |(ty, _)|
@@ -256,10 +256,10 @@ module Docscribe
         # Format an RBS Intersection type as `Type & Type` list.
         #
         # @note module_function: defines #format_intersection (visibility: private)
-        # @param [Object] type the intersection type
-        # @param [Object] collapse_generics whether to omit generic type arguments
-        # @param [Object] collapse_object_generics Param documentation.
-        # @return [Object]
+        # @param [RBS::Types::Intersection] type the intersection type
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
+        # @return [String]
         def format_intersection(type, collapse_generics:, collapse_object_generics:)
           type.types.map do |t|
             to_yard(t, collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
@@ -269,10 +269,10 @@ module Docscribe
         # Format an RBS Union type as a comma-separated list of YARD types.
         #
         # @note module_function: defines #format_union (visibility: private)
-        # @param [Object] type the union type to format
-        # @param [Object] collapse_generics whether to omit generic type arguments
-        # @param [Object] collapse_object_generics Param documentation.
-        # @return [Object]
+        # @param [RBS::Types::Union] type the union type to format
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics collapse Object generics flag
+        # @return [String]
         def format_union(type, collapse_generics:, collapse_object_generics:)
           type.types.map do |t|
             to_yard(t, collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
@@ -284,10 +284,10 @@ module Docscribe
         # Format an RBS named type (class, interface, alias) with optional generic arguments.
         #
         # @note module_function: defines #format_named (visibility: private)
-        # @param [Object] type the unrecognized RBS type object
-        # @param [Object] collapse_generics whether to omit generic type arguments
-        # @param [Object] collapse_object_generics whether to collapse generics when all inner types are Object
-        # @return [Object, String]
+        # @param [Docscribe::Types::RBS::TypeFormatter::named_rbs_type] type the unrecognized RBS type object
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics whether to collapse generics when all inner types are Object
+        # @return [String]
         def format_named(type, collapse_generics:, collapse_object_generics:)
           name = type.name.to_s.delete_prefix('::')
           args = type.respond_to?(:args) ? type.args : [] #: Array[untyped]
@@ -303,10 +303,10 @@ module Docscribe
         # Format generic type arguments for a named type.
         #
         # @note module_function: defines #format_generic_args (visibility: private)
-        # @param [Object] name the type name
-        # @param [Object] args the generic type arguments
-        # @param [Object] collapse_generics whether to omit generic type arguments
-        # @param [Object] collapse_object_generics whether to collapse generics when all inner types are Object
+        # @param [String] name the type name
+        # @param [Array<Docscribe::Types::RBS::TypeFormatter::rbs_type>] args the generic type arguments
+        # @param [Boolean] collapse_generics whether to omit generic type arguments
+        # @param [Boolean] collapse_object_generics whether to collapse generics when all inner types are Object
         # @return [String]
         def format_generic_args(name, args, collapse_generics:, collapse_object_generics:)
           return name if collapse_generics

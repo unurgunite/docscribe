@@ -21,7 +21,7 @@ module Docscribe
                             | ::RBS::Types::Interface
                             | ::RBS::Types::Alias
 
-        type formatter_fn = ^(rbs_type, ?cg: bool, ?cog: bool) -> String
+        type formatter_fn = ^(rbs_type, **untyped) -> String
 
         @to_yard_formatters: Hash[Class, formatter_fn]
 
@@ -65,7 +65,7 @@ module Docscribe
 
         def self?.format_named: (named_rbs_type type, collapse_generics: bool, collapse_object_generics: bool) -> String
 
-        def self?.format_generic_args: (String name, Array[untyped] args, collapse_generics: bool, collapse_object_generics: bool) -> String
+        def self?.format_generic_args: (String name, Array[rbs_type] args, collapse_generics: bool, collapse_object_generics: bool) -> String
 
         def self?.literal_to_yard: (top lit) -> String
 
@@ -77,7 +77,7 @@ module Docscribe
 
         def self?.fallback_string: (rbs_type type) -> String
 
-        def self?.formatter_pairs: () -> untyped
+        def self?.formatter_pairs: () -> Hash[Class, formatter_fn]
       end
     end
   end

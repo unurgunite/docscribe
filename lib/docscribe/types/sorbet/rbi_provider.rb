@@ -14,9 +14,9 @@ module Docscribe
       class RBIProvider < BaseProvider
         # Initialize
         #
-        # @param [Object] rbi_dirs directories scanned recursively for
+        # @param [Array<String>] rbi_dirs directories scanned recursively for
         # @param [Boolean] collapse_generics whether generic container types
-        # @return [Object]
+        # @return [void]
         def initialize(rbi_dirs:, collapse_generics: false)
           super(collapse_generics: collapse_generics)
 

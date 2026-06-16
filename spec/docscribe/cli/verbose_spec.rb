@@ -10,7 +10,7 @@ RSpec.describe Docscribe::CLI do
   let(:stderr) do
     File.write(File.join(dir, 'a_ok.rb'), <<~RUBY)
       class A
-        # @param [Object] x Param documentation.
+        # @param [Object] x Generated param description.
         # @return [Integer]
         def x(x); 1; end
       end

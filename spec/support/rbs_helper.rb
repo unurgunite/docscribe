@@ -61,6 +61,32 @@ module RbsHelper
     end
   end
 
+  def rbs_out(source, *extra, filename: 'test.rb')
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, filename)
+      File.write(path, source)
+      capture_stdout { expect(described_class.run(['-n', path, *extra])).to eq(0) }
+    end
+  end
+
+  def with_rbs(source, filename: 'test.rb')
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, filename)
+      File.write(path, source)
+      yield path, dir
+    end
+  end
+
+  def with_existing_rbs(rb_source, old_content, sig_name: 'test.rbs')
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'test.rb')
+      File.write(path, rb_source)
+      FileUtils.mkdir_p("#{dir}/sig")
+      File.write("#{dir}/sig/#{sig_name}", old_content)
+      yield path, dir, "#{dir}/sig"
+    end
+  end
+
   private
 
   # Skip the example if the RBS gem is unavailable.

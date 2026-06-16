@@ -17,8 +17,8 @@ module Docscribe
       # Returns unique exception names in discovery order.
       #
       # @note module_function: defines #infer_raises_from_node (visibility: private)
-      # @param [Object] node method or expression node to inspect
-      # @return [Array<Elem>]
+      # @param [Parser::AST::Node] node method or expression node to inspect
+      # @return [Array<String>]
       def infer_raises_from_node(node)
         raises = [] #: Array[String]
 
@@ -42,8 +42,8 @@ module Docscribe
       # - `[Foo, Bar]` => `["Foo", "Bar"]`
       #
       # @note module_function: defines #exception_names_from_rescue_list (visibility: private)
-      # @param [Object] exc_list rescue exception list node
-      # @return [Array, Object, DEFAULT_ERROR, Array]
+      # @param [Parser::AST::Node, nil] exc_list rescue exception list node
+      # @return [Array<String>]
       def exception_names_from_rescue_list(exc_list)
         if exc_list.nil?
           [DEFAULT_ERROR]
@@ -57,9 +57,9 @@ module Docscribe
       # Collect exception names from a `raise` or `fail` send node.
       #
       # @note module_function: defines #collect_send_raise (visibility: private)
-      # @param [Object] raises accumulator
-      # @param [Object] node send node
-      # @return [Object]
+      # @param [Array<String>] raises accumulator
+      # @param [Parser::AST::Node] node send node
+      # @return [void]
       def collect_send_raise(raises, node)
         recv, meth, *args = *node
         return unless recv.nil? && %i[raise fail].include?(meth)

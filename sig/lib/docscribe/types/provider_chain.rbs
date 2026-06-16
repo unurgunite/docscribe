@@ -1,9 +1,13 @@
 module Docscribe
   module Types
-    class ProviderChain
-      @providers: Array[untyped]
+    interface _Provider
+      def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Types::MethodSignature | nil)
+    end
 
-      def initialize: (*untyped providers) -> void
+    class ProviderChain
+      @providers: Array[_Provider]
+
+      def initialize: (*_Provider providers) -> void
 
       def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Types::MethodSignature | nil)
     end

@@ -33,13 +33,13 @@ module Docscribe
           attributes: false                   # @!attribute for attr_*
 
           # Placeholder text for generated docs
-          include_default_message: true       # "Method documentation."
-          include_param_documentation: true   # "Param documentation."
+          include_default_message: true       # "Generated method description."
+          include_param_documentation: true   # "Generated param description."
 
         doc:
           # Default text and formatting
-          default_message: "Method documentation."
-          param_documentation: "Param documentation."
+          default_message: "Generated method description."
+          param_documentation: "Generated param description."
           param_tag_style: "type_name"        # "type_name" or "name_type"
           sort_tags: true
           tag_order: ["todo", "note", "api", "private", "protected", "param", "option", "yieldparam", "raise", "return"]

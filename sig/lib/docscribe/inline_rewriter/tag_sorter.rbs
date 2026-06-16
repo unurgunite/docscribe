@@ -1,7 +1,15 @@
 module Docscribe
   module InlineRewriter
     module TagSorter
-      Entry: untyped
+      class Entry
+        attr_accessor tag: String
+        attr_accessor lines: Array[String]
+        attr_accessor param_name: String?
+        attr_accessor option_owner: String?
+        attr_accessor index: Integer
+
+        def initialize: (?tag: String, ?lines: Array[String], ?param_name: String?, ?option_owner: String?, ?index: Integer) -> void
+      end
 
       def self?.sort: (Array[String] lines, tag_order: Array[String]) -> Array[String]
 
@@ -15,19 +23,19 @@ module Docscribe
 
       def self?.sort_segment: (Hash[Symbol, untyped] segment, priority: Hash[String, Integer]) -> Array[String]
 
-      def self?.group_priority: (Array[untyped] group, Hash[String, Integer] priority) -> Integer
+      def self?.group_priority: (Array[Entry] group, Hash[String, Integer] priority) -> Integer
 
-      def self?.consume_entry: (Array[String] lines, Integer start_idx) -> [untyped, Integer]
+      def self?.consume_entry: (Array[String] lines, Integer start_idx) -> [Entry, Integer]
 
-      def self?.build_entry: ((String | nil) tag, Array[String] entry_lines, String first, Integer start_idx) -> untyped
+      def self?.build_entry: (String tag, Array[String] entry_lines, String first, Integer start_idx) -> Entry
 
       def self?.collect_continuation_lines: (Array[String] lines, Integer start_idx) -> Array[String]
 
-      def self?.group_entries: (Array[untyped] entries) -> Array[Array[untyped]]
+      def self?.group_entries: (Array[Entry] entries) -> Array[Array[Entry]]
 
-      def self?.group_entry: (Array[untyped] entries, Integer idx) -> Array[untyped]
+      def self?.group_entry: (Array[Entry] entries, Integer idx) -> Array[Entry]
 
-      def self?.collect_option_entries: (Array[untyped] entries, Integer start_idx, String param_name) -> Array[untyped]
+      def self?.collect_option_entries: (Array[Entry] entries, Integer start_idx, String param_name) -> Array[Entry]
 
       def self?.top_level_tag_line?: (String line) -> bool
 

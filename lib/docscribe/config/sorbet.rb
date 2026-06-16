@@ -12,9 +12,9 @@ module Docscribe
     #
     # Returns nil when no external type provider is enabled or available.
     #
-    # @param [Object] source Ruby source being rewritten
-    # @param [Object] file source name for diagnostics
-    # @return [Object]
+    # @param [String] source Ruby source being rewritten
+    # @param [String] file source name for diagnostics
+    # @return [Docscribe::Types::ProviderChain, nil]
     def signature_provider_for(source:, file:)
       providers = [] #: Array[untyped]
       append_sorbet_providers(providers, source: source, file: file)
@@ -24,10 +24,10 @@ module Docscribe
 
     # Append Sorbet-based providers to the list.
     #
-    # @param [Object] providers Param documentation.
-    # @param [Object] source Ruby source being rewritten
-    # @param [Object] file source name for diagnostics
-    # @return [Object]
+    # @param [Array<Object>] providers provider list to populate
+    # @param [String] source Ruby source being rewritten
+    # @param [String] file source name for diagnostics
+    # @return [void]
     def append_sorbet_providers(providers, source:, file:)
       return unless sorbet_enabled?
 
@@ -37,10 +37,10 @@ module Docscribe
 
     # Build a Sorbet source provider (inline sigs).
     #
-    # @param [Object] source Ruby source being rewritten
-    # @param [Object] file source name for diagnostics
+    # @param [String] source Ruby source being rewritten
+    # @param [String] file source name for diagnostics
     # @raise [LoadError]
-    # @return [SourceProvider] if LoadError
+    # @return [Docscribe::Types::Sorbet::SourceProvider, nil] if LoadError
     # @return [nil] if LoadError
     def sorbet_source_provider(source, file)
       require 'docscribe/types/sorbet/source_provider'
@@ -55,8 +55,8 @@ module Docscribe
 
     # Build the provider chain from a non-empty list, or return nil.
     #
-    # @param [Object] providers Param documentation.
-    # @return [ProviderChain]
+    # @param [Array<Object>] providers provider list to chain
+    # @return [Docscribe::Types::ProviderChain, nil]
     def build_provider_chain(providers)
       providers = providers.compact
       return nil if providers.empty?
@@ -68,7 +68,7 @@ module Docscribe
     # Return a memoized Sorbet RBI provider if Sorbet integration is enabled.
     #
     # @raise [LoadError]
-    # @return [Object]
+    # @return [Docscribe::Types::Sorbet::RBIProvider, nil]
     def sorbet_rbi_provider
       return nil unless sorbet_enabled?
 
@@ -85,14 +85,14 @@ module Docscribe
 
     # Whether Sorbet support is enabled in config.
     #
-    # @return [Object]
+    # @return [Boolean]
     def sorbet_enabled?
       fetch_bool(%w[sorbet enabled], false)
     end
 
     # RBI directories searched by the Sorbet provider.
     #
-    # @return [Object]
+    # @return [Array<String>]
     def sorbet_rbi_dirs
       Array(raw.dig('sorbet', 'rbi_dirs') || DEFAULT.dig('sorbet', 'rbi_dirs')).map(&:to_s) # steep:ignore
     end
@@ -102,7 +102,7 @@ module Docscribe
     # Falls back to the RBS `collapse_generics` setting when Sorbet-specific
     # config is not present.
     #
-    # @return [Object]
+    # @return [Boolean]
     def sorbet_collapse_generics?
       fetch_bool(%w[sorbet collapse_generics], rbs_collapse_generics?)
     end

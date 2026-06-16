@@ -4,13 +4,13 @@ module Docscribe
 
     def self.parse_buffer: (Parser::Source::Buffer buffer, ?backend: Symbol) -> (Parser::AST::Node | nil)
 
-    def self.parse_with_comments: (String code, ?file: String, ?backend: Symbol) -> [ Parser::AST::Node, Array[Parser::Source::Comment] ]
+    def self.parse_with_comments: (String code, ?file: String, ?backend: Symbol) -> ([ Parser::AST::Node?, Array[Parser::Source::Comment] ] | nil)
 
-    def self.parse_with_comments_buffer: (Parser::Source::Buffer buffer, ?backend: Symbol) -> [ Parser::AST::Node, Array[Parser::Source::Comment] ]
+    def self.parse_with_comments_buffer: (Parser::Source::Buffer buffer, ?backend: Symbol) -> ([ Parser::AST::Node?, Array[Parser::Source::Comment] ] | nil)
 
     private
 
-    def self.parser_for: (?backend: Symbol) -> (Parser::Base | untyped)
+    def self.parser_for: (?backend: Symbol) -> (Parser::Base | nil)
 
     def self.backend: (?Symbol backend) -> (Symbol | nil)
 

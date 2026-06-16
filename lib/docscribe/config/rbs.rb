@@ -8,7 +8,7 @@ module Docscribe
     # If RBS cannot be loaded, this returns nil and Docscribe falls back to
     # inference.
     #
-    # @return [Object]
+    # @return [Docscribe::Types::RBS::Provider, nil]
     def rbs_provider
       return nil unless rbs_enabled?
       return nil unless ruby_supports_rbs?
@@ -18,14 +18,14 @@ module Docscribe
 
     # Whether RBS integration is enabled.
     #
-    # @return [Object]
+    # @return [Boolean]
     def rbs_enabled?
       fetch_bool(%w[rbs enabled], false)
     end
 
     # Core rbs provider
     #
-    # @return [Object]
+    # @return [Docscribe::Types::RBS::Provider, nil]
     def core_rbs_provider
       return nil unless ruby_supports_rbs?
 
@@ -37,7 +37,7 @@ module Docscribe
     #
     # Set `rbs.warn_missing_collection: false` in `docscribe.yml` to suppress.
     #
-    # @return [Object]
+    # @return [Boolean]
     def rbs_warn_missing_collection?
       fetch_bool(%w[rbs warn_missing_collection], true)
     end
@@ -62,7 +62,7 @@ module Docscribe
     #
     # @private
     # @raise [LoadError]
-    # @return [Provider] if LoadError
+    # @return [Docscribe::Types::RBS::Provider, nil] if LoadError
     # @return [nil] if LoadError
     def build_rbs_provider
       require 'docscribe/types/rbs/provider'
@@ -81,7 +81,7 @@ module Docscribe
     #
     # @private
     # @raise [LoadError]
-    # @return [Provider] if LoadError
+    # @return [Docscribe::Types::RBS::Provider, nil] if LoadError
     # @return [nil] if LoadError
     def build_core_rbs_provider
       require 'docscribe/types/rbs/provider'
@@ -96,7 +96,7 @@ module Docscribe
     # Signature directories used by the RBS provider.
     #
     # @private
-    # @return [Object]
+    # @return [Array<String>]
     def rbs_sig_dirs
       Array(raw.dig('rbs', 'sig_dirs') || DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s) # steep:ignore
     end
@@ -108,7 +108,7 @@ module Docscribe
     # stdlib types) do not silence all RBS lookups.
     #
     # @private
-    # @return [Object]
+    # @return [Array<String>]
     def rbs_collection_dirs
       Array(raw.dig('rbs', 'collection_dirs')).map(&:to_s) # steep:ignore
     end
@@ -120,7 +120,7 @@ module Docscribe
     # - `Array<Integer>`       => `Array`
     #
     # @private
-    # @return [Object]
+    # @return [Boolean]
     def rbs_collapse_generics?
       fetch_bool(%w[rbs collapse_generics], false)
     end
@@ -134,7 +134,7 @@ module Docscribe
     # - `Array<Object>`        => `Array`
     #
     # @private
-    # @return [Object]
+    # @return [Boolean]
     def rbs_collapse_object_generics?
       fetch_bool(%w[rbs collapse_object_generics], false)
     end

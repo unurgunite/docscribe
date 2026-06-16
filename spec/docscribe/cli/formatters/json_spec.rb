@@ -22,15 +22,6 @@ RSpec.describe Docscribe::CLI::Formatters::Json do
     JSON.parse(capture_stdout { formatter.format_check_summary(state: state, options: options) })
   end
 
-  def capture_stdout
-    orig = $stdout
-    $stdout = StringIO.new
-    yield
-    $stdout.string
-  ensure
-    $stdout = orig
-  end
-
   describe '#format_check_summary' do
     it 'outputs valid JSON' do
       expect { parse_output }.not_to raise_error

@@ -25,10 +25,10 @@ module Docscribe
     class << self
       # Parse source code into a parser-gem-compatible AST.
       #
-      # @param [Object] code Ruby source
+      # @param [String] code Ruby source
       # @param [String] file source name used for parser locations
       # @param [Symbol] backend :auto, :parser, or :prism
-      # @return [Object]
+      # @return [Parser::AST::Node, nil]
       def parse(code, file: '(docscribe)', backend: :auto)
         buffer = Parser::Source::Buffer.new(file, source: code)
         parse_buffer(buffer, backend: backend)
@@ -39,13 +39,15 @@ module Docscribe
       # Returns +nil+ when the source cannot be parsed (syntax errors or
       # internal parser crashes).
       #
-      # @param [Object] buffer Param documentation.
+      # @param [Parser::Source::Buffer] buffer prepared source buffer
       # @param [Symbol] backend :auto, :parser, or :prism
       # @raise [NoMethodError]
-      # @return [Object] if NoMethodError
+      # @return [Parser::AST::Node, nil] if NoMethodError
       # @return [nil] if NoMethodError
       def parse_buffer(buffer, backend: :auto)
         parser = parser_for(backend: backend)
+        return nil unless parser
+
         parser.parse(buffer)
       rescue NoMethodError
         nil
@@ -55,10 +57,10 @@ module Docscribe
       #
       # Returns +nil+ when the source cannot be parsed.
       #
-      # @param [Object] code Ruby source
+      # @param [String] code Ruby source
       # @param [String] file source name used for parser locations
       # @param [Symbol] backend :auto, :parser, or :prism
-      # @return [Object]
+      # @return [(Parser::AST::Node?, Array<Parser::Source::Comment>), nil]
       def parse_with_comments(code, file: '(docscribe)', backend: :auto)
         buffer = Parser::Source::Buffer.new(file, source: code)
         parse_with_comments_buffer(buffer, backend: backend)
@@ -68,13 +70,15 @@ module Docscribe
       #
       # Returns +nil+ when the source cannot be parsed.
       #
-      # @param [Object] buffer Param documentation.
+      # @param [Parser::Source::Buffer] buffer prepared source buffer
       # @param [Symbol] backend :auto, :parser, or :prism
       # @raise [NoMethodError]
-      # @return [Object] if NoMethodError
+      # @return [(Parser::AST::Node?, Array<Parser::Source::Comment>), nil] if NoMethodError
       # @return [nil] if NoMethodError
       def parse_with_comments_buffer(buffer, backend: :auto)
         parser = parser_for(backend: backend)
+        return nil unless parser
+
         parser.parse_with_comments(buffer)
       rescue NoMethodError
         nil
@@ -86,7 +90,7 @@ module Docscribe
       #
       # @private
       # @param [Symbol] backend requested backend
-      # @return [CurrentRuby, ParserCurrent]
+      # @return [Parser::Base, nil]
       def parser_for(backend: :auto)
         case backend(backend)
         when :parser
@@ -108,7 +112,7 @@ module Docscribe
       # @private
       # @param [Symbol] backend requested backend
       # @raise [ArgumentError]
-      # @return [Symbol, Object, Object] :parser or :prism
+      # @return [Symbol, nil] :parser or :prism
       def backend(backend = :auto)
         env = ENV.fetch('DOCSCRIBE_PARSER_BACKEND') { nil }
         backend = env.to_sym if env && !env.empty?
@@ -126,7 +130,7 @@ module Docscribe
       # Whether the current Ruby version is 3.4 or newer.
       #
       # @private
-      # @return [Object]
+      # @return [Boolean]
       def ruby_gte_34?
         Gem::Version.new(RUBY_VERSION) >= Gem::Version.new('3.4')
       end

@@ -30,7 +30,7 @@ module Docscribe
 
       @name_stack: Array[String]
 
-      @module_states: Hash[String, Hash[Symbol, untyped]]
+      @module_states: Hash[String, Hash[Symbol, bool]]
 
       class VisibilityCtx
         @default_instance_vis: Symbol
@@ -92,15 +92,15 @@ module Docscribe
 
       def initialize: (Parser::Source::Buffer buffer) -> void
 
-      def on_class: (Parser::AST::Node node) -> untyped
+      def on_class: (Parser::AST::Node node) -> Parser::AST::Node
 
-      def on_module: (Parser::AST::Node node) -> untyped
+      def on_module: (Parser::AST::Node node) -> Parser::AST::Node
 
-      def on_casgn: (Parser::AST::Node node) -> untyped
+      def on_casgn: (Parser::AST::Node node) -> Parser::AST::Node
 
-      def on_def: (Parser::AST::Node node) -> untyped
+      def on_def: (Parser::AST::Node node) -> Parser::AST::Node
 
-      def on_defs: (Parser::AST::Node node) -> untyped
+      def on_defs: (Parser::AST::Node node) -> Parser::AST::Node
 
       private
 
@@ -230,7 +230,7 @@ module Docscribe
 
       def promote_extend_self_container: (container: String) -> void
 
-      def drop_first_if_str!: (Array[untyped] args) -> void
+      def drop_first_if_str!: (Array[Parser::AST::Node] args) -> void
     end
   end
 end

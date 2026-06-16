@@ -18,8 +18,8 @@ RSpec.describe Docscribe::InlineRewriter do
     end
 
     it 'inserts method and param default messages', :aggregate_failures do
-      expect(out).to include('Method documentation.')
-      expect(out).to include('Param documentation.')
+      expect(out).to include('Generated method description.')
+      expect(out).to include('Generated param description.')
     end
   end
 

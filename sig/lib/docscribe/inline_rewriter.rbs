@@ -25,15 +25,15 @@ module Docscribe
 
     def self.collect_insertions: (Parser::Source::Buffer buffer, Parser::AST::Node ast) -> Array[untyped]
 
-    def self.deduplicate_insertions: (Array[ [Symbol, untyped] ] insertions, ?method_overrides_by_pos: (Hash[Integer, untyped] | nil)?) -> Array[ [Symbol, untyped] ]
+    def self.deduplicate_insertions: (Array[ [Symbol, untyped] ] insertions, ?method_overrides_by_pos: (Hash[Integer, Hash[Symbol, untyped]] | nil)?) -> Array[ [Symbol, untyped] ]
 
-    def self.process_dedup_group: (Integer pos, Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] result, (Hash[Integer, untyped] | nil) method_overrides_by_pos) -> void
+    def self.process_dedup_group: (Integer pos, Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] result, (Hash[Integer, Hash[Symbol, untyped]] | nil) method_overrides_by_pos) -> void
 
     def self.group_by_position: (Array[ [Symbol, untyped] ] insertions) -> Hash[Integer, Array[ [Symbol, untyped] ]]
 
     def self.find_override_items: (Array[ [Symbol, untyped] ] plugin_items) -> Array[ [Symbol, untyped] ]
 
-    def self.handle_override_case: (Array[ [Symbol, untyped] ] result, Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] override_items, (Hash[Integer, untyped] | nil) method_overrides_by_pos, Integer pos) -> void
+    def self.handle_override_case: (Array[ [Symbol, untyped] ] result, Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] override_items, (Hash[Integer, Hash[Symbol, untyped]] | nil) method_overrides_by_pos, Integer pos) -> void
 
     def self.deduplicate_items: (Array[ [Symbol, untyped] ] items, Array[ [Symbol, untyped] ] plugin_items, Integer pos, Array[ [Symbol, untyped] ] _method_items) -> Array[ [Symbol, untyped] ]
 
@@ -59,11 +59,11 @@ module Docscribe
 
     def self.warn_override_conflict!: (Array[ [Symbol, untyped] ] winners_sorted, Integer max_prio, Integer pos) -> void
 
-    def self.plugin_insertion_priority: (Hash[Symbol, untyped] insertion) -> Integer
+    def self.plugin_insertion_priority: (Hash[Symbol, untyped] | Collector::Insertion | Collector::AttrInsertion insertion) -> Integer
 
-    def self.plugin_insertion_label: (Hash[Symbol, untyped] insertion) -> String
+    def self.plugin_insertion_label: (Hash[Symbol, untyped] | Collector::Insertion | Collector::AttrInsertion insertion) -> String
 
-    def self.plugin_insertion_line: (Hash[Symbol, untyped] insertion) -> (Integer | nil)
+    def self.plugin_insertion_line: (Hash[Symbol, untyped] | Collector::Insertion | Collector::AttrInsertion insertion) -> (Integer | nil)
 
     def self.plugin_insertion_pos: (:plugin, Hash[Symbol, untyped]) -> Integer
                                 | (Symbol, Collector::Insertion | Collector::AttrInsertion) -> Integer
@@ -102,7 +102,7 @@ module Docscribe
 
     def self.build_method_insertion_params: (Collector::Insertion insertion, Config config, (Types::ProviderChain | nil) signature_provider, (untyped | nil) core_rbs_provider, (Hash[Symbol, untyped] | nil) method_override) -> Hash[Symbol, untyped]
 
-    def self.build_effective_params: (Collector::Insertion insertion, **untyped options) -> { param_types: (Hash[untyped, untyped] | nil), return_type_override: untyped, override_tags: Array[untyped] }
+    def self.build_effective_params: (Collector::Insertion insertion, **untyped options) -> { param_types: (Hash[String, String] | nil), return_type_override: (String | nil), override_tags: Array[Docscribe::Plugin::Tag] }
 
     def self.resolve_external_signature: (Collector::Insertion insertion, (Types::ProviderChain | nil) signature_provider) -> (Types::MethodSignature | nil)
 
@@ -194,7 +194,7 @@ module Docscribe
 
     def self.anchor_node_for: (Collector::Insertion insertion) -> Parser::AST::Node
 
-    def self.extract_method_override!: (untyped method_override) -> Hash[Symbol, untyped]
+    def self.extract_method_override!: ((Hash[Symbol, untyped] | nil) method_override) -> Hash[Symbol, untyped]
 
     def self.normalize_override_tags: (Array[untyped] tags) -> Array[Plugin::Tag]
   end

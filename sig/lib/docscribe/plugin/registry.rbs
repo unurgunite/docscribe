@@ -19,7 +19,7 @@ module Docscribe
 
       def self?.register: (untyped plugin, ?priority: Integer) -> void
 
-      def self?.parse_priority: (untyped priority) -> Integer
+      def self?.parse_priority: ((String | Integer) priority) -> Integer
 
       def self?.create_entry: (untyped plugin, Integer priority) -> Entry
 

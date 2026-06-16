@@ -13,23 +13,23 @@ module Docscribe
 
         private
 
-        def build_document: (state state, opts _options) -> Hash[untyped, untyped]
+        def build_document: (state state, opts _options) -> Hash[Symbol, untyped]
 
-        def document_hash: (Array[Hash[untyped, untyped]] files, state state) -> Hash[untyped, untyped]
+        def document_hash: (Array[Hash[Symbol, untyped]] files, state state) -> Hash[Symbol, untyped]
 
-        def metadata_hash: () -> Hash[Symbol, untyped]
+        def metadata_hash: () -> Hash[Symbol, String]
 
-        def summary_hash: (Array[Hash[untyped, untyped]] files, state state) -> Hash[Symbol, Integer]
+        def summary_hash: (Array[Hash[Symbol, untyped]] files, state state) -> Hash[Symbol, Integer]
 
-        def build_files: (state state) -> Array[Hash[untyped, untyped]]
+        def build_files: (state state) -> Array[Hash[Symbol, untyped]]
 
-        def append_check_files: (state state, Array[Hash[untyped, untyped]] files) -> void
+        def append_check_files: (state state, Array[Hash[Symbol, untyped]] files) -> void
 
-        def append_corrected_files: (state state, Array[Hash[untyped, untyped]] files) -> void
+        def append_corrected_files: (state state, Array[Hash[Symbol, untyped]] files) -> void
 
-        def append_error_files: (state state, Array[Hash[untyped, untyped]] files) -> void
+        def append_error_files: (state state, Array[Hash[Symbol, untyped]] files) -> void
 
-        def merge_or_append: (Array[Hash[untyped, untyped]] files, String path, Array[Hash[untyped, untyped]] offenses) -> void
+        def merge_or_append: (Array[Hash[Symbol, untyped]] files, String path, Array[Hash[Symbol, untyped]] offenses) -> void
 
         def file_entry: (String path, Array[change] changes, ?severity: String?) -> Hash[Symbol, untyped]
 

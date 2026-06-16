@@ -92,12 +92,12 @@ RSpec.describe Docscribe::InlineRewriter::DocBlock do
       let(:entries) do
         described_class.parse([
                                 "# @return [Object]\n",
-                                "# @param foo [Object] Param documentation.\n"
+                                "# @param foo [Object] Generated param description.\n"
                               ], tag_order: tag_order)
       end
       let(:sort_order) { %w[param return] }
 
-      it { is_expected.to eq(["# @param foo [Object] Param documentation.\n", "# @return [Object]\n"]) }
+      it { is_expected.to eq(["# @param foo [Object] Generated param description.\n", "# @return [Object]\n"]) }
     end
   end
 
