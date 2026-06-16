@@ -7,6 +7,8 @@ module Docscribe
     module Yard
       module Formatter
         class << self
+          # @param [Object] node
+          # @return [String]
           def to_rbs(node)
             return 'untyped' if node.nil?
 
@@ -25,6 +27,9 @@ module Docscribe
 
           private
 
+          # @private
+          # @param [Object] node
+          # @return [String]
           def format_named(node)
             case node.name
             when 'Boolean' then 'bool'
@@ -33,30 +38,51 @@ module Docscribe
             end
           end
 
+          # @private
+          # @param [Object] node
+          # @return [String]
           def format_generic(node)
             "#{node.base}[#{node.args.map { |a| to_rbs(a) }.join(', ')}]"
           end
 
+          # @private
+          # @param [Object] node
+          # @return [String]
           def format_union(node)
             node.types.map { |t| to_rbs(t) }.join(' | ')
           end
 
+          # @private
+          # @param [Object] node
+          # @return [String]
           def format_intersection(node)
             node.types.map { |t| to_rbs(t) }.join(' & ')
           end
 
+          # @private
+          # @param [Object] node
+          # @return [String]
           def format_optional(node)
             "#{to_rbs(node.type)}?"
           end
 
+          # @private
+          # @param [Object] node
+          # @return [String]
           def format_tuple(node)
             "[#{node.types.map { |t| to_rbs(t) }.join(', ')}]"
           end
 
+          # @private
+          # @param [Object] node
+          # @return [String]
           def format_hash_map(node)
             "Hash[#{to_rbs(node.key_type)}, #{to_rbs(node.value_type)}]"
           end
 
+          # @private
+          # @param [Object] node
+          # @return [String]
           def format_literal(node)
             case node.value
             when 'void' then 'void'

@@ -6,6 +6,8 @@ module Docscribe
   module Types
     module Yard
       class << self
+        # @param [Object] string
+        # @return [Object]
         def parse(string)
           return nil if string.nil? || string.strip.empty?
 

@@ -365,6 +365,9 @@ module Docscribe
           end
         end
 
+        # @private
+        # @param [Object] method
+        # @return [String]
         def return_type_rbs(method)
           tags = method.yard_tags
           rt = tags&.return_type

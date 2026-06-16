@@ -594,8 +594,8 @@ module Docscribe
       # Extract all comment tags from line
       #
       # @note module_function: defines #extract_all_comment_tags (visibility: private)
-      # @param [Object] line single comment line
       # @param [Hash<Symbol, Object>] info parse info hash
+      # @param [String] content
       # @return [void]
       def track_last_tag(content, info)
         tag = content.match(/@(\w+)/)&.[](1)&.to_sym
