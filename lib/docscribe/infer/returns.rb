@@ -12,7 +12,16 @@ module Docscribe
         case: :handle_case_node,
         return: :handle_return_node,
         block: :handle_block_node,
-        send: :handle_send_node
+        send: :handle_send_node,
+        lvar: :handle_lvar_node,
+        ivar: :handle_ivar_node,
+        gvar: :handle_gvar_node,
+        cvar: :handle_cvar_node,
+        lvasgn: :handle_lvasgn_node,
+        ivasgn: :handle_ivasgn_node,
+        gvasgn: :handle_gvasgn_node,
+        cvasgn: :handle_cvasgn_node,
+        op_asgn: :handle_op_asgn_node
       }.freeze
 
       # Infer a return type from a full method definition source string.
@@ -83,7 +92,9 @@ module Docscribe
         spec = { normal: FALLBACK_TYPE, rescues: [] } #: Hash[Symbol, untyped]
         return spec unless body
 
-        local_var_types = build_local_variable_types(body)
+        local_var_types = build_local_variable_types(body,
+                                                     core_rbs_provider: core_rbs_provider,
+                                                     param_types: param_types)
 
         populate_returns_spec(spec, body, local_var_types,
                               fallback_type: fallback_type,
@@ -141,7 +152,9 @@ module Docscribe
       # @return [Object]
       def process_rescue_body(spec, body, **opts)
         main_body = body.children[0]
-        local_var_types = build_local_variable_types(body)
+        local_var_types = build_local_variable_types(body,
+                                                     core_rbs_provider: opts[:core_rbs_provider],
+                                                     param_types: opts[:param_types])
         rescue_opts = opts.merge(local_var_types: local_var_types)
         spec[:normal] = run_last_expr_type(main_body, **rescue_opts) || FALLBACK_TYPE
         process_rescue_branches(spec, body, **rescue_opts)
@@ -169,43 +182,174 @@ module Docscribe
       #
       # @note module_function: when included, also defines #build_local_variable_types (instance visibility: private)
       # @param [Parser::AST::Node] node AST node to walk
+      # @param [Object] opts additional keyword options forwarded to inference
       # @return [Hash<String, String>, nil]
-      def build_local_variable_types(node)
+      def build_local_variable_types(node, **opts)
         types = {} #: Hash[String, String]
         ASTWalk.walk(node) do |n|
-          collect_assignment_type(n, types)
+          collect_assignment_type(n, types, **opts)
         end
         types.empty? ? nil : types
       end
 
       # Infer the type of a single assignment node and store it in the types hash.
       #
+      # Uses `run_last_expr_type` when `core_rbs_provider` is available to
+      # resolve send expressions (e.g., `x = 123 + 1` → `Integer`).
+      # Falls back to `Literals.type_from_literal` for plain literals.
+      #
       # @note module_function: when included, also defines #collect_assignment_type (instance visibility: private)
       # @param [Parser::AST::Node] node an assignment AST node
       # @param [Hash<String, String>] types the accumulated local variable type map
+      # @param [Object] opts additional keyword options forwarded to inference
       # @return [void]
-      def collect_assignment_type(node, types)
+      def collect_assignment_type(node, types, **opts)
         name, value = assignment_name_and_value(node)
         return unless name && value
 
-        inferred = Literals.type_from_literal(value, fallback_type: FALLBACK_TYPE)
+        inferred = if opts[:core_rbs_provider]
+                     run_last_expr_type(value, **opts, fallback_type: FALLBACK_TYPE,
+                                                       nil_as_optional: false, local_var_types: types)
+                   else
+                     Literals.type_from_literal(value, fallback_type: FALLBACK_TYPE)
+                   end
         types[name] = inferred if inferred && inferred != FALLBACK_TYPE
       end
 
       # Extract the variable name and value expression from an assignment node.
       #
       # @note module_function: when included, also defines #assignment_name_and_value (instance visibility: private)
-      # @param [Parser::AST::Node] node an assignment AST node (:lvasgn, :gvasgn, :ivasgn, :casgn)
+      # @param [Parser::AST::Node] node an assignment AST node (:lvasgn, :gvasgn, :ivasgn, :casgn, :op_asgn)
       # @return [(String, nil, Parser::AST::Node, nil)]
       def assignment_name_and_value(node)
         case node.type
-        when :lvasgn, :gvasgn, :ivasgn
+        when :lvasgn, :gvasgn, :ivasgn, :cvasgn
           [node.children[0].to_s, node.children[1]]
         when :casgn
           [node.children[0].to_s, node.children[2]]
+        when :op_asgn
+          [node.children[0].children.first.to_s, node.children[2]]
         else
           [nil, nil]
         end
+      end
+
+      # Handle `:lvar` node for last_expr_type — look up the variable in local_var_types.
+      #
+      # @note module_function: when included, also defines #handle_lvar_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:lvar` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_lvar_node(node, **opts)
+        name = node.children[0].to_s
+        opts[:local_var_types]&.fetch(name, nil) || opts[:fallback_type]
+      end
+
+      # Handle `:ivar` node for last_expr_type — look up instance variable in local_var_types.
+      #
+      # @note module_function: when included, also defines #handle_ivar_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:ivar` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_ivar_node(node, **opts)
+        name = node.children[0].to_s
+        opts[:local_var_types]&.fetch(name, nil) || opts[:fallback_type]
+      end
+
+      # Handle `:gvar` node for last_expr_type — look up global variable in local_var_types.
+      #
+      # @note module_function: when included, also defines #handle_gvar_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:gvar` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_gvar_node(node, **opts)
+        name = node.children[0].to_s
+        opts[:local_var_types]&.fetch(name, nil) || opts[:fallback_type]
+      end
+
+      # Handle `:cvar` node for last_expr_type — look up class variable in local_var_types.
+      #
+      # @note module_function: when included, also defines #handle_cvar_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:cvar` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_cvar_node(node, **opts)
+        name = node.children[0].to_s
+        opts[:local_var_types]&.fetch(name, nil) || opts[:fallback_type]
+      end
+
+      # Handle `:lvasgn` node for last_expr_type — look up local var assignment in local_var_types.
+      #
+      # @note module_function: when included, also defines #handle_lvasgn_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:lvasgn` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_lvasgn_node(node, **opts)
+        name = node.children[0].to_s
+        opts[:local_var_types]&.fetch(name, nil) ||
+          run_last_expr_type(node.children[1], **opts) ||
+          opts[:fallback_type]
+      end
+
+      # Handle `:ivasgn` node for last_expr_type — look up ivar assignment in local_var_types.
+      #
+      # @note module_function: when included, also defines #handle_ivasgn_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:ivasgn` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_ivasgn_node(node, **opts)
+        name = node.children[0].to_s
+        opts[:local_var_types]&.fetch(name, nil) ||
+          run_last_expr_type(node.children[1], **opts) ||
+          opts[:fallback_type]
+      end
+
+      # Handle `:gvasgn` node for last_expr_type — look up global var assignment in local_var_types.
+      #
+      # @note module_function: when included, also defines #handle_gvasgn_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:gvasgn` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_gvasgn_node(node, **opts)
+        name = node.children[0].to_s
+        opts[:local_var_types]&.fetch(name, nil) ||
+          run_last_expr_type(node.children[1], **opts) ||
+          opts[:fallback_type]
+      end
+
+      # Handle `:cvasgn` node for last_expr_type — look up class var assignment in local_var_types.
+      #
+      # @note module_function: when included, also defines #handle_cvasgn_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:cvasgn` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_cvasgn_node(node, **opts)
+        name = node.children[0].to_s
+        opts[:local_var_types]&.fetch(name, nil) ||
+          run_last_expr_type(node.children[1], **opts) ||
+          opts[:fallback_type]
+      end
+
+      # Handle `:op_asgn` node (compound assignment: `x += 1`, `@var -= 2`, etc.).
+      #
+      # Infers the result type from the operator and the right operand's type.
+      # Uses RBS to resolve when available (e.g., `Integer#+` → `Integer`).
+      #
+      # @note module_function: when included, also defines #handle_op_asgn_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:op_asgn` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_op_asgn_node(node, **opts)
+        meth = node.children[1]
+        return nil unless %i[+ - * / % ** << | & ^].include?(meth)
+        return nil unless opts[:core_rbs_provider]
+
+        arg = node.children[2]
+        arg_type = type_from_literal_safe(arg)
+        return nil unless arg_type
+
+        rbs = resolve_rbs_return_type(arg_type, meth, opts[:core_rbs_provider])
+        rbs unless rbs == FALLBACK_TYPE
       end
 
       # Handle `:begin` node for last_expr_type.
@@ -226,7 +370,11 @@ module Docscribe
       # @return [String, nil]
       def handle_if_node(node, **opts)
         t = run_last_expr_type(node.children[1], **opts)
-        e = run_last_expr_type(node.children[2], **opts)
+        e = if node.children[2]
+              run_last_expr_type(node.children[2], **opts)
+            else
+              'nil'
+            end
         unify_types(t, e, fallback_type: opts[:fallback_type] || 'untyped',
                           nil_as_optional: opts.fetch(:nil_as_optional, true))
       end
@@ -300,12 +448,16 @@ module Docscribe
           return rbs_type if rbs_type
         end
 
+        compound_type = infer_from_compound_assign(node, **opts)
+        return compound_type if compound_type
+
         Literals.type_from_literal(node, fallback_type: opts[:fallback_type])
       end
 
       # Resolve RBS return type for a send node's receiver, if possible.
       #
-      # Handles `:lvar` and chained `:send` receivers.
+      # Handles `:lvar`, chained `:send`, literal (`:int`, `:str`, etc.),
+      # and variable (`:ivar`, `:gvar`, `:cvar`) receivers.
       #
       # @note module_function: when included, also defines #resolve_rbs_for_send (instance visibility: private)
       # @param [Parser::AST::Node, nil] recv the receiver node of the send
@@ -317,11 +469,82 @@ module Docscribe
       def resolve_rbs_for_send(recv, meth, core_rbs_provider, local_var_types, param_types)
         return nil unless core_rbs_provider
 
-        if recv&.type == :lvar
-          resolve_lvar_rbs(recv, meth, core_rbs_provider, local_var_types, param_types)
-        elsif recv&.type == :send
-          resolve_chained_send_rbs(recv, meth, core_rbs_provider, local_var_types, param_types)
+        recv_type = receiver_rbs_type_name(recv, core_rbs_provider, local_var_types, param_types)
+        return nil unless recv_type
+
+        rbs = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
+        rbs unless rbs == FALLBACK_TYPE
+      end
+
+      # Map a receiver AST node to its RBS type name string.
+      #
+      # Supports local variables, method calls, literals, and instance/global/class variables.
+      #
+      # @note module_function: when included, also defines #receiver_rbs_type_name (instance visibility: private)
+      # @param [Parser::AST::Node, nil] recv the receiver node
+      # @param [Object, nil] core_rbs_provider core RBS provider
+      # @param [Hash<Object, Object>, nil] local_var_types inferred local variable types
+      # @param [Hash<String, String>, nil] param_types parameter name to type map
+      # @return [String, nil]
+      def receiver_rbs_type_name(recv, core_rbs_provider, local_var_types, param_types)
+        return nil unless recv
+
+        case recv.type
+        when :lvar, :ivar, :gvar, :cvar
+          lookup_lvar_type(recv.children.first, local_var_types, param_types)
+        when :send
+          run_last_expr_type(recv, fallback_type: FALLBACK_TYPE, nil_as_optional: false,
+                                   core_rbs_provider: core_rbs_provider,
+                                   param_types: param_types,
+                                   local_var_types: local_var_types)
+        when :int then 'Integer'
+        when :str then 'String'
+        when :sym then 'Symbol'
+        when :true, :false then 'Boolean'
+        when :float then 'Float'
+        when :array then 'Array'
+        when :hash then 'Hash'
+        when :nil then 'NilClass'
         end
+      end
+
+      # Infer return type from a compound-assignment-like `:send` by reading the
+      # first literal argument's type — only fires when `core_rbs_provider` is
+      # present and the argument's RBS return type can be resolved.
+      #
+      # Enables `@var += 123` → `Integer` (via `Integer#+`) and similar patterns.
+      #
+      # @note module_function: when included, also defines #infer_from_compound_assign (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:send` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def infer_from_compound_assign(node, **opts)
+        return nil unless opts[:core_rbs_provider]
+
+        meth = node.children[1]
+        return nil unless %i[+ - * / % ** << | & ^].include?(meth)
+
+        first_arg = node.children[2]
+        return nil unless first_arg
+
+        arg_type = type_from_literal_safe(first_arg)
+        return nil unless arg_type
+
+        rbs = resolve_rbs_return_type(arg_type, meth, opts[:core_rbs_provider])
+        rbs unless rbs == FALLBACK_TYPE
+      end
+
+      # Safely get a type string from a literal node, returning nil if the node
+      # is not a literal or yields no type.
+      #
+      # @note module_function: when included, also defines #type_from_literal_safe (instance visibility: private)
+      # @param [Parser::AST::Node, nil] node
+      # @return [String, nil]
+      def type_from_literal_safe(node)
+        return nil unless node
+
+        t = Literals.type_from_literal(node, fallback_type: FALLBACK_TYPE)
+        t unless t == FALLBACK_TYPE
       end
 
       # Resolve RBS return type for an `:lvar` receiver.
@@ -468,13 +691,13 @@ module Docscribe
       # @param [String] fallback_type type used when neither is nil
       # @param [Boolean] nil_as_optional whether to render nil unions as optional types
       # @return [String]
-      def unify_nil_types(type_a, type_b, fallback_type:, nil_as_optional:)
+      def unify_nil_types(type_a, type_b, fallback_type:, nil_as_optional:) # rubocop:disable Lint/UnusedMethodArgument
         if type_a == 'nil' || type_b == 'nil'
           non_nil = (type_a == 'nil' ? type_b : type_a)
           return nil_as_optional ? "#{non_nil}?" : "#{non_nil}, nil"
         end
 
-        fallback_type
+        "#{type_a}, #{type_b}"
       end
     end
   end

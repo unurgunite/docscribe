@@ -391,7 +391,10 @@ If you pass no files and don't use `--stdin`, Docscribe processes the current di
   Read source from STDIN and print rewritten output.
 
 - `--verbose`  
-  Print per-file actions.
+  Print per-file actions. Also enables `--progress`.
+
+- `--progress`  
+  Show progress (`[N/total] path/to/file.rb`) on stderr as each file is processed.
 
 - `--quiet` (`-q`)  
   Only show status, no details (suppresses change reasons).
@@ -399,6 +402,15 @@ If you pass no files and don't use `--stdin`, Docscribe processes the current di
 
 - `--explain`  
   Show detailed reasons for each file (default; no-op for compatibility).
+
+- `-k`, `--keep-descriptions`  
+  Preserve existing documentation text when rebuilding doc blocks in aggressive mode.
+
+- `-B`, `--no-boilerplate`  
+  Suppress boilerplate text (`Method documentation.`, `Param documentation.`) in output.
+
+- `--format FORMAT`  
+  Output format: `text` (default, human-readable) or `json` (machine-readable, RuboCop-compatible).
 
 - `--rbs`  
   Use RBS signatures for `@param`/`@return` when available (falls back to inference).
@@ -581,8 +593,16 @@ rbs:
   enabled: true
   sig_dirs:
     - sig
+  collection: false
   collapse_generics: false
+  collapse_object_generics: false
+  warn_missing_collection: true
 ```
+
+- `collection` — enable auto-discovery of RBS collection from `rbs_collection.lock.yaml`. Pass `--rbs-collection` on the CLI.
+- `collapse_generics` — strip all generic type arguments (e.g. `Array<String>` → `Array`).
+- `collapse_object_generics` — only strip generic arguments when all are `Object` (e.g. `Hash<Object, Object>` → `Hash`, but `Hash<Symbol, Object>` stays).
+- `warn_missing_collection` — warn on stderr when `rbs_collection.lock.yaml` is found but collection is not enabled. Set to `false` to suppress.
 
 Example:
 
@@ -806,24 +826,28 @@ end
 
 ### Generic type formatting
 
-Both RBS and Sorbet integrations support `collapse_generics`.
+Both RBS and Sorbet integrations support generic type collapsing.
 
-When disabled:
+**`collapse_generics`** — strips all generic type arguments.
+**`collapse_object_generics`** — only strips arguments when all are `Object` (e.g. `Hash<Object, Object>` → `Hash`, but `Hash<Symbol, Object>` stays).
+
+When both disabled:
 
 ```yaml
 rbs:
   collapse_generics: false
+  collapse_object_generics: false
 
 sorbet:
   collapse_generics: false
 ```
 
-Docscribe preserves generic container details where possible, for example:
+Docscribe preserves generic container details, for example:
 
 - `Array<String>`
 - `Hash<Symbol, Integer>`
 
-When enabled:
+When `collapse_generics` is enabled:
 
 ```yaml
 rbs:
@@ -833,7 +857,7 @@ sorbet:
   collapse_generics: true
 ```
 
-Docscribe simplifies container types to their outer names, for example:
+Docscribe simplifies all container types to their outer names, for example:
 
 - `Array`
 - `Hash`
@@ -1441,11 +1465,19 @@ Apply safe fixes before the test stage:
   run: docscribe -a lib
 ```
 
-Aggressively rebuild docs:
+Rebuild docs aggressively, preserve descriptions, suppress boilerplate, with verbose output:
 
 ```yaml
 - name: Rebuild inline docs
-  run: docscribe -A lib
+  run: docscribe -AkB --verbose
+```
+
+Run static type checking with Steep (requires Ruby ≥ 3.2):
+
+```yaml
+- name: Steep (type check)
+  if: ${{ matrix.ruby >= 3.2 }}
+  run: bundle exec steep check
 ```
 
 ## Comparison to YARD's parser

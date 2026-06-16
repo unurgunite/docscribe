@@ -31,7 +31,9 @@ module Docscribe
           error_paths: [], #: Array[String]
           error_messages: {}, #: Hash[String, String]
           type_mismatch_paths: [], #: Array[String]
-          type_mismatch_changes: {} #: Hash[String, untyped]
+          type_mismatch_changes: {}, #: Hash[String, untyped]
+          total: 0,
+          processed: 0
         }.freeze
         # Run Docscribe for files or STDIN using the selected mode and strategy.
         #
@@ -176,6 +178,7 @@ module Docscribe
           $stdout.sync = true
 
           state = initial_run_state
+          state[:total] = paths.size
           pwd = Pathname.pwd
 
           paths.each do |path|
@@ -237,6 +240,7 @@ module Docscribe
         # @return [void]
         def process_one_file(path, options:, conf:, pwd:, state:)
           display_path = display_path_for(path, pwd: pwd)
+          report_progress(state, options, display_path)
 
           src = read_source_for_path(path, display_path: display_path, options: options, state: state)
           return unless src
@@ -247,6 +251,20 @@ module Docscribe
 
           dispatch_file_result(path, src: src, out: result[:output], file_changes: result[:changes] || [],
                                      display_path: display_path, options: options, state: state)
+        end
+
+        # Print progress indicator to stderr when --progress is active.
+        #
+        # @private
+        # @param [Hash<Symbol, Object>] state shared processing state
+        # @param [Hash<Symbol, Object>] options CLI options
+        # @param [String] display_path path to display
+        # @return [void]
+        def report_progress(state, options, display_path)
+          state[:processed] += 1
+          return unless options[:progress]
+
+          warn "[#{state[:processed]}/#{state[:total]}] #{display_path}"
         end
 
         # Dispatch the rewrite result to the check or write handler based on mode.

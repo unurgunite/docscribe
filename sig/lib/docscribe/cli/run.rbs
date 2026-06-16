@@ -33,6 +33,8 @@ module Docscribe
 
       def self.process_one_file: (String path, options: Formatters::opts, conf: Config, pwd: Pathname, state: Formatters::state) -> void
 
+      def self.report_progress: (Formatters::state state, Formatters::opts options, String display_path) -> void
+
       def self.dispatch_file_result: (String path, src: String, out: String, file_changes: Array[Formatters::change], **untyped ctx) -> void
 
       def self.display_path_for: (String path, pwd: Pathname) -> String

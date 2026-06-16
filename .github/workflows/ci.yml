@@ -34,6 +34,16 @@ jobs:
           FILES="$(cd .. && git ls-files 'lib/**/*.rb' | sed 's|^|../|')"
           bundle exec docscribe $FILES -C ../docscribe.yml
 
+      - name: Docscribe (aggressive mode smoke test)
+        env:
+          BUNDLE_GEMFILE: 'Gemfile'
+        run: |
+          bundle exec docscribe lib -AkB --verbose
+
+      - name: Steep (type check)
+        if: ${{ !contains(fromJson('["2.7", "3.0", "3.1"]'), matrix.ruby) }}
+        run: bundle exec steep check
+
       - name: RuboCop (self‑check)
         run: bundle exec rubocop
 

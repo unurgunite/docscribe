@@ -25,7 +25,8 @@ module Docscribe
         rbi_dirs: [], #: Array[String]
         rbs_collection: false,
         keep_descriptions: false,
-        no_boilerplate: false
+        no_boilerplate: false,
+        progress: false
       }.freeze
 
       module_function
@@ -62,6 +63,7 @@ module Docscribe
 
         Output:
                 --verbose                  Print per-file actions
+                --progress                 Show progress [N/total] per file
             -e, --explain                  Show detailed reasons for changes (default)
             -q, --quiet                    Only show status, no details
                 --format FORMAT            Output format: text (default) or json
@@ -311,6 +313,7 @@ module Docscribe
       # @return [void]
       def define_output_options(opts, options)
         define_verbose_option(opts, options)
+        define_progress_option(opts, options)
         define_explain_option(opts, options)
         define_quiet_option(opts, options)
         define_format_option(opts, options)
@@ -327,6 +330,19 @@ module Docscribe
       def define_verbose_option(opts, options)
         opts.on('--verbose', 'Print per-file actions') do
           options[:verbose] = true
+          options[:progress] = true
+        end
+      end
+
+      # Define progress option
+      #
+      # @note module_function: when included, also defines #define_progress_option (instance visibility: private)
+      # @param [OptionParser] opts
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
+      # @return [void]
+      def define_progress_option(opts, options)
+        opts.on('--progress', 'Show progress [N/total] per file') do
+          options[:progress] = true
         end
       end
 
