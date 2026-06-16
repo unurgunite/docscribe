@@ -215,7 +215,7 @@ RSpec.describe Docscribe::CLI::RbsGen do
         FileUtils.mkdir_p(File.join(dir, 'sig'))
         File.write(rbs_path, 'old content')
 
-        out = capture_stdout do
+        capture_stdout do
           err = capture_stderr do
             expect(described_class.run(['-o', File.join(dir, 'sig'), rb])).to eq(0)
           end
@@ -237,7 +237,7 @@ RSpec.describe Docscribe::CLI::RbsGen do
         FileUtils.mkdir_p(File.join(dir, 'sig'))
         File.write(rbs_path, 'old content')
 
-        out = capture_stdout do
+        capture_stdout do
           expect(described_class.run(['-o', File.join(dir, 'sig'), '-f', rb])).to eq(0)
         end
         expect(File.read(rbs_path)).to include('def foo: () -> String')
@@ -296,8 +296,8 @@ RSpec.describe Docscribe::CLI::RbsGen do
 
     it 'parses @option' do
       tags = described_class.send(:parse_yard_tags, [
-        '# @option options [Boolean] :verbose enable verbose'
-      ])
+                                    '# @option options [Boolean] :verbose enable verbose'
+                                  ])
       expect(tags.options.size).to eq(1)
       expect(tags.options.first.name).to eq('verbose')
       expect(tags.options.first.type).to eq('Boolean')
@@ -305,8 +305,8 @@ RSpec.describe Docscribe::CLI::RbsGen do
 
     it 'strips leading colon from option name' do
       tags = described_class.send(:parse_yard_tags, [
-        '# @option opts [String] :name the name'
-      ])
+                                    '# @option opts [String] :name the name'
+                                  ])
       expect(tags.options.first.name).to eq('name')
     end
   end
@@ -407,9 +407,12 @@ RSpec.describe Docscribe::CLI::RbsGen do
 
   describe 'build_rbs_content' do
     it 'groups methods by container' do
-      m1 = described_class::MethodDef.new(name: 'foo', scope: :instance, container: 'Foo', file: 'x.rb', line: 1, yard_tags: nil)
-      m2 = described_class::MethodDef.new(name: 'bar', scope: :instance, container: 'Foo', file: 'x.rb', line: 2, yard_tags: nil)
-      m3 = described_class::MethodDef.new(name: 'baz', scope: :instance, container: nil, file: 'x.rb', line: 3, yard_tags: nil)
+      m1 = described_class::MethodDef.new(name: 'foo', scope: :instance, container: 'Foo', file: 'x.rb', line: 1,
+                                          yard_tags: nil)
+      m2 = described_class::MethodDef.new(name: 'bar', scope: :instance, container: 'Foo', file: 'x.rb', line: 2,
+                                          yard_tags: nil)
+      m3 = described_class::MethodDef.new(name: 'baz', scope: :instance, container: nil, file: 'x.rb', line: 3,
+                                          yard_tags: nil)
 
       content = described_class.send(:build_rbs_content, [m1, m2, m3])
       expect(content).to include('class Foo')
