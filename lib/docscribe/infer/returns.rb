@@ -21,7 +21,9 @@ module Docscribe
         ivasgn: :handle_ivasgn_node,
         gvasgn: :handle_gvasgn_node,
         cvasgn: :handle_cvasgn_node,
-        op_asgn: :handle_op_asgn_node
+        op_asgn: :handle_op_asgn_node,
+        or: :handle_or_node,
+        and: :handle_and_node
       }.freeze
 
       # Infer a return type from a full method definition source string.
@@ -395,6 +397,38 @@ module Docscribe
                               nil_as_optional: opts.fetch(:nil_as_optional, true))
           end
         end
+      end
+
+      # Handle `:or` node (`a || b`) for last_expr_type.
+      #
+      # The result type is the union of both sides, since either may be returned
+      # depending on the truthiness of the left operand.
+      #
+      # @note module_function: when included, also defines #handle_or_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:or` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_or_node(node, **opts)
+        t = run_last_expr_type(node.children[0], **opts)
+        e = run_last_expr_type(node.children[1], **opts)
+        unify_types(t, e, fallback_type: opts[:fallback_type] || 'untyped',
+                          nil_as_optional: opts.fetch(:nil_as_optional, true))
+      end
+
+      # Handle `:and` node (`a && b`) for last_expr_type.
+      #
+      # The result type is the union of both sides, since either may be returned
+      # depending on the truthiness of the left operand.
+      #
+      # @note module_function: when included, also defines #handle_and_node (instance visibility: private)
+      # @param [Parser::AST::Node] node the `:and` AST node
+      # @param [Object] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_and_node(node, **opts)
+        t = run_last_expr_type(node.children[0], **opts)
+        e = run_last_expr_type(node.children[1], **opts)
+        unify_types(t, e, fallback_type: opts[:fallback_type] || 'untyped',
+                          nil_as_optional: opts.fetch(:nil_as_optional, true))
       end
 
       # Extract inferred return types from all branches of a :case expression.
