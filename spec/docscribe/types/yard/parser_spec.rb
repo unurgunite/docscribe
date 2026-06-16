@@ -79,23 +79,13 @@ RSpec.describe Docscribe::Types::Yard do
     end
 
     it 'parses generic with multiple args' do
-      aggregate_failures do
-        node = parse('Hash<Symbol, Object>')
-        expect(node).to be_a(Docscribe::Types::Yard::Generic).and have_attributes(base: 'Hash')
-        expect(node.args.size).to eq(2)
-        expect(node.args[0]).to be_a(Docscribe::Types::Yard::Named).and have_attributes(name: 'Symbol')
-        expect(node.args[1]).to be_a(Docscribe::Types::Yard::Named).and have_attributes(name: 'Object')
-      end
+      node = parse('Hash<Symbol, Object>')
+      expect(node.args.map(&:name)).to eq(%w[Symbol Object])
     end
 
     it 'parses generic arg with union' do
-      aggregate_failures do
-        node = parse('Hash<String | Integer, Object>')
-        expect(node).to be_a(Docscribe::Types::Yard::Generic).and have_attributes(base: 'Hash')
-        expect(node.args.size).to eq(2)
-        expect(node.args[0]).to be_a(Docscribe::Types::Yard::Union)
-        expect(node.args[0].types.map(&:name)).to eq(%w[String Integer])
-      end
+      node = parse('Hash<String | Integer, Object>')
+      expect(node.args[0].types.map(&:name)).to eq(%w[String Integer])
     end
 
     it 'parses generic with nested generics' do

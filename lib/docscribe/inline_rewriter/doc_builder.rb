@@ -744,7 +744,7 @@ module Docscribe
       def collect_all_param_types(args, param_types, external_sig, config)
         # Pre-seed param_types with positional (unnamed) RBS types so that
         # collectors can keep them when external_sig lacks param names.
-        positional = external_sig&.positional_types || []
+        positional = Array(external_sig&.positional_types)
         (args.children || []).each_with_index do |a, idx|
           if (ptype = positional[idx])
             pname = a.children.first
