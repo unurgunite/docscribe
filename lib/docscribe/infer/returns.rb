@@ -864,7 +864,7 @@ module Docscribe
         type_b ||= fallback_type
         return type_a if type_a == type_b
 
-        unify_nil_types(type_a, type_b, fallback_type: fallback_type, nil_as_optional: nil_as_optional)
+        unify_nil_types(type_a, type_b, nil_as_optional: nil_as_optional)
       end
 
       # Unify two types where one may be `nil`, producing optional or union type.
@@ -872,10 +872,9 @@ module Docscribe
       # @note module_function: when included, also defines #unify_nil_types (instance visibility: private)
       # @param [String] type_a first type string
       # @param [String] type_b second type string
-      # @param [String] fallback_type type used when neither is nil
       # @param [Boolean] nil_as_optional whether to render nil unions as optional types
       # @return [String]
-      def unify_nil_types(type_a, type_b, fallback_type:, nil_as_optional:) # rubocop:disable Lint/UnusedMethodArgument
+      def unify_nil_types(type_a, type_b, nil_as_optional:)
         if type_a == 'nil' || type_b == 'nil'
           non_nil = (type_a == 'nil' ? type_b : type_a)
           return nil_as_optional ? "#{non_nil}?" : "#{non_nil}, nil"

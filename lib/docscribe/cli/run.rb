@@ -458,16 +458,39 @@ module Docscribe
         # @raise [StandardError]
         # @return [void] if StandardError
         # @return [Object] if StandardError
-        def handle_write_result(path, src:, out:, file_changes:, **ctx) # rubocop:disable Metrics/AbcSize
+        def handle_write_result(path, src:, out:, file_changes:, **ctx)
           return log_check_verdict('OK', ctx[:display_path], ctx[:options]) if out == src
 
-          File.write(path, out)
-          log_write_verdict('CHANGED', ctx[:display_path], file_changes, ctx[:options])
-          ctx[:state][:corrected] += 1
-          ctx[:state][:corrected_paths] << ctx[:display_path]
-          ctx[:state][:corrected_changes][ctx[:display_path]] = file_changes
+          apply_correction(path, out, file_changes, ctx)
         rescue StandardError => e
           record_write_error(path, e, display_path: ctx[:display_path], options: ctx[:options], state: ctx[:state])
+        end
+
+        # Apply a file correction — write to disk, log, and update state.
+        #
+        # @private
+        # @param [String] path file path
+        # @param [String] out rewritten source code
+        # @param [Array<Hash<Symbol, Object>>] file_changes structured change records
+        # @param [Hash<Symbol, Object>] ctx context hash with :display_path, :options, :state keys
+        # @return [void]
+        def apply_correction(path, out, file_changes, ctx)
+          File.write(path, out)
+          log_write_verdict('CHANGED', ctx[:display_path], file_changes, ctx[:options])
+          update_correction_state(ctx[:state], ctx[:display_path], file_changes)
+        end
+
+        # Update the shared state after a successful correction.
+        #
+        # @private
+        # @param [Hash<Symbol, Object>] state shared processing state
+        # @param [String] display_path path shown in CLI output
+        # @param [Array<Hash<Symbol, Object>>] file_changes structured change records
+        # @return [void]
+        def update_correction_state(state, display_path, file_changes)
+          state[:corrected] += 1
+          state[:corrected_paths] << display_path
+          state[:corrected_changes][display_path] = file_changes
         end
 
         # Log a write-mode verdict.
@@ -549,12 +572,33 @@ module Docscribe
           print_error_paths(state)
         end
 
+        public
+
+        # Print fail paths from check summary (stdout).
+        #
+        # Skips explanations when --verbose showed them inline per-file.
+        #
+        # @param [Hash<Symbol, Object>] state shared processing state
+        # @param [Hash<Symbol, Object>] options CLI options
+        # @return [void]
+        def print_fail_paths(state, options)
+          state[:fail_paths].each do |p|
+            puts "Would update: #{p}"
+
+            next if options[:verbose] || options[:quiet]
+
+            Array(state[:fail_changes][p]).each do |change|
+              puts "  - #{format_change_reason(change)}"
+            end
+          end
+        end
+
         # Print the check-mode status line.
         #
         # @private
         # @param [Hash<Symbol, Object>] state shared processing state
         # @return [void]
-        def print_check_status_line(state) # rubocop:disable SortedMethodsByCall/Waterfall
+        def print_check_status_line(state)
           checked_error = state[:error_paths].size
           type_mismatch_count = state[:type_mismatch_paths].size
 
@@ -601,27 +645,6 @@ module Docscribe
           parts << "#{checked_error} errors"
           parts << "#{state[:checked_ok]} ok"
           "Docscribe: FAILED (#{parts.join(', ')})"
-        end
-
-        public
-
-        # Print fail paths from check summary (stdout).
-        #
-        # Skips explanations when --verbose showed them inline per-file.
-        #
-        # @param [Hash<Symbol, Object>] state shared processing state
-        # @param [Hash<Symbol, Object>] options CLI options
-        # @return [void]
-        def print_fail_paths(state, options)
-          state[:fail_paths].each do |p|
-            puts "Would update: #{p}"
-
-            next if options[:verbose] || options[:quiet]
-
-            Array(state[:fail_changes][p]).each do |change|
-              puts "  - #{format_change_reason(change)}"
-            end
-          end
         end
 
         # Print type mismatch paths from check summary.

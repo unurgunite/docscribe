@@ -13,6 +13,21 @@ RSpec.describe 'Docscribe::Types::RBS::TypeFormatter' do
 
     let(:integer_type) { RBS::Types::ClassInstance.new(name: type_name('::Integer'), args: [], location: nil) }
     let(:string_type) { RBS::Types::ClassInstance.new(name: type_name('::String'), args: [], location: nil) }
+    let(:void_function) do
+      RBS::Types::Function.new(
+        required_positionals: [],
+        optional_positionals: [],
+        rest_positionals: nil,
+        trailing_positionals: [],
+        required_keywords: {},
+        optional_keywords: {},
+        rest_keywords: nil,
+        return_type: RBS::Types::Bases::Void.new(location: nil)
+      )
+    end
+    let(:proc_type) do
+      RBS::Types::Proc.new(type: void_function, block: nil, location: nil, self_type: nil)
+    end
 
     it 'returns Object for nil' do
       expect(yard(nil)).to eq('Object')
@@ -94,26 +109,9 @@ RSpec.describe 'Docscribe::Types::RBS::TypeFormatter' do
         expect(yard(type)).to eq('Elem')
       end
 
-      # rubocop:disable RSpec/ExampleLength
       it 'formats Proc' do
-        type = RBS::Types::Proc.new(
-          type: RBS::Types::Function.new(
-            required_positionals: [],
-            optional_positionals: [],
-            rest_positionals: nil,
-            trailing_positionals: [],
-            required_keywords: {},
-            optional_keywords: {},
-            rest_keywords: nil,
-            return_type: RBS::Types::Bases::Void.new(location: nil)
-          ),
-          block: nil,
-          location: nil,
-          self_type: nil
-        )
-        expect(yard(type)).to eq('Proc')
+        expect(yard(proc_type)).to eq('Proc')
       end
-      # rubocop:enable RSpec/ExampleLength
 
       it 'formats Literal' do
         type = RBS::Types::Literal.new(literal: 42, location: nil)

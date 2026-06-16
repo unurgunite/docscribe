@@ -55,6 +55,10 @@ module Docscribe
 
       def self.handle_write_result: (String path, src: String, out: String, file_changes: Array[Formatters::change], **untyped ctx) -> void
 
+      def self.apply_correction: (String path, String out, Array[Formatters::change] file_changes, Hash[Symbol, untyped] ctx) -> void
+
+      def self.update_correction_state: (Formatters::state state, String display_path, Array[Formatters::change] file_changes) -> void
+
       def self.log_write_verdict: (String verdict, String display_path, Array[Formatters::change] file_changes, Formatters::opts options) -> void
 
       def self.print_check_explanations: (Array[Formatters::change] file_changes) -> void

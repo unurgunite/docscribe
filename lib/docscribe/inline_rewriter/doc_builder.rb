@@ -1164,7 +1164,7 @@ module Docscribe
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting (fallback_type, param_tag_style, etc.)
       # @return [Array<String>]
-      def build_param_line(arg_node, indent, external_sig, param_types_override, **opts) # rubocop:disable Metrics/MethodLength
+      def build_param_line(arg_node, indent, external_sig, param_types_override, **opts)
         type = arg_node.type
 
         method_name = :"build_#{type}_line"
