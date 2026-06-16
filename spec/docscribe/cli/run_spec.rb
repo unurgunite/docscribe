@@ -95,7 +95,7 @@ RSpec.describe Docscribe::CLI::Run do
     end
 
     it 'shows progress [N/total] on stderr' do
-      expect(result[1]).to match(/\[1\/1\] foo\.rb/)
+      expect(result[1]).to match(%r{\[1/1\] foo\.rb})
     end
 
     it_behaves_like 'correct exit status'
@@ -105,7 +105,7 @@ RSpec.describe Docscribe::CLI::Run do
     let(:args) { %w[--progress foo.rb] }
 
     it 'shows progress [N/total] on stderr' do
-      expect(result[1]).to match(/\[1\/1\] foo\.rb/)
+      expect(result[1]).to match(%r{\[1/1\] foo\.rb})
     end
 
     it 'still prints progress markers to stderr alongside progress' do
@@ -124,7 +124,7 @@ RSpec.describe Docscribe::CLI::Run do
     let(:args) { %w[--progress --quiet foo.rb] }
 
     it 'shows progress even when quiet' do
-      expect(result[1]).to match(/\[1\/1\] foo\.rb/)
+      expect(result[1]).to match(%r{\[1/1\] foo\.rb})
     end
 
     it 'prints Would update to stdout' do
@@ -136,7 +136,7 @@ RSpec.describe Docscribe::CLI::Run do
     let(:args) { %w[--progress -a foo.rb] }
 
     it 'shows progress on stderr' do
-      expect(result[1]).to match(/\[1\/1\] foo\.rb/)
+      expect(result[1]).to match(%r{\[1/1\] foo\.rb})
     end
 
     it 'prints C marker to stderr' do

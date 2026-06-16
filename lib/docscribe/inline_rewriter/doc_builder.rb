@@ -60,37 +60,6 @@ module Docscribe
         }
       }.freeze
 
-      PARAM_BUILDERS = {
-        arg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_arg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        optarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          build_optarg_lines(arg_node, indent, external_sig, param_types_override, **opts)
-        },
-        kwarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_kwarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        kwoptarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_kwoptarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        restarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_restarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        kwrestarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          [build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-        },
-        blockarg: lambda { |arg_node, indent, external_sig, param_types_override, **opts|
-          if opts[:skip_anonymous_block_params] && arg_node.children.first.nil?
-            [] #: Array[String]
-          else
-            [build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)]
-          end
-        },
-        forward_arg: lambda { |*|
-          [] #: Array[String]
-        }
-      }.freeze
-
       # Build
       #
       # @note module_function: when included, also defines #build (instance visibility: private)
@@ -1195,10 +1164,22 @@ module Docscribe
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting (fallback_type, param_tag_style, etc.)
       # @return [Array<String>]
-      def build_param_line(arg_node, indent, external_sig, param_types_override, **opts)
-        PARAM_BUILDERS.fetch(arg_node.type, lambda { |*|
-          [] #: Array[String]
-        }).call(arg_node, indent, external_sig, param_types_override, **opts)
+      def build_param_line(arg_node, indent, external_sig, param_types_override, **opts) # rubocop:disable Metrics/MethodLength
+        type = arg_node.type
+
+        method_name = :"build_#{type}_line"
+        if respond_to?(method_name, true)
+          return [] if type == :blockarg && opts[:skip_anonymous_block_params] && arg_node.children.first.nil?
+
+          return [send(method_name, arg_node, indent, external_sig, param_types_override, **opts)]
+        end
+
+        method_name = :"build_#{type}_lines"
+        if respond_to?(method_name, true)
+          return send(method_name, arg_node, indent, external_sig, param_types_override, **opts)
+        end
+
+        []
       end
 
       # Build header lines

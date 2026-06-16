@@ -3,8 +3,6 @@ module Docscribe
     module DocBuilder
       PARAM_TYPE_COLLECTORS: Hash[Symbol, ^(untyped, untyped, untyped, untyped) -> untyped]
 
-      PARAM_BUILDERS: Hash[Symbol, ^(untyped, untyped, untyped, untyped, **untyped) -> untyped]
-
       def self?.build: (untyped insertion, config: Config, **untyped) -> (String | nil)
 
       def self?.build_merge_additions: (untyped insertion, existing_lines: Array[String], config: Config, **untyped) -> (String | nil)

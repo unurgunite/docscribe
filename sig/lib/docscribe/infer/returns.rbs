@@ -1,8 +1,6 @@
 module Docscribe
   module Infer
     module Returns
-      LAST_EXPR_TYPE_HANDLERS: { begin: :handle_begin_node, if: :handle_if_node, case: :handle_case_node, return: :handle_return_node, block: :handle_block_node, send: :handle_send_node, lvar: :handle_lvar_node, ivar: :handle_ivar_node, gvar: :handle_gvar_node, cvar: :handle_cvar_node, lvasgn: :handle_lvasgn_node, ivasgn: :handle_ivasgn_node, gvasgn: :handle_gvasgn_node, cvasgn: :handle_cvasgn_node, op_asgn: :handle_op_asgn_node, or: :handle_or_node, and: :handle_and_node }
-
       def self?.infer_return_type: (String? method_source) -> String
 
       def self?.parse_method_source: (String method_source) -> (Parser::AST::Node | nil)

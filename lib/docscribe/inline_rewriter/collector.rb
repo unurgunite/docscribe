@@ -19,13 +19,6 @@ module Docscribe
     # - receiver-based containers (`def Foo.bar`, `class << Foo`)
     # - Sorbet-aware anchoring for methods with leading `sig` declarations
     class Collector < Parser::AST::Processor
-      PROCESS_STMT_HANDLERS = {
-        def: :process_def_stmt,
-        defs: :process_defs_stmt,
-        sclass: :process_sclass_stmt,
-        send: :process_send_stmt
-      }.freeze
-
       # @!attribute [rw] node
       #   @return [Parser::AST::Node]
       #   @param [Parser::AST::Node] value
@@ -372,7 +365,7 @@ module Docscribe
       # @param [Parser::AST::Node] node an AST node
       # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
       # @return [void]
-      def process_sclass_stmt(node, ctx)
+      def process_sclass_stmt(node, ctx, pending_sig_anchor: nil) # rubocop:disable Lint/UnusedMethodArgument
         # `class << self` — affects default visibility for singleton methods and changes scope.
         recv, body = *node
         inner_ctx = ctx.dup
@@ -1059,10 +1052,9 @@ module Docscribe
         return unless node
         return process_casgn_stmt(node) if node.type == :casgn
 
-        handler = PROCESS_STMT_HANDLERS[node.type]
-
-        if handler
-          dispatch_process_stmt(handler, node, ctx, pending_sig_anchor)
+        method_name = :"process_#{node.type}_stmt"
+        if respond_to?(method_name, true)
+          __send__(method_name, node, ctx, pending_sig_anchor: pending_sig_anchor)
         else
           process(node)
         end
@@ -1075,22 +1067,6 @@ module Docscribe
       # @return [void]
       def process_casgn_stmt(node)
         process(node) unless process_struct_casgn?(node)
-      end
-
-      # Dispatch the statement to the appropriate handler method based on node type.
-      #
-      # @private
-      # @param [Symbol] handler the method name to dispatch to
-      # @param [Parser::AST::Node] node the AST node to process
-      # @param [Docscribe::InlineRewriter::Collector::VisibilityCtx] ctx current visibility context
-      # @param [Parser::AST::Node?] pending_sig_anchor Sorbet `sig` node waiting for a method
-      # @return [void]
-      def dispatch_process_stmt(handler, node, ctx, pending_sig_anchor)
-        if %i[process_def_stmt process_defs_stmt process_send_stmt].include?(handler)
-          __send__(handler, node, ctx, pending_sig_anchor: pending_sig_anchor)
-        else
-          __send__(handler, node, ctx)
-        end
       end
 
       # Check if a constant assignment is `Struct.new` and extract attribute insertions.

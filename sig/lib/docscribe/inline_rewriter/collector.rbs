@@ -32,8 +32,6 @@ module Docscribe
 
       @module_states: Hash[String, Hash[Symbol, untyped]]
 
-      PROCESS_STMT_HANDLERS: { def: :process_def_stmt, defs: :process_defs_stmt, sclass: :process_sclass_stmt, send: :process_send_stmt }
-
       class VisibilityCtx
         @default_instance_vis: Symbol
 
@@ -110,7 +108,7 @@ module Docscribe
 
       def process_defs_stmt: (Parser::AST::Node node, VisibilityCtx ctx, pending_sig_anchor: Parser::AST::Node?) -> void
 
-      def process_sclass_stmt: (Parser::AST::Node node, VisibilityCtx ctx) -> void
+      def process_sclass_stmt: (Parser::AST::Node node, VisibilityCtx ctx, ?pending_sig_anchor: Parser::AST::Node?) -> void
 
       def configure_sclass_context: (VisibilityCtx ctx, Parser::AST::Node recv) -> void
 
@@ -203,8 +201,6 @@ module Docscribe
       def process_stmt: (Parser::AST::Node? node, VisibilityCtx ctx, ?pending_sig_anchor: Parser::AST::Node?) -> void
 
       def process_casgn_stmt: (Parser::AST::Node node) -> void
-
-      def dispatch_process_stmt: (Symbol handler, Parser::AST::Node node, VisibilityCtx ctx, Parser::AST::Node? pending_sig_anchor) -> void
 
       def process_struct_casgn?: (Parser::AST::Node node) -> bool
 

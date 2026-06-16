@@ -94,11 +94,8 @@ module Docscribe
       def dispatch_rewrite_insertions(pipeline, buffer, **options)
         pipeline[:all].sort_by { |(kind, ins)| plugin_insertion_pos(kind, ins) }
                       .reverse_each do |kind, ins|
-          case kind
-          when :method then dispatch_method_insertion(ins, pipeline, buffer, **options)
-          when :attr then dispatch_attr_insertion(ins, pipeline, buffer, **options)
-          when :plugin then dispatch_plugin_insertion(ins, pipeline, buffer, **options)
-          end
+          method_name = :"dispatch_#{kind}_insertion"
+          send(method_name, ins, pipeline, buffer, **options) if respond_to?(method_name, true)
         end
 
         apply_merge_inserts!(rewriter: pipeline[:rewriter], buffer: buffer, merge_inserts: pipeline[:merge_inserts])

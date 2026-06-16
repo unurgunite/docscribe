@@ -6,26 +6,6 @@ module Docscribe
     module Returns
       module_function
 
-      LAST_EXPR_TYPE_HANDLERS = {
-        begin: :handle_begin_node,
-        if: :handle_if_node,
-        case: :handle_case_node,
-        return: :handle_return_node,
-        block: :handle_block_node,
-        send: :handle_send_node,
-        lvar: :handle_lvar_node,
-        ivar: :handle_ivar_node,
-        gvar: :handle_gvar_node,
-        cvar: :handle_cvar_node,
-        lvasgn: :handle_lvasgn_node,
-        ivasgn: :handle_ivasgn_node,
-        gvasgn: :handle_gvasgn_node,
-        cvasgn: :handle_cvasgn_node,
-        op_asgn: :handle_op_asgn_node,
-        or: :handle_or_node,
-        and: :handle_and_node
-      }.freeze
-
       # Infer a return type from a full method definition source string.
       #
       # The source must parse to a `:def` or `:defs` node. If parsing fails or inference
@@ -659,9 +639,9 @@ module Docscribe
       def run_last_expr_type(node, **opts)
         return unless node
 
-        handler = LAST_EXPR_TYPE_HANDLERS[node.type]
-        if handler
-          send(handler, node, **opts)
+        method_name = :"handle_#{node.type}_node"
+        if respond_to?(method_name, true)
+          send(method_name, node, **opts)
         else
           Literals.type_from_literal(node, fallback_type: opts[:fallback_type])
         end
