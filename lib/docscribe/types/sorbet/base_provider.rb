@@ -102,7 +102,7 @@ module Docscribe
         #
         # @private
         # @param [Object] member member to check for method def
-        # @return [Boolean]
+        # @return [Boolean, nil]
         def method_definition_member?(member)
           defined?(::RBS::AST::Members::MethodDefinition) &&
             member.is_a?(::RBS::AST::Members::MethodDefinition)
@@ -144,7 +144,7 @@ module Docscribe
         #
         # @private
         # @param [Hash<String, String>] param_types normalized param type map
-        # @param [Hash<Symbol, Object>] keywords keyword parameter entries
+        # @param [Hash<Symbol, RBS::Types::Function::Param>] keywords keyword parameter entries
         # @return [void]
         def add_keywords!(param_types, keywords)
           keywords.each do |kw, p|
@@ -156,7 +156,7 @@ module Docscribe
         #
         # @private
         # @param [Hash<String, String>] param_types normalized param type map
-        # @param [Array<Object>] list positional parameter objects
+        # @param [Array<RBS::Types::Function::Param>] list positional parameter objects
         # @return [void]
         def add_positionals!(param_types, list)
           list.each do |p|
@@ -205,7 +205,7 @@ module Docscribe
         # generated comments.
         #
         # @private
-        # @param [Object] type RBS type object to format
+        # @param [Docscribe::Types::RBS::TypeFormatter::rbs_type] type RBS type object to format
         # @return [String]
         def format_type(type)
           Docscribe::Types::RBS::TypeFormatter.to_yard(

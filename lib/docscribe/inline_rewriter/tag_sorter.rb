@@ -12,24 +12,24 @@ module Docscribe
       module_function
 
       # @!attribute [rw] tag
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [String]
+      #   @param [String] value
       #
       # @!attribute [rw] lines
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [Array<String>]
+      #   @param [Array<String>] value
       #
       # @!attribute [rw] param_name
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [String?]
+      #   @param [String?] value
       #
       # @!attribute [rw] option_owner
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [String?]
+      #   @param [String?] value
       #
       # @!attribute [rw] index
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [Integer]
+      #   @param [Integer] value
       Entry = Struct.new(:tag, :lines, :param_name, :option_owner, :index, keyword_init: true)
 
       # Sort
@@ -123,7 +123,7 @@ module Docscribe
       # Group priority
       #
       # @note module_function: defines #group_priority (visibility: private)
-      # @param [Array<Object>] group entry group array
+      # @param [Array<Docscribe::InlineRewriter::TagSorter::Entry>] group entry group array
       # @param [Hash<String, Integer>] priority tag priority map
       # @return [Integer]
       def group_priority(group, priority)
@@ -136,7 +136,7 @@ module Docscribe
       # @note module_function: defines #consume_entry (visibility: private)
       # @param [Array<String>] lines comment block lines
       # @param [Integer] start_idx original index of the first line
-      # @return [(Object, Integer)]
+      # @return [(Docscribe::InlineRewriter::TagSorter::Entry, Integer)]
       def consume_entry(lines, start_idx)
         first = lines[start_idx]
         tag = extract_tag_name(first) || ''
@@ -151,11 +151,11 @@ module Docscribe
       # Build entry
       #
       # @note module_function: defines #build_entry (visibility: private)
-      # @param [String, nil] tag the extracted tag name
+      # @param [String] tag the extracted tag name
       # @param [Array<String>] entry_lines all lines belonging to this entry
       # @param [String] first the first (tag) line
       # @param [Integer] start_idx original index of the first line
-      # @return [Object]
+      # @return [Docscribe::InlineRewriter::TagSorter::Entry]
       def build_entry(tag, entry_lines, first, start_idx)
         Entry.new(
           tag: tag,
@@ -190,8 +190,8 @@ module Docscribe
       # Group entries
       #
       # @note module_function: defines #group_entries (visibility: private)
-      # @param [Array<Object>] entries parsed tag entries
-      # @return [Array<Array<Object>>]
+      # @param [Array<Docscribe::InlineRewriter::TagSorter::Entry>] entries parsed tag entries
+      # @return [Array<Array<Docscribe::InlineRewriter::TagSorter::Entry>>]
       def group_entries(entries)
         groups = [] #: Array[untyped]
         i = 0
@@ -207,9 +207,9 @@ module Docscribe
       # Group entry
       #
       # @note module_function: defines #group_entry (visibility: private)
-      # @param [Array<Object>] entries parsed tag entries
+      # @param [Array<Docscribe::InlineRewriter::TagSorter::Entry>] entries parsed tag entries
       # @param [Integer] idx index of the entry to group
-      # @return [Array<Object>] the entry group
+      # @return [Array<Docscribe::InlineRewriter::TagSorter::Entry>] the entry group
       def group_entry(entries, idx)
         entry = entries[idx]
         if entry.tag == 'param'
@@ -222,10 +222,10 @@ module Docscribe
       # Collect option entries
       #
       # @note module_function: defines #collect_option_entries (visibility: private)
-      # @param [Array<Object>] entries parsed tag entries
+      # @param [Array<Docscribe::InlineRewriter::TagSorter::Entry>] entries parsed tag entries
       # @param [Integer] start_idx original index of the first line
       # @param [String] param_name parent param name
-      # @return [Array<Object>]
+      # @return [Array<Docscribe::InlineRewriter::TagSorter::Entry>]
       def collect_option_entries(entries, start_idx, param_name)
         result = [] #: Array[untyped]
         i = start_idx

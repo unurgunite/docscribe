@@ -50,7 +50,7 @@ module Docscribe
       # @note module_function: defines #doc_comment_block_info (visibility: private)
       # @param [Parser::Source::Buffer] buffer source buffer to scan
       # @param [Integer] def_bol_pos beginning-of-line position of the target def
-      # @return [Hash<Symbol, Object>, nil]
+      # @return [Hash<Symbol, Array<String>, Integer, nil>, nil]
       def doc_comment_block_info(buffer, def_bol_pos)
         lines = buffer.source.lines
         def_line_idx = (buffer.source[0...def_bol_pos] || '').count("\n")
@@ -141,7 +141,7 @@ module Docscribe
       # @param [Integer] start_idx block start index
       # @param [Integer] preserved_start_idx preserved start index
       # @param [Integer] end_idx block end index
-      # @return [Hash<Symbol, Object>]
+      # @return [Hash<Symbol, Array<String>, Integer, nil>]
       def build_block_info(lines, start_idx, preserved_start_idx, end_idx)
         positions = compute_positions(lines, start_idx, preserved_start_idx, end_idx)
         {

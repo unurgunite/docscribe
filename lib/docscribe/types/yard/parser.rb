@@ -8,7 +8,7 @@ module Docscribe
     module Yard
       class << self
         # @param [Object] string
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::node?]
         def parse(string)
           return nil if string.nil? || string.strip.empty?
 
@@ -25,7 +25,7 @@ module Docscribe
           @i = 0
         end
 
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::node]
         def parse
           skip_space
           node = parse_union
@@ -36,7 +36,7 @@ module Docscribe
         private
 
         # @private
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::node]
         def parse_union
           types = [parse_intersection]
           skip_space
@@ -50,7 +50,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::node]
         def parse_intersection
           types = [parse_optional]
           skip_space
@@ -64,7 +64,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::node]
         def parse_optional
           type = parse_primary
           skip_space
@@ -77,7 +77,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::node]
         def parse_primary
           skip_space
           case peek
@@ -90,7 +90,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Object]
+        # @return [Object, Object, Named]
         def parse_named_type
           name = scan_name
           return Literal.new(value: name) if literal?(name)
@@ -107,7 +107,7 @@ module Docscribe
 
         # @private
         # @param [Object] base
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::Generic]
         def parse_generic(base)
           @i += 1
           args = parse_generic_args
@@ -116,7 +116,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Array<Object>]
+        # @return [Array<Docscribe::Types::Yard::node>]
         def parse_generic_args
           args = [] #: Array[untyped]
           skip_space
@@ -132,7 +132,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::Tuple]
         def parse_tuple
           @i += 1
           types = [] #: Array[untyped]
@@ -145,7 +145,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::node]
         def parse_tuple_element
           type = parse_intersection
           skip_space
@@ -158,7 +158,7 @@ module Docscribe
         end
 
         # @private
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::HashMap]
         def parse_hash_map
           @i += 1
           key = parse_union
@@ -169,13 +169,13 @@ module Docscribe
         end
 
         # @private
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::HashMap]
         def parse_named_hash_map
           parse_hash_map
         end
 
         # @private
-        # @return [Object]
+        # @return [Docscribe::Types::Yard::Duck]
         def parse_duck_type
           methods = [] #: Array[String]
           while @i < @s.length && @s[@i] == '#'

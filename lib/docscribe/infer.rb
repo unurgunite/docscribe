@@ -93,9 +93,9 @@ module Docscribe
       # @param [Parser::AST::Node] node constant AST node to resolve
       # @param [String] fallback_type default type when uncertain
       # @param [Boolean] nil_as_optional render nil as optional
-      # @param [Object?] core_rbs_provider core RBS type lookup provider
+      # @param [Docscribe::Types::RBS::Provider?] core_rbs_provider core RBS type lookup provider
       # @param [Hash<String, String>?] param_types parameter name -> type map
-      # @return [Object]
+      # @return [Hash<Symbol, String, Array<(Array<String>, String)>>]
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
                                  param_types: nil)
         Returns.returns_spec_from_node(

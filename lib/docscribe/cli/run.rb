@@ -105,7 +105,7 @@ module Docscribe
         # Return the core RBS provider from the config if available.
         #
         # @param [Docscribe::Config] conf effective config
-        # @return [Object, nil] core RBS provider or nil
+        # @return [Docscribe::Types::RBS::Provider, nil] core RBS provider or nil
         def core_rbs_provider_for(conf)
           conf.respond_to?(:core_rbs_provider) ? conf.core_rbs_provider : nil
         end
@@ -354,7 +354,7 @@ module Docscribe
         #
         # @private
         # @param [String] path file path that caused the error
-        # @param [Object] error the exception raised during rewriting
+        # @param [StandardError] error the exception raised during rewriting
         # @param [Hash<Symbol, Object>] ctx context hash with :state, :options, :display_path
         # @return [void]
         def record_rewrite_error(path, error, ctx)
@@ -527,7 +527,7 @@ module Docscribe
         #
         # @private
         # @param [String] path file path
-        # @param [Object] error the exception raised during file write
+        # @param [StandardError] error the exception raised during file write
         # @param [String] display_path path shown in CLI output
         # @param [Docscribe::CLI::Formatters::opts] options CLI options
         # @param [Docscribe::CLI::Formatters::state] state shared processing state

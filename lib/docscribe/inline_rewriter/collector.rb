@@ -226,7 +226,7 @@ module Docscribe
       # Enter a class body and collect documentation targets from its contents.
       #
       # @param [Parser::AST::Node] node an AST node
-      # @return [Object]
+      # @return [Parser::AST::Node]
       def on_class(node)
         cname_node, super_node, body = *node
         @name_stack.push(const_name(cname_node))
@@ -247,7 +247,7 @@ module Docscribe
       # file.
       #
       # @param [Parser::AST::Node] node an AST node
-      # @return [Object]
+      # @return [Parser::AST::Node]
       def on_module(node)
         cname_node, body = *node
         @name_stack.push(const_name(cname_node))
@@ -273,7 +273,7 @@ module Docscribe
       # Then continues processing child nodes.
       #
       # @param [Parser::AST::Node] node a `:casgn` node
-      # @return [Object] the original node
+      # @return [Parser::AST::Node] the original node
       def on_casgn(node)
         return node if process_struct_casgn?(node)
 
@@ -291,7 +291,7 @@ module Docscribe
       # up by the collector.
       #
       # @param [Parser::AST::Node] node an AST node
-      # @return [Object]
+      # @return [Parser::AST::Node]
       def on_def(node)
         return node unless @name_stack.empty?
 
@@ -307,7 +307,7 @@ module Docscribe
       # of any class or module body.
       #
       # @param [Parser::AST::Node] node an AST node
-      # @return [Object]
+      # @return [Parser::AST::Node]
       def on_defs(node)
         return node unless @name_stack.empty?
 
@@ -1136,7 +1136,7 @@ module Docscribe
       # Drop the first argument if it is a string (e.g. Struct.new("Name", ...)).
       #
       # @private
-      # @param [Array<Object>] args the destructured arguments from Struct.new
+      # @param [Array<Parser::AST::Node>] args the destructured arguments from Struct.new
       # @return [void]
       def drop_first_if_str!(args)
         return unless args.first.is_a?(Parser::AST::Node)

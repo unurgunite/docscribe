@@ -158,8 +158,7 @@ module Docscribe
       # @param [String] code the Ruby source code string to parse and rewrite
       # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
       # @raise [Docscribe::ParseError]
-      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node,
-      #   Docscribe::Types::ProviderChain, nil, Object, nil>]
+      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node, Docscribe::Types::ProviderChain, nil, Object, nil>]
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
         file = (options[:file] || '(inline)').to_s
@@ -209,7 +208,7 @@ module Docscribe
       #
       # @private
       # @param [Array<(Symbol, Object)>] insertions insertions to deduplicate
-      # @param [Hash<Integer, Object>, nil?] method_overrides_by_pos method-level overrides keyed by insertion position
+      # @param [Hash<Integer, Hash<Symbol, Object>>, nil?] method_overrides_by_pos method-level overrides keyed by insertion position
       # @return [Array<(Symbol, Object)>]
       def deduplicate_insertions(insertions, method_overrides_by_pos: nil)
         group_by_position(insertions).each_with_object([]) do |(pos, items), result|
@@ -223,7 +222,7 @@ module Docscribe
       # @param [Integer] pos the source begin_pos for the group
       # @param [Array<(Symbol, Object)>] items grouped items to process
       # @param [Array<(Symbol, Object)>] result accumulated result array
-      # @param [Hash<Integer, Object>, nil] method_overrides_by_pos hash mapping position to method override data
+      # @param [Hash<Integer, Hash<Symbol, Object>>, nil] method_overrides_by_pos hash mapping position to method override data
       # @return [void]
       def process_dedup_group(pos, items, result, method_overrides_by_pos)
         plugin_items = items.select { |pair| pair.first == :plugin }
@@ -269,7 +268,7 @@ module Docscribe
       # @param [Array<(Symbol, Object)>] result accumulated result array
       # @param [Array<(Symbol, Object)>] items all items in group
       # @param [Array<(Symbol, Object)>] override_items override plugin items
-      # @param [Hash<Integer, Object>, nil] method_overrides_by_pos hash mapping position to method override data
+      # @param [Hash<Integer, Hash<Symbol, Object>>, nil] method_overrides_by_pos hash mapping position to method override data
       # @param [Integer] pos the source position of the conflict
       # @return [void]
       def handle_override_case(result, items, override_items, method_overrides_by_pos, pos)
@@ -452,7 +451,7 @@ module Docscribe
       # Plugin insertion priority
       #
       # @private
-      # @param [Hash<Symbol, Object>] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
       # @raise [StandardError]
       # @return [Integer] if StandardError
       # @return [Integer] if StandardError
@@ -467,7 +466,7 @@ module Docscribe
       # Plugin insertion label
       #
       # @private
-      # @param [Hash<Symbol, Object>] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
       # @raise [StandardError]
       # @return [String] if StandardError
       # @return [String] if StandardError
@@ -483,7 +482,7 @@ module Docscribe
       # Plugin insertion line
       #
       # @private
-      # @param [Hash<Symbol, Object>] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
       # @raise [StandardError]
       # @return [Integer, nil] if StandardError
       # @return [nil] if StandardError
@@ -818,7 +817,7 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
       # @param [Object] options keyword options
-      # @return [Hash<Symbol, Hash<Object, Object>, nil, Object, Array<Object>>]
+      # @return [Hash<Symbol, Hash<String, String>, nil, String, nil, Array<Docscribe::Plugin::Tag>>]
       def build_effective_params(insertion, **options)
         external_sig = resolve_external_signature(insertion, options[:signature_provider])
         param_types = resolve_param_types(insertion, external_sig, options[:config])
@@ -1077,8 +1076,7 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @param [Parser::Source::Range] bol_range the beginning-of-line range for the attribute node
-      # @return [Hash<Symbol, Docscribe::InlineRewriter::Collector::AttrInsertion, Docscribe::Config,
-      #   Docscribe::Types::ProviderChain, nil, Parser::Source::Range>]
+      # @return [Hash<Symbol, Docscribe::InlineRewriter::Collector::AttrInsertion, Docscribe::Config, Docscribe::Types::ProviderChain, nil, Parser::Source::Range>]
       def attr_insertion_params(insertion, config, signature_provider, bol_range)
         {
           insertion: insertion, config: config,
@@ -1542,7 +1540,7 @@ module Docscribe
       # Extract method override
       #
       # @private
-      # @param [Object] method_override the raw override data
+      # @param [Hash<Symbol, Object>, nil] method_override the raw override data
       # @return [Hash<Symbol, Object>] normalized override hash
       def extract_method_override!(method_override)
         return {} unless method_override.is_a?(Hash)

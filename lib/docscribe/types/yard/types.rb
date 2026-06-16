@@ -12,32 +12,32 @@ module Docscribe
       #   @param [String] value
       #
       # @!attribute [rw] args
-      #   @return [Array<Object>]
-      #   @param [Array<Object>] value
+      #   @return [Array<Docscribe::Types::Yard::node>]
+      #   @param [Array<Docscribe::Types::Yard::node>] value
       Generic = Struct.new(:base, :args, keyword_init: true)
       # @!attribute [rw] types
-      #   @return [Array<Object>]
-      #   @param [Array<Object>] value
+      #   @return [Array<Docscribe::Types::Yard::node>]
+      #   @param [Array<Docscribe::Types::Yard::node>] value
       Union = Struct.new(:types, keyword_init: true)
       # @!attribute [rw] types
-      #   @return [Array<Object>]
-      #   @param [Array<Object>] value
+      #   @return [Array<Docscribe::Types::Yard::node>]
+      #   @param [Array<Docscribe::Types::Yard::node>] value
       Intersection = Struct.new(:types, keyword_init: true)
       # @!attribute [rw] type
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [Docscribe::Types::Yard::node]
+      #   @param [Docscribe::Types::Yard::node] value
       Optional = Struct.new(:type, keyword_init: true)
       # @!attribute [rw] types
-      #   @return [Array<Object>]
-      #   @param [Array<Object>] value
+      #   @return [Array<Docscribe::Types::Yard::node>]
+      #   @param [Array<Docscribe::Types::Yard::node>] value
       Tuple = Struct.new(:types, keyword_init: true)
       # @!attribute [rw] key_type
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [Docscribe::Types::Yard::node]
+      #   @param [Docscribe::Types::Yard::node] value
       #
       # @!attribute [rw] value_type
-      #   @return [Object]
-      #   @param [Object] value
+      #   @return [Docscribe::Types::Yard::node]
+      #   @param [Docscribe::Types::Yard::node] value
       HashMap = Struct.new(:key_type, :value_type, keyword_init: true)
       # @!attribute [rw] method_names
       #   @return [Array<String>]

@@ -28,7 +28,7 @@ module Docscribe
     # and calling {safe_load_compat}.
     #
     # @param [String] path file path
-    # @return [Hash<Object, Object>]
+    # @return [Hash<String, Object>]
     def self.safe_load_file_compat(path)
       if YAML.respond_to?(:safe_load_file) # steep:ignore
         pclasses = [] #: Array[String]
@@ -47,7 +47,7 @@ module Docscribe
     # @param [String] yaml YAML document
     # @param [String?] filename optional filename for diagnostics
     # @raise [ArgumentError]
-    # @return [Hash<Object, Object>] if ArgumentError
+    # @return [Hash<String, Object>] if ArgumentError
     # @return [Object] if ArgumentError
     def self.safe_load_compat(yaml, filename: nil)
       pclasses = [] #: Array[String]

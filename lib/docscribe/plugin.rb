@@ -71,9 +71,9 @@ module Docscribe
 
     # Merge plugin metadata into collector results and filter invalid ones.
     #
-    # @param [Array<Object>] results collector plugin results to process
+    # @param [Array<Hash<Symbol, Object>>] results collector plugin results to process
     # @param [Docscribe::Plugin::Registry::Entry] entry registry entry with priority and order metadata
-    # @param [Docscribe::Plugin::Base::CollectorPlugin] plugin the collector plugin instance
+    # @param [Object] plugin the collector plugin instance
     # @return [Array<Hash<Symbol, Object>>]
     def self.process_plugin_insertions(results, entry, plugin)
       results.map do |insertion|

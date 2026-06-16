@@ -163,7 +163,7 @@ module Docscribe
       # @param [Hash<Symbol, Object>] setup method setup hash with name, normal_type, scope, visibility
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] opts additional options including
-      # @return [Array<Object>]
+      # @return [(Hash<String, String>, nil, Array<String>, nil, Array<String>)]
       def build_param_and_raise_info(setup, config, opts)
         pt = opts[:param_types] || build_param_types_from_node(setup[:node], external_sig: setup[:external_sig],
                                                                              config: config)
@@ -216,8 +216,8 @@ module Docscribe
       # @param [String] container method container name
       # @param [Symbol] scope method scope symbol
       # @param [Symbol] name the method name string
-      # @param [Object, nil] signature_provider external sig provider
-      # @return [Object, nil]
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider external sig provider
+      # @return [Docscribe::Types::MethodSignature, nil]
       def resolve_external_sig(container, scope, name, signature_provider)
         signature_provider&.signature_for(container: container, scope: scope, name: name)
       end
@@ -228,7 +228,7 @@ module Docscribe
       # @param [Parser::AST::Node] node AST node whose source text to extract
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<String, String>, nil] param_types hash accumulating parameter name-to-type mappings
-      # @param [Object, nil] core_rbs_provider RBS type provider
+      # @param [Object] core_rbs_provider RBS type provider
       # @return [Hash<Symbol, Object>]
       def compute_returns_spec(node, config, param_types, core_rbs_provider)
         Docscribe::Infer.returns_spec_from_node(
@@ -540,9 +540,9 @@ module Docscribe
       #
       # @note module_function: defines #extract_param_info (visibility: private)
       # @param [String] line a single doc comment line to parse
-      # @param [Hash<String, Object>] param_names hash tracking existing @param names
+      # @param [Hash<String, Boolean>] param_names hash tracking existing @param names
       # @param [Hash<String, String>] param_types hash tracking existing @param types
-      # @param [Hash<String, Object>, nil] param_descriptions param descriptions hash
+      # @param [Hash<String, String>, nil] param_descriptions param descriptions hash
       # @return [void]
       def extract_param_info(line, param_names, param_types, param_descriptions = nil)
         return unless (pname = extract_param_name_from_param_line(line))
@@ -593,9 +593,9 @@ module Docscribe
 
       # Extract all comment tags from line
       #
-      # @note module_function: defines #extract_all_comment_tags (visibility: private)
-      # @param [Hash<Symbol, Object>] info parse info hash
+      # @note module_function: defines #track_last_tag (visibility: private)
       # @param [String] content
+      # @param [Hash<Symbol, Object>] info parse info hash
       # @return [void]
       def track_last_tag(content, info)
         tag = content.match(/@(\w+)/)&.[](1)&.to_sym
@@ -667,7 +667,7 @@ module Docscribe
       #
       # @note module_function: defines #extract_raise_info (visibility: private)
       # @param [String] line a single doc comment line to parse
-      # @param [Hash<String, Object>] raise_types hash tracking existing @raise types
+      # @param [Hash<String, Boolean>] raise_types hash tracking existing @raise types
       # @return [void]
       def extract_raise_info(line, raise_types)
         extract_raise_types_from_line(line).each { |t| raise_types[t || ''] = true }
@@ -677,8 +677,8 @@ module Docscribe
       #
       # @note module_function: defines #extract_plugin_info (visibility: private)
       # @param [String] line a single doc comment line to parse
-      # @param [Hash<String, Object>] plugin_tags hash tracking existing plugin tag names
-      # @return [nil, Object]
+      # @param [Hash<String, Boolean>] plugin_tags hash tracking existing plugin tag names
+      # @return [void]
       def extract_plugin_info(line, plugin_tags)
         return unless (m = line.match(/^\s*#\s*@(\w+)\b/))
 
@@ -719,7 +719,7 @@ module Docscribe
       #
       # @note module_function: defines #build_param_types_from_node (visibility: private)
       # @param [Parser::AST::Node] node def or defs node
-      # @param [Object, nil] external_sig external signature if available
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external signature if available
       # @param [Docscribe::Config] config Docscribe configuration object
       # @return [Hash<String, String>, nil]
       def build_param_types_from_node(node, external_sig:, config:)
@@ -736,9 +736,9 @@ module Docscribe
       # Collect all param types
       #
       # @note module_function: defines #collect_all_param_types (visibility: private)
-      # @param [Object] args arguments AST node
+      # @param [Parser::AST::Node] args arguments AST node
       # @param [Hash<String, String>] param_types hash accumulating parameter name-to-type mappings
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Docscribe::Config] config Docscribe configuration object
       # @return [void]
       def collect_all_param_types(args, param_types, external_sig, config)
@@ -753,7 +753,7 @@ module Docscribe
       # @note module_function: defines #collect_param_type (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the required/keyword argument
       # @param [Hash<String, String>] param_types hash accumulating parameter name-to-type mappings
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Docscribe::Config] config Docscribe configuration for fallback type options
       # @param [Proc, nil] infer_name lambda to transform parameter name for inference
       # @return [void]
@@ -772,7 +772,7 @@ module Docscribe
       # @note module_function: defines #collect_optarg_param_type (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the optional/keyword optional argument
       # @param [Hash<String, String>] param_types hash accumulating parameter name-to-type mappings
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Docscribe::Config] config Docscribe configuration for fallback type options
       # @param [Proc, nil] infer_name lambda to transform parameter name for inference
       # @return [void]
@@ -885,7 +885,7 @@ module Docscribe
       #
       # @note module_function: defines #merge_rescue_return_lines (visibility: private)
       # @param [String] indent indentation string for the doc line
-      # @param [Array<Object>] rescue_specs rescue type specs
+      # @param [Array<(Array<String>, String)>] rescue_specs rescue type specs
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] info parse info hash to update with visibility flags
       # @return [Array<String>]
@@ -1023,7 +1023,7 @@ module Docscribe
       # @note module_function: defines #build_params_lines (visibility: private)
       # @param [Parser::AST::Node] node AST node whose source text to extract
       # @param [String] indent indentation string for the doc line
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
       # @return [Array<String>, nil]
@@ -1037,10 +1037,10 @@ module Docscribe
       # Build all param lines
       #
       # @note module_function: defines #build_all_param_lines (visibility: private)
-      # @param [Object] args arguments AST node
+      # @param [Parser::AST::Node] args arguments AST node
       # @param [String] indent indentation string for the doc line
       # @param [Docscribe::Config] config Docscribe configuration object
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Object] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
       # @return [Array<String>, nil]
       def build_all_param_lines(args, indent, config, external_sig: nil, **kwargs)
@@ -1059,7 +1059,7 @@ module Docscribe
       # Get param doc for argument
       #
       # @note module_function: defines #param_doc_for_arg (visibility: private)
-      # @param [Object] arg individual argument node
+      # @param [Parser::AST::Node] arg individual argument node
       # @param [Hash<Symbol, Object>] kwargs keyword args hash
       # @param [Docscribe::Config] config doc configuration
       # @return [String]
@@ -1200,7 +1200,7 @@ module Docscribe
       # @note module_function: defines #build_param_line (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the argument
       # @param [String] indent indentation string for doc comment lines
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting (fallback_type, param_tag_style, etc.)
       # @return [Array<String>]
@@ -1329,7 +1329,7 @@ module Docscribe
       #
       # @note module_function: defines #build_rescue_return_lines (visibility: private)
       # @param [String] indent indentation string for the doc line
-      # @param [Array<Object>] rescue_specs rescue type specs
+      # @param [Array<(Array<String>, String)>] rescue_specs rescue type specs
       # @param [Docscribe::Config] config Docscribe configuration object
       # @return [Array<String>]
       def build_rescue_return_lines(indent, rescue_specs, config)
@@ -1359,7 +1359,7 @@ module Docscribe
       # @note module_function: defines #build_arg_line (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the required argument
       # @param [String] indent indentation string for doc comment lines
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting
       # @return [String]
@@ -1377,7 +1377,7 @@ module Docscribe
       # @note module_function: defines #build_optarg_lines (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the optional argument
       # @param [String] indent indentation string for doc comment lines
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting
       # @return [Array<String>]
@@ -1395,8 +1395,8 @@ module Docscribe
       #
       # @note module_function: defines #optarg_type (visibility: private)
       # @param [String] pname the parameter name to look up
-      # @param [Object] default default value node
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Parser::AST::Node] default default value node
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Hash<Symbol, Object>] opts additional options including
       # @return [String]
@@ -1433,7 +1433,7 @@ module Docscribe
       # @note module_function: defines #build_kwarg_line (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the keyword argument
       # @param [String] indent indentation string for doc comment lines
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting
       # @return [String]
@@ -1451,7 +1451,7 @@ module Docscribe
       # @note module_function: defines #build_kwoptarg_line (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the optional keyword argument
       # @param [String] indent indentation string for doc comment lines
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting
       # @return [String]
@@ -1472,7 +1472,7 @@ module Docscribe
       # @note module_function: defines #build_restarg_line (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the rest argument (*args)
       # @param [String] indent indentation string for doc comment lines
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting
       # @return [String]
@@ -1493,7 +1493,7 @@ module Docscribe
       # @note module_function: defines #build_kwrestarg_line (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the keyword rest argument (**kwargs)
       # @param [String] indent indentation string for doc comment lines
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting
       # @return [String]
@@ -1510,7 +1510,7 @@ module Docscribe
       # @note module_function: defines #build_blockarg_line (visibility: private)
       # @param [Parser::AST::Node] arg_node AST node for the block argument (&block)
       # @param [String] indent indentation string for doc comment lines
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [Object] opts additional options for param formatting
       # @return [String]
@@ -1526,7 +1526,7 @@ module Docscribe
       # Lookup param type
       #
       # @note module_function: defines #lookup_param_type (visibility: private)
-      # @param [Object, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
       # @param [String] pname the parameter name string
       # @param [String] infer_name parameter name string or transformed version for inference
@@ -1606,7 +1606,7 @@ module Docscribe
       #
       # @note module_function: defines #append_option_lines (visibility: private)
       # @param [Array<String>] lines array of output doc lines being accumulated
-      # @param [Object] default default value node
+      # @param [Parser::AST::Node] default default value node
       # @param [String] indent indentation string for the doc line
       # @param [String] pname the parameter name to look up
       # @param [String] fallback_type default type string when inference fails
@@ -1620,7 +1620,7 @@ module Docscribe
       # Hash option pairs
       #
       # @note module_function: defines #hash_option_pairs (visibility: private)
-      # @param [Object] node AST node for the default value, expected to be :hash type
+      # @param [Parser::AST::Node] node AST node for the default value, expected to be :hash type
       # @return [Array<Parser::AST::Node>]
       def hash_option_pairs(node)
         return [] unless node&.type == :hash
@@ -1631,7 +1631,7 @@ module Docscribe
       # Build option line
       #
       # @note module_function: defines #build_option_line (visibility: private)
-      # @param [Object] pair AST pair node containing key and value
+      # @param [Parser::AST::Node] pair AST pair node containing key and value
       # @param [String] indent indentation string for the doc line
       # @param [String] pname the parent parameter name for @option scope
       # @param [String] fallback_type default type string when inference fails
@@ -1651,7 +1651,7 @@ module Docscribe
       # Option key name
       #
       # @note module_function: defines #option_key_name (visibility: private)
-      # @param [Object] key_node AST node for the hash key (:sym or :str type)
+      # @param [Parser::AST::Node] key_node AST node for the hash key (:sym or :str type)
       # @return [String]
       def option_key_name(key_node)
         case key_node&.type
@@ -1666,7 +1666,7 @@ module Docscribe
       # Node default literal
       #
       # @note module_function: defines #node_default_literal (visibility: private)
-      # @param [Object] node AST node whose source text to extract
+      # @param [Parser::AST::Node] node AST node whose source text to extract
       # @return [String, nil]
       def node_default_literal(node)
         expression = node&.loc&.expression

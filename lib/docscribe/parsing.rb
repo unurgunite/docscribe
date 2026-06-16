@@ -60,7 +60,7 @@ module Docscribe
       # @param [String] code Ruby source
       # @param [String] file source name used for parser locations
       # @param [Symbol] backend :auto, :parser, or :prism
-      # @return [(Parser::AST::Node, Array<Parser::Source::Comment>)]
+      # @return [(Parser::AST::Node?, Array<Parser::Source::Comment>), nil]
       def parse_with_comments(code, file: '(docscribe)', backend: :auto)
         buffer = Parser::Source::Buffer.new(file, source: code)
         parse_with_comments_buffer(buffer, backend: backend)
@@ -73,7 +73,7 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer prepared source buffer
       # @param [Symbol] backend :auto, :parser, or :prism
       # @raise [NoMethodError]
-      # @return [(Parser::AST::Node, Array<Parser::Source::Comment>)] if NoMethodError
+      # @return [(Parser::AST::Node?, Array<Parser::Source::Comment>), nil] if NoMethodError
       # @return [nil] if NoMethodError
       def parse_with_comments_buffer(buffer, backend: :auto)
         parser = parser_for(backend: backend)
@@ -90,7 +90,7 @@ module Docscribe
       #
       # @private
       # @param [Symbol] backend requested backend
-      # @return [Parser::Base, Object]
+      # @return [Parser::Base, nil]
       def parser_for(backend: :auto)
         case backend(backend)
         when :parser

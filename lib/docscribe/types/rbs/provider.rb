@@ -145,7 +145,7 @@ module Docscribe
         # @private
         # @param [String] container fully qualified class/module name
         # @param [Symbol] scope :instance or :class
-        # @return [Object]
+        # @return [RBS::Definition, nil]
         def definition_for(container:, scope:)
           type_name = parse_type_name(absolute_const(container))
           scope == :class ? @builder&.build_singleton(type_name) : @builder&.build_instance(type_name)
@@ -216,7 +216,7 @@ module Docscribe
         #
         # @private
         # @param [Hash<String, String>] param_types normalized param type map
-        # @param [Hash<Symbol, Object>] keywords keyword parameter entries
+        # @param [Hash<Symbol, RBS::Types::Function::Param>] keywords keyword parameter entries
         # @return [void]
         def add_keywords!(param_types, keywords)
           keywords.each do |kw, p|
@@ -228,7 +228,7 @@ module Docscribe
         #
         # @private
         # @param [Hash<String, String>] param_types normalized param type map
-        # @param [Array<Object>] list positional parameter objects
+        # @param [Array<RBS::Types::Function::Param>] list positional parameter objects
         # @return [void]
         def add_positionals!(param_types, list)
           list.each do |p|
@@ -272,7 +272,7 @@ module Docscribe
         # generated comments.
         #
         # @private
-        # @param [Object] type RBS type object to format
+        # @param [Docscribe::Types::RBS::TypeFormatter::rbs_type] type RBS type object to format
         # @return [String]
         def format_type(type)
           Docscribe::Types::RBS::TypeFormatter.to_yard(
@@ -285,7 +285,7 @@ module Docscribe
         # Emit a formatted RBS error warning with context-specific messaging.
         #
         # @private
-        # @param [Object] error the raised exception
+        # @param [RBS::BaseError, StandardError] error the raised exception
         # @param [String] context human-readable context label
         # @return [void]
         def handle_rbs_error(error, context)

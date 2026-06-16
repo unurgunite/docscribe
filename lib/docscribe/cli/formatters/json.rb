@@ -60,7 +60,7 @@ module Docscribe
         # @private
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
         # @param [Docscribe::CLI::Formatters::opts] _options runtime options hash
-        # @return [Hash<Object, Object>]
+        # @return [Hash<Symbol, Object>]
         def build_document(state, _options)
           document_hash(build_files(state), state)
         end
@@ -68,9 +68,9 @@ module Docscribe
         # Build document hash structure.
         #
         # @private
-        # @param [Array<Hash<Object, Object>>] files files offenses array
+        # @param [Array<Hash<Symbol, Object>>] files files offenses array
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
-        # @return [Hash<Object, Object>]
+        # @return [Hash<Symbol, Object>]
         def document_hash(files, state)
           {
             metadata: metadata_hash,
@@ -82,7 +82,7 @@ module Docscribe
         # Build tool metadata hash.
         #
         # @private
-        # @return [Hash<Symbol, Object>]
+        # @return [Hash<Symbol, String>]
         def metadata_hash
           {
             docscribe_version: Docscribe::VERSION,
@@ -93,7 +93,7 @@ module Docscribe
         # Build summary statistics hash.
         #
         # @private
-        # @param [Array<Hash<Object, Object>>] files files offenses array
+        # @param [Array<Hash<Symbol, Object>>] files files offenses array
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
         # @return [Hash<Symbol, Integer>]
         def summary_hash(files, state)
@@ -109,7 +109,7 @@ module Docscribe
         #
         # @private
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
-        # @return [Array<Hash<Object, Object>>]
+        # @return [Array<Hash<Symbol, Object>>]
         def build_files(state)
           files = [] #: Array[Hash[untyped, untyped]]
 
@@ -124,7 +124,7 @@ module Docscribe
         #
         # @private
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
-        # @param [Array<Hash<Object, Object>>] files files offenses array
+        # @param [Array<Hash<Symbol, Object>>] files files offenses array
         # @return [void]
         def append_check_files(state, files)
           state[:fail_paths].each do |path|
@@ -140,7 +140,7 @@ module Docscribe
         #
         # @private
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
-        # @param [Array<Hash<Object, Object>>] files files offenses array
+        # @param [Array<Hash<Symbol, Object>>] files files offenses array
         # @return [void]
         def append_corrected_files(state, files)
           state[:corrected_paths].each do |path|
@@ -152,7 +152,7 @@ module Docscribe
         #
         # @private
         # @param [Docscribe::CLI::Formatters::state] state formatter state hash
-        # @param [Array<Hash<Object, Object>>] files files offenses array
+        # @param [Array<Hash<Symbol, Object>>] files files offenses array
         # @return [void]
         def append_error_files(state, files)
           state[:error_paths].each do |path|
@@ -163,9 +163,9 @@ module Docscribe
         # Merge or append file offenses.
         #
         # @private
-        # @param [Array<Hash<Object, Object>>] files files offenses array
+        # @param [Array<Hash<Symbol, Object>>] files files offenses array
         # @param [String] path file path string
-        # @param [Array<Hash<Object, Object>>] offenses offense objects array
+        # @param [Array<Hash<Symbol, Object>>] offenses offense objects array
         # @return [void]
         def merge_or_append(files, path, offenses)
           existing = files.find { |f| f[:path] == path }

@@ -77,7 +77,7 @@ module Docscribe
         # Hash of RBS type classes and their YARD formatter lambdas.
         #
         # @note module_function: defines #formatter_pairs (visibility: private)
-        # @return [Object]
+        # @return [Hash<Class, Docscribe::Types::RBS::TypeFormatter::formatter_fn>]
         def formatter_pairs # steep:ignore # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
           @formatter_pairs ||= {
             ::RBS::Types::Bases::Any => ->(_, **) { format_any },
@@ -304,7 +304,7 @@ module Docscribe
         #
         # @note module_function: defines #format_generic_args (visibility: private)
         # @param [String] name the type name
-        # @param [Array<Object>] args the generic type arguments
+        # @param [Array<Docscribe::Types::RBS::TypeFormatter::rbs_type>] args the generic type arguments
         # @param [Boolean] collapse_generics whether to omit generic type arguments
         # @param [Boolean] collapse_object_generics whether to collapse generics when all inner types are Object
         # @return [String]

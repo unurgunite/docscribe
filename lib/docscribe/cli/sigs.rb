@@ -68,7 +68,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] opts
+        # @param [OptionParser] opts
         # @param [Hash<Symbol, Object>] options
         # @return [void]
         def register_sig_options(opts, options)
@@ -157,7 +157,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
+        # @param [Parser::AST::Node] node
         # @param [Array<String>] containers
         # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
         # @param [String] path
@@ -176,7 +176,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
+        # @param [Parser::AST::Node] node
         # @param [Array<String>] containers
         # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
         # @param [String] path
@@ -188,7 +188,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
+        # @param [Parser::AST::Node] node
         # @param [Array<String>] containers
         # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
         # @param [String] path
@@ -198,7 +198,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
+        # @param [Parser::AST::Node] node
         # @param [Array<String>] containers
         # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
         # @param [String] path
@@ -209,7 +209,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
+        # @param [Parser::AST::Node] node
         # @param [Array<String>] containers
         # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
         # @param [String] path
@@ -226,7 +226,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
+        # @param [Parser::AST::Node] node
         # @param [Array<String>] containers
         # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
         # @param [String] path
@@ -249,7 +249,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
+        # @param [Parser::AST::Node] node
         # @return [String]
         def const_name(node)
           return node.to_s unless node.is_a?(Parser::AST::Node)
@@ -308,7 +308,7 @@ module Docscribe
         # @private
         # @param [Docscribe::CLI::Sigs::MethodDef] method_def
         # @param [Docscribe::Types::RBS::Provider] provider
-        # @return [Object]
+        # @return [Object, nil]
         def lookup_signature(method_def, provider)
           return nil unless method_def.container
 

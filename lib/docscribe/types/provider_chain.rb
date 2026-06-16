@@ -14,7 +14,7 @@ module Docscribe
     class ProviderChain
       # Initialize
       #
-      # @param [Array<Object>] providers ordered signature providers
+      # @param [Array<Docscribe::Types::_Provider>] providers ordered signature providers
       # @return [void]
       def initialize(*providers)
         @providers = providers.compact

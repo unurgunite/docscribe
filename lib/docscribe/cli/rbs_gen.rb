@@ -24,7 +24,7 @@ module Docscribe
       WalkContext = Data.define(:containers, :method_defs, :path, :comment_map, :src_lines, :inside_sclass)
 
       class << self
-        # @param [Object] argv
+        # @param [Array<String>] argv
         # @return [Integer]
         def run(argv)
           options = parse_options(argv)
@@ -37,7 +37,7 @@ module Docscribe
         private
 
         # @private
-        # @param [Object] argv
+        # @param [Array<String>] argv
         # @return [Hash<Symbol, Object>]
         def parse_options(argv)
           options = { output_dir: 'sig', dry_run: false, force: false }
@@ -51,7 +51,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] args
+        # @param [Array<String>] args
         # @return [Array<String>]
         def expand_paths(args)
           files = [] #: Array[String]
@@ -61,8 +61,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] files
-        # @param [Object] path
+        # @param [Array<String>] files
+        # @param [String] path
         # @return [void]
         def expand_single_path(files, path)
           if File.directory?(path)
@@ -82,8 +82,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] options
-        # @param [Object] paths
+        # @param [Hash<Symbol, Object>] options
+        # @param [Array<String>] paths
         # @return [Integer]
         def run_with(options, paths)
           errors = 0
@@ -94,11 +94,13 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] path
-        # @param [Object] options
+        # @param [String] path
+        # @param [Hash<Symbol, Object>] options
         # @raise [Parser::SyntaxError]
         # @raise [StandardError]
-        # @return [Boolean]
+        # @return [Boolean] if StandardError
+        # @return [Boolean] if Parser::SyntaxError
+        # @return [Boolean] if StandardError
         def generate_for_file(path, options)
           process_source?(File.read(path), path, options)
         rescue Parser::SyntaxError => e # steep:ignore
@@ -110,9 +112,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] src
-        # @param [Object] path
-        # @param [Object] options
+        # @param [String] src
+        # @param [String] path
+        # @param [Hash<Symbol, Object>] options
         # @return [Boolean]
         def process_source?(src, path, options)
           src_lines = src.lines
@@ -130,10 +132,10 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] ast
-        # @param [Object] comments
-        # @param [Object] path
-        # @param [Object] src_lines
+        # @param [Parser::AST::Node] ast
+        # @param [Array<Parser::Source::Comment>?] comments
+        # @param [String] path
+        # @param [Array<String>] src_lines
         # @return [Array<MethodDef>]
         def walk_source(ast, comments, path, src_lines)
           comment_map = build_comment_map(comments)
@@ -144,9 +146,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] content
-        # @param [Object] path
-        # @param [Object] options
+        # @param [String] content
+        # @param [String] path
+        # @param [Hash<Symbol, Object>] options
         # @return [void]
         def output_rbs(content, path, options)
           if options[:dry_run]
@@ -157,7 +159,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] comments
+        # @param [Array<Parser::Source::Comment>?] comments
         # @return [Hash<Integer, String>]
         def build_comment_map(comments)
           map = {} #: Hash[Integer, String]
@@ -170,8 +172,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
-        # @param [WalkContext] ctx
+        # @param [Parser::AST::Node] node
+        # @param [Object] ctx
         # @return [void]
         def walk_for_methods(node, ctx)
           return unless node.is_a?(Parser::AST::Node)
@@ -186,8 +188,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
-        # @param [WalkContext] ctx
+        # @param [Parser::AST::Node] node
+        # @param [Object] ctx
         # @return [void]
         def walk_class_module(node, ctx)
           ctx.containers.push(const_name(node.children[0]))
@@ -196,8 +198,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
-        # @param [WalkContext] ctx
+        # @param [Parser::AST::Node] node
+        # @param [Object] ctx
         # @return [void]
         def walk_sclass(node, ctx)
           sc_ctx = ctx.with(inside_sclass: true)
@@ -205,16 +207,16 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
-        # @param [WalkContext] ctx
+        # @param [Parser::AST::Node] node
+        # @param [Object] ctx
         # @return [void]
         def walk_children(node, ctx)
           node.children.each { |c| walk_for_methods(c, ctx) }
         end
 
         # @private
-        # @param [Object] node
-        # @param [WalkContext] ctx
+        # @param [Parser::AST::Node] node
+        # @param [Object] ctx
         # @return [void]
         def collect_def(node, ctx)
           line = node.loc&.line || 1
@@ -231,8 +233,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] node
-        # @param [WalkContext] ctx
+        # @param [Parser::AST::Node] node
+        # @param [Object] ctx
         # @return [void]
         def collect_defs(node, ctx)
           line = node.loc&.line || 1
@@ -249,8 +251,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] line
-        # @param [WalkContext] ctx
+        # @param [Integer] line
+        # @param [Object] ctx
         # @return [YardTags?]
         def parse_yard_tags_for_line(line, ctx)
           yard_block = find_yard_block(line, ctx.comment_map, ctx.src_lines)
@@ -258,9 +260,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] line
-        # @param [Object] comment_map
-        # @param [Object] src_lines
+        # @param [Integer] line
+        # @param [Hash<Integer, String>] comment_map
+        # @param [Array<String>] src_lines
         # @return [Array<String>]
         def find_yard_block(line, comment_map, src_lines)
           block = [] #: Array[String]
@@ -277,7 +279,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] comment_lines
+        # @param [Array<String>] comment_lines
         # @return [Docscribe::CLI::RbsGen::YardTags]
         def parse_yard_tags(comment_lines)
           state = { params: [], options: [], return_type: nil }
@@ -286,16 +288,16 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] line
+        # @param [String] line
         # @param [Hash] state
-        # @return [void]
+        # @return [Object, nil]
         def parse_yard_line(line, state)
           text = line.sub(/\A#\s*/, '')
           parse_param_tag(text, state) || parse_option_tag(text, state) || parse_return_tag(text, state)
         end
 
         # @private
-        # @param [Object] text
+        # @param [String] text
         # @param [Hash] state
         # @return [Object, nil]
         def parse_param_tag(text, state)
@@ -307,7 +309,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] text
+        # @param [String] text
         # @param [Hash] state
         # @return [Object, nil]
         def parse_option_tag(text, state)
@@ -317,7 +319,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] text
+        # @param [String] text
         # @param [Hash] state
         # @return [Object, nil]
         def parse_return_tag(text, state)
@@ -327,14 +329,14 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] containers
+        # @param [Array<String>] containers
         # @return [String?]
         def container_name(containers)
           containers.empty? ? nil : containers.join('::')
         end
 
         # @private
-        # @param [Object] node
+        # @param [Parser::AST::Node] node
         # @return [String]
         def const_name(node)
           return node.to_s unless node.is_a?(Parser::AST::Node)
@@ -344,7 +346,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] method_defs
+        # @param [Array<MethodDef>] method_defs
         # @return [String]
         def build_rbs_content(method_defs)
           grouped = method_defs.group_by { |m| m.container || '' }
@@ -357,7 +359,7 @@ module Docscribe
 
         # @private
         # @param [Array<String>] lines
-        # @param [Object] container
+        # @param [String] container
         # @param [Array<MethodDef>] methods
         # @return [void]
         def append_group(lines, container, methods)
@@ -372,7 +374,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] method
+        # @param [MethodDef] method
         # @return [String]
         def format_method_sig(method)
           prefix = method.scope == :class ? 'self.' : ''
@@ -387,8 +389,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] method
-        # @return [Array<String>]
+        # @param [MethodDef] method
+        # @return [String]
         def build_param_strs(method)
           tags = method.yard_tags
           strs = (tags&.params || []).map { |p| "#{type_to_rbs(p.type)} #{p.name}" }
@@ -397,7 +399,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] method
+        # @param [MethodDef] method
         # @return [String]
         def return_type_rbs(method)
           tags = method.yard_tags
@@ -408,7 +410,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] yard_type
+        # @param [String] yard_type
         # @return [String]
         def type_to_rbs(yard_type)
           ast = Docscribe::Types::Yard.parse(yard_type)
@@ -416,9 +418,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] content
-        # @param [Object] source_path
-        # @param [Object] options
+        # @param [String] content
+        # @param [String] source_path
+        # @param [Hash<Symbol, Object>] options
         # @return [void]
         def write_file(content, source_path, options)
           out_path = rbs_output_path(source_path, options)
@@ -435,8 +437,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] source_path
-        # @param [Object] options
+        # @param [String] source_path
+        # @param [Hash<Symbol, Object>] options
         # @return [String]
         def rbs_output_path(source_path, options)
           abs = File.expand_path(source_path)

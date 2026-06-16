@@ -51,7 +51,7 @@ module Docscribe
       # Parse and validate plugin priority.
       #
       # @note module_function: defines #parse_priority (visibility: private)
-      # @param [Object] priority plugin priority (higher wins for conflicts)
+      # @param [String, Integer] priority plugin priority (higher wins for conflicts)
       # @raise [StandardError]
       # @raise [ArgumentError]
       # @return [Integer] if StandardError
