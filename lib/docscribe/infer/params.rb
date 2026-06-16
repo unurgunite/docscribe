@@ -88,8 +88,8 @@ module Docscribe
       # Returns nil if the expression is empty or cannot be parsed.
       #
       # @note module_function: defines #parse_expr (visibility: private)
-      # @raise [Parser::SyntaxError]
       # @param [Object] src expression source
+      # @raise [Parser::SyntaxError]
       # @return [Object] if Parser::SyntaxError
       # @return [nil] if Parser::SyntaxError
       def parse_expr(src)

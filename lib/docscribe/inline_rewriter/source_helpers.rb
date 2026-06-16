@@ -258,8 +258,8 @@ module Docscribe
       # Tabs and spaces are preserved exactly.
       #
       # @note module_function: defines #line_indent (visibility: private)
-      # @raise [StandardError]
       # @param [Object] node Param documentation.
+      # @raise [StandardError]
       # @return [Object, String] if StandardError
       # @return [String] if StandardError
       def line_indent(node)

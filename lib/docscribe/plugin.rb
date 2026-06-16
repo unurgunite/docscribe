@@ -23,8 +23,8 @@ module Docscribe
     # Errors in individual plugins are caught so one broken plugin does not
     # abort the entire run.
     #
-    # @raise [StandardError]
     # @param [Object] context Param documentation.
+    # @raise [StandardError]
     # @return [Object, Array, Object]
     def self.run_tag_plugins(context)
       Registry.tag_entries
@@ -54,10 +54,10 @@ module Docscribe
     #
     # Merges plugin metadata into each hash insertion and handles errors.
     #
-    # @raise [StandardError]
     # @param [Object] entry registry entry with priority and order metadata
     # @param [Object] ast Param documentation.
     # @param [Object] buffer Param documentation.
+    # @raise [StandardError]
     # @return [Object] if StandardError
     # @return [Array] if StandardError
     def self.process_single_plugin_result(entry, ast, buffer)

@@ -6,8 +6,8 @@ module Docscribe
     module Formatters
       # Method documentation.
       #
-      # @raise [ArgumentError]
       # @param [Object] format Param documentation.
+      # @raise [ArgumentError]
       # @return [Text, Json, Object]
       def self.for(format)
         case format

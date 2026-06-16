@@ -44,12 +44,12 @@ module Docscribe
         # other providers or plain inference.
         #
         # @private
+        # @param [Object] source source text to parse
+        # @param [Object] label file label used in debug warnings
         # @raise [LoadError]
         # @raise [::RBS::BaseError]
         # @raise [SyntaxError]
         # @raise [StandardError]
-        # @param [Object] source source text to parse
-        # @param [Object] label file label used in debug warnings
         # @return [Object] if ::RBS::BaseError, SyntaxError, StandardError
         # @return [nil] if LoadError
         # @return [nil] if ::RBS::BaseError, SyntaxError, StandardError

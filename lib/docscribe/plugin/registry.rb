@@ -51,9 +51,9 @@ module Docscribe
       # Parse and validate plugin priority.
       #
       # @note module_function: defines #parse_priority (visibility: private)
+      # @param [Object] priority plugin priority (higher wins for conflicts)
       # @raise [StandardError]
       # @raise [ArgumentError]
-      # @param [Object] priority plugin priority (higher wins for conflicts)
       # @return [Object] if StandardError
       # @return [Object] if StandardError
       def parse_priority(priority)
@@ -76,9 +76,9 @@ module Docscribe
       # Route entry to tag or collector list.
       #
       # @note module_function: defines #route_entry (visibility: private)
-      # @raise [ArgumentError]
       # @param [Object] entry Param documentation.
       # @param [Object] plugin plugin instance
+      # @raise [ArgumentError]
       # @return [Object]
       def route_entry(entry, plugin)
         if plugin.is_a?(Base::CollectorPlugin) || plugin.respond_to?(:collect)

@@ -39,9 +39,9 @@ module Docscribe
       # Returns +nil+ when the source cannot be parsed (syntax errors or
       # internal parser crashes).
       #
-      # @raise [NoMethodError]
       # @param [Object] buffer Param documentation.
       # @param [Symbol] backend :auto, :parser, or :prism
+      # @raise [NoMethodError]
       # @return [Object] if NoMethodError
       # @return [nil] if NoMethodError
       def parse_buffer(buffer, backend: :auto)
@@ -68,9 +68,9 @@ module Docscribe
       #
       # Returns +nil+ when the source cannot be parsed.
       #
-      # @raise [NoMethodError]
       # @param [Object] buffer Param documentation.
       # @param [Symbol] backend :auto, :parser, or :prism
+      # @raise [NoMethodError]
       # @return [Object] if NoMethodError
       # @return [nil] if NoMethodError
       def parse_with_comments_buffer(buffer, backend: :auto)
@@ -106,8 +106,8 @@ module Docscribe
       # - auto choice based on Ruby version
       #
       # @private
-      # @raise [ArgumentError]
       # @param [Symbol] backend requested backend
+      # @raise [ArgumentError]
       # @return [Symbol, Object, Object] :parser or :prism
       def backend(backend = :auto)
         env = ENV.fetch('DOCSCRIBE_PARSER_BACKEND') { nil }

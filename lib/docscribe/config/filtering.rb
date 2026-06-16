@@ -30,8 +30,8 @@ module Docscribe
 
     # Compute the relative path for filtering.
     #
-    # @raise [StandardError]
     # @param [Object] path file path to test
+    # @raise [StandardError]
     # @return [String] if StandardError
     # @return [Object] if StandardError
     def relative_path(path)

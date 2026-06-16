@@ -155,9 +155,9 @@ module Docscribe
       # Setup rewrite env
       #
       # @private
-      # @raise [Docscribe::ParseError]
       # @param [Object] code the Ruby source code string to parse and rewrite
       # @param [Object] options hash containing :config, :file, and :core_rbs_provider
+      # @raise [Docscribe::ParseError]
       # @return [Hash]
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
@@ -175,9 +175,9 @@ module Docscribe
       # Load core rbs provider
       #
       # @private
-      # @raise [StandardError]
       # @param [Object] config the active Docscribe::Config
       # @param [Object] core_rbs_provider optional externally-provided core RBS provider
+      # @raise [StandardError]
       # @return [Object, Object?] if StandardError
       # @return [nil] if StandardError
       def load_core_rbs_provider(config, core_rbs_provider)
@@ -451,8 +451,8 @@ module Docscribe
       # Plugin insertion priority
       #
       # @private
-      # @raise [StandardError]
       # @param [Object] insertion the collected method insertion
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [Integer] if StandardError
       def plugin_insertion_priority(insertion)
@@ -466,8 +466,8 @@ module Docscribe
       # Plugin insertion label
       #
       # @private
-      # @raise [StandardError]
       # @param [Object] insertion the collected method insertion
+      # @raise [StandardError]
       # @return [String] if StandardError
       # @return [String] if StandardError
       def plugin_insertion_label(insertion)
@@ -482,8 +482,8 @@ module Docscribe
       # Plugin insertion line
       #
       # @private
-      # @raise [StandardError]
       # @param [Object] insertion the collected method insertion
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [nil] if StandardError
       def plugin_insertion_line(insertion)
@@ -708,8 +708,8 @@ module Docscribe
       # Validate strategy
       #
       # @private
-      # @raise [ArgumentError]
       # @param [Object] strategy :safe or :aggressive rewrite mode
+      # @raise [ArgumentError]
       # @return [Object]
       def validate_strategy!(strategy)
         return if %i[safe aggressive].include?(strategy)
@@ -1226,11 +1226,11 @@ module Docscribe
       # Build attr merge additions
       #
       # @private
-      # @raise [StandardError]
       # @param [Object] ins the attribute insertion object
       # @param [Object] existing_lines array of existing doc comment lines
       # @param [Object] config the active Docscribe::Config
       # @param [Object] signature_provider external RBS signature provider
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [nil] if StandardError
       def build_attr_merge_additions(ins:, existing_lines:, config:, signature_provider:)
@@ -1313,10 +1313,10 @@ module Docscribe
       # Build attr doc for node
       #
       # @private
-      # @raise [StandardError]
       # @param [Object] ins the attribute insertion object
       # @param [Object] config the active Docscribe::Config
       # @param [Object] signature_provider external RBS signature provider
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [nil] if StandardError
       def build_attr_doc_for_node(ins, config:, signature_provider:)
@@ -1433,11 +1433,11 @@ module Docscribe
       # Attribute type
       #
       # @private
-      # @raise [StandardError]
       # @param [Object] ins the attribute insertion object
       # @param [Object] name_sym the attribute name as a Symbol
       # @param [Object] config the active configuration
       # @param [Object] signature_provider RBS signature provider
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [Object] if StandardError
       def attribute_type(ins, name_sym, config, signature_provider:)
@@ -1453,10 +1453,10 @@ module Docscribe
       # Build signature provider
       #
       # @private
-      # @raise [StandardError]
       # @param [Object] config the active configuration
       # @param [Object] code the source code being processed
       # @param [Object] file the file name
+      # @raise [StandardError]
       # @return [Object, Object, Object?] if StandardError
       # @return [Object?] if StandardError
       def build_signature_provider(config, code, file)
@@ -1514,8 +1514,8 @@ module Docscribe
       # Method line for
       #
       # @private
-      # @raise [StandardError]
       # @param [Object] insertion the collected method insertion
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [Object] if StandardError
       def method_line_for(insertion)

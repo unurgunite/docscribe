@@ -362,6 +362,7 @@ RSpec.describe Docscribe::Infer do
       end
 
       it 'infers Integer from @var += 123 via core RBS' do
+        skip_unless_rbs_available!
         expect(out).to match(header_regex('A', 'foo', 'Integer'))
       end
     end

@@ -63,10 +63,10 @@ module Docscribe
       # Build
       #
       # @note module_function: defines #build (visibility: private)
-      # @raise [StandardError]
       # @param [Object] insertion the collected method insertion object
       # @param [Object] config Docscribe configuration object
       # @param [Hash] opts additional keyword options forwarded to doc_setup
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [nil] if StandardError
       def build(insertion, config:, **opts)
@@ -82,11 +82,11 @@ module Docscribe
       # Build merge additions
       #
       # @note module_function: defines #build_merge_additions (visibility: private)
-      # @raise [StandardError]
       # @param [Object] insertion the collected method insertion object
       # @param [Object] existing_lines existing doc comment lines being merged
       # @param [Object] config Docscribe configuration object
       # @param [Hash] options additional keyword options forwarded to downstream methods
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [nil] if StandardError
       def build_merge_additions(insertion, existing_lines:, config:, **options)
@@ -105,11 +105,11 @@ module Docscribe
       # Build missing merge result
       #
       # @note module_function: defines #build_missing_merge_result (visibility: private)
-      # @raise [StandardError]
       # @param [Object] insertion the collected method insertion object
       # @param [Object] existing_lines existing doc comment lines being merged
       # @param [Object] config Docscribe configuration object
       # @param [Hash] options additional keyword options forwarded to downstream methods
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [Hash] if StandardError
       def build_missing_merge_result(insertion, existing_lines:, config:, **options)
@@ -326,7 +326,7 @@ module Docscribe
       def parse_existing_tag_line(line, info, tags_started)
         content = line.sub(/^\s*# ?/, '').rstrip
         if content.start_with?('@')
-          tags_started = track_last_tag(content, info)
+          tags_started = true.tap { track_last_tag(content, info) }
           start_note_tag(line, info) if content.start_with?('@note ')
         elsif tags_started && info[:last_tag]
           append_note_continuation(line, info).tap { append_tag_continuation(content, info) }
@@ -690,8 +690,8 @@ module Docscribe
       # Extract raise types from line
       #
       # @note module_function: defines #extract_raise_types_from_line (visibility: private)
-      # @raise [StandardError]
       # @param [Object] line a `@raise` doc line
+      # @raise [StandardError]
       # @return [Object, Array] if StandardError
       # @return [Array] if StandardError
       def extract_raise_types_from_line(line)
@@ -1988,8 +1988,8 @@ module Docscribe
       # Safe node source
       #
       # @note module_function: defines #safe_node_source (visibility: private)
-      # @raise [StandardError]
       # @param [Object] node AST node whose source text to extract
+      # @raise [StandardError]
       # @return [Object] if StandardError
       # @return [String] if StandardError
       def safe_node_source(node)

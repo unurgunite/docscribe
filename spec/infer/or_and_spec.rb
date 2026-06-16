@@ -113,6 +113,7 @@ RSpec.describe Docscribe::Infer do
     end
 
     it 'returns Boolean, String' do
+      skip_unless_rbs_available!
       expect(out).to match(header_regex('A', 'foo', 'Boolean, String'))
     end
   end
@@ -161,6 +162,7 @@ RSpec.describe Docscribe::Infer do
     end
 
     it 'returns Boolean, String' do
+      skip_unless_rbs_available!
       expect(out).to match(header_regex('A', 'foo', 'Boolean, String'))
     end
   end

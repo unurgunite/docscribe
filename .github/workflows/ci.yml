@@ -36,7 +36,7 @@ jobs:
 
       - name: Docscribe (aggressive mode smoke test)
         env:
-          BUNDLE_GEMFILE: 'Gemfile'
+          BUNDLE_GEMFILE: ${{ matrix.ruby == '2.7' && 'Gemfile_2_7' || 'Gemfile' }}
         run: |
           bundle exec docscribe lib -AkB --verbose
 

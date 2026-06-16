@@ -37,9 +37,9 @@ module Docscribe
 
     # Build a Sorbet source provider (inline sigs).
     #
-    # @raise [LoadError]
     # @param [Object] source Ruby source being rewritten
     # @param [Object] file source name for diagnostics
+    # @raise [LoadError]
     # @return [SourceProvider] if LoadError
     # @return [nil] if LoadError
     def sorbet_source_provider(source, file)

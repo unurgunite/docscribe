@@ -231,7 +231,7 @@ module Docscribe
 
       def self?.start_note_tag: (String line, Hash[Symbol, untyped] info) -> void
 
-      def self?.append_note_continuation: (String line, Hash[Symbol, untyped] info) -> void
+      def self?.append_note_continuation: (String line, Hash[Symbol, untyped] info) -> untyped
 
       def self?.consume_tag_or_copy: (Array[String] lines, Integer idx, Array[String] result) -> Integer
 

@@ -44,9 +44,9 @@ module Docscribe
 
     # Safely load YAML from a string across Psych API versions.
     #
-    # @raise [ArgumentError]
     # @param [Object] yaml YAML document
     # @param [nil] filename optional filename for diagnostics
+    # @raise [ArgumentError]
     # @return [Object] if ArgumentError
     # @return [Object] if ArgumentError
     def self.safe_load_compat(yaml, filename: nil)

@@ -74,9 +74,9 @@ module Docscribe
         # Rewrite code from STDIN using the selected strategy and print the
         # result.
         #
-        # @raise [StandardError]
         # @param [Hash] options parsed CLI options
         # @param [Object] conf effective config
+        # @raise [StandardError]
         # @return [Integer] if StandardError
         # @return [Integer] if StandardError
         def run_stdin(options:, conf:)
@@ -290,9 +290,9 @@ module Docscribe
         # computation fails.
         #
         # @private
-        # @raise [StandardError]
         # @param [Object] path file path to display
         # @param [Object] pwd current working directory
+        # @raise [StandardError]
         # @return [Object] if StandardError
         # @return [Object] if StandardError
         def display_path_for(path, pwd:)
@@ -310,11 +310,11 @@ module Docscribe
         # Read the source file and handle read errors.
         #
         # @private
-        # @raise [StandardError]
         # @param [Object] path file path to read
         # @param [Object] display_path path shown in CLI output
         # @param [Hash] options CLI options
         # @param [Object] state shared processing state
+        # @raise [StandardError]
         # @return [Object] if StandardError
         # @return [nil] if StandardError
         def read_source_for_path(path, display_path:, options:, state:)
@@ -330,10 +330,10 @@ module Docscribe
         # Rewrite the source file using InlineRewriter and handle rewrite errors.
         #
         # @private
-        # @raise [StandardError]
         # @param [Object] path file path
         # @param [Object] src source code
         # @param [Object] ctx context hash with :conf, :display_path, :options, :state keys
+        # @raise [StandardError]
         # @return [Object] if StandardError
         # @return [nil] if StandardError
         def rewrite_result_for_path(path, src:, ctx:)
@@ -450,12 +450,12 @@ module Docscribe
         # Handle the result of an autocorrect (write) run.
         #
         # @private
-        # @raise [StandardError]
         # @param [Object] path file path
         # @param [Object] src original source code
         # @param [Object] out rewritten source code
         # @param [Object] file_changes structured change records
         # @param [Hash] ctx context hash with :display_path, :options, :state keys
+        # @raise [StandardError]
         # @return [Object] if StandardError
         # @return [Object] if StandardError
         def handle_write_result(path, src:, out:, file_changes:, **ctx)
