@@ -77,6 +77,7 @@ docscribe -A lib
         * [Examples](#examples)
         * [`docscribe sigs` — check RBS signature coverage](#docscribe-sigs--check-rbs-signature-coverage)
         * [`docscribe rbs` — generate RBS from YARD](#docscribe-rbs--generate-rbs-from-yard)
+        * [`docscribe update_types` — two-pass type-aware documentation update](#docscribe-update_types--two-pass-type-aware-documentation-update)
     * [Update strategies](#update-strategies)
         * [Safe strategy](#safe-strategy)
         * [Aggressive strategy](#aggressive-strategy)
@@ -549,13 +550,14 @@ end
 
 > [!NOTE]
 > `docscribe update_types` is a convenience alias for the two-pass workflow above. It requires Ruby 3.0+ and the `rbs`
-> gem (because of `--rbs-collection`). The RBS collection must be set up first with `bundle exec rbs collection install`.
-> Type accuracy depends on your RBS signatures — if signatures are incomplete or missing, types will fall back to AST
-> inference.
+> gem (because of `--rbs-collection`). The RBS collection must be set up first with
+> `bundle exec rbs collection install`. Type accuracy depends on your RBS signatures — if signatures are incomplete or
+> missing, types will fall back to AST inference.
 
 `docscribe update_types` runs two passes to bring both docs and RBS signatures up to date:
 
-1. **Pass 1** — `docscribe -AkB --rbs-collection <dir>`: aggressively rebuilds doc blocks, preserves existing descriptions, suppresses boilerplate, uses RBS collection types.
+1. **Pass 1** — `docscribe -AkB --rbs-collection <dir>`: aggressively rebuilds doc blocks, preserves existing
+   descriptions, suppresses boilerplate, uses RBS collection types.
 2. **Pass 2** — `docscribe -aB --rbs-collection <dir>`: safe merge cleanup with no boilerplate.
 
 ```shell
@@ -681,12 +683,13 @@ AST inference.
 > [!IMPORTANT]
 > Docscribe resolves types in a two-level chain. For **documentation tags** (`@param`, `@return`), the priority is:
 >
-> | Priority | Source                                      | When active                                              |
-> |----------|---------------------------------------------|----------------------------------------------------------|
-> | **1**    | Inline Sorbet `sig { ... }` in current file | `--sorbet` or `sorbet.enabled: true`                     |
-> | **2**    | Sorbet RBI files (`.rbi`)                   | `--sorbet --rbi-dir` or `sorbet.rbi_dirs`                |
-> | **3**    | RBS files (`.rbs`)                          | `--rbs --sig-dir` or `rbs.sig_dirs` / `--rbs-collection` |
-> | **4**    | AST inference (fallback)                    | Always active                                            |
+> | Priority | Source                                                      | When active                                              |
+> |----------|-------------------------------------------------------------|----------------------------------------------------------|
+> | **1**    | Inline Sorbet `sig { ... }` in current file                 | `--sorbet` or `sorbet.enabled: true`                     |
+> | **2**    | Sorbet RBI files (`.rbi`)                                   | `--sorbet --rbi-dir` or `sorbet.rbi_dirs`                |
+> | **3**    | RBS files (sig_dirs + collection, loaded into one env)      | `--rbs --sig-dir` / `--rbs-collection` or `rbs.*` config |
+> | **3a**   | └─ Fallback: sig_dirs only (collection dropped on conflict) | Automatic if priority 3 env load fails                   |
+> | **4**    | AST inference (fallback)                                    | Always active                                            |
 >
 > For **intra-method body inference** (e.g. resolving `Integer#positive?` -> `Boolean`), a separate core RBS provider
 > loads only stdlib/built-in signatures and is active automatically when the `rbs` gem is available — even without
@@ -697,10 +700,13 @@ AST inference.
 
 ### RBS
 
-> [!WARNING]
-> RBS support requires Ruby 3.0+. On Ruby 2.7, the `rbs` gem cannot load,
-> so `--rbs`, `--sig-dir`, `--rbs-collection`, `docscribe sigs`, and `docscribe rbs` will all print
-> a warning and fall back to AST-only inference.
+> [!IMPORTANT]
+> All RBS features require the `rbs` gem. Add `gem "rbs"` to your Gemfile and run `bundle install`,
+> or install it globally with `gem install rbs`.
+>
+> On Ruby 2.7 the `rbs` gem cannot load at all — `--rbs`, `--sig-dir`, `--rbs-collection`,
+> `docscribe sigs`, and `docscribe rbs` will print a warning and fall back to AST-only inference.
+> On Ruby 3.0+, if the gem is missing, Docscribe silently falls back to inference when you pass RBS flags.
 
 Docscribe can read method signatures from `.rbs` files and use them to generate more accurate parameter and return
 types.
