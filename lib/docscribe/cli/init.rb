@@ -7,6 +7,14 @@ module Docscribe
   module CLI
     # Generate starter Docscribe configuration.
     module Init
+      BANNER = <<~TEXT
+        Usage: docscribe init [options]
+
+        Generate a starter docscribe.yml configuration file.
+
+        Options:
+      TEXT
+
       class << self
         # Create or print a starter Docscribe configuration file.
         #
@@ -60,7 +68,7 @@ module Docscribe
         # @return [OptionParser]
         def build_init_parser(opts)
           OptionParser.new do |o|
-            o.banner = 'Usage: docscribe init [options]'
+            o.banner = BANNER
             o.on('--config PATH', 'Where to write the config (default: docscribe.yml)') { |v| opts[:config] = v }
             o.on('-f', '--force', 'Overwrite if the file already exists') { opts[:force] = true }
             o.on('--stdout', 'Print config template to STDOUT instead of writing a file') { opts[:stdout] = true }

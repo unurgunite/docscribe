@@ -5,6 +5,8 @@ require 'fileutils'
 require 'open3'
 require 'docscribe/cli'
 
+DEFAULT_OPTS = Docscribe::CLI::Options::DEFAULT.dup
+
 RSpec.describe Docscribe::CLI::UpdateTypes do
   describe 'helper methods' do
     describe '.parse_options' do
@@ -21,39 +23,81 @@ RSpec.describe Docscribe::CLI::UpdateTypes do
       end
     end
 
-    describe '.run_pass_1' do
-      it 'calls Options.parse! and Run.run with correct flags' do
-        expect(Docscribe::CLI::Options).to receive(:parse!).with(['-AkB', '--rbs-collection', 'lib']).and_call_original
-        expect(Docscribe::CLI::Run).to receive(:run).with(options: hash_including(mode: :write, strategy: :aggressive), argv: ['lib'])
-        described_class.send(:run_pass_1, 'lib')
+    describe '.run_first_pass' do
+      before do
+        opts = DEFAULT_OPTS.merge(mode: :write, strategy: :aggressive, rbs_collection: true, no_boilerplate: true, keep_descriptions: true, rbs: true)
+        allow(Docscribe::CLI::Options).to receive(:parse!).and_return(opts)
+        allow(Docscribe::CLI::Run).to receive(:run)
+      end
+
+      it 'calls Options.parse! with aggressive flags' do
+        described_class.send(:run_first_pass, 'lib')
+        expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('-AkB'))
+      end
+
+      it 'calls Options.parse! with rbs-collection flag' do
+        described_class.send(:run_first_pass, 'lib')
+        expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('--rbs-collection'))
+      end
+
+      it 'calls Run.run with write mode and aggressive strategy' do
+        described_class.send(:run_first_pass, 'lib')
+        expect(Docscribe::CLI::Run).to have_received(:run).with(
+          options: hash_including(mode: :write, strategy: :aggressive),
+          argv: ['lib']
+        )
       end
     end
 
-    describe '.run_pass_2' do
-      it 'calls Options.parse! and Run.run with correct flags' do
-        expect(Docscribe::CLI::Options).to receive(:parse!).with(['-aB', '--rbs-collection', 'lib']).and_call_original
-        expect(Docscribe::CLI::Run).to receive(:run).with(options: hash_including(mode: :write, strategy: :safe), argv: ['lib'])
-        described_class.send(:run_pass_2, 'lib')
+    describe '.run_second_pass' do
+      before do
+        opts = DEFAULT_OPTS.merge(mode: :write, strategy: :safe, rbs_collection: true, no_boilerplate: true, rbs: true)
+        allow(Docscribe::CLI::Options).to receive(:parse!).and_return(opts)
+        allow(Docscribe::CLI::Run).to receive(:run)
+      end
+
+      it 'calls Options.parse! with safe flags' do
+        described_class.send(:run_second_pass, 'lib')
+        expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('-aB'))
+      end
+
+      it 'calls Options.parse! with rbs-collection flag' do
+        described_class.send(:run_second_pass, 'lib')
+        expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('--rbs-collection'))
+      end
+
+      it 'calls Run.run with write mode and safe strategy' do
+        described_class.send(:run_second_pass, 'lib')
+        expect(Docscribe::CLI::Run).to have_received(:run).with(
+          options: hash_including(mode: :write, strategy: :safe),
+          argv: ['lib']
+        )
       end
     end
   end
 
   describe '.run' do
     it 'exits early if pass 1 fails' do
-      expect(described_class).to receive(:run_pass_1).with('.').and_return(2)
-      expect(described_class).not_to receive(:run_pass_2)
+      allow(described_class).to receive(:run_first_pass).with('.').and_return(2)
       expect(described_class.run([])).to eq(2)
     end
 
+    it 'does not run pass 2 when pass 1 fails' do
+      allow(described_class).to receive(:run_first_pass).with('.').and_return(2)
+      allow(described_class).to receive(:run_second_pass)
+      described_class.run([])
+      expect(described_class).not_to have_received(:run_second_pass)
+    end
+
     it 'runs both passes and returns pass 2 exit code' do
-      expect(described_class).to receive(:run_pass_1).with('.').and_return(0)
-      expect(described_class).to receive(:run_pass_2).with('.').and_return(1)
+      allow(described_class).to receive(:run_first_pass).with('.').and_return(0)
+      allow(described_class).to receive(:run_second_pass).with('.').and_return(1)
       expect(described_class.run([])).to eq(1)
     end
 
     it 'returns 0 when both passes succeed' do
-      expect(described_class).to receive(:run_pass_1).with('.').and_return(0)
-      expect(described_class).to receive(:run_pass_2).with('.').and_return(0)
+      allow(described_class).to receive(:run_first_pass).with('.').and_return(0)
+      allow(described_class).to receive(:run_second_pass).with('.').and_return(0)
       expect(described_class.run([])).to eq(0)
     end
   end

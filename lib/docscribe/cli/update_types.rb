@@ -37,17 +37,15 @@ module Docscribe
           options = parse_options(argv)
           dir = options[:dir]
 
-          puts 'Docscribe: Running type-aware documentation update...'
-          puts
+          announce_start
 
-          exit1 = run_pass_1(dir)
+          exit1 = run_first_pass(dir)
           return exit1 unless exit1.zero?
 
-          exit2 = run_pass_2(dir)
+          exit2 = run_second_pass(dir)
           return exit2 unless exit2.zero?
 
-          puts
-          puts 'Docscribe: Type-aware documentation update complete.'
+          announce_complete
           0
         end
 
@@ -67,9 +65,16 @@ module Docscribe
         end
 
         # @private
+        # @return [void]
+        def announce_start
+          puts 'Docscribe: Running type-aware documentation update...'
+          puts
+        end
+
+        # @private
         # @param [String] dir
         # @return [Integer]
-        def run_pass_1(dir)
+        def run_first_pass(dir)
           puts 'Pass 1: Aggressive rebuild with RBS collection...'
           argv1 = ['-AkB', '--rbs-collection', dir]
           options1 = Docscribe::CLI::Options.parse!(argv1)
@@ -79,11 +84,18 @@ module Docscribe
         # @private
         # @param [String] dir
         # @return [Integer]
-        def run_pass_2(dir)
+        def run_second_pass(dir)
           puts 'Pass 2: Safe merge with RBS collection...'
           argv2 = ['-aB', '--rbs-collection', dir]
           options2 = Docscribe::CLI::Options.parse!(argv2)
           Docscribe::CLI::Run.run(options: options2, argv: [dir])
+        end
+
+        # @private
+        # @return [void]
+        def announce_complete
+          puts
+          puts 'Docscribe: Type-aware documentation update complete.'
         end
       end
     end

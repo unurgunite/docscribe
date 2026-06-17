@@ -41,14 +41,7 @@ module Docscribe
           return no_paths if paths.empty?
 
           results = scan_paths(paths, placeholders)
-
-          if results.empty?
-            puts 'Docscribe: No placeholder documentation found.'
-            0
-          else
-            report(results)
-            1
-          end
+          process_results(results)
         end
 
         private
@@ -67,7 +60,7 @@ module Docscribe
         # @param [Array<String>] keys nested keys
         # @return [String, nil]
         def raw_or_default(config, keys)
-          raw = keys.reduce(config.raw) { |h, k| h.is_a?(Hash) ? h[k] : nil } # steep:ignore
+          raw = config.raw.dig(*keys)
           return raw if raw
 
           Docscribe::Config::DEFAULT.dig(*keys)
@@ -128,6 +121,19 @@ module Docscribe
         # @return [Array<[String, Array<[Integer, String]>]>]
         def scan_paths(paths, placeholders)
           paths.filter_map { |path| scan_file(path, placeholders) }
+        end
+
+        # @private
+        # @param [Array<[String, Array<[Integer, String]>]>] results
+        # @return [Integer]
+        def process_results(results)
+          if results.empty?
+            puts 'Docscribe: No placeholder documentation found.'
+            0
+          else
+            report(results)
+            1
+          end
         end
 
         # @private
