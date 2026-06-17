@@ -98,6 +98,14 @@ RSpec.describe Docscribe::CLI::CheckForComments do
       end
     end
 
+    it 'ignores example comments with double #' do
+      Dir.mktmpdir do |dir|
+        path = "#{dir}/test.rb"
+        File.write(path, "  #   # Method documentation.\ndef foo; end\n")
+        expect(described_class.send(:scan_file, path, ['Method documentation.'])).to be_nil
+      end
+    end
+
     it 'matches multiple placeholders in one file' do
       Dir.mktmpdir do |dir|
         File.write("#{dir}/test.rb", "# Method documentation.\n# Param documentation.\ndef foo; end\n")
@@ -112,7 +120,7 @@ RSpec.describe Docscribe::CLI::CheckForComments do
       Dir.mktmpdir do |dir|
         File.write("#{dir}/a.rb", "# Method documentation.\n")
         File.write("#{dir}/b.rb", "# Real doc\n")
-        expect(described_class.send(:scan_paths, ["#{dir}/a.rb", "#{dir}/b.rb"], ['Method documentation.']).size).to eq(1)
+        expect(described_class.send(:scan_paths, %W[#{dir}/a.rb #{dir}/b.rb], ['Method documentation.']).size).to eq(1)
       end
     end
 

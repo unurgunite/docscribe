@@ -9,7 +9,7 @@ module Docscribe
 
       def self.resolve_placeholders: (Config config) -> Array[String]
 
-      def self.raw_or_default: (Config config, Array[String] keys) -> untyped
+      def self.raw_or_default: (Config config, Array[String] keys) -> (String | nil)
 
       def self.no_placeholders_configured: -> Integer
 

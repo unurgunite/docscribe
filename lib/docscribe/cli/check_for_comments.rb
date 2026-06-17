@@ -118,13 +118,13 @@ module Docscribe
         # @private
         # @param [Array<String>] paths
         # @param [Array<String>] placeholders
-        # @return [Array<[String, Array<[Integer, String]>]>]
+        # @return [Array<(String, Array<(Integer, String)>)>]
         def scan_paths(paths, placeholders)
           paths.filter_map { |path| scan_file(path, placeholders) }
         end
 
         # @private
-        # @param [Array<[String, Array<[Integer, String]>]>] results
+        # @param [Array<(String, Array<(Integer, String)>)>] results
         # @return [Integer]
         def process_results(results)
           if results.empty?
@@ -139,7 +139,7 @@ module Docscribe
         # @private
         # @param [String] path
         # @param [Array<String>] placeholders
-        # @return [(String, Array<[Integer, String]>)?]
+        # @return [(String, Array<(Integer, String)>)?]
         def scan_file(path, placeholders)
           lines = File.readlines(path)
           matches = [] #: Array[[Integer, String]]
@@ -159,11 +159,12 @@ module Docscribe
         # @param [String] line
         # @return [Boolean]
         def comment_line?(line)
-          line.strip.start_with?('#')
+          stripped = line.strip
+          stripped.start_with?('#') && !stripped.match?(/^#\s*#/)
         end
 
         # @private
-        # @param [Array<[String, Array<[Integer, String]>]>] results
+        # @param [Array<(String, Array<(Integer, String)>)>] results
         # @return [void]
         def report(results)
           total = results.sum { |_path, matches| matches.size }

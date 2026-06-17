@@ -53,7 +53,7 @@ module Docscribe
 
         # @private
         # @param [Array<String>] argv
-        # @return [Hash{Symbol => Object}]
+        # @return [Hash<Symbol, Object>]
         def parse_options(argv)
           options = { dir: '.' }
           OptionParser.new(BANNER) do |opts|
