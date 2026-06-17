@@ -178,8 +178,8 @@ module Docscribe
       # Apply output-related CLI overrides to the raw config.
       #
       # Currently handles:
-      # - `keep_descriptions` → raw['keep_descriptions']
-      # - `no_boilerplate` → raw['emit']['include_default_message'] and
+      # - `keep_descriptions` -> raw['keep_descriptions']
+      # - `no_boilerplate` -> raw['emit']['include_default_message'] and
       #   raw['emit']['include_param_documentation'] = false
       #
       # @note module_function: defines #apply_output_overrides (visibility: private)
