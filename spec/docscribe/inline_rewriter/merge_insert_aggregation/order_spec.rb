@@ -11,7 +11,7 @@ RSpec.describe Docscribe::InlineRewriter do
     top_end_pos = src.index('  def a')
     bottom_end_pos = src.index('  def b')
 
-    merge_inserts[bottom_end_pos] << [20, "  #\n  # @param [Object] x Generated param description.\n"]
+    merge_inserts[bottom_end_pos] << [20, "  #\n  # @param [Object] x Param documentation.\n"]
     merge_inserts[top_end_pos] << [10, "  #\n  # @return [Object]\n"]
 
     described_class.send(

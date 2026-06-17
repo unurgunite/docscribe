@@ -1,0 +1,21 @@
+module Docscribe
+  module CLI
+    module UpdateTypes
+      BANNER: String
+
+      def self.run: (Array[String] argv) -> Integer
+
+      private
+
+      def self.parse_options: (Array[String] argv) -> Hash[Symbol, untyped]
+
+      def self.announce_start: -> void
+
+      def self.run_first_pass: (String dir) -> Integer
+
+      def self.run_second_pass: (String dir) -> Integer
+
+      def self.announce_complete: -> void
+    end
+  end
+end

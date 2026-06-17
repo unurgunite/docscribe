@@ -6,6 +6,10 @@
 [![License](https://img.shields.io/github/license/unurgunite/docscribe.svg)](https://github.com/unurgunite/docscribe/blob/master/LICENSE.txt)
 [![Ruby](https://img.shields.io/badge/ruby-%3E%3D%202.7-blue.svg)](#installation)
 
+<p>
+  <img src="assets/icons/icon_256x256.png" alt="Docscribe logo" width="96">
+</p>
+
 ![Docscribe before/after demo](docs/image.png)
 
 Generate inline, YARD-style documentation comments for Ruby methods by analyzing your code's AST.
@@ -29,6 +33,10 @@ returns), and respects Ruby visibility semantics — without using YARD to parse
     - `attr_reader` / `attr_writer` / `attr_accessor`;
     - `Struct.new` declarations in both constant-assigned and class-based styles.
 
+> [!NOTE]
+> Docscribe is under **active development**. If you run into any edge cases or have ideas for improvement, feel free to
+> [open an issue](https://github.com/unurgunite/docscribe/issues/new) or submit a pull request.
+
 Common workflows:
 
 - Inspect what safe doc updates would be applied: `docscribe lib`
@@ -38,21 +46,44 @@ Common workflows:
 - Use RBS signatures when available: `docscribe -a --rbs --sig-dir sig lib`
 - Use Sorbet signatures when available: `docscribe -a --sorbet --rbi-dir sorbet/rbi lib`
 
+## Quick start
+
+```shell
+# Check what safe doc updates would be applied
+docscribe lib
+
+# Apply safe updates (insert missing docs, merge existing)
+docscribe -a lib
+
+# Rebuild all doc blocks aggressively
+docscribe -A lib
+```
+
+> [!TIP]
+> See [CLI](#cli) for all options and [Update strategies](#update-strategies) for the
+> difference between safe and aggressive modes.
+
 ## Contents
 
 * [Docscribe](#docscribe)
+    * [Quick start](#quick-start)
     * [Contents](#contents)
     * [Installation](#installation)
-    * [Quick start](#quick-start)
     * [Architecture](#architecture)
         * [Data flow](#data-flow)
     * [CLI](#cli)
+        * [Exit codes](#exit-codes)
         * [Options](#options)
         * [Examples](#examples)
+        * [`docscribe sigs` — check RBS signature coverage](#docscribe-sigs--check-rbs-signature-coverage)
+        * [`docscribe rbs` — generate RBS from YARD](#docscribe-rbs--generate-rbs-from-yard)
+        * [`docscribe update_types` — two-pass type-aware documentation update](#docscribe-update_types--two-pass-type-aware-documentation-update)
+        * [`docscribe check_for_comments` — find placeholder documentation](#docscribe-check_for_comments--find-placeholder-documentation)
     * [Update strategies](#update-strategies)
         * [Safe strategy](#safe-strategy)
         * [Aggressive strategy](#aggressive-strategy)
         * [Output markers](#output-markers)
+    * [Tips & tricks](#tips--tricks)
     * [Parser backend (Parser gem vs Prism)](#parser-backend-parser-gem-vs-prism)
     * [External type integrations (optional)](#external-type-integrations-optional)
         * [RBS](#rbs)
@@ -77,6 +108,7 @@ Common workflows:
         * [Idempotency](#idempotency)
         * [Plugin examples](#plugin-examples)
     * [Configuration](#configuration)
+        * [Anonymous block parameters](#anonymous-block-parameters)
         * [Filtering](#filtering)
         * [`attr_*` example](#attr_-example)
         * [`Struct.new` examples](#structnew-examples)
@@ -86,14 +118,14 @@ Common workflows:
         * [Param tag style](#param-tag-style)
         * [Create a starter config](#create-a-starter-config)
         * [Generate a plugin skeleton](#generate-a-plugin-skeleton)
+        * [Full configuration reference](#full-configuration-reference)
     * [CI integration](#ci-integration)
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
-    * [Mermaid Architecture Reference](#mermaid-architecture-reference)
-        * [Data flow](#data-flow)
     * [Limitations](#limitations)
     * [Roadmap](#roadmap)
     * [Contributing](#contributing)
     * [Discussion & Community](#discussion--community)
+    * [Logo Attribution](#logo-attribution)
     * [License](#license)
 
 ## Installation
@@ -118,102 +150,12 @@ gem install docscribe
 
 Requires Ruby 2.7+.
 
-## Quick start
-
-Given code:
-
-```ruby
-class Demo
-  def foo(a, options: {})
-    42
-  end
-
-  def bar(verbose: true)
-    123
-  end
-
-  private
-
-  def self.bump
-    :ok
-  end
-
-  class << self
-    private
-
-    def internal; end
-  end
-end
-```
-
-Run:
-
-```shell
-echo "...code above..." | docscribe --stdin
-```
-
-Output:
-
-```ruby
-class Demo
-  # +Demo#foo+ -> Integer
-  #
-  # Method documentation.
-  #
-  # @param [Object] a Param documentation.
-  # @param [Hash] options Param documentation.
-  # @return [Integer]
-  def foo(a, options: {})
-    42
-  end
-
-  # +Demo#bar+ -> Integer
-  #
-  # Method documentation.
-  #
-  # @param [Boolean] verbose Param documentation.
-  # @return [Integer]
-  def bar(verbose: true)
-    123
-  end
-
-  private
-
-  # +Demo.bump+ -> Symbol
-  #
-  # Method documentation.
-  #
-  # @return [Symbol]
-  def self.bump
-    :ok
-  end
-
-  class << self
-    private
-
-    # +Demo.internal+ -> Object
-    #
-    # Method documentation.
-    #
-    # @private
-    # @return [Object]
-    def internal; end
-  end
-end
-```
-
-> [!NOTE]
-> - The tool inserts doc headers before method headers and preserves everything else.
-> - For methods with a leading Sorbet `sig`, docs are inserted above the first `sig`.
-> - Class methods show with a dot (`+Demo.bump+`, `+Demo.internal+`).
-> - Methods inside `class << self` under `private` are marked `@private`.
-
 ## Architecture
 
-Docscribe is organized into seven subsystems. The CLI layer receives user input and orchestrates configuration loading,
-then delegates to the core engine which parses source code, collects methods (using an AST walker), builds YARD doc
-lines — combining heuristic type inference, external RBS/Sorbet signatures, and plugin output — and finally rewrites the
-source via a strategy (safe merge or aggressive replace).
+Docscribe is organized into several subsystems. The CLI layer receives user input and orchestrates configuration
+loading, then delegates to the core engine which parses source code, collects methods (using an AST walker), builds YARD
+doc lines — combining heuristic type inference, external RBS/Sorbet signatures, and plugin output — and finally rewrites
+the source via a strategy (safe merge or aggressive replace).
 
 ```mermaid
 flowchart TB
@@ -223,6 +165,9 @@ flowchart TB
         Options["CLI::Options\nARGV parsing\n(mode, strategy,\nfilters, flags)"]
         InitCmd["CLI::Init\ndocscribe init\nGenerate config"]
         GenCmd["CLI::Generate\ndocscribe generate\nScaffold plugins"]
+        SigsCmd["CLI::Sigs\ndocscribe sigs\nCheck RBS coverage"]
+        RbsGenCmd["CLI::RbsGen\ndocscribe rbs\nGenerate RBS from YARD"]
+        SarifFormatter["CLI::Formatters::Sarif\nSARIF 2.1 JSON\nCode Scanning"]
         ConfigBuilder["CLI::ConfigBuilder\nApply CLI overrides\nto config"]
     end
 
@@ -244,10 +189,10 @@ flowchart TB
     end
 
     subgraph Core["Core Engine"]
-        InlineRewriter["InlineRewriter\n· parse → collect\n· deduplicate → dispatch\n· rewrite"]
+        InlineRewriter["InlineRewriter\n· parse -> collect\n· deduplicate -> dispatch\n· rewrite"]
         Collector["Collector\n< Parser::AST::Processor\nAST walker\n· find methods/attrs\n· track visibility\n· track containers"]
         DocBuilder["DocBuilder\nGenerate YARD doc lines\n· combine inference\n· external signatures\n· plugin tags"]
-        DocBlock["DocBlock\nSafe strategy:\nparse → merge → sort\nexisting doc blocks"]
+        DocBlock["DocBlock\nSafe strategy:\nparse -> merge -> sort\nexisting doc blocks"]
         SourceHelpers["SourceHelpers\nPosition/range\nutilities"]
     end
 
@@ -256,34 +201,43 @@ flowchart TB
         Params["Infer::Params\nParameter type\nfrom name + default"]
         Returns["Infer::Returns\nReturn type\nfrom method body"]
         Raises["Infer::Raises\n@raise tags\nfrom raise/rescue"]
-        Literals["Infer::Literals\nAST literal →\ntype string"]
-        Names["Infer::Names\n:const node →\nFQN string"]
+        Literals["Infer::Literals\nAST literal ->\ntype string"]
+        Names["Infer::Names\n:const node ->\nFQN string"]
         ASTWalk["Infer::ASTWalk\nRecursive DFS\nAST traversal"]
     end
 
     subgraph Plugins["Plugin System"]
         PluginModule["Plugin\nTag/Collector\ndispatch"]
-        Registry["Plugin::Registry\nGlobal registry\n· register → route\n· tag_entries\n· collector_entries"]
-        TagPlugin["Base::TagPlugin\nOverride #call(context)\n→ Array<Tag>"]
-        CollectorPlugin["Base::CollectorPlugin\nOverride #collect(ast, buffer)\n→ Array<Hash>"]
+        Registry["Plugin::Registry\nGlobal registry\n· register -> route\n· tag_entries\n· collector_entries"]
+        TagPlugin["Base::TagPlugin\nOverride #call(context)\n-> Array<Tag>"]
+        CollectorPlugin["Base::CollectorPlugin\nOverride #collect(ast, buffer)\n-> Array<Hash>"]
         TagValue["Plugin::Tag\nStruct (name, text, types)"]
         Context["Plugin::Context\nMethod snapshot struct"]
     end
 
     subgraph Types["External Type System"]
         ProviderChain["ProviderChain\nComposite:\nquery in order\nfirst match wins"]
-        RBSProvider["RBS::Provider\n.rbs files\n→ RBS lib"]
-        RBSFormatter["RBS::TypeFormatter\nRBS type →\nYARD type string"]
+        RBSProvider["RBS::Provider\n.rbs files\n-> RBS lib"]
+        RBSFormatter["RBS::TypeFormatter\nRBS type ->\nYARD type string"]
         RBSCollection["RBS::CollectionLoader\nrbs_collection\n.lock.yaml"]
         SorbetBase["Sorbet::BaseProvider\nRBS::Prototype::RBI\nbridge"]
         SorbetSource["Sorbet::SourceProvider\nInline sig{}\ndeclarations"]
         SorbetRBI["Sorbet::RBIProvider\n.rbi files\ndirectories"]
     end
 
+    subgraph YardTypes["YARD Type Parser"]
+        YParser["Yard::Parser\nParse YARD type\nstrings -> AST"]
+        YFormatter["Yard::Formatter\nYARD AST ->\nRBS string"]
+        YTypes["Yard::Types\n9 AST node types\n(Named, Generic, etc.)"]
+    end
+
     Exe --> Run
     Run --> Options
     Run --> InitCmd
     Run --> GenCmd
+    Run --> SigsCmd
+    Run --> RbsGenCmd
+    Run --> SarifFormatter
     Run --> ConfigBuilder
     ConfigBuilder --> ConfigClass
     ConfigClass --> Defaults
@@ -325,6 +279,10 @@ flowchart TB
     TagPlugin --> Context
     InlineRewriter --> DocBlock
     InlineRewriter --> SourceHelpers
+    RbsGenCmd --> ParsingModule
+    RbsGenCmd --> YParser
+    YParser --> YTypes
+    YParser --> YFormatter
 ```
 
 ### Data flow
@@ -348,7 +306,7 @@ flowchart LR
     ResultDoc --> Strategy{"Strategy?"}
     Strategy -->|Safe| Merge["DocBlock.merge\npreserve + append + sort"]
     Strategy -->|Aggressive| Replace["Replace entirely"]
-    Merge --> Rewritten["Rewriter#process\n→ rewritten source"]
+    Merge --> Rewritten["Rewriter#process\n-> rewritten source"]
     Replace --> Rewritten
     Rewritten --> Output["Modified .rb file\n/ STDOUT"]
 ```
@@ -357,6 +315,12 @@ flowchart LR
 
 ```shell
 docscribe [options] [files...]
+docscribe init [options]
+docscribe generate [type] [name] [options]
+docscribe sigs [options] [files...]
+docscribe rbs [options] [files...]
+docscribe update_types [directory]
+docscribe check_for_comments [paths...]
 ```
 
 Docscribe has three main ways to run:
@@ -407,16 +371,24 @@ If you pass no files and don't use `--stdin`, Docscribe processes the current di
   Preserve existing documentation text when rebuilding doc blocks in aggressive mode.
 
 - `-B`, `--no-boilerplate`  
-  Suppress boilerplate text (`Method documentation.`, `Param documentation.`) in output.
+  Suppress boilerplate text (`Method documentation.`, `Param documentation.`) in output.  
+  Equivalent to `emit.include_default_message: false` and `emit.include_param_documentation: false` in config.
 
 - `--format FORMAT`  
-  Output format: `text` (default, human-readable) or `json` (machine-readable, RuboCop-compatible).
+  Output format: `text` (default, human-readable), `json` (machine-readable, RuboCop-compatible), or `sarif` (SARIF 2.1
+  JSON, compatible with GitHub Code Scanning).
 
 - `--rbs`  
   Use RBS signatures for `@param`/`@return` when available (falls back to inference).
 
 - `--sig-dir DIR`  
   Add an RBS signature directory (repeatable). Implies `--rbs`.
+
+- `--sorbet`  
+  Use Sorbet signatures for `@param`/`@return` when available (falls back to inference).
+
+- `--rbi-dir DIR`  
+  Add an Sorbet RBI directory (repeatable). Implies `--sorbet`.
 
 - `--include PATTERN`  
   Include PATTERN (method id or file path; glob or `/regex/`).
@@ -481,6 +453,143 @@ If you pass no files and don't use `--stdin`, Docscribe processes the current di
   docscribe --verbose lib
   ```
 
+### `docscribe sigs` — check RBS signature coverage
+
+> [!WARNING]
+> `docscribe sigs` requires **Ruby 3.0+** and the `rbs` gem. On Ruby 2.7 it will print an error and exit with code 2.
+
+`docscribe sigs` parses Ruby files, extracts method definitions, and checks each
+method against the configured RBS signature directories. Reports methods that lack RBS type signatures.
+
+```shell
+# Check lib/ against sig/ signatures
+docscribe sigs lib
+
+# Use RBS collection
+docscribe sigs --rbs-collection lib
+
+# Multiple signature directories
+docscribe sigs -s sig -s vendor/sigs lib
+
+# Verbose output (also prints methods that have signatures)
+docscribe sigs --verbose lib
+```
+
+**Flags:**
+
+- `-s`, `--sig-dir DIR` — add an RBS signature directory (repeatable). Default: `sig`.
+- `--rbs-collection` — use RBS collection (reads `rbs_collection.lock.yaml`).
+- `--verbose` — also print methods that have signatures.
+- `-h`, `--help` — show help.
+
+**Exit codes:**
+
+- `0` — all methods have RBS signatures.
+- `1` — some methods lack RBS signatures.
+- `2` — error occurred.
+
+### `docscribe rbs` — generate RBS from YARD
+
+> [!WARNING]
+> `docscribe rbs` requires **Ruby 3.0+** and the `rbs` gem. On Ruby 2.7 it will print an error and exit with code 2.
+
+`docscribe rbs` parses YARD comments (`@param`, `@return`, `@option`) from Ruby files
+and generates corresponding `.rbs` signature files.
+
+```shell
+# Generate RBS files in sig/
+docscribe rbs lib
+
+# Print to stdout (no files written)
+docscribe rbs -n lib
+
+# Specify output directory
+docscribe rbs -o sig/gen lib
+
+# Overwrite existing files
+docscribe rbs -f lib
+```
+
+**Flags:**
+
+- `-o`, `--output DIR` — output directory (default: `sig`).
+- `-n`, `--dry-run` — print generated RBS to stdout, do not write files.
+- `-f`, `--force` — overwrite existing files.
+- `-h`, `--help` — show help.
+
+**Exit codes:**
+
+- `0` — success.
+- `1` — errors occurred during processing.
+- `2` — execution error (no files found).
+
+```ruby
+# Example: lib/user.rb
+class User
+  # @param [String] name
+  # @param [Integer] age
+  # @return [User]
+  def initialize(name, age)
+    @name = name
+    @age = age
+  end
+end
+```
+
+```shell
+docscribe rbs lib
+# Generated sig/user.rbs
+```
+
+```ruby.rbs
+# sig/user.rbs
+class User
+    def initialize: (String name, Integer age) -> User
+end
+```
+
+### `docscribe update_types` — two-pass type-aware documentation update
+
+> [!NOTE]
+> `docscribe update_types` is a convenience alias for the two-pass workflow above. It requires Ruby 3.0+ and the `rbs`
+> gem (because of `--rbs-collection`). The RBS collection must be set up first with
+> `bundle exec rbs collection install`. Type accuracy depends on your RBS signatures — if signatures are incomplete or
+> missing, types will fall back to AST inference.
+
+`docscribe update_types` runs two passes to bring both docs and RBS signatures up to date:
+
+1. **Pass 1** — `docscribe -AkB --rbs-collection <dir>`: aggressively rebuilds doc blocks, preserves existing
+   descriptions, suppresses boilerplate, uses RBS collection types.
+2. **Pass 2** — `docscribe -aB --rbs-collection <dir>`: safe merge cleanup with no boilerplate.
+
+```shell
+# Update docs in lib/ using RBS collection
+docscribe update_types lib
+
+# Defaults to current directory
+docscribe update_types
+```
+
+### `docscribe check_for_comments` — find placeholder documentation
+
+`docscribe check_for_comments` scans Ruby source files for YARD comments that still contain default placeholder
+text. Reads the configured placeholder messages from `docscribe.yml` (or built-in defaults). Useful in CI to catch
+files where auto-generated text was never replaced with real documentation.
+
+```shell
+# Scan entire project
+docscribe check_for_comments
+
+# Scan specific directories
+docscribe check_for_comments lib app
+```
+
+Exit code `0` if no placeholders found, `1` if any are detected.
+
+**Flags:**
+
+- `-h`, `--help` — show help.
+
 ## Update strategies
 
 Docscribe supports two update strategies: **safe** and **aggressive**.
@@ -515,6 +624,9 @@ Aggressive strategy:
 
 Use it when you want to rebaseline or regenerate docs wholesale.
 
+> [!CAUTION]
+> Aggressive mode rewrites existing doc blocks entirely. Review changes with `git diff` before committing.
+
 ### Output markers
 
 In inspect mode, Docscribe prints one character per file:
@@ -522,14 +634,20 @@ In inspect mode, Docscribe prints one character per file:
 - `.` = file is up to date
 - `F` = file would change
 - `E` = file had an error
+- `M` = type mismatch detected (external RBS/Sorbet signature differs from inferred type)
 
 In write modes:
 
 - `.` = file already OK
 - `C` = file was updated
 - `E` = file had an error
+- `M` = file updated but type mismatch remains
 
-With `--verbose`, Docscribe prints per-file statuses instead.
+> [!IMPORTANT]
+> The `M` marker only appears when `--rbs` or `--sorbet` is enabled, since type mismatches are detected by
+> comparing external signatures against inferred types.
+
+With `--verbose`, Docscribe prints per-file statuses instead; type mismatches show as `MT` with the specific difference.
 
 With `--explain`, Docscribe also prints detailed reasons, such as:
 
@@ -540,6 +658,25 @@ With `--explain`, Docscribe also prints detailed reasons, such as:
 
 Use `--quiet` to suppress these details and show only file names and the summary line.
 
+## Tips & tricks
+
+Useful flag combinations for common workflows:
+
+- `docscribe -aB lib` — safe autocorrect without boilerplate. Uses safe mode but suppresses default text, leaving only
+  type tags (`@param`, `@return`). Clean minimal docs.
+- `docscribe -AkB lib` — aggressive autocorrect with preserved descriptions and no boilerplate. Rebuilds doc blocks,
+  keeps your hand-written descriptions, suppresses default text. Best for rebaselining.
+- `docscribe -a --rbs-collection lib` — safe autocorrect using RBS gem collection signatures. Recommended for Rails
+  projects.
+- `docscribe -a --sorbet --rbi-dir sorbet/rbi lib` — safe autocorrect using Sorbet RBI signatures.
+- `docscribe update_types lib` — two-pass type-aware update: aggressively rebuilds docs with kept descriptions and RBS
+  collection, then safe-merges to clean up.
+  See [docscribe update_types](#docscribe-update_types--two-pass-type-aware-documentation-update).
+
+> [!NOTE]
+> `docscribe update_types` is a convenient shortcut, but be aware it uses `--rbs-collection` under the hood.
+> If your RBS signatures are incomplete, types may fall back to AST inference.
+
 ## Parser backend (Parser gem vs Prism)
 
 Docscribe internally works with `parser`-gem-compatible AST nodes and `Parser::Source::*` objects (so it can use
@@ -547,6 +684,11 @@ Docscribe internally works with `parser`-gem-compatible AST nodes and `Parser::S
 
 - On Ruby **<= 3.3**, Docscribe parses using the `parser` gem.
 - On Ruby **>= 3.4**, Docscribe parses using **Prism** and translates the tree into the `parser` gem's AST.
+
+> [!NOTE]
+> Prism support is automatic on Ruby 3.4+. On earlier Rubies, the `parser` gem is always used.
+> You can override with `DOCSCRIBE_PARSER_BACKEND=prism` on Ruby 3.1+ if you have the `prism` gem installed,
+> but this is not recommended for production use.
 
 You can force a backend with an environment variable:
 
@@ -561,15 +703,32 @@ Docscribe can improve generated `@param` and `@return` types by reading external
 AST inference.
 
 > [!IMPORTANT]
-> When external type information is available, Docscribe resolves signatures in this order:
-> - inline Sorbet `sig` declarations in the current Ruby source;
-> - Sorbet RBI files;
-> - RBS files;
-> - AST inference fallback.
+> Docscribe resolves types in a two-level chain. For **documentation tags** (`@param`, `@return`), the priority is:
 >
-> If an external signature cannot be loaded or parsed, Docscribe falls back to normal inference instead of failing.
+> | Priority | Source                                                      | When active                                              |
+> |----------|-------------------------------------------------------------|----------------------------------------------------------|
+> | **1**    | Inline Sorbet `sig { ... }` in current file                 | `--sorbet` or `sorbet.enabled: true`                     |
+> | **2**    | Sorbet RBI files (`.rbi`)                                   | `--sorbet --rbi-dir` or `sorbet.rbi_dirs`                |
+> | **3**    | RBS files (sig_dirs + collection, loaded into one env)      | `--rbs --sig-dir` / `--rbs-collection` or `rbs.*` config |
+> | **3a**   | └─ Fallback: sig_dirs only (collection dropped on conflict) | Automatic if priority 3 env load fails                   |
+> | **4**    | AST inference (fallback)                                    | Always active                                            |
+>
+> For **intra-method body inference** (e.g. resolving `Integer#positive?` -> `Boolean`), a separate core RBS provider
+> loads only stdlib/built-in signatures and is active automatically when the `rbs` gem is available — even without
+> `--rbs`.
+>
+> If an external signature cannot be loaded or parsed, Docscribe falls back to the next source in the chain instead of
+> failing.
 
 ### RBS
+
+> [!IMPORTANT]
+> All RBS features require the `rbs` gem. Add `gem "rbs"` to your Gemfile and run `bundle install`,
+> or install it globally with `gem install rbs`.
+>
+> On Ruby 2.7 the `rbs` gem cannot load at all — `--rbs`, `--sig-dir`, `--rbs-collection`,
+> `docscribe sigs`, and `docscribe rbs` will print a warning and fall back to AST-only inference.
+> On Ruby 3.0+, if the gem is missing, Docscribe silently falls back to inference when you pass RBS flags.
 
 Docscribe can read method signatures from `.rbs` files and use them to generate more accurate parameter and return
 types.
@@ -590,7 +749,7 @@ Config:
 
 ```yaml
 rbs:
-  enabled: true
+  enabled: false
   sig_dirs:
     - sig
   collection: false
@@ -599,10 +758,13 @@ rbs:
   warn_missing_collection: true
 ```
 
-- `collection` — enable auto-discovery of RBS collection from `rbs_collection.lock.yaml`. Pass `--rbs-collection` on the CLI.
-- `collapse_generics` — strip all generic type arguments (e.g. `Array<String>` → `Array`).
-- `collapse_object_generics` — only strip generic arguments when all are `Object` (e.g. `Hash<Object, Object>` → `Hash`, but `Hash<Symbol, Object>` stays).
-- `warn_missing_collection` — warn on stderr when `rbs_collection.lock.yaml` is found but collection is not enabled. Set to `false` to suppress.
+- `collection` — enable auto-discovery of RBS collection from `rbs_collection.lock.yaml`. Pass `--rbs-collection` on the
+  CLI.
+- `collapse_generics` — strip all generic type arguments (e.g. `Array<String>` -> `Array`).
+- `collapse_object_generics` — only strip generic arguments when all are `Object` (e.g. `Hash<Object, Object>` ->
+  `Hash`, but `Hash<Symbol, Object>` stays).
+- `warn_missing_collection` — warn on stderr when `rbs_collection.lock.yaml` is found but collection is not enabled. Set
+  to `false` to suppress.
 
 Example:
 
@@ -829,7 +991,8 @@ end
 Both RBS and Sorbet integrations support generic type collapsing.
 
 **`collapse_generics`** — strips all generic type arguments.
-**`collapse_object_generics`** — only strips arguments when all are `Object` (e.g. `Hash<Object, Object>` → `Hash`, but `Hash<Symbol, Object>` stays).
+**`collapse_object_generics`** — only strips arguments when all are `Object` (e.g. `Hash<Object, Object>` -> `Hash`, but
+`Hash<Symbol, Object>` stays).
 
 When both disabled:
 
@@ -892,6 +1055,11 @@ Return values:
 - For simple bodies, Docscribe looks at the last expression or explicit `return`.
 - Unions with `nil` become optional types (e.g. `String` or `nil` -> `String?`).
 - For control flow (`if`/`case`), it unifies branches conservatively.
+
+> [!TIP]
+> Docscribe resolves return types for core Ruby methods (`Integer#positive?`, `String#upcase`, etc.)
+> **even without `--rbs`** — the core RBS provider is always active when the `rbs` gem is available.
+
 - **RBS core type inference**: when `--rbs` is enabled, Docscribe resolves return types for method calls on core types
   from their RBS definitions:
     - `arg.positive?` (`arg = 1`) -> `Boolean` (from `Integer#positive?`)
@@ -1206,7 +1374,8 @@ Docscribe can be configured via a YAML file (`docscribe.yml` by default, or pass
 
 ### Anonymous block parameters
 
-Ruby 3.2+ allows anonymous block arguments (`def foo(&)`). By default, Docscribe generates `@param [Proc] block` for these — but since the parameter has no name, the tag is misleading.
+Ruby 3.2+ allows anonymous block arguments (`def foo(&)`). By default, Docscribe generates `@param [Proc] block` for
+these — but since the parameter has no name, the tag is misleading.
 
 To suppress the `@param` tag for anonymous block arguments:
 
@@ -1439,6 +1608,7 @@ docscribe generate tag SincePlugin --stdout
 ```
 
 The generated file contains:
+
 - the correct base class (`Base::TagPlugin` or `Base::CollectorPlugin`)
 - inline comments describing every available `Context` attribute (TagPlugin)
   or the expected return shape (CollectorPlugin)
@@ -1448,6 +1618,58 @@ The generated file contains:
 > [!NOTE]
 > The class name must be a valid Ruby constant (`MyPlugin`, `My::Plugin`).
 > The output filename is the snake_case equivalent (`my_plugin.rb`, `my/plugin.rb`).
+
+### Full configuration reference
+
+<details>
+<summary>Click to expand — 43 config keys</summary>
+
+| Key                                       | Type       | Default                                                                                      | Description                                                                |
+|-------------------------------------------|------------|----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| `keep_descriptions`                       | `bool`     | `false`                                                                                      | Preserve existing doc text in aggressive mode                              |
+| `skip_anonymous_block_params`             | `bool`     | `false`                                                                                      | Skip `@param [Proc] block` for anonymous `&` params                        |
+| `emit.header`                             | `bool`     | `false`                                                                                      | Generate method header line (`+#foo+ -> ...`)                              |
+| `emit.include_default_message`            | `bool`     | `true`                                                                                       | Insert default message (`Method documentation.`)                           |
+| `emit.include_param_documentation`        | `bool`     | `true`                                                                                       | Insert param description text (`Param documentation.`)                     |
+| `emit.param_tags`                         | `bool`     | `true`                                                                                       | Generate `@param` tags                                                     |
+| `emit.return_tag`                         | `bool`     | `true`                                                                                       | Generate `@return` tag                                                     |
+| `emit.visibility_tags`                    | `bool`     | `true`                                                                                       | Generate `@private`/`@protected` tags                                      |
+| `emit.raise_tags`                         | `bool`     | `true`                                                                                       | Generate `@raise` tags (for `raise` in method body)                        |
+| `emit.rescue_conditional_returns`         | `bool`     | `true`                                                                                       | Consider `rescue` branches in return type inference                        |
+| `emit.attributes`                         | `bool`     | `false`                                                                                      | Generate `@!attribute` for `attr_*` and `Struct.new`                       |
+| `doc.default_message`                     | `string`   | `"Method documentation."`                                                                    | Default text for method description                                        |
+| `doc.param_documentation`                 | `string`   | `"Param documentation."`                                                                     | Default text for param description                                         |
+| `doc.sort_tags`                           | `bool`     | `true`                                                                                       | Sort tags according to `tag_order`                                         |
+| `doc.tag_order`                           | `string[]` | `["todo","note","api","private","protected","param","option","yieldparam","raise","return"]` | Tag sort order                                                             |
+| `doc.param_tag_style`                     | `string`   | `"type_name"`                                                                                | `@param` style: `type_name` (`[Type] name`) or `name_type` (`name [Type]`) |
+| `inference.fallback_type`                 | `string`   | `"Object"`                                                                                   | Fallback type when inference yields no result                              |
+| `inference.nil_as_optional`               | `bool`     | `true`                                                                                       | Treat `nil` as an optional type                                            |
+| `inference.treat_options_keyword_as_hash` | `bool`     | `true`                                                                                       | Treat `**options` as `Hash` in `@option` tags                              |
+| `filter.include`                          | `string[]` | `[]`                                                                                         | Only include methods matching pattern                                      |
+| `filter.exclude`                          | `string[]` | `[]`                                                                                         | Exclude methods matching pattern                                           |
+| `filter.visibilities`                     | `string[]` | `["public","protected","private"]`                                                           | Visibilities to process                                                    |
+| `filter.scopes`                           | `string[]` | `["instance","class"]`                                                                       | Scopes to process                                                          |
+| `filter.files.include`                    | `string[]` | `[]`                                                                                         | Only process files matching pattern                                        |
+| `filter.files.exclude`                    | `string[]` | `["spec"]`                                                                                   | Skip files matching pattern                                                |
+| `methods.instance.public`                 | `object`   | `{}`                                                                                         | Overrides for instance public methods                                      |
+| `methods.instance.protected`              | `object`   | `{}`                                                                                         | Overrides for instance protected methods                                   |
+| `methods.instance.private`                | `object`   | `{}`                                                                                         | Overrides for instance private methods                                     |
+| `methods.class.public`                    | `object`   | `{}`                                                                                         | Overrides for class public methods                                         |
+| `methods.class.protected`                 | `object`   | `{}`                                                                                         | Overrides for class protected methods                                      |
+| `methods.class.private`                   | `object`   | `{}`                                                                                         | Overrides for class private methods                                        |
+| `rbs.enabled`                             | `bool`     | `false`                                                                                      | Enable RBS integration                                                     |
+| `rbs.collection`                          | `bool`     | `false`                                                                                      | Auto-discover RBS collection from `rbs_collection.lock.yaml`               |
+| `rbs.sig_dirs`                            | `string[]` | `["sig"]`                                                                                    | RBS signature directories                                                  |
+| `rbs.collection_dirs`                     | `string[]` | `[]`                                                                                         | RBS collection directories (set automatically)                             |
+| `rbs.collapse_generics`                   | `bool`     | `false`                                                                                      | Strip generic arguments (`Array<String>` -> `Array`)                       |
+| `rbs.collapse_object_generics`            | `bool`     | `false`                                                                                      | Strip generics only when all are `Object`                                  |
+| `rbs.warn_missing_collection`             | `bool`     | `true`                                                                                       | Warn when `rbs_collection.lock.yaml` found but collection not enabled      |
+| `sorbet.enabled`                          | `bool`     | `false`                                                                                      | Enable Sorbet integration                                                  |
+| `sorbet.rbi_dirs`                         | `string[]` | `["sorbet/rbi","rbi"]`                                                                       | RBI file directories                                                       |
+| `sorbet.collapse_generics`                | `bool`     | `false`                                                                                      | Strip generic arguments from Sorbet signatures                             |
+| `plugins.require`                         | `string[]` | `[]`                                                                                         | Plugin paths for `require`                                                 |
+
+</details>
 
 ## CI integration
 
@@ -1480,6 +1702,20 @@ Run static type checking with Steep (requires Ruby ≥ 3.2):
   run: bundle exec steep check
 ```
 
+Fail the build if any generated docs still contain default placeholder text:
+
+```yaml
+- name: Check for placeholder docs
+  run: docscribe check_for_comments lib/
+```
+
+For stricter validation, check for empty doc blocks:
+
+```yaml
+- name: Check for empty doc blocks
+  run: "! grep -rn '^  # $' lib/"
+```
+
 ## Comparison to YARD's parser
 
 Docscribe and YARD solve different parts of the documentation problem:
@@ -1506,13 +1742,16 @@ yard doc -o docs
 ## Roadmap
 
 - Method behavior inference from AST;
-- YAML-based plugin configuration;
+- Deeper YARD integration — parse `.c` source comments and generate docs for C-extensions;
+- Custom parser plugins — support non-Ruby languages (Crystal, etc.) via the plugin system;
 - Effective config dump;
-- JSON output;
 - Overload-aware signature selection;
 - Manual `@!attribute` merge policy;
 - Richer inference for common APIs;
-- Editor integration.
+- Editor integration (LSP, VS Code extension);
+- Documentation coverage report — percentage of documented methods, params, returns;
+- Pre-commit hook auto-install (`docscribe init --pre-commit`);
+- Parallel processing for large codebases.
 
 ## Contributing
 
@@ -1526,6 +1765,14 @@ bundle exec rubocop
 - [Reddit discussion](https://www.reddit.com/r/ruby/comments/1s5uwjj/docscribe_for_ruby_autogenerate_inline_yard_docs/)
 - [Dev.to article](https://dev.to/unurgunite)
 - [GitHub Discussions](https://github.com/unurgunite/docscribe/discussions)
+
+## Logo Attribution
+
+The Docscribe logo uses the Ruby gem icon by [FlorexLabs](https://github.com/FlorexLabs).
+
+<p>
+  <img src="assets/icons/icon_128x128.png" alt="Docscribe logo">
+</p>
 
 ## License
 

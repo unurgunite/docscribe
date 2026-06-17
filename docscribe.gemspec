@@ -43,21 +43,12 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'yard', '>= 0.9.38'
 
   spec.post_install_message = <<~MESSAGE
-    Thank you for installing docscribe #{Docscribe::VERSION}!
+    You installed docscribe #{Docscribe::VERSION}. Your future self (and your team) thank you.
 
-    To get started:
       $ docscribe --help
 
-    To check Ruby files for missing documentation:
-      $ docscribe lib/
-
-    To apply safe doc updates:
-      $ docscribe -a lib/
-
-    To use RBS type signatures:
-      $ docscribe --rbs lib/
-
-    See https://github.com/unurgunite/docscribe for details.
+    Happy documenting!
+    https://github.com/unurgunite/docscribe
   MESSAGE
 
   # For more information and examples about making a new gem, check out our

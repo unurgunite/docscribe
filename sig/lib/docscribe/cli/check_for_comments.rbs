@@ -1,0 +1,35 @@
+module Docscribe
+  module CLI
+    module CheckForComments
+      BANNER: String
+
+      def self.run: (Array[String] argv) -> Integer
+
+      private
+
+      def self.resolve_placeholders: (Config config) -> Array[String]
+
+      def self.raw_or_default: (Config config, Array[String] keys) -> (String | nil)
+
+      def self.no_placeholders_configured: -> Integer
+
+      def self.parse_options: (Array[String] argv) -> void
+
+      def self.expand_paths: (Array[String] args) -> Array[String]
+
+      def self.expand_single_path: (Array[String] files, String path) -> void
+
+      def self.no_paths: -> Integer
+
+      def self.scan_paths: (Array[String] paths, Array[String] placeholders) -> Array[[ String, Array[[Integer, String]] ]]
+
+      def self.process_results: (Array[[ String, Array[[Integer, String]] ]] results) -> Integer
+
+      def self.scan_file: (String path, Array[String] placeholders) -> [ String, Array[[Integer, String]] ]?
+
+      def self.comment_line?: (String line) -> bool
+
+      def self.report: (Array[[ String, Array[[Integer, String]] ]] results) -> void
+    end
+  end
+end

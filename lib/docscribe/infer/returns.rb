@@ -170,7 +170,7 @@ module Docscribe
       # Infer the type of a single assignment node and store it in the types hash.
       #
       # Uses `run_last_expr_type` when `core_rbs_provider` is available to
-      # resolve send expressions (e.g., `x = 123 + 1` → `Integer`).
+      # resolve send expressions (e.g., `x = 123 + 1` -> `Integer`).
       # Falls back to `Literals.type_from_literal` for plain literals.
       #
       # @note module_function: defines #collect_assignment_type (visibility: private)
@@ -326,7 +326,7 @@ module Docscribe
       # Handle `:op_asgn` node (compound assignment: `x += 1`, `@var -= 2`, etc.).
       #
       # Infers the result type from the operator and the right operand's type.
-      # Uses RBS to resolve when available (e.g., `Integer#+` → `Integer`).
+      # Uses RBS to resolve when available (e.g., `Integer#+` -> `Integer`).
       #
       # @note module_function: defines #handle_op_asgn_node (visibility: private)
       # @param [Parser::AST::Node] node the `:op_asgn` AST node
@@ -703,7 +703,7 @@ module Docscribe
       # first literal argument's type — only fires when `core_rbs_provider` is
       # present and the argument's RBS return type can be resolved.
       #
-      # Enables `@var += 123` → `Integer` (via `Integer#+`) and similar patterns.
+      # Enables `@var += 123` -> `Integer` (via `Integer#+`) and similar patterns.
       #
       # @note module_function: defines #infer_from_compound_assign (visibility: private)
       # @param [Parser::AST::Node] node the `:send` AST node

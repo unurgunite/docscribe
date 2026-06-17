@@ -30,7 +30,7 @@ RSpec.describe Docscribe::InlineRewriter::DocBuilder do
 
     it 'omits the default method message when doc.include_default_message is false', :aggregate_failures do
       expect(out).not_to include('Method documentation.')
-      expect(out).to include('# @param [Object] foo Generated param description.')
+      expect(out).to include('# @param [Object] foo Param documentation.')
     end
   end
 

@@ -37,6 +37,8 @@ module Docscribe
                docscribe generate <type> <name> [options]
                docscribe sigs [options] [files...]
                docscribe rbs [options] [files...]
+               docscribe update_types [directory]
+               docscribe check_for_comments [paths...]
 
         Default behavior:
           Inspect files and report what safe doc updates would be applied.

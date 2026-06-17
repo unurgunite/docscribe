@@ -17,7 +17,7 @@ RSpec.describe Docscribe::InlineRewriter::SourceHelpers do
     let(:code) do
       <<~RUBY
         module M
-          # @param [Object] x Generated param description.
+          # @param [Object] x Param documentation.
           # @return [Object]
           # @note module_function: when included, also defines #foo (instance visibility: private)
           def foo(x); x; end

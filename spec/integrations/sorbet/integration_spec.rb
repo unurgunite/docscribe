@@ -61,7 +61,7 @@ RSpec.describe Docscribe::InlineRewriter do
 
     it 'includes @param tag' do
       expect(out).to match(
-        /# @param \[(?:String\?|String, nil|nil, String)\] name Generated param description\./
+        /# @param \[(?:String\?|String, nil|nil, String)\] name Param documentation\./
       )
     end
 

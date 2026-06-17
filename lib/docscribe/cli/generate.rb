@@ -326,6 +326,7 @@ module Docscribe
         # @return [void]
         def register_help_option(opt, opts)
           opt.on('-h', '--help', 'Show this help') do
+            puts opt
             opts[:help] = true
           end
         end
