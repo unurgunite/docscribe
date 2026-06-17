@@ -14,7 +14,7 @@ RSpec.describe Docscribe::InlineRewriter do
 
     it 'adds documentation', :aggregate_failures do
       expect(out).to include('Object#foo')
-      expect(out).to include('# Generated method description.')
+      expect(out).to include('# Method documentation.')
     end
   end
 
@@ -27,7 +27,7 @@ RSpec.describe Docscribe::InlineRewriter do
 
     it 'adds documentation', :aggregate_failures do
       expect(out).to include('Object.bar')
-      expect(out).to include('# Generated method description.')
+      expect(out).to include('# Method documentation.')
     end
   end
 

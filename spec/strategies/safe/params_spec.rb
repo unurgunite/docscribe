@@ -16,7 +16,7 @@ RSpec.describe Docscribe::InlineRewriter do
 
     it 'adds only missing @param lines and keeps existing @param lines untouched', :aggregate_failures do
       expect(out).to include(param_tag('x', 'String', description: 'already documented'))
-      expect(out).to include(param_tag('y', 'Object', description: 'Generated param description.'))
+      expect(out).to include(param_tag('y', 'Object', description: 'Param documentation.'))
       expect(out.scan(/@param \[[^\]]+\] x\b/).size).to eq(1)
       expect(out).not_to include('# +A#foo+')
     end

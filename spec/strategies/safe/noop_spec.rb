@@ -7,7 +7,7 @@ RSpec.describe Docscribe::InlineRewriter do
     <<~RUBY
       class A
         # @todo docs
-        # @param [Object] x Generated param description.
+        # @param [Object] x Param documentation.
         # @return [Integer]
         def foo(x); 1; end
       end

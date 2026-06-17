@@ -46,7 +46,7 @@ RSpec.describe Docscribe::Plugin::Base::CollectorPlugin do
     end
 
     it { is_expected.to include('# +User.active+ -> ActiveRecord::Relation') }
-    it { is_expected.to include('# Generated method description.') }
+    it { is_expected.to include('# Method documentation.') }
     it { is_expected.to include('# @param') }
     it { is_expected.to include(' period') }
     it { is_expected.to include('# @return [ActiveRecord::Relation]') }
