@@ -9,7 +9,7 @@
 
 ### Fixed
 
-- Nilable type warnings in steep (89→57):
+- Nilable type warnings in steep (89->57):
   - `source_helpers.rb`: guard `src[...]`, `lines[...]` with `|| ""` / `|| []`
   - `inline_rewriter.rb`: guard `src`/`lines`, `anchor_node`, `param_types`, `visibility`
   - `doc_builder.rb`: guard `type_match[1]`, `m[1]`, `treat_options_keyword_as_hash`, `setup`

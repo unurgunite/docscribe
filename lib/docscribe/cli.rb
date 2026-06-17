@@ -6,6 +6,7 @@ require 'docscribe/cli/options'
 require 'docscribe/cli/run'
 require 'docscribe/cli/sigs'
 require 'docscribe/cli/rbs_gen'
+require 'docscribe/cli/update_types'
 
 module Docscribe
   # CLI entry point and command dispatch.
@@ -36,7 +37,7 @@ module Docscribe
       # @param [String?] cmd potential subcommand name
       # @return [Boolean]
       def subcommand?(cmd)
-        %w[init generate sigs rbs].include?(cmd)
+        %w[init generate sigs rbs update_types].include?(cmd)
       end
 
       # Dispatch subcommand
@@ -51,6 +52,7 @@ module Docscribe
         when 'generate' then Docscribe::CLI::Generate.run(argv)
         when 'sigs' then Docscribe::CLI::Sigs.run(argv)
         when 'rbs' then Docscribe::CLI::RbsGen.run(argv)
+        when 'update_types' then Docscribe::CLI::UpdateTypes.run(argv)
         else 0
         end
       end

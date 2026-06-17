@@ -317,6 +317,7 @@ docscribe init [options]
 docscribe generate [type] [name] [options]
 docscribe sigs [options] [files...]
 docscribe rbs [options] [files...]
+docscribe update_types [directory]
 ```
 
 Docscribe has three main ways to run:
@@ -537,11 +538,32 @@ docscribe rbs lib
 # Generated sig/user.rbs
 ```
 
-```rbs
+```ruby.rbs
 # sig/user.rbs
 class User
-  def initialize: (String name, Integer age) -> User
+    def initialize: (String name, Integer age) -> User
 end
+```
+
+### `docscribe update_types` — two-pass type-aware documentation update
+
+> [!NOTE]
+> `docscribe update_types` is a convenience alias for the two-pass workflow above. It requires Ruby 3.0+ and the `rbs`
+> gem (because of `--rbs-collection`). The RBS collection must be set up first with `bundle exec rbs collection install`.
+> Type accuracy depends on your RBS signatures — if signatures are incomplete or missing, types will fall back to AST
+> inference.
+
+`docscribe update_types` runs two passes to bring both docs and RBS signatures up to date:
+
+1. **Pass 1** — `docscribe -AkB --rbs-collection <dir>`: aggressively rebuilds doc blocks, preserves existing descriptions, suppresses boilerplate, uses RBS collection types.
+2. **Pass 2** — `docscribe -aB --rbs-collection <dir>`: safe merge cleanup with no boilerplate.
+
+```shell
+# Update docs in lib/ using RBS collection
+docscribe update_types lib
+
+# Defaults to current directory
+docscribe update_types
 ```
 
 ## Update strategies
@@ -623,6 +645,13 @@ Useful flag combinations for common workflows:
 - `docscribe -a --rbs-collection lib` — safe autocorrect using RBS gem collection signatures. Recommended for Rails
   projects.
 - `docscribe -a --sorbet --rbi-dir sorbet/rbi lib` — safe autocorrect using Sorbet RBI signatures.
+- `docscribe update_types lib` — two-pass type-aware update: aggressively rebuilds docs with kept descriptions and RBS
+  collection, then safe-merges to clean up.
+  See [docscribe update_types](#docscribe-update_types--two-pass-type-aware-documentation-update).
+
+> [!NOTE]
+> `docscribe update_types` is a convenient shortcut, but be aware it uses `--rbs-collection` under the hood.
+> If your RBS signatures are incomplete, types may fall back to AST inference.
 
 ## Parser backend (Parser gem vs Prism)
 
@@ -650,13 +679,21 @@ Docscribe can improve generated `@param` and `@return` types by reading external
 AST inference.
 
 > [!IMPORTANT]
-> When external type information is available, Docscribe resolves signatures in this order:
-> - inline Sorbet `sig` declarations in the current Ruby source;
-> - Sorbet RBI files;
-> - RBS files;
-> - AST inference fallback.
+> Docscribe resolves types in a two-level chain. For **documentation tags** (`@param`, `@return`), the priority is:
 >
-> If an external signature cannot be loaded or parsed, Docscribe falls back to normal inference instead of failing.
+> | Priority | Source                                      | When active                                              |
+> |----------|---------------------------------------------|----------------------------------------------------------|
+> | **1**    | Inline Sorbet `sig { ... }` in current file | `--sorbet` or `sorbet.enabled: true`                     |
+> | **2**    | Sorbet RBI files (`.rbi`)                   | `--sorbet --rbi-dir` or `sorbet.rbi_dirs`                |
+> | **3**    | RBS files (`.rbs`)                          | `--rbs --sig-dir` or `rbs.sig_dirs` / `--rbs-collection` |
+> | **4**    | AST inference (fallback)                    | Always active                                            |
+>
+> For **intra-method body inference** (e.g. resolving `Integer#positive?` -> `Boolean`), a separate core RBS provider
+> loads only stdlib/built-in signatures and is active automatically when the `rbs` gem is available — even without
+> `--rbs`.
+>
+> If an external signature cannot be loaded or parsed, Docscribe falls back to the next source in the chain instead of
+> failing.
 
 ### RBS
 
@@ -697,8 +734,7 @@ rbs:
   CLI.
 - `collapse_generics` — strip all generic type arguments (e.g. `Array<String>` -> `Array`).
 - `collapse_object_generics` — only strip generic arguments when all are `Object` (e.g. `Hash<Object, Object>` ->
-  `Hash`,
-  but `Hash<Symbol, Object>` stays).
+  `Hash`, but `Hash<Symbol, Object>` stays).
 - `warn_missing_collection` — warn on stderr when `rbs_collection.lock.yaml` is found but collection is not enabled. Set
   to `false` to suppress.
 
@@ -867,9 +903,7 @@ class Demo
   extend T::Sig
 
   sig { params(verbose: T::Boolean, count: Integer).returns(Integer) }
-  def foo(verbose:, count:)
-    ;
-  end
+  def foo(verbose:, count:); end
 end
 ```
 
