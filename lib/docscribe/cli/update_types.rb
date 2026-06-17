@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'optparse'
+
 require 'docscribe/cli/options'
 require 'docscribe/cli/run'
 
@@ -15,11 +17,25 @@ module Docscribe
     # Pass 2: `-aB --rbs-collection <dir>` — safe merge cleanup, no boilerplate,
     #   using RBS collection signatures.
     module UpdateTypes
+      BANNER = <<~TEXT
+        Usage: docscribe update_types [directory]
+
+        Two-pass type-aware documentation update.
+
+        Pass 1 (aggressive):  docscribe -AkB --rbs-collection <dir>
+          rebuild doc blocks, keep descriptions, no boilerplate
+
+        Pass 2 (safe):        docscribe -aB --rbs-collection <dir>
+          safe merge cleanup, no boilerplate
+
+      TEXT
+
       class << self
         # @param [Array<String>] argv
         # @return [Integer]
         def run(argv)
-          dir = argv.first || '.'
+          options = parse_options(argv)
+          dir = options[:dir]
 
           puts 'Docscribe: Running type-aware documentation update...'
           puts
@@ -36,6 +52,19 @@ module Docscribe
         end
 
         private
+
+        # @private
+        # @param [Array<String>] argv
+        # @return [Hash{Symbol => Object}]
+        def parse_options(argv)
+          options = { dir: '.' }
+          OptionParser.new(BANNER) do |opts|
+            opts.on('-h', '--help', 'Show this help') { puts opts or exit 0 }
+            opts.parse!(argv)
+          end
+          options[:dir] = argv.first if argv.any?
+          options
+        end
 
         # @private
         # @param [String] dir

@@ -78,6 +78,7 @@ docscribe -A lib
         * [`docscribe sigs` — check RBS signature coverage](#docscribe-sigs--check-rbs-signature-coverage)
         * [`docscribe rbs` — generate RBS from YARD](#docscribe-rbs--generate-rbs-from-yard)
         * [`docscribe update_types` — two-pass type-aware documentation update](#docscribe-update_types--two-pass-type-aware-documentation-update)
+        * [`docscribe check_for_comments` — find placeholder documentation](#docscribe-check_for_comments--find-placeholder-documentation)
     * [Update strategies](#update-strategies)
         * [Safe strategy](#safe-strategy)
         * [Aggressive strategy](#aggressive-strategy)
@@ -319,6 +320,7 @@ docscribe generate [type] [name] [options]
 docscribe sigs [options] [files...]
 docscribe rbs [options] [files...]
 docscribe update_types [directory]
+docscribe check_for_comments [paths...]
 ```
 
 Docscribe has three main ways to run:
@@ -567,6 +569,26 @@ docscribe update_types lib
 # Defaults to current directory
 docscribe update_types
 ```
+
+### `docscribe check_for_comments` — find placeholder documentation
+
+`docscribe check_for_comments` scans Ruby source files for YARD comments that still contain default placeholder
+text. Reads the configured placeholder messages from `docscribe.yml` (or built-in defaults). Useful in CI to catch
+files where auto-generated text was never replaced with real documentation.
+
+```shell
+# Scan entire project
+docscribe check_for_comments
+
+# Scan specific directories
+docscribe check_for_comments lib app
+```
+
+Exit code `0` if no placeholders found, `1` if any are detected.
+
+**Flags:**
+
+- `-h`, `--help` — show help.
 
 ## Update strategies
 
@@ -1599,6 +1621,9 @@ The generated file contains:
 
 ### Full configuration reference
 
+<details>
+<summary>Click to expand — 43 config keys</summary>
+
 | Key                                       | Type       | Default                                                                                      | Description                                                                |
 |-------------------------------------------|------------|----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
 | `keep_descriptions`                       | `bool`     | `false`                                                                                      | Preserve existing doc text in aggressive mode                              |
@@ -1612,8 +1637,8 @@ The generated file contains:
 | `emit.raise_tags`                         | `bool`     | `true`                                                                                       | Generate `@raise` tags (for `raise` in method body)                        |
 | `emit.rescue_conditional_returns`         | `bool`     | `true`                                                                                       | Consider `rescue` branches in return type inference                        |
 | `emit.attributes`                         | `bool`     | `false`                                                                                      | Generate `@!attribute` for `attr_*` and `Struct.new`                       |
-| `doc.default_message`                     | `string`   | `"Generated method description."`                                                            | Default text for method description                                        |
-| `doc.param_documentation`                 | `string`   | `"Generated param description."`                                                             | Default text for param description                                         |
+| `doc.default_message`                     | `string`   | `"Method documentation."`                                                                    | Default text for method description                                        |
+| `doc.param_documentation`                 | `string`   | `"Param documentation."`                                                                     | Default text for param description                                         |
 | `doc.sort_tags`                           | `bool`     | `true`                                                                                       | Sort tags according to `tag_order`                                         |
 | `doc.tag_order`                           | `string[]` | `["todo","note","api","private","protected","param","option","yieldparam","raise","return"]` | Tag sort order                                                             |
 | `doc.param_tag_style`                     | `string`   | `"type_name"`                                                                                | `@param` style: `type_name` (`[Type] name`) or `name_type` (`name [Type]`) |
@@ -1643,6 +1668,8 @@ The generated file contains:
 | `sorbet.rbi_dirs`                         | `string[]` | `["sorbet/rbi","rbi"]`                                                                       | RBI file directories                                                       |
 | `sorbet.collapse_generics`                | `bool`     | `false`                                                                                      | Strip generic arguments from Sorbet signatures                             |
 | `plugins.require`                         | `string[]` | `[]`                                                                                         | Plugin paths for `require`                                                 |
+
+</details>
 
 ## CI integration
 
@@ -1675,6 +1702,20 @@ Run static type checking with Steep (requires Ruby ≥ 3.2):
   run: bundle exec steep check
 ```
 
+Fail the build if any generated docs still contain default placeholder text:
+
+```yaml
+- name: Check for placeholder docs
+  run: docscribe check_for_comments lib/
+```
+
+For stricter validation, check for empty doc blocks:
+
+```yaml
+- name: Check for empty doc blocks
+  run: "! grep -rn '^  # $' lib/"
+```
+
 ## Comparison to YARD's parser
 
 Docscribe and YARD solve different parts of the documentation problem:
@@ -1701,12 +1742,16 @@ yard doc -o docs
 ## Roadmap
 
 - Method behavior inference from AST;
-- YAML-based plugin configuration;
+- Deeper YARD integration — parse `.c` source comments and generate docs for C-extensions;
+- Custom parser plugins — support non-Ruby languages (Crystal, etc.) via the plugin system;
 - Effective config dump;
 - Overload-aware signature selection;
 - Manual `@!attribute` merge policy;
 - Richer inference for common APIs;
-- Editor integration.
+- Editor integration (LSP, VS Code extension);
+- Documentation coverage report — percentage of documented methods, params, returns;
+- Pre-commit hook auto-install (`docscribe init --pre-commit`);
+- Parallel processing for large codebases.
 
 ## Contributing
 
