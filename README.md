@@ -5,6 +5,8 @@
 [![CI](https://github.com/unurgunite/docscribe/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/unurgunite/docscribe/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/unurgunite/docscribe.svg)](https://github.com/unurgunite/docscribe/blob/master/LICENSE.txt)
 [![Ruby](https://img.shields.io/badge/ruby-%3E%3D%202.7-blue.svg)](#installation)
+[![VS Code](https://img.shields.io/badge/VS%20Code-plugin-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode)
+[![RubyMine](https://img.shields.io/badge/RubyMine-plugin-green?logo=jetbrains)](https://plugins.jetbrains.com/plugin/32349-docscribe)
 
 <p>
   <img src="assets/icons/icon_256x256.png" alt="Docscribe logo" width="96">
@@ -62,6 +64,10 @@ docscribe -A lib
 > [!TIP]
 > See [CLI](#cli) for all options and [Update strategies](#update-strategies) for the
 > difference between safe and aggressive modes.
+>
+> Want IDE integration? Check out
+> the [VS Code](https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode)
+> and [RubyMine](https://plugins.jetbrains.com/plugin/32349-docscribe) plugins.
 
 ## Contents
 
@@ -123,6 +129,9 @@ docscribe -A lib
     * [Comparison to YARD's parser](#comparison-to-yards-parser)
     * [Limitations](#limitations)
     * [Roadmap](#roadmap)
+    * [Editor Integration](#editor-integration)
+        * [VS Code](#vs-code)
+        * [RubyMine](#rubymine)
     * [Contributing](#contributing)
     * [Discussion & Community](#discussion--community)
     * [Logo Attribution](#logo-attribution)
@@ -1752,6 +1761,29 @@ yard doc -o docs
 - Documentation coverage report — percentage of documented methods, params, returns;
 - Pre-commit hook auto-install (`docscribe init --pre-commit`);
 - Parallel processing for large codebases.
+
+## Editor Integration
+
+Docscribe provides IDE plugins for a better development experience:
+
+### VS Code
+
+[![VS Code](https://img.shields.io/badge/VS%20Code-plugin-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode)
+
+- **Repository:** [github.com/FlorexLabs/docscribe-vscode](https://github.com/FlorexLabs/docscribe-vscode)
+- **Marketplace:** [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode)
+- **Features:** inline diagnostics, quick-fix, auto-check on save, status bar
+
+### RubyMine
+
+[![RubyMine](https://img.shields.io/badge/RubyMine-plugin-green?logo=jetbrains)](https://plugins.jetbrains.com/plugin/32349-docscribe)
+
+- **Repository:** [github.com/FlorexLabs/docscribe-rubymine](https://github.com/FlorexLabs/docscribe-rubymine)
+- **Marketplace:** [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/32349-docscribe)
+- **Features:** ExternalAnnotator, AnAction, IntentionAction, Settings UI
+
+> [!NOTE]
+> Both plugins require **docscribe >= 1.5.0**.
 
 ## Contributing
 
