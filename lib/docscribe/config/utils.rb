@@ -46,7 +46,7 @@ module Docscribe
     # Convert an internal scope symbol into the config key used under `methods`.
     #
     # @private
-    # @param [Symbol] scope
+    # @param [Symbol] scope :instance or :class
     # @return [String]
     def scope_to_key(scope)
       scope == :class ? 'class' : 'instance'
@@ -55,8 +55,8 @@ module Docscribe
     # Check whether any pattern matches the given text.
     #
     # @private
-    # @param [Array<String>] patterns
-    # @param [String] text
+    # @param [Array<String>] patterns filter patterns to match
+    # @param [String] text text to test against patterns
     # @return [Boolean]
     def matches_any?(patterns, text)
       patterns.any? { |pat| match_pattern?(pat, text) }
@@ -69,12 +69,14 @@ module Docscribe
     # - shell-style glob patterns (with `/` translated to `#` since method IDs use `#`)
     #
     # @private
-    # @param [String] pattern
-    # @param [String] text
+    # @param [String] pattern filter pattern to match
+    # @param [String] text method ID to test
     # @return [Boolean]
     def match_pattern?(pattern, text)
       if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
-        Regexp.new(pattern[1..-2]).match?(text)
+        Regexp.new(pattern[1..-2]).match?(text) # steep:ignore
+      elsif pattern.count('*?[{').zero?
+        File.fnmatch?("*#{pattern.tr('/', '#')}*", text, File::FNM_EXTGLOB)
       else
         File.fnmatch?(pattern.tr('/', '#'), text, File::FNM_EXTGLOB)
       end
@@ -85,9 +87,9 @@ module Docscribe
     # Nested hashes are merged recursively; non-hash values are replaced.
     #
     # @private
-    # @param [Hash] hash1 base hash
-    # @param [Hash, nil] hash2 override hash
-    # @return [Hash]
+    # @param [Hash<Object, Object>] hash1 base hash
+    # @param [Hash<Object, Object>, nil] hash2 override hash
+    # @return [Hash<Object, Object>]
     def deep_merge(hash1, hash2)
       return hash1 unless hash2
 

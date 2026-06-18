@@ -5,7 +5,7 @@ module Docscribe
 
       def self?.line_start_range: (Parser::Source::Buffer buffer, Parser::AST::Node node) -> Parser::Source::Range
 
-      def self?.doc_comment_block_info: (Parser::Source::Buffer buffer, Integer def_bol_pos) -> (Hash[Symbol, untyped] | nil)
+      def self?.doc_comment_block_info: (Parser::Source::Buffer buffer, Integer def_bol_pos) -> (Hash[Symbol, (Array[String] | Integer | nil)] | nil)
 
       def self?.comment_block_removal_range: (Parser::Source::Buffer buffer, Integer def_bol_pos) -> (Parser::Source::Range | nil)
 
@@ -15,7 +15,7 @@ module Docscribe
 
       def self?.doc_marker?: (Array[String] lines, Range[Integer] range) -> bool
 
-      def self?.build_block_info: (Array[String] lines, Integer start_idx, Integer preserved_start_idx, Integer end_idx) -> Hash[Symbol, untyped]
+      def self?.build_block_info: (Array[String] lines, Integer start_idx, Integer preserved_start_idx, Integer end_idx) -> Hash[Symbol, (Array[String] | Integer | nil)]
 
       def self?.compute_removal_range: (Parser::Source::Buffer buffer, Array[String] lines, Integer preserved_start_idx, Integer def_bol_pos) -> Parser::Source::Range
 

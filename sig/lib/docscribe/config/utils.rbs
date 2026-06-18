@@ -14,6 +14,6 @@ module Docscribe
 
     def match_pattern?: (String pattern, String text) -> bool
 
-    def deep_merge: (Hash[untyped, untyped] hash1, (Hash[untyped, untyped] | nil) hash2) -> Hash[untyped, untyped]
+    def deep_merge: (Hash[Object, Object] hash1, (Hash[Object, Object] | nil) hash2) -> Hash[Object, Object]
   end
 end

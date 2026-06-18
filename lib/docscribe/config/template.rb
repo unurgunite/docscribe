@@ -7,7 +7,6 @@ module Docscribe
     #
     # The template documents the most common CLI workflows and all supported
     # configuration sections with comments.
-    # @see Docscribe::Config::DEFAULT
     #
     # @return [String]
     def self.default_yaml
@@ -21,6 +20,7 @@ module Docscribe
         #   bundle exec docscribe lib          # check what would change
         #   bundle exec docscribe -a lib       # apply safe updates
         #   bundle exec docscribe -A lib       # rebuild all doc blocks
+        #   bundle exec docscribe -AkB lib     # rebuild, keep descriptions, no boilerplate
 
         emit:
           # What to include in generated documentation
@@ -89,13 +89,21 @@ module Docscribe
           sig_dirs: ["sig"]
           collection_dirs: []                 # auto-discovered from --rbs-collection
           collapse_generics: false            # Hash<Symbol, String> => Hash
+          collapse_object_generics: false     # Hash<Object, Object> => Hash (keep if inner types are useful)
           collection: false                   # auto-discover from rbs_collection.lock.yaml
+          warn_missing_collection: true       # warn if rbs_collection.lock.yaml exists without --rbs-collection
 
         sorbet:
           # Use Sorbet inline sigs and RBI files for better types
           enabled: false
           rbi_dirs: ["sorbet/rbi", "rbi"]
           collapse_generics: false
+
+        # Preserve existing @param/@return descriptions in aggressive mode
+        keep_descriptions: false
+
+        # Skip @param for anonymous block arguments (&) (Ruby 3.2+)
+        skip_anonymous_block_params: false
 
         plugins:
           # Load custom plugins

@@ -1,9 +1,9 @@
 module Docscribe
   class Config
-    def self.load: (?String? path) -> Docscribe::Config
+    def self.load: (?String? path) -> Config
 
-    def self.safe_load_file_compat: (String path) -> Hash[untyped, untyped]
+    def self.safe_load_file_compat: (String path) -> Hash[String, Object]
 
-    def self.safe_load_compat: (String yaml, ?filename: String?) -> Hash[untyped, untyped]
+    def self.safe_load_compat: (String yaml, ?filename: String?) -> Hash[String, Object]
   end
 end

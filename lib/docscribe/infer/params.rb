@@ -15,12 +15,11 @@ module Docscribe
       # - special-casing `options:` as `Hash` when enabled
       # - literal defaults via AST parsing
       #
-      # @note module_function: when included, also defines #infer_param_type (instance visibility: private)
+      # @note module_function: defines #infer_param_type (visibility: private)
       # @param [String] name parameter name as used internally (may include `*`, `**`, `&`, or trailing `:`)
-      # @param [String, nil] default_str source for the default value expression
+      # @param [String?] default_str source for the default value expression
       # @param [String] fallback_type type returned when inference is uncertain
       # @param [Boolean] treat_options_keyword_as_hash whether `options:` should
-      #   be treated specially as Hash
       # @return [String]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
         prefix_param_type(name) || inferred_param_type(name, default_str, fallback_type,
@@ -29,8 +28,7 @@ module Docscribe
 
       # Return type for special parameter prefixes.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
+      # @note module_function: defines #prefix_param_type (visibility: private)
       # @param [String] name parameter name
       # @return [String, nil]
       def prefix_param_type(name)
@@ -43,12 +41,11 @@ module Docscribe
 
       # Infer type for a regular or keyword parameter with optional default.
       #
-      # @note module_function: when included, also defines # (instance visibility: private)
-      # @private
+      # @note module_function: defines #inferred_param_type (visibility: private)
       # @param [String] name parameter name
-      # @param [String, nil] default_str default expression source
-      # @param [String] fallback_type
-      # @param [Boolean] treat_options_keyword_as_hash
+      # @param [String?] default_str default expression source
+      # @param [String] fallback_type type returned when not special-cased
+      # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
       # @return [String]
       def inferred_param_type(name, default_str, fallback_type, treat_options_keyword_as_hash:)
         if name.end_with?(':') && default_str.nil?
@@ -65,7 +62,7 @@ module Docscribe
 
       # Return 'Hash' for a keyword parameter named 'options:' when special-cased, else fallback.
       #
-      # @note module_function: when included, also defines #options_keyword_type (instance visibility: private)
+      # @note module_function: defines #options_keyword_type (visibility: private)
       # @param [String] name parameter name
       # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
       # @param [String] fallback_type type returned when not special-cased
@@ -76,9 +73,9 @@ module Docscribe
 
       # Whether a keyword parameter named 'options:' with a hash default should be typed as Hash.
       #
-      # @note module_function: when included, also defines #options_hash_keyword? (instance visibility: private)
+      # @note module_function: defines #options_hash_keyword? (visibility: private)
       # @param [String] name parameter name
-      # @param [String, nil] default_str default expression source
+      # @param [String?] default_str default expression source
       # @param [String] type inferred type
       # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
       # @return [Boolean]
@@ -90,17 +87,18 @@ module Docscribe
       #
       # Returns nil if the expression is empty or cannot be parsed.
       #
-      # @note module_function: when included, also defines #parse_expr (instance visibility: private)
-      # @param [String, nil] src expression source
+      # @note module_function: defines #parse_expr (visibility: private)
+      # @param [String?] src expression source
       # @raise [Parser::SyntaxError]
-      # @return [Parser::AST::Node, nil]
+      # @return [Parser::AST::Node, nil] if Parser::SyntaxError
+      # @return [nil] if Parser::SyntaxError
       def parse_expr(src)
         return nil if src.nil? || src.strip.empty?
 
         buffer = Parser::Source::Buffer.new('(param)')
         buffer.source = src
         Docscribe::Parsing.parse_buffer(buffer)
-      rescue Parser::SyntaxError
+      rescue Parser::SyntaxError # steep:ignore
         nil
       end
     end

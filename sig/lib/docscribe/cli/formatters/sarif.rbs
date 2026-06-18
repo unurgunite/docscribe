@@ -1,0 +1,32 @@
+module Docscribe
+  module CLI
+    module Formatters
+      class Sarif
+        SEVERITY_MAP: Hash[Symbol, String]
+        COP_NAME_MAP: Hash[Symbol, String]
+        SARIF_SCHEMA: String
+
+        def format_check_summary: (state: state, options: opts) -> void
+        def format_write_summary: (state: state, options: opts) -> void
+
+        private
+
+        def build_sarif_document: (state, top) -> Hash[String | Symbol, top]
+        def build_run: (state) -> Hash[Symbol, top]
+        def build_tool: -> Hash[Symbol, top]
+        def build_results: (state) -> Array[Hash[Symbol, top]]
+        def append_check_results: (state, Array[Hash[Symbol, top]]) -> void
+        def append_changes: (Array[String], Hash[String, Array[change]], Array[Hash[Symbol, top]], ?level: String?) -> void
+        def append_corrected_results: (state, Array[Hash[Symbol, top]]) -> void
+        def append_error_results: (state, Array[Hash[Symbol, top]]) -> void
+        def build_result: (change, String, ?level: String?) -> Hash[Symbol, top]
+        def build_error_result: (String, String) -> Hash[Symbol, top]
+        def location: (String, Integer) -> Hash[Symbol, top]
+        def cop_name_for: (change) -> String
+        def fallback_cop_name: (change) -> String
+        def message_for: (change) -> String
+        def build_invocation: (state) -> Hash[Symbol, top]
+      end
+    end
+  end
+end

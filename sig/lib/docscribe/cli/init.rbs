@@ -1,6 +1,8 @@
 module Docscribe
   module CLI
     module Init
+      BANNER: String
+
       def self.run: (Array[String] argv) -> (0 | 1)
 
       private

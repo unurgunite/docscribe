@@ -9,9 +9,14 @@ AllCops:
   NewCops: enable
   TargetRubyVersion: 2.7
 
+Metrics/ClassLength:
+  Enabled: false
+
+Metrics/ModuleLength:
+  Enabled: false
+
 Gemspec/DevelopmentDependencies:
-  Exclude:
-    - 'docscribe.gemspec'
+  EnforcedStyle: gemspec
 
 Style/DoubleNegation:
   Enabled: false

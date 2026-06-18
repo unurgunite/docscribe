@@ -8,6 +8,8 @@ module Docscribe
 
         @collapse_generics: bool
 
+        @collapse_object_generics: bool
+
         @env: (::RBS::Environment | nil)
 
         @builder: (::RBS::DefinitionBuilder | nil)
@@ -16,41 +18,43 @@ module Docscribe
 
         @collection_dropped: bool
 
-        def initialize: (sig_dirs: Array[String], ?collection_dirs: Array[String], ?collapse_generics: bool) -> void
+        def initialize: (sig_dirs: Array[String], ?collection_dirs: Array[String], ?collapse_generics: bool, ?collapse_object_generics: bool) -> void
 
-        def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Docscribe::Types::MethodSignature | nil)
+        def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Types::MethodSignature | nil)
 
         private
 
         def load_env!: () -> void
 
-        def lookup_signature: (String container, Symbol scope, (Symbol | String) name) -> (Docscribe::Types::MethodSignature | nil)
+        def lookup_signature: (String container, Symbol scope, (Symbol | String) name) -> (Types::MethodSignature | nil)
 
         def try_with_fallback_build_env: (Array[String] all_dirs, Array[String] collection_dirs) -> ::RBS::Environment
 
         def build_env: (Array[String] dirs) -> ::RBS::Environment
 
-        def definition_for: (container: String, scope: Symbol) -> untyped
+        def definition_for: (container: String, scope: Symbol) -> (::RBS::Definition | nil)
 
         def parse_type_name: (String string) -> ::RBS::TypeName
 
         def absolute_const: (String container) -> String
 
-        def build_signature: (::RBS::Types::Function func) -> Docscribe::Types::MethodSignature
+        def build_signature: (::RBS::Types::Function func) -> Types::MethodSignature
 
-        def build_param_types: (::RBS::Types::Function func) -> Hash[String, String]
+        def build_param_types: (::RBS::Types::Function func) -> [ Hash[String, String], Array[String] ]
 
-        def add_keywords!: (Hash[String, String] param_types, Hash[Symbol, untyped] keywords) -> void
+        def add_keywords!: (Hash[String, String] param_types, Hash[Symbol, ::RBS::Types::Function::Param] keywords) -> void
 
-        def add_positionals!: (Hash[String, String] param_types, Array[untyped] list) -> void
+        def add_positionals!: (Hash[String, String] param_types, Array[::RBS::Types::Function::Param] list) -> void
 
-        def build_rest_positional: (::RBS::Types::Function func) -> (Docscribe::Types::RestPositional | nil)
+        def collect_positionals!: (Hash[String, String] param_types, Array[String] positional_types, Array[::RBS::Types::Function::Param] list) -> void
 
-        def build_rest_keywords: (::RBS::Types::Function func) -> (Docscribe::Types::RestKeywords | nil)
+        def build_rest_positional: (::RBS::Types::Function func) -> (Types::RestPositional | nil)
 
-        def format_type: (untyped type) -> String
+        def build_rest_keywords: (::RBS::Types::Function func) -> (Types::RestKeywords | nil)
 
-        def handle_rbs_error: (untyped error, String context) -> void
+        def format_type: (TypeFormatter::rbs_type type) -> String
+
+        def handle_rbs_error: ((::RBS::BaseError | StandardError) error, String context) -> void
 
         def warn_once: (String msg) -> void
       end

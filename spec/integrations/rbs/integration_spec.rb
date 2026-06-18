@@ -173,6 +173,168 @@ RSpec.describe Docscribe::InlineRewriter do
     end
   end
 
+  describe 'handles unnamed positional parameters in RBS (by position matching)' do
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def foo: (String, Integer) -> String
+        end
+      RBS
+    end
+
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo(a, b)
+            a
+          end
+        end
+      RUBY
+    end
+
+    describe 'safe mode infers param types by position from unnamed RBS params' do
+      subject(:out) { inline_with_rbs(code: code, rbs: rbs) }
+
+      it { is_expected.to include(param_tag('a', 'String')) }
+      it { is_expected.to include(param_tag('b', 'Integer')) }
+      it { is_expected.not_to include(param_tag('a', 'Object')) }
+      it { is_expected.not_to include(param_tag('b', 'Object')) }
+    end
+
+    describe 'aggressive mode applies param types by position from unnamed RBS params' do
+      subject(:result) do
+        Dir.mktmpdir do |dir|
+          sig_dir = File.join(dir, 'sig')
+          FileUtils.mkdir_p(sig_dir)
+          File.write(File.join(sig_dir, 'demo.rbs'), rbs)
+          config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] })
+          described_class.rewrite_with_report(code, strategy: :aggressive, config: config, file: 'test.rb')
+        end
+      end
+
+      it { expect(result[:output]).to include(param_tag('a', 'String')) }
+      it { expect(result[:output]).to include(param_tag('b', 'Integer')) }
+      it { expect(result[:output]).not_to include(param_tag('a', 'Object')) }
+      it { expect(result[:output]).not_to include(param_tag('b', 'Object')) }
+    end
+  end
+
+  describe 'handles mix of named and unnamed positional parameters in RBS' do
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def foo: (String, Integer y) -> String
+        end
+      RBS
+    end
+
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo(x, y)
+            x
+          end
+        end
+      RUBY
+    end
+
+    describe 'safe mode uses position for unnamed and name for named params' do
+      subject(:out) { inline_with_rbs(code: code, rbs: rbs) }
+
+      it { is_expected.to include(param_tag('x', 'String')) }
+      it { is_expected.to include(param_tag('y', 'Integer')) }
+      it { is_expected.not_to include(param_tag('x', 'Object')) }
+      it { is_expected.not_to include(param_tag('y', 'Object')) }
+    end
+
+    describe 'aggressive mode uses position for unnamed and name for named params' do
+      subject(:result) do
+        Dir.mktmpdir do |dir|
+          sig_dir = File.join(dir, 'sig')
+          FileUtils.mkdir_p(sig_dir)
+          File.write(File.join(sig_dir, 'demo.rbs'), rbs)
+          config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] })
+          described_class.rewrite_with_report(code, strategy: :aggressive, config: config, file: 'test.rb')
+        end
+      end
+
+      it { expect(result[:output]).to include(param_tag('x', 'String')) }
+      it { expect(result[:output]).to include(param_tag('y', 'Integer')) }
+      it { expect(result[:output]).not_to include(param_tag('x', 'Object')) }
+      it { expect(result[:output]).not_to include(param_tag('y', 'Object')) }
+    end
+  end
+
+  describe 'handles only unnamed params in RBS (no named params at all)' do
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def foo: (Array[String], Hash[Symbol, Integer]) -> Array[Integer]
+        end
+      RBS
+    end
+
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo(items, options)
+            items.map { |x| x.to_i }
+          end
+        end
+      RUBY
+    end
+
+    describe 'safe mode applies complex generic types by position for unnamed params' do
+      subject(:out) { inline_with_rbs(code: code, rbs: rbs) }
+
+      it { is_expected.to include(param_tag('items', 'Array<String>')) }
+      it { is_expected.to include(param_tag('options', 'Hash<Symbol, Integer>')) }
+      it { is_expected.not_to include(param_tag('items', 'Object')) }
+      it { is_expected.not_to include(param_tag('options', 'Object')) }
+    end
+
+    describe 'aggressive mode applies complex generic types by position for unnamed params' do
+      subject(:result) do
+        Dir.mktmpdir do |dir|
+          sig_dir = File.join(dir, 'sig')
+          FileUtils.mkdir_p(sig_dir)
+          File.write(File.join(sig_dir, 'demo.rbs'), rbs)
+          config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] })
+          described_class.rewrite_with_report(code, strategy: :aggressive, config: config, file: 'test.rb')
+        end
+      end
+
+      it { expect(result[:output]).to include(param_tag('items', 'Array<String>')) }
+      it { expect(result[:output]).not_to include(param_tag('items', 'Object')) }
+    end
+  end
+
+  describe 'uses named param_types over positional when both are available' do
+    subject(:out) { inline_with_rbs(code: code, rbs: rbs) }
+
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def foo: (String, Integer y) -> String
+        end
+      RBS
+    end
+
+    let(:code) do
+      <<~RUBY
+        class Demo
+          def foo(x, y)
+            x
+          end
+        end
+      RUBY
+    end
+
+    it 'resolves y to Integer (named) and x to String (positional)' do
+      expect(out).to include(param_tag('x', 'String')).and include(param_tag('y', 'Integer'))
+    end
+  end
+
   describe 'rewrite_with_report detects type mismatches in safe mode with RBS' do
     let(:rbs) do
       <<~RBS

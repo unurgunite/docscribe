@@ -9,7 +9,6 @@ module Docscribe
     # Exclude rules win. If no include rules are configured, files are included by default.
     #
     # @param [String] path file path to test
-    # @raise [StandardError]
     # @return [Boolean]
     def process_file?(path)
       include_patterns, exclude_patterns = load_file_patterns
@@ -23,8 +22,7 @@ module Docscribe
 
     # Load normalized file include/exclude patterns from config.
     #
-    # @private
-    # @return [Array(Array<String>, Array<String>)] include_patterns, exclude_patterns
+    # @return [(Array<String>, Array<String>)]
     def load_file_patterns
       files = raw.dig('filter', 'files') || {}
       [normalize_file_patterns(files['include']), normalize_file_patterns(files['exclude'])]
@@ -32,10 +30,10 @@ module Docscribe
 
     # Compute the relative path for filtering.
     #
-    # @private
-    # @param [String] path
+    # @param [String] path file path to test
     # @raise [StandardError]
-    # @return [String]
+    # @return [String] if StandardError
+    # @return [Object] if StandardError
     def relative_path(path)
       Pathname.new(path).expand_path.relative_path_from(Pathname.pwd).cleanpath.to_s
     rescue StandardError
@@ -76,8 +74,7 @@ module Docscribe
     # - remove empties
     # - expand shorthand directory forms
     #
-    # @private
-    # @param [Array<String>, nil] list raw pattern list
+    # @param [Array<String>?] list raw pattern list
     # @return [Array<String>]
     def normalize_file_patterns(list)
       Array(list).compact.map(&:to_s).reject(&:empty?).flat_map { |pat| expand_directory_shorthand(pat) }.uniq
@@ -89,8 +86,7 @@ module Docscribe
     # - `"spec/"` => `"spec/**/*"`
     # - `"spec"` => `"spec/**/*"` if `spec` exists as a directory
     #
-    # @private
-    # @param [String] pattern
+    # @param [String] pattern file pattern to expand
     # @return [Array<String>]
     def expand_directory_shorthand(pattern)
       pat = pattern.dup
@@ -106,9 +102,8 @@ module Docscribe
 
     # Check whether a file path matches any configured file pattern.
     #
-    # @private
-    # @param [Array<String>] patterns
-    # @param [String] path
+    # @param [Array<String>] patterns file filter patterns
+    # @param [String] path file path to test
     # @return [Boolean]
     def file_matches_any?(patterns, path)
       patterns.any? { |pat| file_match_pattern?(pat, path) }
@@ -121,13 +116,12 @@ module Docscribe
     # - globs
     # - recursive glob shorthand normalization
     #
-    # @private
-    # @param [String] pattern
-    # @param [String] path
+    # @param [String] pattern file filter pattern
+    # @param [String] path file path to test
     # @return [Boolean]
     def file_match_pattern?(pattern, path)
       if pattern.start_with?('/') && pattern.end_with?('/') && pattern.length >= 2
-        return Regexp.new(pattern[1..-2]).match?(path)
+        return Regexp.new(pattern[1..-2]).match?(path) # steep:ignore
       end
 
       patterns_to_try = [pattern]
@@ -140,34 +134,33 @@ module Docscribe
 
     # Allowed method scopes from config/defaults.
     #
-    # @private
     # @return [Array<String>]
     def filter_scopes
-      Array(raw.dig('filter', 'scopes') || DEFAULT.dig('filter', 'scopes')).map(&:to_s)
+      Array(raw.dig('filter', 'scopes') || DEFAULT.dig('filter', 'scopes')).map(&:to_s) # steep:ignore
     end
 
     # Allowed method visibilities from config/defaults.
     #
-    # @private
     # @return [Array<String>]
     def filter_visibilities
-      Array(raw.dig('filter', 'visibilities') || DEFAULT.dig('filter', 'visibilities')).map(&:to_s)
+      Array(raw.dig('filter', 'visibilities') ||
+            DEFAULT.dig('filter', 'visibilities')).map(&:to_s) # steep:ignore
     end
 
     # Exclude method filter patterns.
     #
-    # @private
     # @return [Array<String>]
     def filter_exclude_patterns
-      Array(raw.dig('filter', 'exclude') || DEFAULT.dig('filter', 'exclude')).map(&:to_s).reject(&:empty?)
+      Array(raw.dig('filter', 'exclude') ||
+            DEFAULT.dig('filter', 'exclude')).map(&:to_s).reject(&:empty?) # steep:ignore
     end
 
     # Include method filter patterns.
     #
-    # @private
     # @return [Array<String>]
     def filter_include_patterns
-      Array(raw.dig('filter', 'include') || DEFAULT.dig('filter', 'include')).map(&:to_s).reject(&:empty?)
+      Array(raw.dig('filter', 'include') ||
+            DEFAULT.dig('filter', 'include')).map(&:to_s).reject(&:empty?) # steep:ignore
     end
   end
 end

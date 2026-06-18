@@ -63,13 +63,17 @@ module Docscribe
         'collection' => false,
         'sig_dirs' => ['sig'],
         'collection_dirs' => [], #: Array[String]
-        'collapse_generics' => false
+        'collapse_generics' => false,
+        'warn_missing_collection' => true,
+        'collapse_object_generics' => false
       },
       'sorbet' => {
         'enabled' => false,
         'rbi_dirs' => ['sorbet/rbi', 'rbi'],
         'collapse_generics' => false
       },
+      'keep_descriptions' => false,
+      'skip_anonymous_block_params' => false,
       'plugins' => {
         'require' => [] #: Array[String]
       }

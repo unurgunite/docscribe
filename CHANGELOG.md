@@ -1,3 +1,126 @@
+## 1.5.0
+
+### Added
+
+- **New subcommands:**
+    - `docscribe sigs` — generate YARD documentation from RBS type signatures (inverse of `docscribe generate --rbs`)
+    - `docscribe rbs` — generate `.rbs` type signature files from existing YARD documentation
+    - `docscribe update_types` — two-pass batch update: first pass runs `-AkB --rbs-collection`, second pass runs
+      `-aB --rbs-collection` to fill types from RBS signatures while preserving descriptions
+    - `docscribe check_for_comments` — scan `.rb` files for placeholder YARD strings (e.g. "Method documentation.", "
+      Param documentation.") that indicate undocumented methods; exit 1 if any found
+- **Output formats:**
+    - `--format json` — RuboCop-compatible JSON output with results, diagnostics, and per-file change lists
+    - `--format sarif` — SARIF 2.1 output for integration with GitHub Code Scanning / code quality dashboards
+    - `--format text` — explicit text output (default)
+    - Dedicated formatter classes in `lib/docscribe/cli/formatters/{text,json,sarif}.rb`
+- **CLI flags:**
+    - `--keep-descriptions` / `-k` — preserve manually written YARD descriptions (prose, `@note`, `@example`) in
+      aggressive mode instead of overwriting them
+    - `--quiet` — suppress all explanatory per‑file output; print only final status
+    - `--explain` — now enabled by default (was opt-in via `--explain`); shows per-file change reasons on stdout
+    - `--progress` — show `[N/total] filename` progress indicator on stderr for large codebases
+    - `--no-boilerplate` / `-B` — omit default method message and param header prose from generated docs
+    - `--sarif` / `--json` output file path options
+- **Exit codes:**
+    - `0` — OK, no changes needed
+    - `1` — changes applied (safe/aggressive mode) or warnings issued
+    - `2` — errors occurred (parse failures, I/O errors)
+- **Type inference — new syntax support & better branch handling:**
+    - Compound assignment: `@ivar += 123` -> `Integer`, `@ivar ||= Hash.new` -> `Hash`
+    - Literal and variable RBS receivers properly resolved (`String.new` uses `String` methods)
+    - RHS type propagation through `local_var_types` tracking (`foo = bar; foo.length` -> `Integer`)
+    - `begin`/`rescue`/`else`/`end` (`:kwbegin + :rescue`) — unifies body, all rescue branches, and else clause
+    - `risky_call rescue :default` (rescue-modifier) — unifies call result with default value
+    - `defined?(x)` -> `String?` (returns `nil` or description string)
+    - `super` / `super(args)` — RBS lookup on parent method when available, fallback to `Object`
+    - `yield` / `yield(args)` — returns block result type (`Object`)
+    - Pattern matching `case...in` (`:case_match`) — unifies all `in_pattern` branches + else clause
+    - `while`/`until` -> `nil`, `for x in col` -> element type of collection
+    - `if`/`else` / `unless`/`else` — unifies both branch types into a union
+    - `case`/`when` — unifies all `when` branches + `else` into a union
+    - Local variable literal inference: `foo = true` -> `Boolean`, `foo = 42` -> `Integer`, `foo = "str"` -> `String`
+    - New test files: `spec/infer/if_else_spec.rb`, `spec/infer/kwbegin_rescue_defined_super_yield_spec.rb`,
+      `spec/infer/lvar_spec.rb`, `spec/infer/or_and_spec.rb`
+- **RBS integration:**
+    - Warning when `--rbs` flag is used without the `rbs` gem installed (shows install instructions on stderr)
+    - Clear actionable error message when `--rbs-collection` is used without running
+      `bundle exec rbs collection install`
+    - `collapse_object_generics` config option — collapses `Array<Object>` -> `Array` when all inner types resolve to
+      Object (useful for Hash[Symbol, untyped] -> `Hash<Symbol, Object>` -> `Hash<Symbol>`)
+    - Method ID fuzzy matching for RBS signature lookup (matches `foo` against `foo`, `foo?`, `foo=` as appropriate)
+    - Per-file RBS signature declarations split alongside their `lib/` sources
+- **Configuration:**
+    - `skip_anonymous_block_params` config option — skip generating `@param` tags for anonymous `&` (Ruby 3.4+)
+    - `emit.include_default_message: true/false` — control default method message header
+    - `emit.include_param_documentation: true/false` — control param placeholder text
+    - Default config template comments now in English: `"Method documentation."`, `"Param documentation."`
+    - All new config keys exposed in `docscribe init` YAML template
+- **Post-install message:**
+    - `docscribe.gemspec` includes a `post_install_message` thanking the user and linking to the changelog
+- **Project assets:**
+    - Logo icons added to `assets/icons/` (40×40, 80×80, 128×128, 256×256 pixels) — doc icon with ruby gem
+    - Logo Attribution section added to README
+    - README logo displays at the top next to badges
+- **CI/CD pipeline:**
+    - CI now runs `rbs validate` and `steep check` to enforce RBS/stype type correctness
+    - CI uses `-aB` instead of `-AkB` for doc idempotency check (avoids infinite `@keep` flag churn)
+
+### Fixed
+
+- **`--help` for subcommands:**
+    - `init --help` now shows `BANNER` with description "Generate a starter docscribe.yml configuration file."
+    - `generate --help` now properly prints help text instead of silently exiting without output
+- **stdout/stderr separation:**
+    - Results (per-file change lists, JSON SARIF output) go to **stdout** for piping
+    - Diagnostics, warnings, progress go to **stderr**
+    - Fail paths list printed to stdout (was stderr) for pipe-friendly CI integration
+- **`check_for_comments` false positive:**
+    - `comment_line?` now skips example/nested comments matching `/^#\s*#/` (e.g. `  #   # Method documentation.` in
+      YARD example blocks)
+    - `bundle exec docscribe check_for_comments lib` runs clean on the project itself
+- **RuboCop compliance:** 50 -> 0 offenses across `lib/`, `spec/`:
+    - Extracted `process_results` in `check_for_comments.rb`
+    - Extracted `announce_start`/`announce_complete` in `update_types.rb`
+    - Renamed `run_pass_1`/`run_pass_2` -> `run_first_pass`/`run_second_pass`
+    - Reordered methods per `SortedMethodsByCall/Waterfall`
+    - Fixed spec `ExampleLength`/`MultipleExpectations`/`MessageSpies`/`StubbedMock`
+- **Steep type errors:** 47 -> 0 problems:
+    - Created `sig/lib/docscribe/cli/update_types.rbs`, `check_for_comments.rbs`, `formatters/{text,json,sarif}.rbs`,
+      `rbs_gen.rbs`, `sigs.rbs`
+    - Added `BANNER` to `init.rbs`
+    - Simplified `raw_or_default` from `reduce` to `Hash#dig` to avoid type mismatch
+    - RBS union type syntax: `(String | nil)` for optional return types
+    - Fixed nilable type guards across `source_helpers.rb`, `inline_rewriter.rb`, `doc_builder.rb`, `collector.rb`,
+      `returns.rb`, `provider.rb`, `generate.rb`
+- **`--verbose` output:** now correctly shows per-file change reasons (was silently omitting them in some modes)
+- **Ruby 3.0/3.1 CI compatibility:** rbs 4.x requires Ruby ≥ 3.2, excluded via `BUNDLE_WITHOUT`
+
+### Changed
+
+- **`--explain` is default:** users now see explanatory per-file output without needing to opt in. Use `--quiet` to
+  suppress.
+- **README completely rewritten (563 lines changed):**
+    - Restructured: Title -> Badges -> Screenshot/Logo -> Quick Start -> Key Features -> Common Workflows -> Table of
+      Contents -> rest
+    - 16 GitHub alert blocks (`[!NOTE]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`)
+    - Full collapsible configuration reference table (43 keys) with English descriptions and default values
+    - Type resolution priority documentation (Sorbet inline -> Sorbet RBI -> RBS sig_dirs+collection -> fallback
+      sig_dirs -> AST inference)
+    - New sections for all subcommands: `sigs`, `rbs`, `update_types`, `check_for_comments`
+    - Tips & tricks section with common flag combinations
+    - Roadmap updated with new planned features
+- **CLI banners updated** to show all 7 invocation forms: `docscribe [options]`, `init`, `generate`, `sigs`, `rbs`,
+  `update_types`, `check_for_comments`
+- **YARD type formatter:** uses parentheses `()` for order-dependent lists (tuples) — correct YARD syntax:
+  `@return [(String, Array<(Integer, String)>)?]`
+- **VERSION bumped** to `1.5.0`
+- **`Metrics/ModuleLength` limit raised** in `.rubocop_todo.yml` instead of refactoring (planned for 1.5.1)
+
+### Removed
+
+- Obsolete `lib/docscribe/post_install_message.rb` (logic inlined into `docscribe.gemspec`)
+
 ## 1.4.2
 
 ### Added
@@ -9,14 +132,14 @@
 
 ### Fixed
 
-- Nilable type warnings in steep (89→57):
-  - `source_helpers.rb`: guard `src[...]`, `lines[...]` with `|| ""` / `|| []`
-  - `inline_rewriter.rb`: guard `src`/`lines`, `anchor_node`, `param_types`, `visibility`
-  - `doc_builder.rb`: guard `type_match[1]`, `m[1]`, `treat_options_keyword_as_hash`, `setup`
-  - `collector.rb`: `!!(node && .type)` for `self_node?`, guard `args`
-  - `returns.rb`: guard `node.children[]`, `recv`, default kwargs to `unify_types`
-  - `provider.rb`: guard `@builder`, fallback `name || :Object`
-  - `generate.rb`: guard `output_dir`/`class_name` with `|| '.'` / `|| ''`
+- Nilable type warnings in steep (89->57):
+    - `source_helpers.rb`: guard `src[...]`, `lines[...]` with `|| ""` / `|| []`
+    - `inline_rewriter.rb`: guard `src`/`lines`, `anchor_node`, `param_types`, `visibility`
+    - `doc_builder.rb`: guard `type_match[1]`, `m[1]`, `treat_options_keyword_as_hash`, `setup`
+    - `collector.rb`: `!!(node && .type)` for `self_node?`, guard `args`
+    - `returns.rb`: guard `node.children[]`, `recv`, default kwargs to `unify_types`
+    - `provider.rb`: guard `@builder`, fallback `name || :Object`
+    - `generate.rb`: guard `output_dir`/`class_name` with `|| '.'` / `|| ''`
 - RBS signature fixes: `?collapse_generics` as optional keyword arg, `apply_attr_aggressive!` 2-arg signature
 - CLI `dispatch_subcommand` now guarantees `Integer` return (`else 0`)
 - CI compatibility for Ruby 3.0/3.1: rbs 4.x requires Ruby ≥ 3.2, excluded via `BUNDLE_WITHOUT`
@@ -25,8 +148,10 @@
 
 - Major RuboCop compliance sweep across `lib/`, `spec/`, `examples/`
 - CLI layer refactored (`options.rb`, `run.rb`, `generate.rb`, `init.rb`, `config_builder.rb`)
-- Core rewriter engine refactored (`inline_rewriter.rb`, `collector.rb`, `doc_builder.rb`, `doc_block.rb`, `tag_sorter.rb`)
-- Type system helpers refactored (`rbs/provider.rb`, `rbs/type_formatter.rb`, `sorbet/base_provider.rb`, `infer/returns.rb`)
+- Core rewriter engine refactored (`inline_rewriter.rb`, `collector.rb`, `doc_builder.rb`, `doc_block.rb`,
+  `tag_sorter.rb`)
+- Type system helpers refactored (`rbs/provider.rb`, `rbs/type_formatter.rb`, `sorbet/base_provider.rb`,
+  `infer/returns.rb`)
 - Plugin system dispatch simplified (`plugin.rb`, `registry.rb`, `base/collector_plugin.rb`)
 - `.rubocop.yml` / `.rubocop_todo.yml` updated with tighter thresholds
 
@@ -47,7 +172,8 @@
 - `rewrite_with_report` default `config:` (`nil` instead of `Docscribe::Config.new({})`)
 - `--include '*/get'` glob pattern now correctly routes as method filter instead of file filter
 - `match_pattern?` translates `/` to `#` in glob patterns so `*/get` matches `ApiClient#get`
-- ModelAttributes `build_method_docs` processes each class with its own table columns instead of using the first model's columns for the entire AST
+- ModelAttributes `build_method_docs` processes each class with its own table columns instead of using the first model's
+  columns for the entire AST
 
 ### Changed
 

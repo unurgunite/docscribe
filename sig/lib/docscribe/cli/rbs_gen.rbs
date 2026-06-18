@@ -1,0 +1,78 @@
+module Docscribe
+  module CLI
+    module RbsGen
+      BANNER: String
+
+      class YardTags
+        def initialize: (params: Array[ParamTag], return_type: String?, options: Array[ParamTag]) -> void
+        def params: () -> Array[ParamTag]
+        def return_type: () -> String?
+        def options: () -> Array[ParamTag]
+      end
+
+      class ParamTag
+        def initialize: (name: String, type: String) -> void
+        def name: () -> String
+        def type: () -> String
+      end
+
+      class MethodDef
+        def initialize: (name: Symbol, scope: Symbol, container: String?, file: String, line: Integer, yard_tags: YardTags?) -> void
+        def name: () -> Symbol
+        def scope: () -> Symbol
+        def container: () -> String?
+        def file: () -> String
+        def line: () -> Integer
+        def yard_tags: () -> YardTags?
+      end
+
+      class WalkContext
+        def initialize: (containers: Array[String], method_defs: Array[MethodDef], path: String, comment_map: Hash[Integer, String], src_lines: Array[String], inside_sclass: bool) -> void
+        def containers: () -> Array[String]
+        def method_defs: () -> Array[MethodDef]
+        def path: () -> String
+        def comment_map: () -> Hash[Integer, String]
+        def src_lines: () -> Array[String]
+        def inside_sclass: () -> bool
+      end
+
+      def self.run: (Array[String]) -> Integer
+      private
+      def self.parse_options: (Array[String]) -> Hash[Symbol, untyped]
+      def self.expand_paths: (Array[String]) -> Array[String]
+      def self.expand_single_path: (Array[String], String) -> void
+      def self.no_files_found: () -> Integer
+      def self.run_with: (Hash[Symbol, untyped], Array[String]) -> Integer
+      def self.generate_for_file: (String, Hash[Symbol, untyped]) -> bool
+      def self.build_comment_map: (Array[Parser::Source::Comment]? comments) -> Hash[Integer, String]
+      def self.find_yard_block: (Integer line, Hash[Integer, String] comment_map, Array[String] src_lines) -> Array[String]
+      def self.parse_yard_tags: (Array[String] comment_lines) -> YardTags
+      def self.walk_for_methods: (Parser::AST::Node node, WalkContext ctx) -> void
+      def self.walk_class_module: (Parser::AST::Node node, WalkContext ctx) -> void
+      def self.walk_sclass: (Parser::AST::Node node, WalkContext ctx) -> void
+      def self.walk_children: (Parser::AST::Node node, WalkContext ctx) -> void
+      def self.collect_def: (Parser::AST::Node node, WalkContext ctx) -> void
+      def self.collect_defs: (Parser::AST::Node node, WalkContext ctx) -> void
+      def self.container_name: (Array[String] containers) -> String?
+      def self.const_name: (Parser::AST::Node node) -> String
+      def self.build_rbs_content: (Array[MethodDef] method_defs) -> String
+      def self.format_method_sig: (MethodDef method) -> String
+      def self.return_type_rbs: (MethodDef method) -> String
+      def self.type_to_rbs: (String yard_type) -> String
+      def self.write_file: (String content, String source_path, Hash[Symbol, untyped] options) -> void
+
+      def self.process_source?: (String src, String path, Hash[Symbol, untyped] options) -> bool
+      def self.walk_source: (Parser::AST::Node ast, Array[Parser::Source::Comment]? comments, String path, Array[String] src_lines) -> Array[MethodDef]
+      def self.output_rbs: (String content, String path, Hash[Symbol, untyped] options) -> void
+      def self.parse_yard_tags_for_line: (Integer line, WalkContext ctx) -> YardTags?
+      def self.parse_yard_line: (String line, Hash[Symbol, untyped] state) -> void
+      def self.parse_param_tag: (String text, Hash[Symbol, untyped] state) -> void
+      def self.parse_option_tag: (String text, Hash[Symbol, untyped] state) -> void
+      def self.parse_return_tag: (String text, Hash[Symbol, untyped] state) -> void
+      def self.append_group: (Array[String] lines, String container, Array[MethodDef] methods) -> void
+      def self.build_param_strs: (MethodDef method) -> Array[String]
+      def self.rbs_output_path: (String source_path, Hash[Symbol, untyped] options) -> String
+
+    end
+  end
+end

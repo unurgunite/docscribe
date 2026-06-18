@@ -1,0 +1,8 @@
+module Parser
+  class Base
+    def parse: (String string, ?String file, ?Integer line) -> Parser::AST::Node?
+             | (Parser::Source::Buffer buffer) -> (Parser::AST::Node | nil)
+    def parse_with_comments: (String string, ?String file, ?Integer line) -> [Parser::AST::Node?, Array[Parser::Source::Comment]]
+                           | (Parser::Source::Buffer buffer) -> [Parser::AST::Node?, Array[Parser::Source::Comment]]
+  end
+end

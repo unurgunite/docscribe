@@ -9,3 +9,4 @@ module Docscribe
     def self.dispatch_subcommand: (Array[String] argv) -> Integer
   end
 end
+

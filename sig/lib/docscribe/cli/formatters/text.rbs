@@ -1,0 +1,38 @@
+module Docscribe
+  module CLI
+    module Formatters
+      # Text output formatter preserving the original CLI output format.
+      class Text
+        def format_check_summary: (state: state, options: opts) -> void
+
+        def format_write_summary: (state: state, options: opts) -> void
+
+        def format_fail_paths: (state state, opts opts) -> void
+
+        def format_check_status_line: (state state) -> void
+
+        def format_type_mismatch_paths: (state state, opts opts) -> void
+
+        def format_corrected_paths: (state state, opts opts) -> void
+
+        def format_error_paths: (state state) -> void
+
+        private
+
+        def all_fine?: (state state, Integer checked_error, Integer type_mismatch_count) -> bool
+
+        def mismatch_only?: (state state, Integer checked_error) -> bool
+
+        def failure_line: (state state, Integer type_mismatch_count, Integer checked_error) -> String
+
+        def format_change_reason: (change change) -> String
+
+        def change_line_suffix: (change change) -> String
+
+        def change_method_suffix: (change change) -> String
+
+        def direct_message_change?: (change change) -> bool
+      end
+    end
+  end
+end

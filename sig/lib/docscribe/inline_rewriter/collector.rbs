@@ -30,9 +30,7 @@ module Docscribe
 
       @name_stack: Array[String]
 
-      @module_states: Hash[String, Hash[Symbol, untyped]]
-
-      PROCESS_STMT_HANDLERS: { def: :process_def_stmt, defs: :process_defs_stmt, sclass: :process_sclass_stmt, send: :process_send_stmt }
+      @module_states: Hash[String, Hash[Symbol, bool]]
 
       class VisibilityCtx
         @default_instance_vis: Symbol
@@ -94,15 +92,15 @@ module Docscribe
 
       def initialize: (Parser::Source::Buffer buffer) -> void
 
-      def on_class: (Parser::AST::Node node) -> untyped
+      def on_class: (Parser::AST::Node node) -> Parser::AST::Node
 
-      def on_module: (Parser::AST::Node node) -> untyped
+      def on_module: (Parser::AST::Node node) -> Parser::AST::Node
 
-      def on_casgn: (Parser::AST::Node node) -> untyped
+      def on_casgn: (Parser::AST::Node node) -> Parser::AST::Node
 
-      def on_def: (Parser::AST::Node node) -> untyped
+      def on_def: (Parser::AST::Node node) -> Parser::AST::Node
 
-      def on_defs: (Parser::AST::Node node) -> untyped
+      def on_defs: (Parser::AST::Node node) -> Parser::AST::Node
 
       private
 
@@ -110,7 +108,7 @@ module Docscribe
 
       def process_defs_stmt: (Parser::AST::Node node, VisibilityCtx ctx, pending_sig_anchor: Parser::AST::Node?) -> void
 
-      def process_sclass_stmt: (Parser::AST::Node node, VisibilityCtx ctx) -> void
+      def process_sclass_stmt: (Parser::AST::Node node, VisibilityCtx ctx, ?pending_sig_anchor: Parser::AST::Node?) -> void
 
       def configure_sclass_context: (VisibilityCtx ctx, Parser::AST::Node recv) -> void
 
@@ -204,8 +202,6 @@ module Docscribe
 
       def process_casgn_stmt: (Parser::AST::Node node) -> void
 
-      def dispatch_process_stmt: (Symbol handler, Parser::AST::Node node, VisibilityCtx ctx, Parser::AST::Node? pending_sig_anchor) -> void
-
       def process_struct_casgn?: (Parser::AST::Node node) -> bool
 
       def struct_new_node?: (Parser::AST::Node? node) -> bool
@@ -233,6 +229,8 @@ module Docscribe
       def sig_send_node?: (Parser::AST::Node node) -> bool
 
       def promote_extend_self_container: (container: String) -> void
+
+      def drop_first_if_str!: (Array[Parser::AST::Node] args) -> void
     end
   end
 end

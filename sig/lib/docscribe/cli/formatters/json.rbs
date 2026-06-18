@@ -1,0 +1,56 @@
+module Docscribe
+  module CLI
+    module Formatters
+      # Output formatter producing RuboCop-compatible JSON.
+      class Json
+        SEVERITY_MAP: Hash[Symbol, String]
+
+        COP_NAME_MAP: Hash[Symbol, String]
+
+        def format_check_summary: (state: state, options: opts) -> void
+
+        def format_write_summary: (state: state, options: opts) -> void
+
+        private
+
+        def build_document: (state state, opts _options) -> Hash[Symbol, untyped]
+
+        def document_hash: (Array[Hash[Symbol, untyped]] files, state state) -> Hash[Symbol, untyped]
+
+        def metadata_hash: () -> Hash[Symbol, String]
+
+        def summary_hash: (Array[Hash[Symbol, untyped]] files, state state) -> Hash[Symbol, Integer]
+
+        def build_files: (state state) -> Array[Hash[Symbol, untyped]]
+
+        def append_check_files: (state state, Array[Hash[Symbol, untyped]] files) -> void
+
+        def append_corrected_files: (state state, Array[Hash[Symbol, untyped]] files) -> void
+
+        def append_error_files: (state state, Array[Hash[Symbol, untyped]] files) -> void
+
+        def merge_or_append: (Array[Hash[Symbol, untyped]] files, String path, Array[Hash[Symbol, untyped]] offenses) -> void
+
+        def file_entry: (String path, Array[change] changes, ?severity: String?) -> Hash[Symbol, untyped]
+
+        def error_offense: (state state, String path) -> Hash[Symbol, untyped]
+
+        def error_offense_hash: (String message) -> Hash[Symbol, untyped]
+
+        def default_location: () -> Hash[Symbol, Integer]
+
+        def build_offenses: (Array[change] changes, ?severity: String?) -> Array[Hash[Symbol, untyped]]
+
+        def build_offense: (change change, String? severity) -> Hash[Symbol, untyped]
+
+        def location_for: (change change) -> Hash[Symbol, Integer]
+
+        def cop_name_fallback: (change change) -> String
+
+        def build_message: (change change) -> String
+
+        def inspected_count: (state state) -> Integer
+      end
+    end
+  end
+end

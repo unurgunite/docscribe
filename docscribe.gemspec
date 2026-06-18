@@ -33,6 +33,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'parser', '>= 3.3'
   spec.add_dependency 'prism', '~> 1.8'
+  spec.add_development_dependency 'irb-autosuggestions'
   spec.add_development_dependency 'rake'
   spec.add_development_dependency 'rspec', '~> 3.0'
   spec.add_development_dependency 'rubocop'
@@ -40,6 +41,15 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rubocop-rspec'
   spec.add_development_dependency 'rubocop-sorted_methods_by_call'
   spec.add_development_dependency 'yard', '>= 0.9.38'
+
+  spec.post_install_message = <<~MESSAGE
+    You installed docscribe #{Docscribe::VERSION}. Your future self (and your team) thank you.
+
+      $ docscribe --help
+
+    Happy documenting!
+    https://github.com/unurgunite/docscribe
+  MESSAGE
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html

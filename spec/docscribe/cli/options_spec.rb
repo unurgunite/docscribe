@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'docscribe/cli/options'
+
 RSpec.describe Docscribe::CLI::Options do
   it 'routes /regex/ passed to --include into method filters (not file filters)', :aggregate_failures do
     argv = %w[--include /^A#foo$/ lib]
@@ -64,5 +66,71 @@ RSpec.describe Docscribe::CLI::Options do
 
     expect(opts[:sorbet]).to be(true)
     expect(opts[:rbi_dirs]).to eq(%w[sorbet/rbi rbi])
+  end
+
+  it 'sets no_boilerplate with -B', :aggregate_failures do
+    opts = described_class.parse!(%w[-B lib])
+
+    expect(opts[:no_boilerplate]).to be(true)
+  end
+
+  it 'sets no_boilerplate with --no-boilerplate', :aggregate_failures do
+    opts = described_class.parse!(%w[--no-boilerplate lib])
+
+    expect(opts[:no_boilerplate]).to be(true)
+  end
+
+  it 'combines -A -k -B without error', :aggregate_failures do
+    opts = described_class.parse!(%w[-AkB lib])
+
+    expect(opts[:mode]).to eq(:write)
+    expect(opts[:strategy]).to eq(:aggressive)
+    expect(opts[:keep_descriptions]).to be(true)
+    expect(opts[:no_boilerplate]).to be(true)
+  end
+
+  it 'sets explain with --explain', :aggregate_failures do
+    opts = described_class.parse!(%w[--explain lib])
+
+    expect(opts[:explain]).to be(true)
+    expect(opts[:quiet]).to be(false)
+  end
+
+  it 'sets quiet with --quiet', :aggregate_failures do
+    opts = described_class.parse!(%w[--quiet lib])
+
+    expect(opts[:quiet]).to be(true)
+    expect(opts[:explain]).to be(false)
+  end
+
+  it 'parses -q as quiet' do
+    opts = described_class.parse!(%w[-q lib])
+
+    expect(opts[:quiet]).to be(true)
+  end
+
+  it 'quiet and explain can coexist' do
+    opts = described_class.parse!(%w[--quiet --explain lib])
+    expect(opts[:quiet]).to be(true)
+  end
+
+  it 'quiet and explain can coexist (explain)' do
+    opts = described_class.parse!(%w[--quiet --explain lib])
+    expect(opts[:explain]).to be(true)
+  end
+
+  it 'parses --progress flag' do
+    opts = described_class.parse!(%w[--progress lib])
+    expect(opts[:progress]).to be(true)
+  end
+
+  it 'does not set progress by default' do
+    opts = described_class.parse!(%w[lib])
+    expect(opts[:progress]).to be(false)
+  end
+
+  it 'auto-enables progress with --verbose' do
+    opts = described_class.parse!(%w[--verbose lib])
+    expect(opts).to include(progress: true, verbose: true)
   end
 end

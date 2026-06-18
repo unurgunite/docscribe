@@ -64,6 +64,9 @@ module DocscribePlugins
       recv.nil? && ASSOCIATION_METHODS.include?(meth)
     end
 
+    # @private
+    # @param [Object] node
+    # @return [Hash]
     def association_doc(node)
       _recv, meth, name_node, *option_nodes = *node
       return unless name_node&.type == :sym
@@ -87,10 +90,17 @@ module DocscribePlugins
       hash_node.children.each_with_object({}) { |pair, opts| add_option(pair, opts) }
     end
 
+    # @private
+    # @param [Object] node
+    # @return [Object]
     def hash_node?(node)
       node.is_a?(Parser::AST::Node) && node.type == :hash
     end
 
+    # @private
+    # @param [Object] pair
+    # @param [Object] opts
+    # @return [Object]
     def add_option(pair, opts)
       return unless pair.type == :pair
 

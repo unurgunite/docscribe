@@ -139,5 +139,22 @@ module Docscribe
     def include_param_documentation?
       fetch_bool(%w[emit include_param_documentation], true)
     end
+
+    # Whether to preserve existing @param/@return descriptions in aggressive mode.
+    #
+    # @return [Boolean]
+    def keep_descriptions?
+      fetch_bool(%w[keep_descriptions], false)
+    end
+
+    # Whether to skip @param generation for anonymous block arguments (&).
+    #
+    # Ruby 3.2+ allows `def foo(&)`. When enabled, no @param is generated
+    # for anonymous block parameters since they have no name to reference.
+    #
+    # @return [Boolean]
+    def skip_anonymous_block_params?
+      fetch_bool(%w[skip_anonymous_block_params], false)
+    end
   end
 end

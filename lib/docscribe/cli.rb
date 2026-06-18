@@ -4,6 +4,10 @@ require 'docscribe/cli/init'
 require 'docscribe/cli/generate'
 require 'docscribe/cli/options'
 require 'docscribe/cli/run'
+require 'docscribe/cli/sigs'
+require 'docscribe/cli/rbs_gen'
+require 'docscribe/cli/update_types'
+require 'docscribe/cli/check_for_comments'
 
 module Docscribe
   # CLI entry point and command dispatch.
@@ -28,26 +32,30 @@ module Docscribe
 
       private
 
+      # Subcommand
+      #
       # @private
-      # @param [String] cmd
+      # @param [String?] cmd potential subcommand name
       # @return [Boolean]
       def subcommand?(cmd)
-        %w[init generate].include?(cmd)
+        %w[init generate sigs rbs update_types check_for_comments].include?(cmd)
       end
 
+      # Dispatch subcommand
+      #
       # @private
-      # @param [Array<String>] argv
-      # @return [Integer, nil]
+      # @param [Array<String>] argv raw command-line arguments
+      # @return [Integer]
       def dispatch_subcommand(argv)
-        case argv.first
-        when 'init'
-          argv.shift
-          Docscribe::CLI::Init.run(argv)
-        when 'generate'
-          argv.shift
-          Docscribe::CLI::Generate.run(argv)
-        else
-          0
+        cmd = argv.shift
+        case cmd
+        when 'init' then Docscribe::CLI::Init.run(argv)
+        when 'generate' then Docscribe::CLI::Generate.run(argv)
+        when 'sigs' then Docscribe::CLI::Sigs.run(argv)
+        when 'rbs' then Docscribe::CLI::RbsGen.run(argv)
+        when 'update_types' then Docscribe::CLI::UpdateTypes.run(argv)
+        when 'check_for_comments' then Docscribe::CLI::CheckForComments.run(argv)
+        else 0
         end
       end
     end

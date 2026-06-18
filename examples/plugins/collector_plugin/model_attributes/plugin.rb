@@ -157,16 +157,25 @@ module DocscribePlugins
       false
     end
 
+    # @private
+    # @param [Object] parent
+    # @return [Object]
     def active_record_parent?(parent)
       application_record_parent?(parent) ||
         active_record_base_parent?(parent)
     end
 
+    # @private
+    # @param [Object] parent
+    # @return [Object]
     def application_record_parent?(parent)
       parent.type == :const &&
         parent.children[1] == :ApplicationRecord
     end
 
+    # @private
+    # @param [Object] parent
+    # @return [Object]
     def active_record_base_parent?(parent)
       parent.type == :const &&
         parent.children[0]&.type == :const &&
@@ -221,6 +230,11 @@ module DocscribePlugins
       results
     end
 
+    # @private
+    # @param [Object] node
+    # @param [Object] tables
+    # @param [Object] results
+    # @return [Object]
     def collect_class_method_docs(node, tables, results)
       return unless node.type == :class
 
@@ -233,6 +247,10 @@ module DocscribePlugins
       end
     end
 
+    # @private
+    # @param [Object] node
+    # @param [Object] tables
+    # @return [Object]
     def model_columns_for(node, tables)
       model_name = resolve_const_name(node.children[0])
       return unless model_name
@@ -270,6 +288,9 @@ module DocscribePlugins
       "#{word}s"
     end
 
+    # @private
+    # @param [Object] node
+    # @return [Object]
     def method_nodes_for(node)
       _name, _parent, body = *node
       return [] unless body
@@ -278,6 +299,10 @@ module DocscribePlugins
       stmts.select { |stmt| %i[def defs].include?(stmt.type) }
     end
 
+    # @private
+    # @param [Object] meth_node
+    # @param [Object] columns
+    # @return [Hash]
     def build_method_doc(meth_node, columns)
       meth_name = method_name(meth_node)
       return if reserved_method?(meth_name.to_s)
@@ -293,6 +318,9 @@ module DocscribePlugins
       }
     end
 
+    # @private
+    # @param [Object] node
+    # @return [Object]
     def method_name(node)
       case node.type
       when :def
@@ -331,6 +359,9 @@ module DocscribePlugins
       infer_type_from_node(last_expr, columns)
     end
 
+    # @private
+    # @param [Object] meth_node
+    # @return [Object]
     def method_body_node(meth_node)
       case meth_node.type
       when :def
@@ -383,10 +414,16 @@ module DocscribePlugins
       "#{prefix}::#{name}"
     end
 
+    # @private
+    # @param [Object] node
+    # @return [Object]
     def variable_node?(node)
       %i[lvar ivasgn ivar].include?(node.type)
     end
 
+    # @private
+    # @param [Object] node
+    # @return [Object]
     def literal_type(node)
       return 'Boolean' if [true, false].include?(node.type)
 
@@ -430,6 +467,9 @@ module DocscribePlugins
       column_yard_type(variable_column_name(node), columns)
     end
 
+    # @private
+    # @param [Object] node
+    # @return [Object]
     def variable_column_name(node)
       case node.type
       when :lvar
