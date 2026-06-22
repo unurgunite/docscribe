@@ -199,9 +199,7 @@ module Docscribe
           loop do
             return if Docscribe::Server.running?(config_path)
 
-            if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-              raise 'Docscribe: server failed to start'
-            end
+            raise 'Docscribe: server failed to start' if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
 
             sleep 0.1
           end

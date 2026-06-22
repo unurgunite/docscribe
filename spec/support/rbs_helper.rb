@@ -56,7 +56,7 @@ module RbsHelper
 
       inline(
         code,
-        config: Docscribe::Config.new(**config.merge('rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] }))
+        config: Docscribe::Config.new(**config, 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] })
       )
     end
   end

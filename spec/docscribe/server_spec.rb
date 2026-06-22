@@ -26,8 +26,7 @@ RSpec.describe Docscribe::Server do
 
     it 'returns false when socket file is stale (not a real socket)' do
       Dir.mktmpdir do |dir|
-        allow(described_class).to receive(:socket_path).and_return(sock = "#{dir}/test.sock")
-        allow(described_class).to receive(:pid_path).and_return("#{dir}/test.pid")
+        allow(described_class).to receive_messages(socket_path: sock = "#{dir}/test.sock", pid_path: "#{dir}/test.pid")
         File.write(sock, '') # regular file, not a Unix socket
         expect(described_class.running?).to be false
         expect(File.exist?(sock)).to be false

@@ -144,6 +144,7 @@ module Docscribe
               path.children.each do |child|
                 next unless child.directory?
                 next if stdlib.include?(child.basename.to_s)
+
                 loader.add(path: child)
               end
             else
