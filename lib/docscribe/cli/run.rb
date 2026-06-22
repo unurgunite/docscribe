@@ -75,9 +75,8 @@ module Docscribe
         def run_via_server(options:, argv:)
           require 'docscribe/server'
           conf = build_config(options)
-          config_path = conf.config_path
-          ensure_server_running!(config_path: config_path)
-          client = Docscribe::Server::Client.new(config_path: config_path)
+          ensure_server_running!(config_path: conf.config_path)
+          client = Docscribe::Server::Client.new(config_path: conf.config_path)
           paths = filtered_paths(argv, conf)
           return no_files_found unless paths.any?
 

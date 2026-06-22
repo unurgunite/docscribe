@@ -126,42 +126,60 @@ module Docscribe
         # between rbs stdlib and collection gems.
         #
         # @private
-        # @param [Object] all_dirs combined sig and collection dirs
-        # @param [Object] collection_dirs RBS collection directories
-        # @return [Object]
+        # @param [Array<String>] all_dirs combined sig and collection dirs
+        # @param [Array<String>] collection_dirs RBS collection directories
+        # @return [RBS::Environment]
         def build_env_with_collection(all_dirs, collection_dirs)
-          stdlib = Set.new(stdlib_gem_names)
           loader = ::RBS::EnvironmentLoader.new
           loader.add(library: 'rbs') # steep:ignore
+          add_dirs_to_loader!(loader, all_dirs, collection_dirs)
+          env = ::RBS::Environment.from_loader(loader).resolve_type_names
+          @builder = ::RBS::DefinitionBuilder.new(env: env)
+          env
+        end
 
+        # Add directories to the loader, handling collection dirs separately.
+        #
+        # @private
+        # @param [RBS::EnvironmentLoader] loader
+        # @param [Array<String>] all_dirs
+        # @param [Array<String>] collection_dirs
+        # @return [void]
+        def add_dirs_to_loader!(loader, all_dirs, collection_dirs)
+          stdlib = stdlib_gem_names
           all_dirs.each do |dir|
             path = Pathname(dir)
             next unless path.directory?
 
-            # When a directory is a collection dir, add its gem dirs
-            # individually, skipping those already in stdlib
             if collection_dirs.include?(dir)
-              path.children.each do |child|
-                next unless child.directory?
-                next if stdlib.include?(child.basename.to_s)
-
-                loader.add(path: child)
-              end
+              add_collection_gem_dirs(loader, path, stdlib)
             else
               loader.add(path: path)
             end
           end
+        end
 
-          env = ::RBS::Environment.from_loader(loader).resolve_type_names
-          @builder = ::RBS::DefinitionBuilder.new(env: env)
-          env
+        # Add individual collection gem directories to the loader.
+        #
+        # @private
+        # @param [RBS::EnvironmentLoader] loader
+        # @param [Pathname] path
+        # @param [Array<String>] stdlib
+        # @return [void]
+        def add_collection_gem_dirs(loader, path, stdlib)
+          path.children.each do |child|
+            next unless child.directory?
+            next if stdlib.include?(child.basename.to_s)
+
+            loader.add(path: child)
+          end
         end
 
         # Names of stdlib gems bundled with the `rbs` gem.
         #
         # @private
         # @raise [StandardError]
-        # @return [Object]
+        # @return [Array<String>] if StandardError
         # @return [Array] if StandardError
         def stdlib_gem_names
           rbs_spec = Gem::Specification.find_by_name('rbs')
@@ -197,7 +215,10 @@ module Docscribe
         # @param [Symbol] scope :instance or :class
         # @return [RBS::Definition, nil]
         def definition_for(container:, scope:)
+          container = container.sub(/\[.*\]/, '').sub(/<.*>/, '')
           type_name = parse_type_name(absolute_const(container))
+          return nil unless @builder&.env&.type_name?(type_name)
+
           scope == :class ? @builder&.build_singleton(type_name) : @builder&.build_instance(type_name)
         end
 

@@ -31,7 +31,13 @@ module Docscribe
         def try_with_fallback_build_env: (Array[String] all_dirs, Array[String] collection_dirs) -> ::RBS::Environment
 
         def build_env: (Array[String] dirs) -> ::RBS::Environment
+
         def build_env_with_collection: (Array[String] all_dirs, Array[String] collection_dirs) -> ::RBS::Environment
+
+        def add_dirs_to_loader!: (::RBS::EnvironmentLoader loader, Array[String] all_dirs, Array[String] collection_dirs) -> void
+
+        def add_collection_gem_dirs: (::RBS::EnvironmentLoader loader, Pathname path, Array[String] stdlib) -> void
+
         def stdlib_gem_names: -> Array[String]
 
         def definition_for: (container: String, scope: Symbol) -> (::RBS::Definition | nil)
@@ -42,7 +48,7 @@ module Docscribe
 
         def build_signature: (::RBS::Types::Function func) -> Types::MethodSignature
 
-        def build_param_types: (::RBS::Types::Function func) -> [ Hash[String, String], Array[String] ]
+        def build_param_types: (::RBS::Types::Function func) -> [Hash[String, String], Array[String]]
 
         def add_keywords!: (Hash[String, String] param_types, Hash[Symbol, ::RBS::Types::Function::Param] keywords) -> void
 

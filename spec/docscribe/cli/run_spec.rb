@@ -404,19 +404,8 @@ RSpec.describe Docscribe::CLI::Run do
     end
 
     it 'returns when server becomes ready' do
-      called = false
-      allow(Docscribe::Server).to receive(:running?) do
-        if called
-          true
-        else
-          called = true
-          false
-        end
-      end
-
-      expect do
-        described_class.send(:wait_for_server, timeout: 1)
-      end.not_to raise_error
+      allow(Docscribe::Server).to receive(:running?).and_return(false, true)
+      expect { described_class.send(:wait_for_server, timeout: 1) }.not_to raise_error
     end
   end
 end

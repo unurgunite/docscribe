@@ -6,6 +6,7 @@ require 'docscribe/server'
 RSpec.describe Docscribe::Server do
   include SuppressErrorHelper
   include CleanFileHelper
+  include ServerWireHelper
 
   describe '.socket_path' do
     it 'returns a path under /tmp' do
@@ -19,18 +20,27 @@ RSpec.describe Docscribe::Server do
   end
 
   describe '.running?' do
+    let(:dir) { Dir.mktmpdir }
+    let(:sock) { "#{dir}/test.sock" }
+
+    after { FileUtils.rm_rf(dir) }
+
     it 'returns false when socket does not exist' do
       allow(described_class).to receive(:socket_path).and_return('/tmp/nonexistent.sock')
       expect(described_class.running?).to be false
     end
 
     it 'returns false when socket file is stale (not a real socket)' do
-      Dir.mktmpdir do |dir|
-        allow(described_class).to receive_messages(socket_path: sock = "#{dir}/test.sock", pid_path: "#{dir}/test.pid")
-        File.write(sock, '') # regular file, not a Unix socket
-        expect(described_class.running?).to be false
-        expect(File.exist?(sock)).to be false
-      end
+      allow(described_class).to receive_messages(socket_path: sock, pid_path: "#{dir}/test.pid")
+      File.write(sock, '')
+      expect(described_class.running?).to be false
+    end
+
+    it 'cleans up stale socket file' do
+      allow(described_class).to receive_messages(socket_path: sock, pid_path: "#{dir}/test.pid")
+      File.write(sock, '')
+      described_class.running?
+      expect(File.exist?(sock)).to be false
     end
   end
 
@@ -112,27 +122,10 @@ RSpec.describe Docscribe::Server do
     end
 
     describe 'wire format' do
-      it 'sends request with single trailing newline' do
-        Dir.mktmpdir do |dir|
-          sock_path = "#{dir}/test.sock"
-          server = UNIXServer.new(sock_path)
-
-          raw_data = +''
-          server_thread = Thread.new do
-            client_sock = server.accept
-            raw_data = client_sock.read
-            client_sock.close
-          end
-
-          client = described_class.new(sock_path)
-          client.check(file: 'test.rb')
-
-          server_thread.join
-          server.close
-
-          expect(raw_data.count("\n")).to eq(1)
-          expect(raw_data).to end_with("\n")
-        end
+      it 'sends request with single trailing newline', :aggregate_failures do
+        raw_data = with_unix_server { |s| described_class.new(s).check(file: 'test.rb') }
+        expect(raw_data.count("\n")).to eq(1)
+        expect(raw_data).to end_with("\n")
       end
     end
   end
@@ -195,13 +188,11 @@ RSpec.describe Docscribe::Server do
         end
       end
 
-      it 'defaults to safe strategy when not specified' do
+      it 'defaults to safe strategy when not specified', :aggregate_failures do
         response = client.check(file: test_file)
-        aggregate_failures do
-          expect(response).not_to be_nil
-          expect(response['error']).to be_nil
-          expect(response['result']).to have_key('status')
-        end
+        expect(response).not_to be_nil
+        expect(response['error']).to be_nil
+        expect(response['result']).to have_key('status')
       end
     end
 
