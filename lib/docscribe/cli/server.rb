@@ -4,6 +4,19 @@ module Docscribe
   module CLI
     # Handle the `docscribe server` subcommand.
     module ServerCmd
+      BANNER = <<~TEXT
+        Usage: docscribe server <command>
+
+        Commands:
+          start    Start the background daemon
+          stop     Stop the background daemon
+          status   Show daemon status
+
+        Once the server is running, use `--server` with other commands:
+          docscribe --server check lib/
+          docscribe --server --autocorrect lib/
+      TEXT
+
       class << self
         # Run the server subcommand.
         #
@@ -94,18 +107,7 @@ module Docscribe
         # @private
         # @return [String]
         def usage
-          <<~TEXT
-            Usage: docscribe server <command>
-
-            Commands:
-              start    Start the background daemon
-              stop     Stop the background daemon
-              status   Show daemon status
-
-            Once the server is running, use `--server` with other commands:
-              docscribe --server check lib/
-              docscribe --server --autocorrect lib/
-          TEXT
+          BANNER
         end
 
         # Wait for the server to become ready after starting.

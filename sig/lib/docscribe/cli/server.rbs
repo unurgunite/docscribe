@@ -1,4 +1,6 @@
 module Docscribe::CLI::ServerCmd
+  BANNER: String
+
   def self.run: (Array[String] argv) -> Integer
 
   private
