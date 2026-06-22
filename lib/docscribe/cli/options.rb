@@ -26,7 +26,8 @@ module Docscribe
         rbs_collection: false,
         keep_descriptions: false,
         no_boilerplate: false,
-        progress: false
+        progress: false,
+        server: false
       }.freeze
 
       module_function
@@ -52,7 +53,8 @@ module Docscribe
 
         Input / config:
                 --stdin                    Read code from STDIN and print rewritten output
-            -C, --config PATH              Path to config YAML (default: docscribe.yml)
+            -C,                 --config PATH              Path to config YAML (default: docscribe.yml)
+                --server                   Use background server for faster repeated runs
 
         Type information:
                 --rbs                      Use RBS signatures for @param/@return when available
@@ -146,6 +148,7 @@ module Docscribe
       def define_input_options(opts, options)
         define_stdin_option(opts, options)
         define_config_option(opts, options)
+        define_server_option(opts, options)
       end
 
       # Define stdin option
@@ -169,6 +172,18 @@ module Docscribe
       def define_config_option(opts, options)
         opts.on('-C', '--config PATH', 'Path to config YAML (default: docscribe.yml)') do |v|
           options[:config] = v
+        end
+      end
+
+      # Define server option
+      #
+      # @note module_function: defines #define_server_option (visibility: private)
+      # @param [OptionParser] opts the option parser to configure
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
+      # @return [void]
+      def define_server_option(opts, options)
+        opts.on('--server', 'Use background server for faster repeated runs') do
+          options[:server] = true
         end
       end
 
