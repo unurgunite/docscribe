@@ -31,6 +31,8 @@ module Docscribe
         def try_with_fallback_build_env: (Array[String] all_dirs, Array[String] collection_dirs) -> ::RBS::Environment
 
         def build_env: (Array[String] dirs) -> ::RBS::Environment
+        def build_env_with_collection: (Array[String] all_dirs, Array[String] collection_dirs) -> ::RBS::Environment
+        def stdlib_gem_names: -> Array[String]
 
         def definition_for: (container: String, scope: Symbol) -> (::RBS::Definition | nil)
 

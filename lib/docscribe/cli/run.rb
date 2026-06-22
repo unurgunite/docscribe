@@ -70,7 +70,7 @@ module Docscribe
         # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
         # @param [Array<String>] argv remaining path arguments
         # @raise [RuntimeError]
-        # @return [Integer] exit code
+        # @return [Integer] if RuntimeError
         # @return [Integer] if RuntimeError
         def run_via_server(options:, argv:)
           require 'docscribe/server'

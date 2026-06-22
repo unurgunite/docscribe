@@ -64,10 +64,10 @@ module Docscribe
       #
       # @note module_function: defines #build (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] config Docscribe configuration object
-      # @param [Hash] opts additional keyword options forwarded to doc_setup
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Object] opts additional keyword options forwarded to doc_setup
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [String, nil] if StandardError
       # @return [nil] if StandardError
       def build(insertion, config:, **opts)
         setup = doc_setup(insertion, config: config, **opts)
@@ -83,11 +83,11 @@ module Docscribe
       #
       # @note module_function: defines #build_merge_additions (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] existing_lines existing doc comment lines being merged
-      # @param [Object] config Docscribe configuration object
-      # @param [Hash] options additional keyword options forwarded to downstream methods
+      # @param [Array<String>] existing_lines existing doc comment lines being merged
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Object] options additional keyword options forwarded to downstream methods
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [String, nil] if StandardError
       # @return [nil] if StandardError
       def build_merge_additions(insertion, existing_lines:, config:, **options)
         setup = doc_setup(insertion, config: config, **options)
@@ -106,11 +106,11 @@ module Docscribe
       #
       # @note module_function: defines #build_missing_merge_result (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] existing_lines existing doc comment lines being merged
-      # @param [Object] config Docscribe configuration object
-      # @param [Hash] options additional keyword options forwarded to downstream methods
+      # @param [Array<String>] existing_lines existing doc comment lines being merged
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Object] options additional keyword options forwarded to downstream methods
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [Hash<Symbol, Object>] if StandardError
       # @return [Hash] if StandardError
       def build_missing_merge_result(insertion, existing_lines:, config:, **options)
         setup = doc_setup(insertion, config: config, **options)
@@ -128,9 +128,9 @@ module Docscribe
       #
       # @note module_function: defines #doc_setup (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] config Docscribe configuration object
-      # @param [Hash] opts additional options
-      # @return [Object]
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Object] opts additional options
+      # @return [Hash<Symbol, Object>, nil]
       def doc_setup(insertion, config:, **opts)
         node = insertion.node
         name = SourceHelpers.node_name(node)
@@ -144,10 +144,10 @@ module Docscribe
       #
       # @note module_function: defines #build_unsafe (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] setup method setup hash with name, normal_type, scope, visibility
-      # @param [Hash] opts additional options including infer_default, fallback_type, treat_options_keyword_as_hash
-      # @return [Object]
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<Symbol, Object>] setup method setup hash with name, normal_type, scope, visibility
+      # @param [Object] opts additional options including infer_default, fallback_type, treat_options_keyword_as_hash
+      # @return [String]
       def build_unsafe(insertion, config:, setup:, **opts)
         _, pl, rt = build_param_and_raise_info(setup, config, opts)
         lines = build_doc_lines(setup, config: config, insertion: insertion, params_lines: pl, raise_types: rt,
@@ -160,10 +160,10 @@ module Docscribe
       # Build param and raise info
       #
       # @note module_function: defines #build_param_and_raise_info (visibility: private)
-      # @param [Object] setup method setup hash with name, normal_type, scope, visibility
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] opts additional options including
-      # @return [Array]
+      # @param [Hash<Symbol, Object>] setup method setup hash with name, normal_type, scope, visibility
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<Symbol, Object>] opts additional options including
+      # @return [(Hash<String, String>, nil, Array<String>, nil, Array<String>)]
       def build_param_and_raise_info(setup, config, opts)
         pt = opts[:param_types] || build_param_types_from_node(setup[:node], external_sig: setup[:external_sig],
                                                                              config: config)
@@ -179,12 +179,12 @@ module Docscribe
       # Resolve doc setup
       #
       # @note module_function: defines #resolve_doc_setup! (visibility: private)
-      # @param [Object] setup method setup hash with name, normal_type, scope, visibility
-      # @param [Object] node AST node whose source text to extract
-      # @param [Object] name the method name string
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] opts additional options including
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] setup method setup hash with name, normal_type, scope, visibility
+      # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @param [Symbol] name the method name string
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<Symbol, Object>] opts additional options including
+      # @return [Hash<Symbol, Object>]
       def resolve_doc_setup!(setup, node, name, config, opts)
         external_sig = resolve_external_sig(setup[:container], setup[:scope], name, opts[:signature_provider])
         returns_spec = compute_returns_spec(node, config, opts[:param_types], opts[:core_rbs_provider])
@@ -201,8 +201,8 @@ module Docscribe
       #
       # @note module_function: defines #extract_base_setup (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] name the method name string
-      # @return [Hash]
+      # @param [Symbol] name the method name string
+      # @return [Hash<Symbol, Object>]
       def extract_base_setup(insertion, name)
         n = insertion.node
         { node: n, name: name, indent: SourceHelpers.line_indent(n), scope: insertion.scope,
@@ -213,11 +213,11 @@ module Docscribe
       # Resolve external sig
       #
       # @note module_function: defines #resolve_external_sig (visibility: private)
-      # @param [Object] container method container name
-      # @param [Object] scope method scope symbol
-      # @param [Object] name the method name string
-      # @param [Object] signature_provider external sig provider
-      # @return [Object]
+      # @param [String] container method container name
+      # @param [Symbol] scope method scope symbol
+      # @param [Symbol] name the method name string
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider external sig provider
+      # @return [Docscribe::Types::MethodSignature, nil]
       def resolve_external_sig(container, scope, name, signature_provider)
         signature_provider&.signature_for(container: container, scope: scope, name: name)
       end
@@ -225,11 +225,11 @@ module Docscribe
       # Compute returns spec
       #
       # @note module_function: defines #compute_returns_spec (visibility: private)
-      # @param [Object] node AST node whose source text to extract
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] param_types hash accumulating parameter name-to-type mappings
+      # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<String, String>, nil] param_types hash accumulating parameter name-to-type mappings
       # @param [Object] core_rbs_provider RBS type provider
-      # @return [Object]
+      # @return [Hash<Symbol, Object>]
       def compute_returns_spec(node, config, param_types, core_rbs_provider)
         Docscribe::Infer.returns_spec_from_node(
           node, fallback_type: config.fallback_type, nil_as_optional: config.nil_as_optional?,
@@ -240,8 +240,8 @@ module Docscribe
       # Parse existing doc tags
       #
       # @note module_function: defines #parse_existing_doc_tags (visibility: private)
-      # @param [Object] lines existing doc comment lines
-      # @return [Boolean] parsed tag info
+      # @param [Array<String>] lines existing doc comment lines
+      # @return [Hash<Symbol, Object>] parsed tag info
       def parse_existing_doc_tags(lines)
         init = init_parse_info
         tags_started = false
@@ -255,8 +255,8 @@ module Docscribe
       # Join @param/@return/@raise tag lines where the type bracket spans multiple lines.
       #
       # @note module_function: defines #join_multiline_tags (visibility: private)
-      # @param [Object] lines doc comment lines
-      # @return [Array]
+      # @param [Array<String>] lines doc comment lines
+      # @return [Array<String>]
       def join_multiline_tags(lines)
         result = [] #: Array[String]
         i = 0
@@ -267,10 +267,10 @@ module Docscribe
       # Consume tag line or copy verbatim
       #
       # @note module_function: defines #consume_tag_or_copy (visibility: private)
-      # @param [Object] lines doc comment lines
-      # @param [Object] idx current line index
-      # @param [Object] result result accumulator array
-      # @return [Object, Integer]
+      # @param [Array<String>] lines doc comment lines
+      # @param [Integer] idx current line index
+      # @param [Array<String>] result result accumulator array
+      # @return [Integer]
       def consume_tag_or_copy(lines, idx, result)
         if (c = lines[idx].sub(/^\s*#\s*/, '')) =~ /^@(param|return|raise)\s+\[/ && unbalanced_bracket?(c)
           buffer, consumed = join_tag_continuations(lines, idx)
@@ -285,9 +285,9 @@ module Docscribe
       # Join continuation lines for a multi-line tag type bracket.
       #
       # @note module_function: defines #join_tag_continuations (visibility: private)
-      # @param [Object] lines all doc comment lines
-      # @param [Object] start index of the @param/@return/@raise line
-      # @return [Array] joined content and number of lines consumed
+      # @param [Array<String>] lines all doc comment lines
+      # @param [Integer] start index of the @param/@return/@raise line
+      # @return [(String, Integer)] joined content and number of lines consumed
       def join_tag_continuations(lines, start)
         buffer = +lines[start].sub(/^\s*#\s*/, '').dup
         i = start + 1
@@ -305,7 +305,7 @@ module Docscribe
       # Check if bracket depth is positive (an opening `[` is unclosed).
       #
       # @note module_function: defines #unbalanced_bracket? (visibility: private)
-      # @param [Object] str string to check
+      # @param [String] str string to check
       # @return [Boolean]
       def unbalanced_bracket?(str)
         depth = 0
@@ -319,10 +319,10 @@ module Docscribe
       # Parse a single doc comment line for tag info.
       #
       # @note module_function: defines #parse_existing_tag_line (visibility: private)
-      # @param [Object] line the doc comment line
-      # @param [Object] info mutable parse info accumulator
-      # @param [Object] tags_started whether @tags have been seen
-      # @return [Object] updated tags_started
+      # @param [String] line the doc comment line
+      # @param [Hash<Symbol, Object>] info mutable parse info accumulator
+      # @param [Boolean] tags_started whether @tags have been seen
+      # @return [Boolean] updated tags_started
       def parse_existing_tag_line(line, info, tags_started)
         content = line.sub(/^\s*# ?/, '').rstrip
         if content.start_with?('@')
@@ -339,9 +339,9 @@ module Docscribe
       # Start a note tag
       #
       # @note module_function: defines #start_note_tag (visibility: private)
-      # @param [Object] line doc comment line
-      # @param [Object] info parse info hash
-      # @return [Object]
+      # @param [String] line doc comment line
+      # @param [Hash<Symbol, Object>] info parse info hash
+      # @return [void]
       def start_note_tag(line, info)
         return if line.match?(/^\s*#\s*@note\s+module_function:/)
 
@@ -353,8 +353,8 @@ module Docscribe
       # Append note continuation lines
       #
       # @note module_function: defines #append_note_continuation (visibility: private)
-      # @param [Object] line doc comment line
-      # @param [Object] info parse info hash
+      # @param [String] line doc comment line
+      # @param [Hash<Symbol, Object>] info parse info hash
       # @return [Object]
       def append_note_continuation(line, info)
         return unless info[:last_tag] == :note && info[:note_lines].any?
@@ -365,7 +365,7 @@ module Docscribe
       # Init parse info
       #
       # @note module_function: defines #init_parse_info (visibility: private)
-      # @return [Hash]
+      # @return [Hash<Symbol, Object>]
       def init_parse_info
         {
           param_names: {}, param_types: {}, param_descriptions: {},
@@ -381,9 +381,9 @@ module Docscribe
       # Merge dest lines
       #
       # @note module_function: defines #merge_dest_lines (visibility: private)
-      # @param [Object] existing_lines existing doc comment lines to merge into
-      # @param [Hash] ctx merge context hash (setup, insertion, config, info, param_types)
-      # @return [Object]
+      # @param [Array<String>] existing_lines existing doc comment lines to merge into
+      # @param [Object] ctx merge context hash (setup, insertion, config, info, param_types)
+      # @return [String, nil]
       def merge_dest_lines(existing_lines, **ctx)
         merge_lines_with_context(existing_lines, **ctx)
       end
@@ -391,9 +391,9 @@ module Docscribe
       # Merge lines with context
       #
       # @note module_function: defines #merge_lines_with_context (visibility: private)
-      # @param [Object] existing_lines existing doc comment lines being merged
-      # @param [Hash] ctx merge context (setup, insertion, config, info, param_types)
-      # @return [Object]
+      # @param [Array<String>] existing_lines existing doc comment lines being merged
+      # @param [Object] ctx merge context (setup, insertion, config, info, param_types)
+      # @return [String]
       def merge_lines_with_context(existing_lines, **ctx)
         s = ctx[:setup]
         i = s[:indent]
@@ -411,9 +411,9 @@ module Docscribe
       # Build initial line ary
       #
       # @note module_function: defines #build_initial_line_ary (visibility: private)
-      # @param [Object] existing_lines existing doc comment lines being merged
-      # @param [Object] indent indentation string for the doc line
-      # @return [Array]
+      # @param [Array<String>] existing_lines existing doc comment lines being merged
+      # @param [String] indent indentation string for the doc line
+      # @return [Array<String>]
       def build_initial_line_ary(existing_lines, indent)
         existing_lines.any? && existing_lines.last.strip != '#' ? ["#{indent}#"] : []
       end
@@ -421,9 +421,9 @@ module Docscribe
       # Merge all tag lines
       #
       # @note module_function: defines #merge_all_tag_lines (visibility: private)
-      # @param [Object] base_ary initial line array
-      # @param [Hash] ctx context hash with setup, config, info, insertion, param_types
-      # @return [self]
+      # @param [Array<String>] base_ary initial line array
+      # @param [Object] ctx context hash with setup, config, info, insertion, param_types
+      # @return [Array<String>]
       def merge_all_tag_lines(base_ary, **ctx)
         line_ary = base_ary.dup
         merge_tag_lines_core(line_ary, ctx)
@@ -434,9 +434,9 @@ module Docscribe
       # Merge tag lines core
       #
       # @note module_function: defines #merge_tag_lines_core (visibility: private)
-      # @param [Object] line_ary output line array
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] line_ary output line array
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [void]
       def merge_tag_lines_core(line_ary, ctx)
         append_merge_tag_lines(line_ary, ctx)
         merge_return_line(line_ary, ctx[:i], ctx[:s], ctx[:config], ctx[:info])
@@ -445,9 +445,9 @@ module Docscribe
       # Append merge tag lines
       #
       # @note module_function: defines #append_merge_tag_lines (visibility: private)
-      # @param [Object] line_ary output line array
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] line_ary output line array
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [void]
       def append_merge_tag_lines(line_ary, ctx)
         line_ary.concat(build_all_merge_tags(ctx))
       end
@@ -455,8 +455,8 @@ module Docscribe
       # Build all merge tags
       #
       # @note module_function: defines #build_all_merge_tags (visibility: private)
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Array<Object>]
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [Array<String>]
       def build_all_merge_tags(ctx)
         i = ctx[:i]
         s = ctx[:s]
@@ -472,12 +472,12 @@ module Docscribe
       # Merge return line
       #
       # @note module_function: defines #merge_return_line (visibility: private)
-      # @param [Object] line_ary output line array
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] setup method setup hash with node, name, types, scope
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] info parse info hash to update with visibility flags
-      # @return [Object?]
+      # @param [Array<String>] line_ary output line array
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Hash<Symbol, Object>] setup method setup hash with node, name, types, scope
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<Symbol, Object>] info parse info hash to update with visibility flags
+      # @return [void]
       def merge_return_line(line_ary, indent, setup, config, info)
         emit_ret = config.emit_return_tag?(setup[:scope], setup[:visibility])
         ret_line = merge_return_tag_line(indent, setup[:normal_type], config: config, scope: setup[:scope],
@@ -489,12 +489,12 @@ module Docscribe
       # Collect all missing
       #
       # @note module_function: defines #collect_all_missing (visibility: private)
-      # @param [Object] setup resolved setup hash with node, name, indent, types
-      # @param [Object] info parsed existing doc tag information
+      # @param [Hash<Symbol, Object>] setup resolved setup hash with node, name, indent, types
+      # @param [Hash<Symbol, Object>] info parsed existing doc tag information
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] options additional options hash forwarded to missing collector
-      # @return [Object]
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<Symbol, Object>] options additional options hash forwarded to missing collector
+      # @return [Hash<Symbol, Object>]
       def collect_all_missing(setup, info, insertion, config, options)
         s = setup
         ctx = { node: s[:node], indent: s[:indent], config: config, external_sig: s[:external_sig],
@@ -507,8 +507,8 @@ module Docscribe
       # Collect missing all
       #
       # @note module_function: defines #collect_missing_all (visibility: private)
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Hash]
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [Hash<Symbol, Object>]
       def collect_missing_all(ctx)
         lines = [] #: Array[String]
         reasons = [] #: Array[Hash[Symbol, untyped]]
@@ -525,9 +525,9 @@ module Docscribe
       # Extract param info
       #
       # @note module_function: defines #extract_all_comment_tags (visibility: private)
-      # @param [Object] line single comment line
-      # @param [Object] info parse info hash
-      # @return [Object]
+      # @param [String] line single comment line
+      # @param [Hash<Symbol, Object>] info parse info hash
+      # @return [void]
       def extract_all_comment_tags(line, info)
         extract_param_info(line, info[:param_names], info[:param_types], info[:param_descriptions])
         extract_return_info(line, info)
@@ -539,11 +539,11 @@ module Docscribe
       # Extract param info from tag line
       #
       # @note module_function: defines #extract_param_info (visibility: private)
-      # @param [Object] line a single doc comment line to parse
-      # @param [Object] param_names hash tracking existing @param names
-      # @param [Object] param_types hash tracking existing @param types
-      # @param [nil] param_descriptions param descriptions hash
-      # @return [Object?]
+      # @param [String] line a single doc comment line to parse
+      # @param [Hash<String, Boolean>] param_names hash tracking existing @param names
+      # @param [Hash<String, String>] param_types hash tracking existing @param types
+      # @param [Hash<String, String>, nil] param_descriptions param descriptions hash
+      # @return [void]
       def extract_param_info(line, param_names, param_types, param_descriptions = nil)
         return unless (pname = extract_param_name_from_param_line(line))
 
@@ -561,9 +561,9 @@ module Docscribe
       # Extract return info
       #
       # @note module_function: defines #extract_return_info (visibility: private)
-      # @param [Object] line a single doc comment line to parse
-      # @param [Object] info parse info hash to update with return data
-      # @return [Object?]
+      # @param [String] line a single doc comment line to parse
+      # @param [Hash<Symbol, Object>] info parse info hash to update with return data
+      # @return [void]
       def extract_return_info(line, info)
         return unless line.match?(/^\s*#\s*@return\b/)
 
@@ -579,8 +579,8 @@ module Docscribe
       # Parse return type from rest string
       #
       # @note module_function: defines #parse_return_rest (visibility: private)
-      # @param [Object] rest remaining tag content
-      # @return [Array]
+      # @param [String] rest remaining tag content
+      # @return [(String, String, nil), nil]
       def parse_return_rest(rest)
         return unless rest[0] == '['
 
@@ -594,9 +594,9 @@ module Docscribe
       # Extract all comment tags from line
       #
       # @note module_function: defines #track_last_tag (visibility: private)
-      # @param [Object] content
-      # @param [Object] info parse info hash
-      # @return [Object?]
+      # @param [String] content
+      # @param [Hash<Symbol, Object>] info parse info hash
+      # @return [void]
       def track_last_tag(content, info)
         tag = content.match(/@(\w+)/)&.[](1)&.to_sym
         info[:last_tag] = tag
@@ -609,9 +609,9 @@ module Docscribe
       # Append continuation to current tag
       #
       # @note module_function: defines #append_tag_continuation (visibility: private)
-      # @param [Object] content tag continuation text
-      # @param [Object] info parse info hash
-      # @return [Object?]
+      # @param [String] content tag continuation text
+      # @param [Hash<Symbol, Object>] info parse info hash
+      # @return [void]
       def append_tag_continuation(content, info)
         text = content.strip
         return if text.empty?
@@ -623,9 +623,9 @@ module Docscribe
       # Append text to return description
       #
       # @note module_function: defines #append_to_return_description (visibility: private)
-      # @param [Object] text text to append
-      # @param [Object] info parse info hash
-      # @return [String, Object]
+      # @param [String] text text to append
+      # @param [Hash<Symbol, Object>] info parse info hash
+      # @return [void]
       def append_to_return_description(text, info)
         if info[:return_description]
           info[:return_description] += "\n#{text}"
@@ -637,9 +637,9 @@ module Docscribe
       # Append text to param description
       #
       # @note module_function: defines #append_to_param_description (visibility: private)
-      # @param [Object] text text to append
-      # @param [Object] info parse info hash
-      # @return [String, Object]
+      # @param [String] text text to append
+      # @param [Hash<Symbol, Object>] info parse info hash
+      # @return [void]
       def append_to_param_description(text, info)
         pname = info[:last_param]
         return unless pname
@@ -654,9 +654,9 @@ module Docscribe
       # Extract visibility info
       #
       # @note module_function: defines #extract_visibility_info (visibility: private)
-      # @param [Object] line a single doc comment line to parse
-      # @param [Object] info parse info hash to update with visibility flags
-      # @return [Object]
+      # @param [String] line a single doc comment line to parse
+      # @param [Hash<Symbol, Object>] info parse info hash to update with visibility flags
+      # @return [void]
       def extract_visibility_info(line, info)
         info[:has_private] ||= line.match?(/^\s*#\s*@private\b/)
         info[:has_protected] ||= line.match?(/^\s*#\s*@protected\b/)
@@ -666,9 +666,9 @@ module Docscribe
       # Extract raise info
       #
       # @note module_function: defines #extract_raise_info (visibility: private)
-      # @param [Object] line a single doc comment line to parse
-      # @param [Object] raise_types hash tracking existing @raise types
-      # @return [Object]
+      # @param [String] line a single doc comment line to parse
+      # @param [Hash<String, Boolean>] raise_types hash tracking existing @raise types
+      # @return [void]
       def extract_raise_info(line, raise_types)
         extract_raise_types_from_line(line).each { |t| raise_types[t || ''] = true }
       end
@@ -676,9 +676,9 @@ module Docscribe
       # Extract plugin info
       #
       # @note module_function: defines #extract_plugin_info (visibility: private)
-      # @param [Object] line a single doc comment line to parse
-      # @param [Object] plugin_tags hash tracking existing plugin tag names
-      # @return [Object]
+      # @param [String] line a single doc comment line to parse
+      # @param [Hash<String, Boolean>] plugin_tags hash tracking existing plugin tag names
+      # @return [void]
       def extract_plugin_info(line, plugin_tags)
         return unless (m = line.match(/^\s*#\s*@(\w+)\b/))
 
@@ -688,9 +688,9 @@ module Docscribe
       # Extract raise types from line
       #
       # @note module_function: defines #extract_raise_types_from_line (visibility: private)
-      # @param [Object] line a `@raise` doc line
+      # @param [String] line a `@raise` doc line
       # @raise [StandardError]
-      # @return [Object, Array] if StandardError
+      # @return [Array<String, nil>] if StandardError
       # @return [Array] if StandardError
       def extract_raise_types_from_line(line)
         return [] unless line.match?(/^\s*#\s*@raise\b/)
@@ -709,8 +709,8 @@ module Docscribe
       # Parse raise bracket list
       #
       # @note module_function: defines #parse_raise_bracket_list (visibility: private)
-      # @param [Object] str comma-separated exception names string from @raise brackets
-      # @return [Object] the exception names or nil
+      # @param [String] str comma-separated exception names string from @raise brackets
+      # @return [Array<String>] the exception names or nil
       def parse_raise_bracket_list(str)
         str.to_s.split(',').map(&:strip).reject(&:empty?)
       end
@@ -718,10 +718,10 @@ module Docscribe
       # Build param types from node
       #
       # @note module_function: defines #build_param_types_from_node (visibility: private)
-      # @param [Object] node def or defs node
-      # @param [Object] external_sig external signature if available
-      # @param [Object] config Docscribe configuration object
-      # @return [Hash?]
+      # @param [Parser::AST::Node] node def or defs node
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external signature if available
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @return [Hash<String, String>, nil]
       def build_param_types_from_node(node, external_sig:, config:)
         return unless node
 
@@ -736,11 +736,11 @@ module Docscribe
       # Collect all param types
       #
       # @note module_function: defines #collect_all_param_types (visibility: private)
-      # @param [Object] args arguments AST node
-      # @param [Object] param_types hash accumulating parameter name-to-type mappings
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] config Docscribe configuration object
-      # @return [Object]
+      # @param [Parser::AST::Node] args arguments AST node
+      # @param [Hash<String, String>] param_types hash accumulating parameter name-to-type mappings
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @return [void]
       def collect_all_param_types(args, param_types, external_sig, config)
         # Pre-seed param_types with positional (unnamed) RBS types so that
         # collectors can keep them when external_sig lacks param names.
@@ -758,12 +758,12 @@ module Docscribe
       # Collect param type
       #
       # @note module_function: defines #collect_param_type (visibility: private)
-      # @param [Object] arg_node AST node for the required/keyword argument
-      # @param [Object] param_types hash accumulating parameter name-to-type mappings
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] config Docscribe configuration for fallback type options
-      # @param [Object] infer_name lambda to transform parameter name for inference
-      # @return [Object]
+      # @param [Parser::AST::Node] arg_node AST node for the required/keyword argument
+      # @param [Hash<String, String>] param_types hash accumulating parameter name-to-type mappings
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Config] config Docscribe configuration for fallback type options
+      # @param [Proc, nil] infer_name lambda to transform parameter name for inference
+      # @return [void]
       def collect_param_type(arg_node, param_types, external_sig, config, infer_name:)
         pname = arg_node.children.first.to_s
         param_types[pname] ||= begin
@@ -778,12 +778,12 @@ module Docscribe
       # Collect optarg param type
       #
       # @note module_function: defines #collect_optarg_param_type (visibility: private)
-      # @param [Object] arg_node AST node for the optional/keyword optional argument
-      # @param [Object] param_types hash accumulating parameter name-to-type mappings
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] config Docscribe configuration for fallback type options
-      # @param [Object] infer_name lambda to transform parameter name for inference
-      # @return [Object]
+      # @param [Parser::AST::Node] arg_node AST node for the optional/keyword optional argument
+      # @param [Hash<String, String>] param_types hash accumulating parameter name-to-type mappings
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Config] config Docscribe configuration for fallback type options
+      # @param [Proc, nil] infer_name lambda to transform parameter name for inference
+      # @return [void]
       def collect_optarg_param_type(arg_node, param_types, external_sig, config, infer_name:)
         pname, default = *arg_node
         pname = pname.to_s
@@ -800,11 +800,11 @@ module Docscribe
       # Merge visibility tag lines
       #
       # @note module_function: defines #merge_visibility_tag_lines (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] visibility method visibility symbol
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] info parse info hash to update with visibility flags
-      # @return [Array]
+      # @param [String] indent indentation string for the doc line
+      # @param [Symbol] visibility method visibility symbol
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<Symbol, Object>] info parse info hash to update with visibility flags
+      # @return [Array<String>]
       def merge_visibility_tag_lines(indent, visibility, config, info)
         return [] unless config.emit_visibility_tags?
 
@@ -820,11 +820,11 @@ module Docscribe
       # Merge module function note lines
       #
       # @note module_function: defines #merge_module_function_note_lines (visibility: private)
-      # @param [Object] indent indentation string for the doc line
+      # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] name the method name string
-      # @param [Object] info parse info hash to update with visibility flags
-      # @return [Array]
+      # @param [String] name the method name string
+      # @param [Hash<Symbol, Object>] info parse info hash to update with visibility flags
+      # @return [Array<String>]
       def merge_module_function_note_lines(indent, insertion, name, info)
         unless insertion.respond_to?(:module_function) && insertion.module_function && !info[:has_module_function_note]
           return []
@@ -837,11 +837,11 @@ module Docscribe
       # Merge param lines
       #
       # @note module_function: defines #merge_param_lines (visibility: private)
-      # @param [Object] node AST node whose source text to extract
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] config Docscribe configuration object
-      # @param [Hash] opts additional options including external_sig, param_types, info
-      # @return [Object]
+      # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @param [String] indent indentation string for the doc line
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Object] opts additional options including external_sig, param_types, info
+      # @return [Array<String>]
       def merge_param_lines(node, indent, config:, **opts)
         return [] unless config.emit_param_tags?
 
@@ -861,11 +861,11 @@ module Docscribe
       # Merge raise tag lines
       #
       # @note module_function: defines #merge_raise_tag_lines (visibility: private)
-      # @param [Object] node AST node whose source text to extract
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] info parse info hash to update with visibility flags
-      # @return [String]
+      # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @param [String] indent indentation string for the doc line
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<Symbol, Object>] info parse info hash to update with visibility flags
+      # @return [Array<String>]
       def merge_raise_tag_lines(node, indent, config, info)
         return [] unless config.emit_raise_tags?
 
@@ -878,11 +878,11 @@ module Docscribe
       # Merge return tag line
       #
       # @note module_function: defines #merge_return_tag_line (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] normal_type resolved return type
-      # @param [Object] config Docscribe configuration object
-      # @param [Hash] opts additional options including scope, visibility, info
-      # @return [String]
+      # @param [String] indent indentation string for the doc line
+      # @param [String] normal_type resolved return type
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Object] opts additional options including scope, visibility, info
+      # @return [String, nil]
       def merge_return_tag_line(indent, normal_type, config:, **opts)
         return unless config.emit_return_tag?(opts[:scope], opts[:visibility])
         return if opts[:info][:has_return]
@@ -893,11 +893,11 @@ module Docscribe
       # Merge rescue return lines
       #
       # @note module_function: defines #merge_rescue_return_lines (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] rescue_specs rescue type specs
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] info parse info hash to update with visibility flags
-      # @return [String]
+      # @param [String] indent indentation string for the doc line
+      # @param [Array<(Array<String>, String)>] rescue_specs rescue type specs
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<Symbol, Object>] info parse info hash to update with visibility flags
+      # @return [Array<String>]
       def merge_rescue_return_lines(indent, rescue_specs, config, info)
         return [] unless config.emit_rescue_conditional_returns?
         return [] if info[:has_return]
@@ -910,10 +910,10 @@ module Docscribe
       # Collect missing visibility
       #
       # @note module_function: defines #collect_missing_visibility! (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Hash] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Object] ctx merged context hash with info and indent
+      # @return [void]
       def collect_missing_visibility!(lines, reasons, **ctx)
         return unless ctx[:config].emit_visibility_tags?
 
@@ -924,10 +924,10 @@ module Docscribe
       # Add missing private
       #
       # @note module_function: defines #add_missing_private (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [void]
       def add_missing_private(lines, reasons, ctx)
         return unless ctx[:visibility] == :private && !ctx[:info][:has_private]
 
@@ -938,10 +938,10 @@ module Docscribe
       # Add missing protected
       #
       # @note module_function: defines #add_missing_protected (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [void]
       def add_missing_protected(lines, reasons, ctx)
         return unless ctx[:visibility] == :protected && !ctx[:info][:has_protected]
 
@@ -952,10 +952,10 @@ module Docscribe
       # Collect missing module function note
       #
       # @note module_function: defines #collect_missing_module_function_note! (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Hash] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Object] ctx merged context hash with info and indent
+      # @return [void]
       def collect_missing_module_function_note!(lines, reasons, **ctx)
         insertion = ctx[:insertion]
         unless insertion.respond_to?(:module_function) && insertion.module_function &&
@@ -971,10 +971,10 @@ module Docscribe
       # Collect missing params
       #
       # @note module_function: defines #collect_missing_params! (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Hash] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Object] ctx merged context hash with info and indent
+      # @return [void]
       def collect_missing_params!(lines, reasons, **ctx)
         return unless ctx[:config].emit_param_tags?
 
@@ -989,11 +989,11 @@ module Docscribe
       # Collect param from line
       #
       # @note module_function: defines #collect_param_from_line (visibility: private)
-      # @param [Object] param_line a single @param tag line to evaluate
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Object] ctx merged context hash with build parameters
-      # @return [Object, Object?]
+      # @param [String] param_line a single @param tag line to evaluate
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Hash<Symbol, Object>] ctx merged context hash with build parameters
+      # @return [void]
       def collect_param_from_line(param_line, lines, reasons, ctx)
         pname = extract_param_name_from_param_line(param_line)
         return unless pname
@@ -1009,12 +1009,12 @@ module Docscribe
       # Collect updated param
       #
       # @note module_function: defines #collect_updated_param (visibility: private)
-      # @param [Object] param_line a single @param tag line to evaluate
-      # @param [Object] pname the parameter name string
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Object] ctx merged context hash with build parameters
-      # @return [Object]
+      # @param [String] param_line a single @param tag line to evaluate
+      # @param [String] pname the parameter name string
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Hash<Symbol, Object>] ctx merged context hash with build parameters
+      # @return [void]
       def collect_updated_param(param_line, pname, lines, reasons, ctx)
         new_type = extract_param_type_from_param_line(param_line)
         return unless new_type && ctx[:info][:param_types][pname] != new_type
@@ -1030,12 +1030,12 @@ module Docscribe
       # Build params lines
       #
       # @note module_function: defines #build_params_lines (visibility: private)
-      # @param [Object] node AST node whose source text to extract
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] config Docscribe configuration object
+      # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @param [String] indent indentation string for the doc line
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
-      # @return [Object]
+      # @return [Array<String>, nil]
       def build_params_lines(node, indent, external_sig:, config:, **kwargs)
         args = extract_args_from_node(node)
         return nil unless args
@@ -1046,12 +1046,12 @@ module Docscribe
       # Build all param lines
       #
       # @note module_function: defines #build_all_param_lines (visibility: private)
-      # @param [Object] args arguments AST node
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] config Docscribe configuration object
-      # @param [nil] external_sig external method signature for type overrides
-      # @param [Hash] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
-      # @return [Object?]
+      # @param [Parser::AST::Node] args arguments AST node
+      # @param [String] indent indentation string for the doc line
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Object] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
+      # @return [Array<String>, nil]
       def build_all_param_lines(args, indent, config, external_sig: nil, **kwargs)
         param_lines = [] #: Array[String]
         params = (args.children || []).each_with_object(param_lines) do |a, p|
@@ -1068,10 +1068,10 @@ module Docscribe
       # Get param doc for argument
       #
       # @note module_function: defines #param_doc_for_arg (visibility: private)
-      # @param [Object] arg individual argument node
-      # @param [Object] kwargs keyword args hash
-      # @param [Object] config doc configuration
-      # @return [Object, Object, String]
+      # @param [Parser::AST::Node] arg individual argument node
+      # @param [Hash<Symbol, Object>] kwargs keyword args hash
+      # @param [Docscribe::Config] config doc configuration
+      # @return [String]
       def param_doc_for_arg(arg, kwargs, config)
         (kwargs[:param_descriptions] || {})[param_name_from_arg(arg)] ||
           (config.include_param_documentation? ? config.param_documentation : '')
@@ -1080,10 +1080,10 @@ module Docscribe
       # Build doc lines
       #
       # @note module_function: defines #build_doc_lines (visibility: private)
-      # @param [Object] setup method setup hash with indent, name, types, scope
-      # @param [Object] config Docscribe configuration object
-      # @param [Hash] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] setup method setup hash with indent, name, types, scope
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Object] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
+      # @return [Array<String>]
       def build_doc_lines(setup, config:, **kwargs)
         i = setup[:indent]
         assemble_doc_lines(i, setup, config: config, insertion: kwargs[:insertion],
@@ -1096,10 +1096,10 @@ module Docscribe
       # Assemble doc lines
       #
       # @note module_function: defines #assemble_doc_lines (visibility: private)
-      # @param [Object] indent indent
-      # @param [Object] setup setup
-      # @param [Hash] ctx context hash with config, insertion, params_lines, raise_types, override_tags
-      # @return [Object]
+      # @param [String] indent indent
+      # @param [Hash<Symbol, Object>] setup setup
+      # @param [Object] ctx context hash with config, insertion, params_lines, raise_types, override_tags
+      # @return [Array<String>]
       def assemble_doc_lines(indent, setup, **ctx)
         line_ary = build_header_lines(
           indent,
@@ -1115,11 +1115,11 @@ module Docscribe
       # Append assemble body lines
       #
       # @note module_function: defines #append_assemble_body_lines (visibility: private)
-      # @param [Object] line_ary output line array
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] setup method setup hash with name, types, scope
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] line_ary output line array
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Hash<Symbol, Object>] setup method setup hash with name, types, scope
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [void]
       def append_assemble_body_lines(line_ary, indent, setup, ctx)
         line_ary.concat(build_all_body_tags(indent, setup, ctx))
       end
@@ -1127,10 +1127,10 @@ module Docscribe
       # Build all body tags
       #
       # @note module_function: defines #build_all_body_tags (visibility: private)
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] setup method setup hash with name, types, scope
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Hash<Symbol, Object>] setup method setup hash with name, types, scope
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [Array<String>]
       def build_all_body_tags(indent, setup, ctx)
         result = core_body_tags(indent, setup, ctx)
         result.insert(4, ctx[:params_lines]) if ctx[:params_lines]
@@ -1140,10 +1140,10 @@ module Docscribe
       # Core body tags
       #
       # @note module_function: defines #core_body_tags (visibility: private)
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] setup method setup hash with name, types, scope
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Array]
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Hash<Symbol, Object>] setup method setup hash with name, types, scope
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [Array<Object>]
       def core_body_tags(indent, setup, ctx)
         config, insertion = ctx.values_at(:config, :insertion)
         [
@@ -1160,12 +1160,12 @@ module Docscribe
       # Defaults and visibility
       #
       # @note module_function: defines #defaults_and_visibility (visibility: private)
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] scope method scope symbol
-      # @param [Object] visibility method visibility symbol
-      # @param [nil] description optional description lines
-      # @return [Array<Object>]
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Symbol] scope method scope symbol
+      # @param [Symbol] visibility method visibility symbol
+      # @param [Array<String>, nil] description optional description lines
+      # @return [Array<String>]
       def defaults_and_visibility(indent, config, scope, visibility, description: nil)
         [
           build_default_msg_lines(indent, config, scope, visibility, description: description),
@@ -1176,11 +1176,11 @@ module Docscribe
       # Build return line if needed
       #
       # @note module_function: defines #build_return_line_if_needed (visibility: private)
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] setup method setup hash with name, normal_type, scope, visibility
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Array]
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Hash<Symbol, Object>] setup method setup hash with name, normal_type, scope, visibility
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [Array<String>]
       def build_return_line_if_needed(indent, setup, config, ctx)
         ret_line = build_return_tag_line(indent, setup[:normal_type], config, setup[:scope], setup[:visibility])
         rd = ctx[:return_description]
@@ -1195,8 +1195,8 @@ module Docscribe
       # Extract args from node
       #
       # @note module_function: defines #extract_args_from_node (visibility: private)
-      # @param [Object] node AST node whose source text to extract
-      # @return [Object]
+      # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @return [Parser::AST::Node, nil]
       def extract_args_from_node(node)
         case node.type
         when :def then node.children[1]
@@ -1207,12 +1207,12 @@ module Docscribe
       # Build param line
       #
       # @note module_function: defines #build_param_line (visibility: private)
-      # @param [Object] arg_node AST node for the argument
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Hash] opts additional options for param formatting (fallback_type, param_tag_style, etc.)
-      # @return [Array]
+      # @param [Parser::AST::Node] arg_node AST node for the argument
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [Object] opts additional options for param formatting (fallback_type, param_tag_style, etc.)
+      # @return [Array<String>]
       def build_param_line(arg_node, indent, external_sig, param_types_override, **opts)
         method_name = :"build_#{arg_node.type}_line"
         if respond_to?(method_name, true)
@@ -1232,10 +1232,10 @@ module Docscribe
       # Build header lines
       #
       # @note module_function: defines #build_header_lines (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] config Docscribe configuration object
-      # @param [Hash] opts additional options including container, method_symbol, name, normal_type
-      # @return [Array]
+      # @param [String] indent indentation string for the doc line
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Object] opts additional options including container, method_symbol, name, normal_type
+      # @return [Array<String>]
       def build_header_lines(indent, config:, **opts)
         if config.emit_header?
           c = opts[:container]
@@ -1251,12 +1251,12 @@ module Docscribe
       # Build default msg lines
       #
       # @note module_function: defines #build_default_msg_lines (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] scope method scope symbol
-      # @param [Object] visibility method visibility symbol
-      # @param [nil] description optional description lines
-      # @return [String, Array]
+      # @param [String] indent indentation string for the doc line
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Symbol] scope method scope symbol
+      # @param [Symbol] visibility method visibility symbol
+      # @param [Array<String>, nil] description optional description lines
+      # @return [Array<String>]
       def build_default_msg_lines(indent, config, scope, visibility, description: nil)
         if description&.any?
           result = description.map { |line| line.empty? ? "#{indent}#" : "#{indent}# #{line}" }
@@ -1272,10 +1272,10 @@ module Docscribe
       # Build visibility tag lines
       #
       # @note module_function: defines #build_visibility_tag_lines (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] visibility method visibility symbol
-      # @param [Object] config Docscribe configuration object
-      # @return [Array]
+      # @param [String] indent indentation string for the doc line
+      # @param [Symbol] visibility method visibility symbol
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @return [Array<String>]
       def build_visibility_tag_lines(indent, visibility, config)
         return [] unless config.emit_visibility_tags?
 
@@ -1289,10 +1289,10 @@ module Docscribe
       # Build module function note lines
       #
       # @note module_function: defines #build_module_function_note_lines (visibility: private)
-      # @param [Object] indent indentation string for the doc line
+      # @param [String] indent indentation string for the doc line
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] name the method name string
-      # @return [Array]
+      # @param [String] name the method name string
+      # @return [Array<String>]
       def build_module_function_note_lines(indent, insertion, name)
         return [] unless insertion.respond_to?(:module_function) && insertion.module_function
 
@@ -1309,10 +1309,10 @@ module Docscribe
       # Build raise tag lines
       #
       # @note module_function: defines #build_raise_tag_lines (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] raise_types hash tracking existing @raise types
-      # @param [Object] config Docscribe configuration object
-      # @return [String]
+      # @param [String] indent indentation string for the doc line
+      # @param [Array<String>] raise_types hash tracking existing @raise types
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @return [Array<String>]
       def build_raise_tag_lines(indent, raise_types, config)
         return [] unless config.emit_raise_tags?
 
@@ -1322,12 +1322,12 @@ module Docscribe
       # Build return tag line
       #
       # @note module_function: defines #build_return_tag_line (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] normal_type resolved return type
-      # @param [Object] config Docscribe configuration object
-      # @param [Object] scope method scope symbol
-      # @param [Object] visibility method visibility symbol
-      # @return [String]
+      # @param [String] indent indentation string for the doc line
+      # @param [String] normal_type resolved return type
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @param [Symbol] scope method scope symbol
+      # @param [Symbol] visibility method visibility symbol
+      # @return [String, nil]
       def build_return_tag_line(indent, normal_type, config, scope, visibility)
         return unless config.emit_return_tag?(scope, visibility)
 
@@ -1337,10 +1337,10 @@ module Docscribe
       # Build rescue return lines
       #
       # @note module_function: defines #build_rescue_return_lines (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] rescue_specs rescue type specs
-      # @param [Object] config Docscribe configuration object
-      # @return [String]
+      # @param [String] indent indentation string for the doc line
+      # @param [Array<(Array<String>, String)>] rescue_specs rescue type specs
+      # @param [Docscribe::Config] config Docscribe configuration object
+      # @return [Array<String>]
       def build_rescue_return_lines(indent, rescue_specs, config)
         return [] unless config.emit_rescue_conditional_returns?
 
@@ -1353,10 +1353,10 @@ module Docscribe
       #
       # @note module_function: defines #build_plugin_tag_lines (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] normal_type resolved return type
-      # @param [Object] override_tags plugin tag overrides
-      # @return [Object]
+      # @param [String] indent indentation string for the doc line
+      # @param [String] normal_type resolved return type
+      # @param [Array<Object>, nil] override_tags plugin tag overrides
+      # @return [Array<String>]
       def build_plugin_tag_lines(insertion, indent, normal_type, override_tags)
         plugin_tags = Docscribe::Plugin.run_tag_plugins(build_plugin_context(insertion, normal_type: normal_type))
         plugin_tags.concat(Array(override_tags)) if override_tags
@@ -1366,12 +1366,12 @@ module Docscribe
       # Build arg line
       #
       # @note module_function: defines #build_arg_line (visibility: private)
-      # @param [Object] arg_node AST node for the required argument
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Hash] opts additional options for param formatting
-      # @return [Object]
+      # @param [Parser::AST::Node] arg_node AST node for the required argument
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [Object] opts additional options for param formatting
+      # @return [String]
       def build_arg_line(arg_node, indent, external_sig, param_types_override, **opts)
         pname = arg_node.children.first.to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, pname,
@@ -1384,12 +1384,12 @@ module Docscribe
       # Build optarg lines
       #
       # @note module_function: defines #build_optarg_lines (visibility: private)
-      # @param [Object] arg_node AST node for the optional argument
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Hash] opts additional options for param formatting
-      # @return [Array]
+      # @param [Parser::AST::Node] arg_node AST node for the optional argument
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [Object] opts additional options for param formatting
+      # @return [Array<String>]
       def build_optarg_lines(arg_node, indent, external_sig, param_types_override, **opts)
         pname, default = *arg_node
         pname = pname.to_s
@@ -1403,12 +1403,12 @@ module Docscribe
       # Optarg type
       #
       # @note module_function: defines #optarg_type (visibility: private)
-      # @param [Object] pname the parameter name to look up
-      # @param [Object] default default value node
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Object] opts additional options including
-      # @return [Object]
+      # @param [String] pname the parameter name to look up
+      # @param [Parser::AST::Node] default default value node
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [Hash<Symbol, Object>] opts additional options including
+      # @return [String]
       def optarg_type(pname, default, external_sig, param_types_override, opts)
         default_src = source_from_node(default)
         lookup_param_type(external_sig, param_types_override, pname, pname,
@@ -1420,8 +1420,8 @@ module Docscribe
       # Source from node
       #
       # @note module_function: defines #source_from_node (visibility: private)
-      # @param [Object] node AST node whose source text to extract
-      # @return [Object]
+      # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @return [String, nil]
       def source_from_node(node)
         loc = node&.loc
         loc&.expression&.source
@@ -1430,9 +1430,9 @@ module Docscribe
       # Resolve infer name
       #
       # @note module_function: defines #resolve_infer_name (visibility: private)
-      # @param [Object] pname the parameter name to look up
-      # @param [Object] infer_name parameter name string or transformed version for inference
-      # @return [Object]
+      # @param [String] pname the parameter name to look up
+      # @param [Proc, nil] infer_name parameter name string or transformed version for inference
+      # @return [String]
       def resolve_infer_name(pname, infer_name)
         infer_name ? infer_name.call(pname) : pname
       end
@@ -1440,12 +1440,12 @@ module Docscribe
       # Build kwarg line
       #
       # @note module_function: defines #build_kwarg_line (visibility: private)
-      # @param [Object] arg_node AST node for the keyword argument
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Hash] opts additional options for param formatting
-      # @return [Object]
+      # @param [Parser::AST::Node] arg_node AST node for the keyword argument
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [Object] opts additional options for param formatting
+      # @return [String]
       def build_kwarg_line(arg_node, indent, external_sig, param_types_override, **opts)
         pname = arg_node.children.first.to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, "#{pname}:",
@@ -1458,12 +1458,12 @@ module Docscribe
       # Build kwoptarg line
       #
       # @note module_function: defines #build_kwoptarg_line (visibility: private)
-      # @param [Object] arg_node AST node for the optional keyword argument
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Hash] opts additional options for param formatting
-      # @return [Object]
+      # @param [Parser::AST::Node] arg_node AST node for the optional keyword argument
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [Object] opts additional options for param formatting
+      # @return [String]
       def build_kwoptarg_line(arg_node, indent, external_sig, param_types_override, **opts)
         pname, default = *arg_node
         pname = pname.to_s
@@ -1479,12 +1479,12 @@ module Docscribe
       # Build restarg line
       #
       # @note module_function: defines #build_restarg_line (visibility: private)
-      # @param [Object] arg_node AST node for the rest argument (*args)
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Hash] opts additional options for param formatting
-      # @return [Object]
+      # @param [Parser::AST::Node] arg_node AST node for the rest argument (*args)
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [Object] opts additional options for param formatting
+      # @return [String]
       def build_restarg_line(arg_node, indent, external_sig, param_types_override, **opts)
         pname = (arg_node.children.first || 'args').to_s
         rest_pos = external_sig&.rest_positional
@@ -1500,12 +1500,12 @@ module Docscribe
       # Build kwrestarg line
       #
       # @note module_function: defines #build_kwrestarg_line (visibility: private)
-      # @param [Object] arg_node AST node for the keyword rest argument (**kwargs)
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Hash] opts additional options for param formatting
-      # @return [Object]
+      # @param [Parser::AST::Node] arg_node AST node for the keyword rest argument (**kwargs)
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [Object] opts additional options for param formatting
+      # @return [String]
       def build_kwrestarg_line(arg_node, indent, external_sig, param_types_override, **opts)
         pname = (arg_node.children.first || 'kwargs').to_s
         ty = external_sig&.rest_keywords&.type ||
@@ -1517,12 +1517,12 @@ module Docscribe
       # Build blockarg line
       #
       # @note module_function: defines #build_blockarg_line (visibility: private)
-      # @param [Object] arg_node AST node for the block argument (&block)
-      # @param [Object] indent indentation string for doc comment lines
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Hash] opts additional options for param formatting
-      # @return [Object]
+      # @param [Parser::AST::Node] arg_node AST node for the block argument (&block)
+      # @param [String] indent indentation string for doc comment lines
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [Object] opts additional options for param formatting
+      # @return [String]
       def build_blockarg_line(arg_node, indent, external_sig, param_types_override, **opts)
         pname = (arg_node.children.first || 'block').to_s
         ty = lookup_param_type(external_sig, param_types_override, pname, "&#{pname}",
@@ -1535,12 +1535,12 @@ module Docscribe
       # Lookup param type
       #
       # @note module_function: defines #lookup_param_type (visibility: private)
-      # @param [Object] external_sig external method signature for type overrides
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Object] pname the parameter name string
-      # @param [Object] infer_name parameter name string or transformed version for inference
-      # @param [Hash] opts additional options including infer_default, fallback_type, treat_options_keyword_as_hash
-      # @return [Object]
+      # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [String] pname the parameter name string
+      # @param [String] infer_name parameter name string or transformed version for inference
+      # @param [Object] opts additional options including infer_default, fallback_type, treat_options_keyword_as_hash
+      # @return [String]
       def lookup_param_type(external_sig, param_types_override, pname, infer_name, **opts)
         external_sig&.param_types&.[](pname) ||
           override_param_type_for(pname, param_types_override) ||
@@ -1552,12 +1552,12 @@ module Docscribe
       # Lookup param type by infer
       #
       # @note module_function: defines #lookup_param_type_by_infer (visibility: private)
-      # @param [Object] param_types_override map of parameter name to override type
-      # @param [Object] pname the parameter name string
-      # @param [Object] infer_name parameter name string or transformed version for inference
-      # @param [Object] fallback_type default type string when inference fails
-      # @param [Object] treat_options_keyword_as_hash whether to treat options keyword as Hash type
-      # @return [Object]
+      # @param [Hash<String, String>, nil] param_types_override map of parameter name to override type
+      # @param [String] pname the parameter name string
+      # @param [String] infer_name parameter name string or transformed version for inference
+      # @param [String] fallback_type default type string when inference fails
+      # @param [Boolean, nil] treat_options_keyword_as_hash whether to treat options keyword as Hash type
+      # @return [String]
       def lookup_param_type_by_infer(param_types_override, pname, infer_name, fallback_type,
                                      treat_options_keyword_as_hash)
         override_param_type_for(pname, param_types_override) ||
@@ -1569,12 +1569,12 @@ module Docscribe
       # Format param tag
       #
       # @note module_function: defines #format_param_tag (visibility: private)
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] name the parameter name
-      # @param [Object] type the parameter type string
-      # @param [Object] documentation optional documentation text appended to the tag
-      # @param [Object] style param tag style (:type_name or :name_type)
-      # @return [Object]
+      # @param [String] indent indentation string for the doc line
+      # @param [String] name the parameter name
+      # @param [String] type the parameter type string
+      # @param [String] documentation optional documentation text appended to the tag
+      # @param [Symbol, String] style param tag style (:type_name or :name_type)
+      # @return [String]
       def format_param_tag(indent, name, type, documentation, style:)
         doc = documentation.to_s.strip
         type = type.to_s
@@ -1585,10 +1585,10 @@ module Docscribe
       # Build param tag base string
       #
       # @note module_function: defines #build_param_tag_base (visibility: private)
-      # @param [Object] indent indentation string
-      # @param [Object] name parameter name
-      # @param [Object] type parameter type string
-      # @param [Object] style tag style symbol
+      # @param [String] indent indentation string
+      # @param [String] name parameter name
+      # @param [String] type parameter type string
+      # @param [String, Symbol] style tag style symbol
       # @return [String]
       def build_param_tag_base(indent, name, type, style)
         case style.to_s
@@ -1600,10 +1600,10 @@ module Docscribe
       # Append param doc text
       #
       # @note module_function: defines #append_param_doc (visibility: private)
-      # @param [Object] line existing param tag line
-      # @param [Object] doc documentation text
-      # @param [Object] indent indentation string
-      # @return [Object]
+      # @param [String] line existing param tag line
+      # @param [String] doc documentation text
+      # @param [String] indent indentation string
+      # @return [String]
       def append_param_doc(line, doc, indent)
         parts = doc.split("\n")
         result = +"#{line} #{parts.first}"
@@ -1614,12 +1614,12 @@ module Docscribe
       # Append option lines
       #
       # @note module_function: defines #append_option_lines (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] default default value node
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] pname the parameter name to look up
-      # @param [Object] fallback_type default type string when inference fails
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Parser::AST::Node] default default value node
+      # @param [String] indent indentation string for the doc line
+      # @param [String] pname the parameter name to look up
+      # @param [String] fallback_type default type string when inference fails
+      # @return [void]
       def append_option_lines(lines, default, indent, pname, fallback_type)
         hash_option_pairs(default).each do |pair|
           lines << build_option_line(pair, indent, pname, fallback_type)
@@ -1629,8 +1629,8 @@ module Docscribe
       # Hash option pairs
       #
       # @note module_function: defines #hash_option_pairs (visibility: private)
-      # @param [Object] node AST node for the default value, expected to be :hash type
-      # @return [Array<String>]
+      # @param [Parser::AST::Node] node AST node for the default value, expected to be :hash type
+      # @return [Array<Parser::AST::Node>]
       def hash_option_pairs(node)
         return [] unless node&.type == :hash
 
@@ -1640,10 +1640,10 @@ module Docscribe
       # Build option line
       #
       # @note module_function: defines #build_option_line (visibility: private)
-      # @param [Object] pair AST pair node containing key and value
-      # @param [Object] indent indentation string for the doc line
-      # @param [Object] pname the parent parameter name for @option scope
-      # @param [Object] fallback_type default type string when inference fails
+      # @param [Parser::AST::Node] pair AST pair node containing key and value
+      # @param [String] indent indentation string for the doc line
+      # @param [String] pname the parent parameter name for @option scope
+      # @param [String] fallback_type default type string when inference fails
       # @return [String]
       def build_option_line(pair, indent, pname, fallback_type)
         key_node, value_node = pair.children
@@ -1660,8 +1660,8 @@ module Docscribe
       # Option key name
       #
       # @note module_function: defines #option_key_name (visibility: private)
-      # @param [Object] key_node AST node for the hash key (:sym or :str type)
-      # @return [String, Object]
+      # @param [Parser::AST::Node] key_node AST node for the hash key (:sym or :str type)
+      # @return [String]
       def option_key_name(key_node)
         case key_node&.type
         when :sym, :str
@@ -1675,8 +1675,8 @@ module Docscribe
       # Node default literal
       #
       # @note module_function: defines #node_default_literal (visibility: private)
-      # @param [Object] node AST node whose source text to extract
-      # @return [Object]
+      # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @return [String, nil]
       def node_default_literal(node)
         expression = node&.loc&.expression
         expression&.source
@@ -1685,9 +1685,9 @@ module Docscribe
       # Override param type for
       #
       # @note module_function: defines #override_param_type_for (visibility: private)
-      # @param [Object] pname the parameter name to look up
-      # @param [Object] override_map hash map of parameter name to override type
-      # @return [Object]
+      # @param [String] pname the parameter name to look up
+      # @param [Hash<Object, Object>, nil] override_map hash map of parameter name to override type
+      # @return [String, nil]
       def override_param_type_for(pname, override_map)
         return nil unless override_map
 
@@ -1698,8 +1698,8 @@ module Docscribe
       # Extract param description
       #
       # @note module_function: defines #extract_param_description (visibility: private)
-      # @param [Object] line a `@param` tag line
-      # @return [Object?]
+      # @param [String] line a `@param` tag line
+      # @return [String, nil]
       def extract_param_description(line)
         after = param_rest_after_type(line)
         return nil unless after
@@ -1711,8 +1711,8 @@ module Docscribe
       # Extract everything after the type bracket in a @param line.
       #
       # @note module_function: defines #param_rest_after_type (visibility: private)
-      # @param [Object] line a @param doc line
-      # @return [nil] the text after the closing `]`, or nil
+      # @param [String] line a @param doc line
+      # @return [String?] the text after the closing `]`, or nil
       def param_rest_after_type(line)
         content = line.sub(/^\s*#\s*/, '')
         if (m = content.match(/@param\s+(\S+\s+)?\[/))
@@ -1728,8 +1728,8 @@ module Docscribe
       # Param name from arg
       #
       # @note module_function: defines #param_name_from_arg (visibility: private)
-      # @param [Object] arg_node AST node for the block argument (&block)
-      # @return [Object]
+      # @param [Parser::AST::Node] arg_node AST node for the block argument (&block)
+      # @return [String, nil]
       def param_name_from_arg(arg_node)
         return nil if arg_node.type == :forward_arg
 
@@ -1739,8 +1739,8 @@ module Docscribe
       # Extract param name from param line
       #
       # @note module_function: defines #extract_param_name_from_param_line (visibility: private)
-      # @param [Object] line a `@param` doc line
-      # @return [nil] the parameter name or nil
+      # @param [String] line a `@param` doc line
+      # @return [String, nil] the parameter name or nil
       def extract_param_name_from_param_line(line)
         content = line.sub(/^\s*#\s*/, '')
         if (m = content.match(/@param\s+(\S+)\s+\[/))
@@ -1758,9 +1758,9 @@ module Docscribe
       # Extract name after type bracket
       #
       # @note module_function: defines #name_after_type_bracket (visibility: private)
-      # @param [Object] rest tag content after bracket
-      # @param [Object] type_end closing bracket position
-      # @return [Object]
+      # @param [String] rest tag content after bracket
+      # @param [Integer] type_end closing bracket position
+      # @return [String?]
       def name_after_type_bracket(rest, type_end)
         rest[(type_end + 1)..].to_s.strip.split(/\s+/).first
       end
@@ -1768,8 +1768,8 @@ module Docscribe
       # Extract param type from param line
       #
       # @note module_function: defines #extract_param_type_from_param_line (visibility: private)
-      # @param [Object] line a `@param` tag line
-      # @return [nil]
+      # @param [String] line a `@param` tag line
+      # @return [String, nil]
       def extract_param_type_from_param_line(line)
         content = line.sub(/^\s*#\s*/, '')
         if (m = content.match(/@param\s+(\S+\s+)?\[/))
@@ -1784,8 +1784,8 @@ module Docscribe
       # Find matching close bracket
       #
       # @note module_function: defines #find_matching_close_bracket (visibility: private)
-      # @param [Object] str string to scan
-      # @return [nil]
+      # @param [String] str string to scan
+      # @return [Integer, nil]
       def find_matching_close_bracket(str)
         depth = 0
         str.each_char.with_index do |c, i|
@@ -1802,10 +1802,10 @@ module Docscribe
       # Collect missing raises
       #
       # @note module_function: defines #collect_missing_raises! (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Hash] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Object] ctx merged context hash with info and indent
+      # @return [void]
       def collect_missing_raises!(lines, reasons, **ctx)
         return unless ctx[:config].emit_raise_tags?
 
@@ -1822,10 +1822,10 @@ module Docscribe
       # Collect missing return
       #
       # @note module_function: defines #collect_missing_return! (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Hash] ctx merged context hash with info and indent
-      # @return [Object, Object?]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Object] ctx merged context hash with info and indent
+      # @return [void]
       def collect_missing_return!(lines, reasons, **ctx)
         return unless ctx[:config].emit_return_tag?(ctx[:scope], ctx[:visibility])
 
@@ -1839,10 +1839,10 @@ module Docscribe
       # Record missing return
       #
       # @note module_function: defines #record_missing_return (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Object] ctx merged context hash with normal_type and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Hash<Symbol, Object>] ctx merged context hash with normal_type and indent
+      # @return [void]
       def record_missing_return(lines, reasons, ctx)
         lines << "#{ctx[:indent]}# @return [#{ctx[:normal_type]}]\n"
         reasons << { type: :missing_return, message: 'missing @return' }
@@ -1851,10 +1851,10 @@ module Docscribe
       # Record updated return
       #
       # @note module_function: defines #record_updated_return (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Object] ctx merged context hash with normal_type and info
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Hash<Symbol, Object>] ctx merged context hash with normal_type and info
+      # @return [void]
       def record_updated_return(lines, reasons, ctx)
         lines << "#{ctx[:indent]}# @return [#{ctx[:normal_type]}]\n" unless ctx[:strategy] == :safe
         reasons << { type: :updated_return,
@@ -1864,8 +1864,8 @@ module Docscribe
       # Return type changed
       #
       # @note module_function: defines #return_type_changed? (visibility: private)
-      # @param [Object] ctx merged context hash with external_sig, info, and normal_type
-      # @return [Object, Boolean]
+      # @param [Hash<Symbol, Object>] ctx merged context hash with external_sig, info, and normal_type
+      # @return [Boolean]
       def return_type_changed?(ctx)
         ctx[:external_sig] && ctx[:info][:return_type] && ctx[:info][:return_type] != ctx[:normal_type]
       end
@@ -1873,10 +1873,10 @@ module Docscribe
       # Collect missing rescue returns
       #
       # @note module_function: defines #collect_missing_rescue_returns! (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Hash] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Object] ctx merged context hash with info and indent
+      # @return [void]
       def collect_missing_rescue_returns!(lines, reasons, **ctx)
         return unless ctx[:config].emit_rescue_conditional_returns?
         return if ctx[:info][:has_return]
@@ -1893,10 +1893,10 @@ module Docscribe
       # Collect missing plugin tags
       #
       # @note module_function: defines #collect_missing_plugin_tags! (visibility: private)
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Hash] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Object] ctx merged context hash with info and indent
+      # @return [void]
       def collect_missing_plugin_tags!(lines, reasons, **ctx)
         plugin_tags = Docscribe::Plugin.run_tag_plugins(build_plugin_context(ctx[:insertion],
                                                                              normal_type: ctx[:normal_type]))
@@ -1909,10 +1909,10 @@ module Docscribe
       #
       # @note module_function: defines #record_plugin_tag (visibility: private)
       # @param [Object] tag plugin tag object to render and record
-      # @param [Object] lines array of output doc lines being accumulated
-      # @param [Object] reasons array of reason hashes for --explain output
-      # @param [Object] ctx merged context hash with info and indent
-      # @return [Object]
+      # @param [Array<String>] lines array of output doc lines being accumulated
+      # @param [Array<Hash<Symbol, Object>>] reasons array of reason hashes for --explain output
+      # @param [Hash<Symbol, Object>] ctx merged context hash with info and indent
+      # @return [void]
       def record_plugin_tag(tag, lines, reasons, ctx)
         return if ctx[:info][:plugin_tags]&.[](tag.name)
 
@@ -1924,11 +1924,11 @@ module Docscribe
       # Debug warn
       #
       # @note module_function: defines #debug_warn (visibility: private)
-      # @param [Object] error the error that occurred
+      # @param [StandardError] error the error that occurred
       # @param [Object] insertion the method insertion being processed
-      # @param [Object] name the method name
-      # @param [Object] phase the processing phase
-      # @return [Object]
+      # @param [String] name the method name
+      # @param [String] phase the processing phase
+      # @return [void]
       def debug_warn(error, insertion:, name:, phase:)
         return unless debug?
 
@@ -1940,8 +1940,8 @@ module Docscribe
       #
       # @note module_function: defines #build_debug_location (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] name the method name string
-      # @return [Object]
+      # @param [String] name the method name string
+      # @return [String]
       def build_debug_location(insertion, name)
         return name.to_s unless insertion
 
@@ -1964,7 +1964,7 @@ module Docscribe
       #
       # @note module_function: defines #build_plugin_context (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] normal_type resolved return type
+      # @param [String] normal_type resolved return type
       # @return [Object]
       def build_plugin_context(insertion, normal_type:)
         node = insertion.node
@@ -1976,10 +1976,10 @@ module Docscribe
       #
       # @note module_function: defines #new_plugin_context (visibility: private)
       # @param [Object] insertion the collected method insertion object
-      # @param [Object] node AST node whose source text to extract
-      # @param [Object] source method source text
-      # @param [Object] normal_type resolved return type
-      # @return [Context]
+      # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @param [String] source method source text
+      # @param [String] normal_type resolved return type
+      # @return [Object]
       def new_plugin_context(insertion, node, source, normal_type)
         Docscribe::Plugin::Context.new(
           node: node,
@@ -1996,9 +1996,9 @@ module Docscribe
       # Safe node source
       #
       # @note module_function: defines #safe_node_source (visibility: private)
-      # @param [Object] node AST node whose source text to extract
+      # @param [Parser::AST::Node] node AST node whose source text to extract
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [String] if StandardError
       # @return [String] if StandardError
       def safe_node_source(node)
         node.loc.expression.source
@@ -2009,9 +2009,9 @@ module Docscribe
       # Render plugin tags
       #
       # @note module_function: defines #render_plugin_tags (visibility: private)
-      # @param [Object] tags plugin tag objects
-      # @param [Object] indent indentation string for the doc line
-      # @return [String]
+      # @param [Array<Object>] tags plugin tag objects
+      # @param [String] indent indentation string for the doc line
+      # @return [Array<String>]
       def render_plugin_tags(tags, indent)
         tags.map do |tag|
           type_part = tag.types&.any? ? " [#{tag.types.join(', ')}]" : ''

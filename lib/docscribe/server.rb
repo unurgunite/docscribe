@@ -26,7 +26,7 @@ module Docscribe
       # @raise [Errno::ENOENT]
       # @raise [Errno::ENOTSOCK]
       # @raise [StandardError]
-      # @return [Boolean]
+      # @return [Boolean] if StandardError
       # @return [Boolean] if Errno::ECONNREFUSED, Errno::ENOENT, Errno::ENOTSOCK
       # @return [Boolean] if StandardError
       def running?(config_path = nil)
@@ -45,7 +45,7 @@ module Docscribe
       #
       # @param [String?] config_path optional config path for socket lookup
       # @raise [StandardError]
-      # @return [Integer?]
+      # @return [Integer?] if StandardError
       # @return [nil] if StandardError
       def read_pid(config_path = nil)
         File.read(pid_path(config_path)).to_i if File.exist?(pid_path(config_path))
@@ -104,7 +104,7 @@ module Docscribe
       # @note module_function: defines #parse_response (visibility: private)
       # @param [String] line raw JSON line
       # @raise [JSON::ParserError]
-      # @return [Hash<String, Object>?]
+      # @return [Hash<String, Object>?] if JSON::ParserError
       # @return [nil] if JSON::ParserError
       def parse_response(line)
         JSON.parse(line)
@@ -412,7 +412,7 @@ module Docscribe
       #
       # @private
       # @raise [StandardError]
-      # @return [Object]
+      # @return [Object] if StandardError
       # @return [nil] if StandardError
       def cleanup
         @server&.close

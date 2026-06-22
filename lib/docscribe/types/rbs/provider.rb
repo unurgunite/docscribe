@@ -108,7 +108,11 @@ module Docscribe
         # @return [RBS::Environment] if ::RBS::BaseError
         # @return [Object] if ::RBS::BaseError
         def try_with_fallback_build_env(all_dirs, collection_dirs)
-          build_env(all_dirs)
+          # First attempt: load core types + all dirs (sig + collection).
+          # If duplicate declarations occur (stdlib gem in both `library: 'rbs'`
+          # and collection), retry with individual collection gem dirs,
+          # skipping those already provided by the rbs stdlib.
+          build_env_with_collection(all_dirs, collection_dirs)
         rescue ::RBS::BaseError => e
           raise unless collection_dirs.any? && !@collection_dropped
 
@@ -120,6 +124,54 @@ module Docscribe
           build_env(@sig_dirs)
         end
 
+        # Build the environment, handling potential duplicate declarations
+        # between rbs stdlib and collection gems.
+        #
+        # @private
+        # @param [Object] all_dirs combined sig and collection dirs
+        # @param [Object] collection_dirs RBS collection directories
+        # @return [Object]
+        def build_env_with_collection(all_dirs, collection_dirs)
+          stdlib = Set.new(stdlib_gem_names)
+          loader = ::RBS::EnvironmentLoader.new
+          loader.add(library: 'rbs') # steep:ignore
+
+          all_dirs.each do |dir|
+            path = Pathname(dir)
+            next unless path.directory?
+
+            # When a directory is a collection dir, add its gem dirs
+            # individually, skipping those already in stdlib
+            if collection_dirs.include?(dir)
+              path.children.each do |child|
+                next unless child.directory?
+                next if stdlib.include?(child.basename.to_s)
+                loader.add(path: child)
+              end
+            else
+              loader.add(path: path)
+            end
+          end
+
+          env = ::RBS::Environment.from_loader(loader).resolve_type_names
+          @builder = ::RBS::DefinitionBuilder.new(env: env)
+          env
+        end
+
+        # Names of stdlib gems bundled with the `rbs` gem.
+        #
+        # @private
+        # @raise [StandardError]
+        # @return [Object]
+        # @return [Array] if StandardError
+        def stdlib_gem_names
+          rbs_spec = Gem::Specification.find_by_name('rbs')
+          stdlib_dir = File.join(rbs_spec.gem_dir, 'stdlib')
+          Dir.children(stdlib_dir)
+        rescue StandardError
+          []
+        end
+
         # Build an RBS environment from the given directories.
         #
         # @private
@@ -127,7 +179,6 @@ module Docscribe
         # @return [RBS::Environment]
         def build_env(dirs)
           loader = ::RBS::EnvironmentLoader.new
-          # Load core types transitively
           loader.add(library: 'rbs') # steep:ignore
 
           dirs.each do |dir|
