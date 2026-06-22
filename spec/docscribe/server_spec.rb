@@ -24,11 +24,13 @@ RSpec.describe Docscribe::Server do
       expect(described_class.running?).to be false
     end
 
-    it 'returns false when lock file exists' do
+    it 'returns false when socket file is stale (not a real socket)' do
       Dir.mktmpdir do |dir|
         allow(described_class).to receive(:socket_path).and_return(sock = "#{dir}/test.sock")
-        [sock, "#{sock}.lock"].each { |f| File.write(f, '') }
+        allow(described_class).to receive(:pid_path).and_return("#{dir}/test.pid")
+        File.write(sock, '') # regular file, not a Unix socket
         expect(described_class.running?).to be false
+        expect(File.exist?(sock)).to be false
       end
     end
   end
@@ -109,6 +111,31 @@ RSpec.describe Docscribe::Server do
         expect(client.shutdown).to be_nil
       end
     end
+
+    describe 'wire format' do
+      it 'sends request with single trailing newline' do
+        Dir.mktmpdir do |dir|
+          sock_path = "#{dir}/test.sock"
+          server = UNIXServer.new(sock_path)
+
+          raw_data = +''
+          server_thread = Thread.new do
+            client_sock = server.accept
+            raw_data = client_sock.read
+            client_sock.close
+          end
+
+          client = described_class.new(sock_path)
+          client.check(file: 'test.rb')
+
+          server_thread.join
+          server.close
+
+          expect(raw_data.count("\n")).to eq(1)
+          expect(raw_data).to end_with("\n")
+        end
+      end
+    end
   end
 
   describe Docscribe::Server::Daemon do
@@ -166,6 +193,15 @@ RSpec.describe Docscribe::Server do
         aggregate_failures do
           expect(response).not_to be_nil
           expect(response.dig('error', 'message')).to include('File not found')
+        end
+      end
+
+      it 'defaults to safe strategy when not specified' do
+        response = client.check(file: test_file)
+        aggregate_failures do
+          expect(response).not_to be_nil
+          expect(response['error']).to be_nil
+          expect(response['result']).to have_key('status')
         end
       end
     end

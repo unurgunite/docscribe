@@ -11,14 +11,20 @@ module Docscribe
     #   @return [Hash<String, Object>]
     attr_reader :raw
 
+    # @!attribute [r] config_path
+    #   @return [String, nil]
+    attr_reader :config_path
+
     # Create a configuration object from a raw config hash.
     #
     # Missing keys are filled from {DEFAULT} via deep merge.
     #
     # @param [Hash<String, Object>] raw user-provided config hash
+    # @param [String, nil] config_path optional path to the config file
     # @return [void]
-    def initialize(raw = {})
-      @raw = deep_merge(DEFAULT, raw || {})
+    def initialize(config_path: nil, **raw)
+      @raw = deep_merge(DEFAULT, raw)
+      @config_path = config_path
     end
   end
 end

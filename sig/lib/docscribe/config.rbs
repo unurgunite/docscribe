@@ -1,9 +1,11 @@
 module Docscribe
   class Config
     @raw: Hash[String, Object]
+    @config_path: String?
 
     attr_reader raw: Hash[String, Object]
+    attr_reader config_path: String?
 
-    def initialize: (?Hash[String, Object] raw) -> void
+    def initialize: (?config_path: String?, **Hash[String, Object] raw) -> void
   end
 end

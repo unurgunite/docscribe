@@ -10,7 +10,7 @@ module RbsHelper
   def inline_with_sorbet(code, strategy: :safe, config_overrides: {})
     skip_unless_sorbet_bridge_available!
     raw = { 'sorbet' => { 'enabled' => true } }.merge(config_overrides)
-    inline(code, strategy: strategy, config: Docscribe::Config.new(raw))
+    inline(code, strategy: strategy, config: Docscribe::Config.new(**raw))
   end
 
   # Rewrite +code+ with both Sorbet RBI and optionally RBS signature files.
@@ -33,7 +33,7 @@ module RbsHelper
       File.write(File.join(rbi_dir, 'demo.rbi'), rbi)
       raw = { 'sorbet' => { 'enabled' => true, 'rbi_dirs' => [rbi_dir] } }.merge(config_overrides)
       raw.merge!(rbs_config(dir, dir_names[:sig], rbs)) if rbs
-      inline(code, config: Docscribe::Config.new(raw))
+      inline(code, config: Docscribe::Config.new(**raw))
     end
   end
 
@@ -56,7 +56,7 @@ module RbsHelper
 
       inline(
         code,
-        config: Docscribe::Config.new(config.merge('rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] }))
+        config: Docscribe::Config.new(**config.merge('rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] }))
       )
     end
   end

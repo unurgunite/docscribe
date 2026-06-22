@@ -3,6 +3,7 @@
 require 'open3'
 require 'tmpdir'
 require 'docscribe/cli'
+require 'docscribe/server'
 
 RSpec.describe Docscribe::CLI::Run do
   subject(:result) { Open3.capture3('ruby', exe, *args, chdir: dir) }
@@ -390,6 +391,32 @@ RSpec.describe Docscribe::CLI::Run do
 
     it 'exits 0' do
       expect(result[2].exitstatus).to eq(0)
+    end
+  end
+
+  describe '.wait_for_server' do
+    it 'raises when server does not become ready' do
+      allow(Docscribe::Server).to receive(:running?).and_return(false)
+
+      expect do
+        described_class.send(:wait_for_server, timeout: 0.1)
+      end.to raise_error(RuntimeError, /server failed to start/)
+    end
+
+    it 'returns when server becomes ready' do
+      called = false
+      allow(Docscribe::Server).to receive(:running?) do
+        if called
+          true
+        else
+          called = true
+          false
+        end
+      end
+
+      expect do
+        described_class.send(:wait_for_server, timeout: 1)
+      end.not_to raise_error
     end
   end
 end

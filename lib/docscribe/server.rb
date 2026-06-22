@@ -21,40 +21,54 @@ module Docscribe
     class << self
       # Whether a server process is listening on the socket.
       #
+      # @param [String, nil] config_path optional config path for socket lookup
       # @return [Boolean]
-      def running?
-        return false unless File.exist?(socket_path)
-        return false if File.exist?("#{socket_path}.lock")
-
+      def running?(config_path = nil)
+        socket = UNIXSocket.new(socket_path(config_path))
+        socket.close
         true
+      rescue Errno::ECONNREFUSED, Errno::ENOENT, Errno::ENOTSOCK
+        FileUtils.rm_f(socket_path(config_path))
+        FileUtils.rm_f(pid_path(config_path))
+        false
       rescue StandardError
         false
       end
 
       # Read the PID of the running server process.
       #
+      # @param [String, nil] config_path optional config path for socket lookup
       # @return [Integer, nil]
-      def read_pid
-        File.read(pid_path).to_i if File.exist?(pid_path)
+      def read_pid(config_path = nil)
+        File.read(pid_path(config_path)).to_i if File.exist?(pid_path(config_path))
       rescue StandardError
         nil
       end
 
       # Path to the PID file for the server process.
       #
+      # @param [String, nil] config_path optional config path for socket lookup
       # @return [String]
-      def pid_path
-        "#{socket_path}.pid"
+      def pid_path(config_path = nil)
+        "#{socket_path(config_path)}.pid"
       end
 
       # Derive a project-specific socket path from the current working directory.
       # Uses MD5 (deterministic across processes) instead of String#hash
       # (which varies per Ruby process due to random seeding).
+      # When a config_path is given, its path + mtime are included in the hash
+      # so different configs get different daemons.
       #
+      # @param [String, nil] config_path optional config path to differentiate
       # @return [String]
-      def socket_path
+      def socket_path(config_path = nil)
         hash = Digest::MD5.hexdigest(Dir.pwd)
-        "#{SOCKET_DIR}/docscribe-#{hash}.sock"
+        if config_path
+          cfg_hash = Digest::MD5.hexdigest("#{config_path}:#{File.mtime(config_path).to_i}")
+          "#{SOCKET_DIR}/docscribe-#{hash}-#{cfg_hash}.sock"
+        else
+          "#{SOCKET_DIR}/docscribe-#{hash}.sock"
+        end
       end
     end
 
@@ -98,8 +112,9 @@ module Docscribe
     # Client for communicating with a running Docscribe daemon.
     class Client
       # @param [String, nil] socket_path custom socket path (defaults to server default)
-      def initialize(socket_path = nil)
-        @socket_path = socket_path || Server.socket_path
+      # @param [String, nil] config_path optional config path for socket lookup
+      def initialize(socket_path = nil, config_path: nil)
+        @socket_path = socket_path || Server.socket_path(config_path)
       end
 
       # Send a check request to the server.
@@ -137,7 +152,7 @@ module Docscribe
       def request(method, **params)
         connect do |socket|
           req = Protocol.build_request(method, params)
-          socket.puts(Protocol.serialize(req))
+          socket.write(Protocol.serialize(req))
           socket.close_write
           line = socket.gets
           break unless line
@@ -164,9 +179,11 @@ module Docscribe
     class Daemon
       # @param [String, nil] socket_path custom socket path
       # @param [Integer] idle_timeout seconds before automatic shutdown
-      def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT)
-        @socket_path = socket_path || Server.socket_path
+      # @param [String, nil] config_path custom config path
+      def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil)
+        @socket_path = socket_path || Server.socket_path(config_path)
         @idle_timeout = idle_timeout
+        @config_path = config_path
         @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @running = false
         @server = nil
@@ -192,7 +209,7 @@ module Docscribe
       # @return [void]
       def load_dependencies
         require 'docscribe'
-        @config = Docscribe::Config.load
+        @config = Docscribe::Config.load(@config_path)
         @config&.load_plugins!
         @core_rbs_provider = @config&.core_rbs_provider
       end
@@ -294,7 +311,7 @@ module Docscribe
       # @return [void]
       def handle_check(client, id, params)
         file = params['file']
-        strategy = (params['strategy'] || 'check').to_sym
+        strategy = (params['strategy'] || 'safe').to_sym
         return send_error(client, id, -32_602, "File not found: #{file}") unless file && File.file?(file)
 
         src, result = rewrite_file(file, strategy)

@@ -72,12 +72,17 @@ module Docscribe
         # @return [Integer] exit code
         def run_via_server(options:, argv:)
           require 'docscribe/server'
-          ensure_server_running!
-          client = Docscribe::Server::Client.new
-          paths = expand_paths(argv)
+          conf = build_config(options)
+          config_path = conf.config_path
+          ensure_server_running!(config_path: config_path)
+          client = Docscribe::Server::Client.new(config_path: config_path)
+          paths = filtered_paths(argv, conf)
           return no_files_found unless paths.any?
 
           run_files_via_server(client, paths, options)
+        rescue RuntimeError => e
+          warn e.message
+          1
         end
 
         # Run files through the server client with progress tracking.
@@ -170,16 +175,16 @@ module Docscribe
         #
         # @private
         # @return [void]
-        def ensure_server_running!
-          return if Docscribe::Server.running?
+        def ensure_server_running!(config_path: nil)
+          return if Docscribe::Server.running?(config_path)
 
           warn 'Docscribe: starting server...'
           pid = fork do
-            daemon = Docscribe::Server::Daemon.new
+            daemon = Docscribe::Server::Daemon.new(config_path: config_path)
             daemon.start
           end
           Process.detach(pid)
-          wait_for_server
+          wait_for_server(config_path: config_path)
         end
 
         # Wait for the server to become ready.
@@ -187,14 +192,13 @@ module Docscribe
         # @private
         # @param [Integer] timeout max seconds to wait
         # @return [void]
-        def wait_for_server(timeout: 5)
+        def wait_for_server(timeout: 5, config_path: nil)
           deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
           loop do
-            return if Docscribe::Server.running?
+            return if Docscribe::Server.running?(config_path)
 
             if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-              warn 'Docscribe: server failed to start'
-              exit 1
+              raise 'Docscribe: server failed to start'
             end
 
             sleep 0.1

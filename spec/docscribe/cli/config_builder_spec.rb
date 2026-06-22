@@ -96,7 +96,7 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
   end
 
   describe 'build' do
-    let(:base) { Docscribe::Config.new({}) }
+    let(:base) { Docscribe::Config.new }
 
     it 'sets emit flags when no_boilerplate is in options', :aggregate_failures do
       config = described_class.build(base, default_options.merge(no_boilerplate: true))
@@ -124,7 +124,7 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
       require 'docscribe/types/rbs/collection_loader'
       allow(Docscribe::Types::RBS::CollectionLoader).to receive(:resolve).and_return(nil)
 
-      raw = Marshal.load(Marshal.dump(Docscribe::Config.new({}).raw))
+      raw = Marshal.load(Marshal.dump(Docscribe::Config.new.raw))
       expect { described_class.apply_rbs_collection(raw) }
         .to output(/rbs_collection\.lock\.yaml not found/).to_stderr
     end

@@ -10,7 +10,7 @@ RSpec.describe DocscribePlugins::ApiTagPlugin do
   after  { Docscribe::Plugin::Registry.clear! }
 
   def rewrite(code, strategy: :safe)
-    conf = Docscribe::Config.new({})
+    conf = Docscribe::Config.new
     inline(code, strategy: strategy, config: conf)
   end
 
