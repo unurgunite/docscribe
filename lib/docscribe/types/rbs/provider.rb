@@ -117,10 +117,8 @@ module Docscribe
           raise unless collection_dirs.any? && !@collection_dropped
 
           @collection_dropped = true
-          if ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
-            warn "Docscribe: RBS collection error (#{e.class}), dropping collection dirs. " \
-                 'Set DOCSCRIBE_RBS_DEBUG=1 for details.'
-          end
+          warn "Docscribe: RBS collection error (#{e.class}), dropping collection dirs. " \
+               'Set DOCSCRIBE_RBS_DEBUG=1 for details.'
           build_env(@sig_dirs)
         end
 
@@ -362,13 +360,12 @@ module Docscribe
           end
         end
 
-        # Print one debug warning per provider instance when debugging is enabled.
+        # Print one warning per provider instance (avoiding repeated spam).
         #
         # @private
         # @param [String] msg warning message text
         # @return [void]
         def warn_once(msg)
-          return unless ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
           return if @warned
 
           @warned = true
