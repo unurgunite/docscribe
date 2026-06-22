@@ -27,3 +27,5 @@ gems:
   - name: forwardable
   - name: strscan
   - name: securerandom
+  - name: socket
+  - name: digest

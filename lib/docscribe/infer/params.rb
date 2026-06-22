@@ -16,11 +16,11 @@ module Docscribe
       # - literal defaults via AST parsing
       #
       # @note module_function: defines #infer_param_type (visibility: private)
-      # @param [String] name parameter name as used internally (may include `*`, `**`, `&`, or trailing `:`)
-      # @param [String?] default_str source for the default value expression
-      # @param [String] fallback_type type returned when inference is uncertain
+      # @param [Object] name parameter name as used internally (may include `*`, `**`, `&`, or trailing `:`)
+      # @param [Object] default_str source for the default value expression
+      # @param [FALLBACK_TYPE] fallback_type type returned when inference is uncertain
       # @param [Boolean] treat_options_keyword_as_hash whether `options:` should
-      # @return [String]
+      # @return [Object]
       def infer_param_type(name, default_str, fallback_type: FALLBACK_TYPE, treat_options_keyword_as_hash: true)
         prefix_param_type(name) || inferred_param_type(name, default_str, fallback_type,
                                                        treat_options_keyword_as_hash: treat_options_keyword_as_hash)
@@ -29,8 +29,8 @@ module Docscribe
       # Return type for special parameter prefixes.
       #
       # @note module_function: defines #prefix_param_type (visibility: private)
-      # @param [String] name parameter name
-      # @return [String, nil]
+      # @param [Object] name parameter name
+      # @return [nil]
       def prefix_param_type(name)
         return 'Array' if name.start_with?('*') && !name.start_with?('**')
         return 'Hash'  if name.start_with?('**')
@@ -42,11 +42,11 @@ module Docscribe
       # Infer type for a regular or keyword parameter with optional default.
       #
       # @note module_function: defines #inferred_param_type (visibility: private)
-      # @param [String] name parameter name
-      # @param [String?] default_str default expression source
-      # @param [String] fallback_type type returned when not special-cased
-      # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
-      # @return [String]
+      # @param [Object] name parameter name
+      # @param [Object] default_str default expression source
+      # @param [Object] fallback_type type returned when not special-cased
+      # @param [Object] treat_options_keyword_as_hash whether to treat 'options:' as Hash
+      # @return [Object]
       def inferred_param_type(name, default_str, fallback_type, treat_options_keyword_as_hash:)
         if name.end_with?(':') && default_str.nil?
           return options_keyword_type(name, treat_options_keyword_as_hash, fallback_type)
@@ -63,10 +63,10 @@ module Docscribe
       # Return 'Hash' for a keyword parameter named 'options:' when special-cased, else fallback.
       #
       # @note module_function: defines #options_keyword_type (visibility: private)
-      # @param [String] name parameter name
-      # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
-      # @param [String] fallback_type type returned when not special-cased
-      # @return [String]
+      # @param [Object] name parameter name
+      # @param [Object] treat_options_keyword_as_hash whether to treat 'options:' as Hash
+      # @param [Object] fallback_type type returned when not special-cased
+      # @return [String, Object]
       def options_keyword_type(name, treat_options_keyword_as_hash, fallback_type)
         treat_options_keyword_as_hash && name == 'options:' ? 'Hash' : fallback_type
       end
@@ -74,11 +74,11 @@ module Docscribe
       # Whether a keyword parameter named 'options:' with a hash default should be typed as Hash.
       #
       # @note module_function: defines #options_hash_keyword? (visibility: private)
-      # @param [String] name parameter name
-      # @param [String?] default_str default expression source
-      # @param [String] type inferred type
-      # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
-      # @return [Boolean]
+      # @param [Object] name parameter name
+      # @param [Object] default_str default expression source
+      # @param [Object] type inferred type
+      # @param [Object] treat_options_keyword_as_hash whether to treat 'options:' as Hash
+      # @return [Object, Boolean, Boolean]
       def options_hash_keyword?(name, default_str, type, treat_options_keyword_as_hash)
         treat_options_keyword_as_hash && name == 'options:' && (default_str == '{}' || type == 'Hash')
       end
@@ -88,9 +88,9 @@ module Docscribe
       # Returns nil if the expression is empty or cannot be parsed.
       #
       # @note module_function: defines #parse_expr (visibility: private)
-      # @param [String?] src expression source
+      # @param [Object] src expression source
       # @raise [Parser::SyntaxError]
-      # @return [Parser::AST::Node, nil] if Parser::SyntaxError
+      # @return [Object] if Parser::SyntaxError
       # @return [nil] if Parser::SyntaxError
       def parse_expr(src)
         return nil if src.nil? || src.strip.empty?

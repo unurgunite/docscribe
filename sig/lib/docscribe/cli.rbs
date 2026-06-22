@@ -1,5 +1,11 @@
 module Docscribe
   module CLI
+    interface _Subcommand
+      def run: (Array[String]) -> Integer
+    end
+
+    COMMANDS: Hash[String, _Subcommand]
+
     def self.run: (Array[String] argv) -> Integer
 
     private

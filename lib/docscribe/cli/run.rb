@@ -62,11 +62,14 @@ module Docscribe
           run_files(options: options, conf: conf, paths: paths)
         end
 
+        private
+
         # Run via the background server daemon.
         #
         # Each file is processed by the server, which keeps the Ruby runtime loaded
         # between requests.
         #
+        # @private
         # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
         # @param [Array<String>] argv remaining path arguments
         # @return [Integer] exit code
@@ -101,6 +104,7 @@ module Docscribe
 
         # Load and build the effective config from CLI options.
         #
+        # @private
         # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
         # @return [Docscribe::Config] effective config with plugins loaded
         def build_config(options)
@@ -113,6 +117,7 @@ module Docscribe
         # Rewrite code from STDIN using the selected strategy and print the
         # result.
         #
+        # @private
         # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
         # @param [Docscribe::Config] conf effective config
         # @raise [StandardError]
@@ -128,6 +133,7 @@ module Docscribe
 
         # Rewrite STDIN input and return the result report.
         #
+        # @private
         # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
         # @param [Docscribe::Config] conf effective config
         # @return [Hash<Symbol, Object>] rewrite result with :output key
@@ -143,6 +149,7 @@ module Docscribe
 
         # Return the core RBS provider from the config if available.
         #
+        # @private
         # @param [Docscribe::Config] conf effective config
         # @return [Docscribe::Types::RBS::Provider, nil] core RBS provider or nil
         def core_rbs_provider_for(conf)
@@ -151,6 +158,7 @@ module Docscribe
 
         # Expand CLI path arguments and filter through config file patterns.
         #
+        # @private
         # @param [Array<String>] argv CLI path arguments
         # @param [Docscribe::Config] conf effective config
         # @return [Array<String>] filtered Ruby file paths
@@ -160,6 +168,7 @@ module Docscribe
 
         # Warn and return exit code when no matching files were found.
         #
+        # @private
         # @return [Integer] exit code 2
         def no_files_found
           warn 'No files found. Pass files or directories (e.g. `docscribe lib`).'
@@ -229,7 +238,7 @@ module Docscribe
         # @param [Docscribe::Server::Client] client server client
         # @param [String] path file path
         # @param [Docscribe::CLI::Formatters::opts] options CLI options
-        # @return [Hash, nil] server response
+        # @return [Hash<String, Object>, nil] server response
         def send_server_request(client, path, options)
           method_name = options[:mode] == :write ? 'fix' : 'check'
           strategy = options[:strategy].to_s
@@ -253,8 +262,8 @@ module Docscribe
         # Dispatch the server result to check or write handler.
         #
         # @private
-        # @param [Hash] result server result with :changed and :changes keys
-        # @param [Array<Hash>] file_changes change records
+        # @param [Hash<String, Object>] result server result with :changed and :changes keys
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records
         # @param [String] path file path
         # @param [Object] ctx context hash with :display_path, :options, :state keys
         # @return [void]
@@ -272,8 +281,8 @@ module Docscribe
         # Handle a server write-mode result.
         #
         # @private
-        # @param [Hash] result server result with :changed key
-        # @param [Array<Hash>] file_changes change records
+        # @param [Hash<String, Object>] result server result with :changed key
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records
         # @param [String] display_path path shown in CLI output
         # @param [Docscribe::CLI::Formatters::opts] options CLI options
         # @param [Docscribe::CLI::Formatters::state] state shared processing state
@@ -293,7 +302,7 @@ module Docscribe
         #
         # @private
         # @param [String] path file path
-        # @param [Array<Hash>] file_changes change records from server
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records from server
         # @param [String] display_path path shown in CLI output
         # @param [Docscribe::CLI::Formatters::opts] options CLI options
         # @param [Docscribe::CLI::Formatters::state] state shared processing state
@@ -312,7 +321,7 @@ module Docscribe
         #
         # @private
         # @param [String] display_path path shown in CLI output
-        # @param [Array<Hash>] file_changes change records from server
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records from server
         # @param [Docscribe::CLI::Formatters::opts] options CLI options
         # @return [void]
         def report_check_failure(display_path, file_changes, options)
@@ -328,7 +337,7 @@ module Docscribe
         #
         # @private
         # @param [String] path file path
-        # @param [Array<Hash>] file_changes change records from server
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records from server
         # @param [Docscribe::CLI::Formatters::state] state shared processing state
         # @return [void]
         def update_check_failure_state(path, file_changes, state)
@@ -342,8 +351,8 @@ module Docscribe
         # change (symbol keys).
         #
         # @private
-        # @param [Hash] change change record from server
-        # @return [Hash]
+        # @param [Hash<String, Object>] change change record from server
+        # @return [Docscribe::CLI::Formatters::change]
         def symbolize_change(change)
           {
             type: change['type'].to_sym,
@@ -359,6 +368,7 @@ module Docscribe
         # Directories are expanded recursively to `**/*.rb`.
         # If no arguments are provided, the current directory is used.
         #
+        # @private
         # @param [Array<String>] args file and/or directory arguments
         # @return [Array<String>] unique sorted Ruby file paths
         def expand_paths(args)
@@ -374,6 +384,7 @@ module Docscribe
 
         # Append a file or recursively expand a directory into the files array.
         #
+        # @private
         # @param [Array<String>] files mutable file path accumulator
         # @param [String] path file or directory path to expand
         # @return [void]
@@ -397,6 +408,7 @@ module Docscribe
         # - rewrites changed files in place
         # - exits non-zero only if errors occurred
         #
+        # @private
         # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
         # @param [Docscribe::Config] conf effective config
         # @param [Array<String>] paths Ruby file paths to process
@@ -416,8 +428,6 @@ module Docscribe
 
           run_exit_code(options, state)
         end
-
-        private
 
         # Print the check or write summary at the end of a run.
         #

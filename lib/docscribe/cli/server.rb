@@ -39,6 +39,7 @@ module Docscribe
         end
 
         # @private
+        # @return [Integer]
         def already_running
           pid = Docscribe::Server.read_pid
           warn "Docscribe server already running (pid #{pid})"
@@ -46,6 +47,7 @@ module Docscribe
         end
 
         # @private
+        # @return [void]
         def fork_and_wait
           pid = fork do
             $stdin.reopen(File::NULL)
