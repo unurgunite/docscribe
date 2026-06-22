@@ -73,20 +73,28 @@ module Docscribe
         def run_via_server(options:, argv:)
           require 'docscribe/server'
           ensure_server_running!
-
           client = Docscribe::Server::Client.new
           paths = expand_paths(argv)
           return no_files_found unless paths.any?
 
+          run_files_via_server(client, paths, options)
+        end
+
+        # Run files through the server client with progress tracking.
+        #
+        # @private
+        # @param [Docscribe::Server::Client] client server client
+        # @param [Array<String>] paths file paths to process
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @return [Integer] exit code
+        def run_files_via_server(client, paths, options)
           $stdout.sync = true
           state = initial_run_state
           state[:total] = paths.size
           pwd = Pathname.pwd
-
           paths.each do |path|
             process_one_file_via_server(client, path, options: options, pwd: pwd, state: state)
           end
-
           finalize_run(options, state)
           run_exit_code(options, state)
         end
@@ -205,45 +213,79 @@ module Docscribe
         def process_one_file_via_server(client, path, options:, pwd:, state:)
           display_path = display_path_for(path, pwd: pwd)
           report_progress(state, options, display_path)
-
-          method_name = options[:mode] == :write ? 'fix' : 'check'
-          strategy = options[:strategy].to_s
-          response = client.send(method_name, file: path, strategy: strategy)
-
-          unless response
-            state[:had_errors] = true
-            state[:error_paths] << path
-            state[:error_messages][path] = 'Server unreachable'
-            $stderr.print('E')
-            return
-          end
-
-          if response['error']
-            state[:had_errors] = true
-            state[:error_paths] << path
-            state[:error_messages][path] = response['error']['message']
-            $stderr.print('E')
-            return
-          end
+          response = send_server_request(client, path, options)
+          return server_error(path, state, 'Server unreachable') unless response
+          return server_error(path, state, response['error']['message']) if response['error']
 
           result = response['result']
-          server_changes = result['changes'] || []
+          file_changes = (result['changes'] || []).map { |c| symbolize_change(c) }
+          dispatch_server_result(result, file_changes, path,
+                                 display_path: display_path, options: options, state: state)
+        end
 
-          file_changes = server_changes.map { |c| symbolize_change(c) }
-          nil # server doesn't return source, just change metadata
+        # Send a request to the server for a file.
+        #
+        # @private
+        # @param [Docscribe::Server::Client] client server client
+        # @param [String] path file path
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @return [Hash, nil] server response
+        def send_server_request(client, path, options)
+          method_name = options[:mode] == :write ? 'fix' : 'check'
+          strategy = options[:strategy].to_s
+          client.send(method_name, file: path, strategy: strategy)
+        end
 
-          if options[:mode] == :check
+        # Record a server error in the shared state and print an indicator.
+        #
+        # @private
+        # @param [String] path file path
+        # @param [Docscribe::CLI::Formatters::state] state shared processing state
+        # @param [String] message error message
+        # @return [void]
+        def server_error(path, state, message)
+          state[:had_errors] = true
+          state[:error_paths] << path
+          state[:error_messages][path] = message
+          $stderr.print('E')
+        end
+
+        # Dispatch the server result to check or write handler.
+        #
+        # @private
+        # @param [Hash] result server result with :changed and :changes keys
+        # @param [Array<Hash>] file_changes change records
+        # @param [String] path file path
+        # @param [Object] ctx context hash with :display_path, :options, :state keys
+        # @return [void]
+        def dispatch_server_result(result, file_changes, path, **ctx)
+          if ctx[:options][:mode] == :check
             handle_via_server_check(path, file_changes: file_changes,
-                                          display_path: display_path, options: options, state: state)
-          elsif options[:mode] == :write
-            if result['changed']
-              state[:corrected] += 1
-              state[:corrected_paths] << display_path
-              state[:corrected_changes][display_path] = file_changes
-              log_check_verdict('CHANGED', display_path, options)
-            else
-              log_check_verdict('OK', display_path, options)
-            end
+                                          display_path: ctx[:display_path],
+                                          options: ctx[:options], state: ctx[:state])
+          else
+            write_server_result(result, file_changes, display_path: ctx[:display_path],
+                                                      options: ctx[:options], state: ctx[:state])
+          end
+        end
+
+        # Handle a server write-mode result.
+        #
+        # @private
+        # @param [Hash] result server result with :changed key
+        # @param [Array<Hash>] file_changes change records
+        # @param [String] display_path path shown in CLI output
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @param [Docscribe::CLI::Formatters::state] state shared processing state
+        # @return [void]
+        def write_server_result(result, file_changes, display_path:, options:, state:)
+          if result['changed']
+            state[:corrected] += 1
+            state[:corrected_paths] << display_path
+            state[:corrected_changes][display_path] = file_changes
+            log_check_verdict('CHANGED', display_path, options)
+          else
+            log_check_verdict('OK', display_path, options)
           end
         end
 
@@ -259,17 +301,37 @@ module Docscribe
         def handle_via_server_check(path, file_changes:, display_path:, options:, state:)
           if file_changes.empty?
             state[:checked_ok] += 1
-            log_check_verdict('OK', display_path, options)
-            return
+            return log_check_verdict('OK', display_path, options)
           end
 
+          report_check_failure(display_path, file_changes, options)
+          update_check_failure_state(path, file_changes, state)
+        end
+
+        # Report a check failure with verbose or compact output.
+        #
+        # @private
+        # @param [String] display_path path shown in CLI output
+        # @param [Array<Hash>] file_changes change records from server
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @return [void]
+        def report_check_failure(display_path, file_changes, options)
           if options[:verbose]
             warn("FAIL #{display_path}")
             print_check_explanations(file_changes)
           else
             $stderr.print('F')
           end
+        end
 
+        # Update shared state after a check failure.
+        #
+        # @private
+        # @param [String] path file path
+        # @param [Array<Hash>] file_changes change records from server
+        # @param [Docscribe::CLI::Formatters::state] state shared processing state
+        # @return [void]
+        def update_check_failure_state(path, file_changes, state)
           state[:checked_fail] += 1
           state[:changed] = true
           state[:fail_paths] << path

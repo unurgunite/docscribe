@@ -223,11 +223,7 @@ module Docscribe
       def listen_loop
         while @running
           check_idle_timeout
-          ready = IO.select([@server], nil, nil, 1)
-          next unless ready
-
-          client = @server.accept
-          handle_client(client)
+          accept_client
           @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         end
       rescue Interrupt
@@ -245,22 +241,26 @@ module Docscribe
         @running = false if elapsed > @idle_timeout
       end
 
+      # Accept a client connection if one is available.
+      #
+      # @private
+      # @return [void]
+      def accept_client
+        client = @server.accept if @server.wait_readable(1)
+        return unless client
+
+        handle_client(client)
+      end
+
       # Read a request from a client connection and dispatch it.
       #
       # @private
       # @param [UNIXSocket] client connected client socket
       # @return [void]
       def handle_client(client)
-        request_line = client.gets
-        return unless request_line
-
+        request_line = client.gets or return
         request = Protocol.parse_response(request_line)
-        unless request
-          send_error(client, nil, -32_700, 'Parse error')
-          return
-        end
-
-        handle_request(client, request)
+        request ? handle_request(client, request) : send_error(client, nil, -32_700, 'Parse error')
       rescue StandardError => e
         send_error(client, request&.dig('id'), -32_603, "#{e.class}: #{e.message}")
       ensure
@@ -295,23 +295,11 @@ module Docscribe
       def handle_check(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'check').to_sym
+        return send_error(client, id, -32_602, "File not found: #{file}") unless file && File.file?(file)
 
-        unless file && File.file?(file)
-          send_error(client, id, -32_602, "File not found: #{file}")
-          return
-        end
-
-        src = File.read(file)
-        result = Docscribe::InlineRewriter.rewrite_with_report(
-          src, strategy: strategy, config: @config,
-               core_rbs_provider: @core_rbs_provider, file: file
-        )
-
-        send_result(client, id, {
-                      'status' => result[:output] == src ? 'ok' : 'fail',
-                      'changed' => result[:output] != src,
-                      'changes' => result[:changes]
-                    })
+        src, result = rewrite_file(file, strategy)
+        send_result(client, id, 'status' => result[:output] == src ? 'ok' : 'fail',
+                                'changed' => result[:output] != src, 'changes' => result[:changes])
       end
 
       # Handle a fix request: read file, rewrite, write back.
@@ -324,26 +312,27 @@ module Docscribe
       def handle_fix(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
+        return send_error(client, id, -32_602, "File not found: #{file}") unless file && File.file?(file)
 
-        unless file && File.file?(file)
-          send_error(client, id, -32_602, "File not found: #{file}")
-          return
-        end
+        src, result = rewrite_file(file, strategy)
+        File.write(file, result[:output]) if result[:output] != src
+        send_result(client, id, 'status' => 'ok',
+                                'changed' => result[:output] != src, 'changes' => result[:changes])
+      end
 
+      # Read file, run InlineRewriter, and return [src, result].
+      #
+      # @private
+      # @param [String] file path to file
+      # @param [Symbol] strategy rewrite strategy
+      # @return [Array(String, Hash)] original source and rewrite result
+      def rewrite_file(file, strategy)
         src = File.read(file)
         result = Docscribe::InlineRewriter.rewrite_with_report(
           src, strategy: strategy, config: @config,
                core_rbs_provider: @core_rbs_provider, file: file
         )
-
-        changed = result[:output] != src
-        File.write(file, result[:output]) if changed
-
-        send_result(client, id, {
-                      'status' => 'ok',
-                      'changed' => changed,
-                      'changes' => result[:changes]
-                    })
+        [src, result]
       end
 
       # Handle a shutdown request.

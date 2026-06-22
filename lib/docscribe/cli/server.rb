@@ -30,13 +30,23 @@ module Docscribe
         # @return [Integer] exit code
         def start_server
           require 'docscribe/server'
+          return already_running if Docscribe::Server.running?
 
-          if Docscribe::Server.running?
-            pid = Docscribe::Server.read_pid
-            warn "Docscribe server already running (pid #{pid})"
-            return 0
-          end
+          fork_and_wait
+          pid = Docscribe::Server.read_pid
+          warn "Docscribe server started (pid #{pid})"
+          0
+        end
 
+        # @private
+        def already_running
+          pid = Docscribe::Server.read_pid
+          warn "Docscribe server already running (pid #{pid})"
+          0
+        end
+
+        # @private
+        def fork_and_wait
           pid = fork do
             $stdin.reopen(File::NULL)
             $stdout.reopen(File::NULL)
@@ -44,12 +54,8 @@ module Docscribe
             daemon = Docscribe::Server::Daemon.new
             daemon.start
           end
-
           Process.detach(pid)
           wait_for_startup
-          pid = Docscribe::Server.read_pid
-          warn "Docscribe server started (pid #{pid})"
-          0
         end
 
         # Stop the background daemon.
@@ -58,18 +64,8 @@ module Docscribe
         # @return [Integer] exit code
         def stop_server
           require 'docscribe/server'
-
-          client = Docscribe::Server::Client.new
-          response = client.shutdown
-
-          if response
-            warn 'Docscribe server stopped'
-          else
-            warn 'Docscribe server is not running'
-          end
-          0
-        rescue Errno::ECONNREFUSED, Errno::ENOENT
-          warn 'Docscribe server is not running'
+          alive = Docscribe::Server::Client.new.shutdown
+          warn(alive ? 'Docscribe server stopped' : 'Docscribe server is not running')
           0
         end
 
