@@ -67,9 +67,10 @@ module Docscribe
       # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
       # @param [Object?] core_rbs_provider core RBS type lookup provider
       # @param [Hash<String, String>?] param_types parameter name -> type map
+      # @param [String?] container
+      # @param [nil] signature_provider
       # @return [Object]
-      # rubocop:disable Metrics/ParameterLists
-      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
+      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,  # rubocop:disable Metrics/ParameterLists
                                  param_types: nil, container: nil, signature_provider: nil)
         body = extract_def_body(node)
         spec = { normal: FALLBACK_TYPE, rescues: [] } #: Hash[Symbol, untyped]
@@ -81,7 +82,6 @@ module Docscribe
                                                  container: container, signature_provider: signature_provider)
         spec
       end
-      # rubocop:enable Metrics/ParameterLists
 
       # Extract the body child node from a `:def` or `:defs` AST node.
       #
@@ -607,8 +607,7 @@ module Docscribe
       # @note module_function: defines #handle_block_node (visibility: private)
       # @param [Parser::AST::Node] node the `:return` AST node
       # @param [Object] opts additional keyword options forwarded to type inference
-      # @return [String, nil]
-      # rubocop:disable Metrics/AbcSize
+      # @return [String, nil] rubocop:disable Metrics/AbcSize
       def handle_block_node(node, **opts)
         send_node = node.children[0]
         if send_node&.type == :send
@@ -629,8 +628,7 @@ module Docscribe
       # @note module_function: defines #handle_send_node (visibility: private)
       # @param [Parser::AST::Node] node the `:return` AST node
       # @param [Object] opts additional keyword options forwarded to type inference
-      # @return [String, nil]
-      # rubocop:disable Metrics/MethodLength
+      # @return [String, nil] rubocop:disable Metrics/MethodLength
       def handle_send_node(node, **opts)
         recv = node.children[0]
         meth = node.children[1]
