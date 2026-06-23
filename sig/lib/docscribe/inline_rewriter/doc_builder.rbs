@@ -21,7 +21,7 @@ module Docscribe
 
       def self?.resolve_external_sig: (String container, Symbol scope, Symbol name, (Docscribe::Types::ProviderChain | nil) signature_provider) -> (Docscribe::Types::MethodSignature | nil)
 
-      def self?.compute_returns_spec: (Parser::AST::Node node, Config config, (Hash[String, String] | nil) param_types, untyped core_rbs_provider) -> Hash[Symbol, untyped]
+      def self?.compute_returns_spec: (Parser::AST::Node node, Config config, (Hash[String, String] | nil) param_types, untyped core_rbs_provider, ?container: String?) -> Hash[Symbol, untyped]
 
       def self?.track_last_tag: (String content, Hash[Symbol, untyped] info) -> void
 

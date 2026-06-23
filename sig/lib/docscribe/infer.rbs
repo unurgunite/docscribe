@@ -10,7 +10,7 @@ module Docscribe
 
     def self.infer_return_type_from_node: (Parser::AST::Node node) -> String
 
-        def self.returns_spec_from_node: (Parser::AST::Node node, ?fallback_type: String, ?nil_as_optional: bool, ?core_rbs_provider: Docscribe::Types::RBS::Provider?, ?param_types: Hash[String, String]?) -> { normal: String, rescues: Array[[Array[String], String]] }
+        def self.returns_spec_from_node: (Parser::AST::Node node, ?fallback_type: String, ?nil_as_optional: bool, ?core_rbs_provider: Docscribe::Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?) -> { normal: String, rescues: Array[[Array[String], String]] }
 
     def self.last_expr_type: ((Parser::AST::Node | nil) node, ?fallback_type: String, ?nil_as_optional: bool) -> (String | nil)
 

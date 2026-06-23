@@ -96,16 +96,20 @@ module Docscribe
       # @param [Docscribe::Types::RBS::Provider?] core_rbs_provider core RBS type lookup provider
       # @param [Hash<String, String>?] param_types parameter name -> type map
       # @return [Hash<Symbol, String, Array<(Array<String>, String)>>]
+      # rubocop:disable Metrics/ParameterLists
       def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
-                                 param_types: nil)
+                                 param_types: nil, container: nil, signature_provider: nil)
         Returns.returns_spec_from_node(
           node,
           fallback_type: fallback_type,
           nil_as_optional: nil_as_optional,
           core_rbs_provider: core_rbs_provider,
-          param_types: param_types
+          param_types: param_types,
+          container: container,
+          signature_provider: signature_provider
         )
       end
+      # rubocop:enable Metrics/ParameterLists
 
       # Infer the type of the last expression in an AST node.
       #

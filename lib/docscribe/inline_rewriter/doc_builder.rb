@@ -187,7 +187,9 @@ module Docscribe
       # @return [Hash<Symbol, Object>]
       def resolve_doc_setup!(setup, node, name, config, opts)
         external_sig = resolve_external_sig(setup[:container], setup[:scope], name, opts[:signature_provider])
-        returns_spec = compute_returns_spec(node, config, opts[:param_types], opts[:core_rbs_provider])
+        returns_spec = compute_returns_spec(node, config, opts[:param_types], opts[:core_rbs_provider],
+                                            signature_provider: opts[:signature_provider],
+                                            container: setup[:container])
         normal_type = opts[:return_type_override] || external_sig&.return_type || returns_spec[:normal]
 
         setup.merge(
@@ -230,10 +232,11 @@ module Docscribe
       # @param [Hash<String, String>, nil] param_types hash accumulating parameter name-to-type mappings
       # @param [Object] core_rbs_provider RBS type provider
       # @return [Hash<Symbol, Object>]
-      def compute_returns_spec(node, config, param_types, core_rbs_provider)
+      def compute_returns_spec(node, config, param_types, core_rbs_provider, signature_provider: nil, container: nil)
         Docscribe::Infer.returns_spec_from_node(
           node, fallback_type: config.fallback_type, nil_as_optional: config.nil_as_optional?,
-                param_types: param_types, core_rbs_provider: core_rbs_provider
+                param_types: param_types, core_rbs_provider: core_rbs_provider,
+                signature_provider: signature_provider, container: container
         )
       end
 
