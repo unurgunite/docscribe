@@ -394,18 +394,11 @@ RSpec.describe Docscribe::CLI::Run do
     end
   end
 
-  describe '.wait_for_server' do
-    it 'raises when server does not become ready' do
-      allow(Docscribe::Server).to receive(:running?).and_return(false)
-
-      expect do
-        described_class.send(:wait_for_server, timeout: 0.1)
-      end.to raise_error(RuntimeError, /server failed to start/)
-    end
-
-    it 'returns when server becomes ready' do
-      allow(Docscribe::Server).to receive(:running?).and_return(false, true)
-      expect { described_class.send(:wait_for_server, timeout: 1) }.not_to raise_error
+  describe '.ensure_server_running!' do
+    it 'delegates to Docscribe::Server.ensure_running!' do
+      allow(Docscribe::Server).to receive(:ensure_running!)
+      described_class.send(:ensure_server_running!, config_path: nil)
+      expect(Docscribe::Server).to have_received(:ensure_running!).with(config_path: nil)
     end
   end
 end

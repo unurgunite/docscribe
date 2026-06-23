@@ -176,32 +176,7 @@ module Docscribe
         # @param [String?] config_path
         # @return [void]
         def ensure_server_running!(config_path: nil)
-          return if Docscribe::Server.running?(config_path)
-
-          warn 'Docscribe: starting server...'
-          pid = fork do
-            daemon = Docscribe::Server::Daemon.new(config_path: config_path)
-            daemon.start
-          end
-          Process.detach(pid)
-          wait_for_server(config_path: config_path)
-        end
-
-        # Wait for the server to become ready.
-        #
-        # @param [Integer] timeout max seconds to wait
-        # @param [String?] config_path
-        # @raise [StandardError]
-        # @return [void]
-        def wait_for_server(timeout: 5, config_path: nil)
-          deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-          loop do
-            return if Docscribe::Server.running?(config_path)
-
-            raise 'Docscribe: server failed to start' if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-
-            sleep 0.1
-          end
+          Docscribe::Server.ensure_running!(config_path: config_path)
         end
 
         # Process a single file via the server client.

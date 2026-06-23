@@ -45,7 +45,7 @@ module Docscribe
           require 'docscribe/server'
           return already_running if Docscribe::Server.running?
 
-          fork_and_wait
+          Docscribe::Server.ensure_running!(daemonize: true)
           pid = Docscribe::Server.read_pid
           warn "Docscribe server started (pid #{pid})"
           0
@@ -57,20 +57,6 @@ module Docscribe
           pid = Docscribe::Server.read_pid
           warn "Docscribe server already running (pid #{pid})"
           0
-        end
-
-        # @private
-        # @return [void]
-        def fork_and_wait
-          pid = fork do
-            $stdin.reopen(File::NULL)
-            $stdout.reopen(File::NULL)
-            $stderr.reopen(File::NULL)
-            daemon = Docscribe::Server::Daemon.new
-            daemon.start
-          end
-          Process.detach(pid)
-          wait_for_startup
         end
 
         # Stop the background daemon.
@@ -108,25 +94,6 @@ module Docscribe
         # @return [String]
         def usage
           BANNER
-        end
-
-        # Wait for the server to become ready after starting.
-        #
-        # @private
-        # @param [Integer] timeout max seconds to wait
-        # @return [void]
-        def wait_for_startup(timeout: 5)
-          deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-          loop do
-            break if Docscribe::Server.running?
-
-            if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-              warn 'Docscribe server failed to start within timeout'
-              break
-            end
-
-            sleep 0.1
-          end
         end
       end
     end

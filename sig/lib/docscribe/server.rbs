@@ -7,6 +7,11 @@ module Docscribe
     def self?.read_pid: (?String? config_path) -> Integer?
     def self?.pid_path: (?String? config_path) -> String
     def self?.socket_path: (?String? config_path) -> String
+    def self?.ensure_running!: (?config_path: String?, ?daemonize: bool, ?timeout: Integer) -> void
+    def self?.wait_for_ready: (?config_path: String?, ?timeout: Integer, ?raise_on_timeout: bool) -> void
+    def self?.handle_stale_socket?: (String? config_path) -> bool
+    def self?.process_alive?: (Integer pid) -> bool
+    def self?.clean_socket_files: (String? config_path) -> void
 
     module Protocol
       def self?.build_request: (String method, ?Hash[Symbol, untyped] params) -> Hash[Symbol, untyped]
