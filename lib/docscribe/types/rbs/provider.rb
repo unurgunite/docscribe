@@ -105,7 +105,7 @@ module Docscribe
         # @param [Array<String>] collection_dirs RBS collection directories
         # @raise [::RBS::BaseError]
         # @raise [StandardError]
-        # @return [RBS::Environment]
+        # @return [RBS::Environment] if ::RBS::BaseError
         # @return [RBS::Environment] if ::RBS::BaseError
         def try_with_fallback_build_env(all_dirs, collection_dirs)
           # First attempt: load core types + all dirs (sig + collection).

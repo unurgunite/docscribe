@@ -1,7 +1,7 @@
 module Docscribe
   module InlineRewriter
     module DocBuilder
-      PARAM_TYPE_COLLECTORS: Hash[Symbol, ^(Parser::AST::Node, Hash[String, String], (Docscribe::Types::MethodSignature | nil), Docscribe::Config) -> void]
+      PARAM_TYPE_COLLECTORS: Hash[Symbol, ^(Parser::AST::Node, Hash[String, String], (Types::MethodSignature | nil), Config) -> void]
 
       def self?.build: (untyped insertion, config: Config, **untyped) -> (String | nil)
 
@@ -19,9 +19,9 @@ module Docscribe
 
       def self?.extract_base_setup: (untyped insertion, Symbol name) -> Hash[Symbol, untyped]
 
-      def self?.resolve_external_sig: (String container, Symbol scope, Symbol name, (Docscribe::Types::ProviderChain | nil) signature_provider) -> (Docscribe::Types::MethodSignature | nil)
+      def self?.resolve_external_sig: (String container, Symbol scope, Symbol name, (Types::ProviderChain | nil) signature_provider) -> (Types::MethodSignature | nil)
 
-      def self?.compute_returns_spec: (Parser::AST::Node node, Config config, (Hash[String, String] | nil) param_types, untyped core_rbs_provider, ?container: String?) -> Hash[Symbol, untyped]
+      def self?.compute_returns_spec: (Parser::AST::Node node, Config config, (Hash[String, String] | nil) param_types, untyped core_rbs_provider, ?container: String?, ?signature_provider: Types::ProviderChain?) -> Hash[Symbol, untyped]
 
       def self?.track_last_tag: (String content, Hash[Symbol, untyped] info) -> void
 
@@ -75,13 +75,13 @@ module Docscribe
 
       def self?.parse_raise_bracket_list: (String str) -> Array[String]
 
-      def self?.build_param_types_from_node: (Parser::AST::Node node, external_sig: (Docscribe::Types::MethodSignature | nil), config: Config) -> (Hash[String, String] | nil)
+      def self?.build_param_types_from_node: (Parser::AST::Node node, external_sig: (Types::MethodSignature | nil), config: Config) -> (Hash[String, String] | nil)
 
-      def self?.collect_all_param_types: (Parser::AST::Node args, Hash[String, String] param_types, (Docscribe::Types::MethodSignature | nil) external_sig, Config config) -> void
+      def self?.collect_all_param_types: (Parser::AST::Node args, Hash[String, String] param_types, (Types::MethodSignature | nil) external_sig, Config config) -> void
 
-      def self?.collect_param_type: (Parser::AST::Node arg_node, Hash[String, String] param_types, (Docscribe::Types::MethodSignature | nil) external_sig, Config config, infer_name: (^(String) -> String | nil)) -> void
+      def self?.collect_param_type: (Parser::AST::Node arg_node, Hash[String, String] param_types, (Types::MethodSignature | nil) external_sig, Config config, infer_name: (^(String) -> String | nil)) -> void
 
-      def self?.collect_optarg_param_type: (Parser::AST::Node arg_node, Hash[String, String] param_types, (Docscribe::Types::MethodSignature | nil) external_sig, Config config, infer_name: (^(String) -> String | nil)) -> void
+      def self?.collect_optarg_param_type: (Parser::AST::Node arg_node, Hash[String, String] param_types, (Types::MethodSignature | nil) external_sig, Config config, infer_name: (^(String) -> String | nil)) -> void
 
       def self?.merge_visibility_tag_lines: (String indent, Symbol visibility, Config config, Hash[Symbol, untyped] info) -> Array[String]
 
@@ -109,9 +109,9 @@ module Docscribe
 
       def self?.collect_updated_param: (String param_line, String pname, Array[String] lines, Array[Hash[Symbol, untyped]] reasons, Hash[Symbol, untyped] ctx) -> void
 
-      def self?.build_params_lines: (Parser::AST::Node node, String indent, external_sig: (Docscribe::Types::MethodSignature | nil), config: Config, ?param_types_override: (Hash[String, String] | nil), ?param_descriptions: (Hash[String, String] | nil)) -> (Array[String] | nil)
+      def self?.build_params_lines: (Parser::AST::Node node, String indent, external_sig: (Types::MethodSignature | nil), config: Config, ?param_types_override: (Hash[String, String] | nil), ?param_descriptions: (Hash[String, String] | nil)) -> (Array[String] | nil)
 
-      def self?.build_all_param_lines: (Parser::AST::Node args, String indent, Config config, ?external_sig: (Docscribe::Types::MethodSignature | nil), **untyped) -> (Array[String] | nil)
+      def self?.build_all_param_lines: (Parser::AST::Node args, String indent, Config config, ?external_sig: (Types::MethodSignature | nil), **untyped) -> (Array[String] | nil)
 
       def self?.build_doc_lines: (Hash[Symbol, untyped] setup, config: Config, **untyped) -> Array[String]
 
@@ -129,7 +129,7 @@ module Docscribe
 
       def self?.extract_args_from_node: (Parser::AST::Node node) -> (Parser::AST::Node | nil)
 
-      def self?.build_param_line: (Parser::AST::Node arg_node, String indent, (Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> Array[String]
+      def self?.build_param_line: (Parser::AST::Node arg_node, String indent, (Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> Array[String]
 
       def self?.build_header_lines: (String indent, config: Config, **untyped) -> Array[String]
 
@@ -147,27 +147,27 @@ module Docscribe
 
       def self?.build_plugin_tag_lines: (untyped insertion, String indent, String normal_type, (Array[untyped] | nil) override_tags) -> Array[String]
 
-      def self?.build_arg_line: (Parser::AST::Node arg_node, String indent, (Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
+      def self?.build_arg_line: (Parser::AST::Node arg_node, String indent, (Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
 
-      def self?.build_optarg_lines: (Parser::AST::Node arg_node, String indent, (Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> Array[String]
+      def self?.build_optarg_lines: (Parser::AST::Node arg_node, String indent, (Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> Array[String]
 
-      def self?.optarg_type: (String pname, Parser::AST::Node default, (Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, Hash[Symbol, untyped] opts) -> String
+      def self?.optarg_type: (String pname, Parser::AST::Node default, (Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, Hash[Symbol, untyped] opts) -> String
 
       def self?.source_from_node: (Parser::AST::Node node) -> (String | nil)
 
       def self?.resolve_infer_name: (String pname, (^(String) -> String | nil) infer_name) -> String
 
-      def self?.build_kwarg_line: (Parser::AST::Node arg_node, String indent, (Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
+      def self?.build_kwarg_line: (Parser::AST::Node arg_node, String indent, (Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
 
-      def self?.build_kwoptarg_line: (Parser::AST::Node arg_node, String indent, (Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
+      def self?.build_kwoptarg_line: (Parser::AST::Node arg_node, String indent, (Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
 
-      def self?.build_restarg_line: (Parser::AST::Node arg_node, String indent, (Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
+      def self?.build_restarg_line: (Parser::AST::Node arg_node, String indent, (Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
 
-      def self?.build_kwrestarg_line: (Parser::AST::Node arg_node, String indent, (Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
+      def self?.build_kwrestarg_line: (Parser::AST::Node arg_node, String indent, (Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
 
-      def self?.build_blockarg_line: (Parser::AST::Node arg_node, String indent, (Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
+      def self?.build_blockarg_line: (Parser::AST::Node arg_node, String indent, (Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, **untyped) -> String
 
-      def self?.lookup_param_type: ((Docscribe::Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, String pname, String infer_name, **untyped) -> String
+      def self?.lookup_param_type: ((Types::MethodSignature | nil) external_sig, (Hash[String, String] | nil) param_types_override, String pname, String infer_name, **untyped) -> String
 
       def self?.lookup_param_type_by_infer: ((Hash[String, String] | nil) param_types_override, String pname, String infer_name, String fallback_type, (bool | nil) treat_options_keyword_as_hash) -> String
 

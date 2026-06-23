@@ -28,8 +28,11 @@ RSpec.describe Docscribe::Infer do
       RUBY
     end
 
-    it 'resolves rescue branch type from implicit self call via RBS' do
+    it 'resolves return type of main body from implicit self rescue method' do
       expect(out).to include('# @return [String]')
+    end
+
+    it 'tags rescue branch with the resolved RBS type' do
       expect(out).to include('# @return [String] if StandardError')
     end
   end
@@ -86,9 +89,15 @@ RSpec.describe Docscribe::Infer do
       RUBY
     end
 
-    it 'resolves each rescue branch independently via RBS' do
+    it 'resolves main body return type for multi-rescue method' do
       expect(out).to include('# @return [String]')
+    end
+
+    it 'resolves first rescue branch type from implicit self call' do
       expect(out).to include('# @return [Integer] if ArgumentError')
+    end
+
+    it 'resolves second rescue branch type from implicit self call' do
       expect(out).to include('# @return [String] if KeyError')
     end
   end
