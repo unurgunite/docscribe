@@ -1,0 +1,232 @@
+# frozen_string_literal: true
+
+require 'tmpdir'
+require 'docscribe/server'
+
+RSpec.describe Docscribe::Server do
+  include SuppressErrorHelper
+  include CleanFileHelper
+  include ServerWireHelper
+
+  describe '.socket_path' do
+    it 'returns a path under /tmp' do
+      expect(described_class.socket_path).to match(%r{\A/tmp/docscribe-})
+    end
+
+    it 'includes an MD5 of the working directory' do
+      hash_segment = Digest::MD5.hexdigest(Dir.pwd)
+      expect(described_class.socket_path).to include(hash_segment)
+    end
+  end
+
+  describe '.running?' do
+    let(:dir) { Dir.mktmpdir }
+    let(:sock) { "#{dir}/test.sock" }
+
+    after { FileUtils.rm_rf(dir) }
+
+    it 'returns false when socket does not exist' do
+      allow(described_class).to receive(:socket_path).and_return('/tmp/nonexistent.sock')
+      expect(described_class.running?).to be false
+    end
+
+    it 'returns false when socket file is stale (not a real socket)' do
+      allow(described_class).to receive_messages(socket_path: sock, pid_path: "#{dir}/test.pid")
+      File.write(sock, '')
+      expect(described_class.running?).to be false
+    end
+
+    it 'cleans up stale socket file' do
+      allow(described_class).to receive_messages(socket_path: sock, pid_path: "#{dir}/test.pid")
+      File.write(sock, '')
+      described_class.running?
+      expect(File.exist?(sock)).to be false
+    end
+  end
+
+  describe Docscribe::Server::Protocol do
+    describe '.build_request' do
+      subject(:request) { described_class.build_request('check', file: 'test.rb') }
+
+      it 'includes jsonrpc version' do
+        expect(request[:jsonrpc]).to eq('2.0')
+      end
+
+      it 'includes an id' do
+        aggregate_failures do
+          expect(request[:id]).to be_a(String)
+          expect(request[:id].length).to eq(16)
+        end
+      end
+
+      it 'includes the method name' do
+        expect(request[:method]).to eq('check')
+      end
+
+      it 'includes params' do
+        expect(request[:params]).to eq(file: 'test.rb')
+      end
+    end
+
+    describe '.parse_response' do
+      it 'parses valid JSON' do
+        result = described_class.parse_response('{"id":1,"result":{"status":"ok"}}')
+        aggregate_failures do
+          expect(result['id']).to eq(1)
+          expect(result['result']['status']).to eq('ok')
+        end
+      end
+
+      it 'returns nil for invalid JSON' do
+        expect(described_class.parse_response('not json')).to be_nil
+      end
+
+      it 'returns nil for empty string' do
+        expect(described_class.parse_response('')).to be_nil
+      end
+    end
+
+    describe '.serialize' do
+      it 'produces JSON with trailing newline' do
+        result = described_class.serialize({ a: 1 })
+        expect(result).to eq("{\"a\":1}\n")
+      end
+    end
+  end
+
+  describe Docscribe::Server::Client do
+    subject(:client) { described_class.new(socket_path) }
+
+    let(:socket_path) { "#{Dir.mktmpdir}/test.sock" }
+
+    after do
+      FileUtils.rm_rf(File.dirname(socket_path))
+    end
+
+    describe '#check' do
+      it 'returns nil when server is unreachable' do
+        expect(client.check(file: 'test.rb')).to be_nil
+      end
+    end
+
+    describe '#fix' do
+      it 'returns nil when server is unreachable' do
+        expect(client.fix(file: 'test.rb')).to be_nil
+      end
+    end
+
+    describe '#shutdown' do
+      it 'returns nil when server is unreachable' do
+        expect(client.shutdown).to be_nil
+      end
+    end
+
+    describe 'wire format' do
+      it 'sends request with single trailing newline', :aggregate_failures do
+        raw_data = with_unix_server { |s| described_class.new(s).check(file: 'test.rb') }
+        expect(raw_data.count("\n")).to eq(1)
+        expect(raw_data).to end_with("\n")
+      end
+    end
+  end
+
+  describe Docscribe::Server::Daemon do
+    let!(:socket_path) { "#{Dir.mktmpdir}/docscribe-test.sock" }
+    let!(:test_file) do
+      path = "#{File.dirname(socket_path)}/test.rb"
+      File.write(path, <<~RUBY)
+        def hello
+          puts 'world'
+        end
+      RUBY
+      path
+    end
+
+    let!(:daemon) { described_class.new(socket_path: socket_path, idle_timeout: 60) }
+    let!(:daemon_thread) { Thread.new { daemon.start } }
+    let(:client) { Docscribe::Server::Client.new(socket_path) }
+
+    before { sleep 0.5 }
+
+    after do
+      suppress_error { Docscribe::Server::Client.new(socket_path).shutdown }
+      suppress_error { daemon_thread.join(3) }
+      FileUtils.remove_entry(File.dirname(socket_path))
+    end
+
+    describe '#start' do
+      it 'creates a socket file' do
+        aggregate_failures do
+          expect(File.exist?(socket_path)).to be true
+          expect(File.exist?("#{socket_path}.pid")).to be true
+        end
+      end
+    end
+
+    describe 'check request' do
+      it 'returns ok for a file with no issues' do
+        response = client.check(file: create_clean_file(socket_path))
+        aggregate_failures do
+          expect(response).not_to be_nil
+          expect(response['result'].slice('status', 'changed')).to eq('status' => 'ok', 'changed' => false)
+        end
+      end
+
+      it 'returns fail for a file needing updates' do
+        response = client.check(file: test_file)
+        aggregate_failures do
+          expect(response).not_to be_nil
+          expect(response['result']['status']).to eq('fail')
+        end
+      end
+
+      it 'returns error for a nonexistent file' do
+        response = client.check(file: '/nonexistent.rb')
+        aggregate_failures do
+          expect(response).not_to be_nil
+          expect(response.dig('error', 'message')).to include('File not found')
+        end
+      end
+
+      it 'defaults to safe strategy when not specified', :aggregate_failures do
+        response = client.check(file: test_file)
+        expect(response).not_to be_nil
+        expect(response['error']).to be_nil
+        expect(response['result']).to have_key('status')
+      end
+    end
+
+    describe 'fix request' do
+      it 'returns success status' do
+        response = client.fix(file: test_file)
+        aggregate_failures do
+          expect(response).not_to be_nil
+          expect(response['result']['status']).to eq('ok')
+        end
+      end
+
+      it 'writes corrected content to the file' do
+        before_fix = File.read(test_file)
+        client.fix(file: test_file)
+        after_fix = File.read(test_file)
+        expect([after_fix != before_fix, after_fix.include?('@return')]).to eq([true, true])
+      end
+    end
+
+    describe 'shutdown request' do
+      it 'responds to shutdown request' do
+        response = client.shutdown
+        aggregate_failures do
+          expect(response).not_to be_nil
+          expect(response['result']['status']).to eq('shutting_down')
+        end
+      end
+
+      it 'removes the socket after shutdown' do
+        client.shutdown
+        sleep 0.3
+        expect(File.exist?(socket_path)).to be false
+      end
+    end
+  end
+end

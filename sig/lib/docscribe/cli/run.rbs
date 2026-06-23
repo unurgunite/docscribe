@@ -5,6 +5,10 @@ module Docscribe
 
       def self.run: (options: Formatters::opts, argv: Array[String]) -> Integer
 
+      def self.run_via_server: (options: Formatters::opts, argv: Array[String]) -> Integer
+
+      def self.run_files_via_server: (Docscribe::Server::Client client, Array[String] paths, Formatters::opts options) -> Integer
+
       def self.build_config: (Formatters::opts options) -> Config
 
       def self.run_stdin: (options: Formatters::opts, conf: Config) -> Integer
@@ -16,6 +20,28 @@ module Docscribe
       def self.filtered_paths: (Array[String] argv, Config conf) -> Array[String]
 
       def self.no_files_found: () -> Integer
+
+      def self.ensure_server_running!: (?config_path: String?) -> void
+
+      def self.wait_for_server: (?timeout: Integer, ?config_path: String?) -> void
+
+      def self.process_one_file_via_server: (Docscribe::Server::Client client, String path, options: Formatters::opts, pwd: Pathname, state: Formatters::state) -> void
+
+      def self.send_server_request: (Docscribe::Server::Client client, String path, Formatters::opts options) -> (Hash[String, untyped] | nil)
+
+      def self.server_error: (String path, Formatters::state state, String message) -> void
+
+      def self.dispatch_server_result: (Hash[String, untyped] result, Array[Formatters::change] file_changes, String path, **untyped ctx) -> void
+
+      def self.write_server_result: (Hash[String, untyped] result, Array[Formatters::change] file_changes, display_path: String, options: Formatters::opts, state: Formatters::state) -> void
+
+      def self.handle_via_server_check: (String path, file_changes: Array[Formatters::change], display_path: String, options: Formatters::opts, state: Formatters::state) -> void
+
+      def self.report_check_failure: (String display_path, Array[Formatters::change] file_changes, Formatters::opts options) -> void
+
+      def self.update_check_failure_state: (String path, Array[Formatters::change] file_changes, Formatters::state state) -> void
+
+      def self.symbolize_change: (Hash[String, untyped] change) -> Formatters::change
 
       def self.expand_paths: (Array[String] args) -> Array[String]
 

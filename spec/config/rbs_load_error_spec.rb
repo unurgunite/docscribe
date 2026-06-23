@@ -10,7 +10,7 @@ RSpec.describe Docscribe::Config do
   end
 
   describe 'build_rbs_provider with missing rbs gem' do
-    let(:config) { described_class.new({ 'rbs' => { 'enabled' => true } }) }
+    let(:config) { described_class.new('rbs' => { 'enabled' => true }) }
 
     it 'returns nil' do
       expect(config.rbs_provider).to be_nil
@@ -23,7 +23,7 @@ RSpec.describe Docscribe::Config do
   end
 
   describe 'build_core_rbs_provider with missing rbs gem' do
-    let(:config) { described_class.new({}) }
+    let(:config) { described_class.new }
 
     it 'returns nil without warning' do
       expect(config.core_rbs_provider).to be_nil

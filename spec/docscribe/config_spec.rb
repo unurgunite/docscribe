@@ -3,7 +3,7 @@
 RSpec.describe Docscribe::Config do
   describe '#process_method?' do
     describe 'falls back to DEFAULT filter scopes/visibilities when filter keys are missing' do
-      subject(:conf) { described_class.new({}) }
+      subject(:conf) { described_class.new }
 
       it { expect(conf.process_method?(container: 'A', scope: :instance, visibility: :public, name: :foo)).to be(true) }
       it { expect(conf.process_method?(container: 'A', scope: :class, visibility: :private, name: :bar)).to be(true) }

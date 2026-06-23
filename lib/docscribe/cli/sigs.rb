@@ -161,8 +161,8 @@ module Docscribe
         # @raise [Parser::SyntaxError]
         # @raise [StandardError]
         # @return [void] if StandardError
-        # @return [Object] if Parser::SyntaxError
-        # @return [Object] if StandardError
+        # @return [nil] if Parser::SyntaxError
+        # @return [nil] if StandardError
         def extract_methods_from_file(path, methods)
           src = File.read(path)
           ast = Docscribe::Parsing.parse(src, file: path)

@@ -13,7 +13,7 @@ RSpec.describe Docscribe::CLI do
     RUBY
   end
 
-  let(:conf) { Docscribe::Config.new({ 'emit' => { 'return_tag' => false } }) }
+  let(:conf) { Docscribe::Config.new('emit' => { 'return_tag' => false }) }
 
   it 'reads from --stdin and outputs docs', :aggregate_failures do
     Dir.mktmpdir do |dir|

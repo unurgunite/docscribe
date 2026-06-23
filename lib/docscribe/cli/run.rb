@@ -50,6 +50,8 @@ module Docscribe
         # @param [Array<String>] argv remaining path arguments
         # @return [Integer] process exit code
         def run(options:, argv:)
+          return run_via_server(options: options, argv: argv) if options[:server]
+
           conf = build_config(options)
 
           return run_stdin(options: options, conf: conf) if options[:mode] == :stdin
@@ -58,6 +60,48 @@ module Docscribe
           return no_files_found unless paths.any?
 
           run_files(options: options, conf: conf, paths: paths)
+        end
+
+        # Run via the background server daemon.
+        #
+        # Each file is processed by the server, which keeps the Ruby runtime loaded
+        # between requests.
+        #
+        # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
+        # @param [Array<String>] argv remaining path arguments
+        # @raise [RuntimeError]
+        # @return [Integer] if RuntimeError
+        # @return [Integer] if RuntimeError
+        def run_via_server(options:, argv:)
+          require 'docscribe/server'
+          conf = build_config(options)
+          ensure_server_running!(config_path: conf.config_path)
+          client = Docscribe::Server::Client.new(config_path: conf.config_path)
+          paths = filtered_paths(argv, conf)
+          return no_files_found unless paths.any?
+
+          run_files_via_server(client, paths, options)
+        rescue RuntimeError => e
+          warn e.message
+          1
+        end
+
+        # Run files through the server client with progress tracking.
+        #
+        # @param [Docscribe::Server::Client] client server client
+        # @param [Array<String>] paths file paths to process
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @return [Integer] exit code
+        def run_files_via_server(client, paths, options)
+          $stdout.sync = true
+          state = initial_run_state
+          state[:total] = paths.size
+          pwd = Pathname.pwd
+          paths.each do |path|
+            process_one_file_via_server(client, path, options: options, pwd: pwd, state: state)
+          end
+          finalize_run(options, state)
+          run_exit_code(options, state)
         end
 
         # Load and build the effective config from CLI options.
@@ -125,6 +169,183 @@ module Docscribe
         def no_files_found
           warn 'No files found. Pass files or directories (e.g. `docscribe lib`).'
           2
+        end
+
+        # Ensure the server daemon is running, auto-starting if necessary.
+        #
+        # @param [String?] config_path
+        # @return [void]
+        def ensure_server_running!(config_path: nil)
+          return if Docscribe::Server.running?(config_path)
+
+          warn 'Docscribe: starting server...'
+          pid = fork do
+            daemon = Docscribe::Server::Daemon.new(config_path: config_path)
+            daemon.start
+          end
+          Process.detach(pid)
+          wait_for_server(config_path: config_path)
+        end
+
+        # Wait for the server to become ready.
+        #
+        # @param [Integer] timeout max seconds to wait
+        # @param [String?] config_path
+        # @raise [StandardError]
+        # @return [void]
+        def wait_for_server(timeout: 5, config_path: nil)
+          deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+          loop do
+            return if Docscribe::Server.running?(config_path)
+
+            raise 'Docscribe: server failed to start' if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
+            sleep 0.1
+          end
+        end
+
+        # Process a single file via the server client.
+        #
+        # @param [Docscribe::Server::Client] client server client
+        # @param [String] path file path
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @param [Pathname] pwd current working directory
+        # @param [Docscribe::CLI::Formatters::state] state shared processing state
+        # @return [void]
+        def process_one_file_via_server(client, path, options:, pwd:, state:)
+          display_path = display_path_for(path, pwd: pwd)
+          report_progress(state, options, display_path)
+          response = send_server_request(client, path, options)
+          return server_error(path, state, 'Server unreachable') unless response
+          return server_error(path, state, response['error']['message']) if response['error']
+
+          result = response['result']
+          file_changes = (result['changes'] || []).map { |c| symbolize_change(c) }
+          dispatch_server_result(result, file_changes, path,
+                                 display_path: display_path, options: options, state: state)
+        end
+
+        # Send a request to the server for a file.
+        #
+        # @param [Docscribe::Server::Client] client server client
+        # @param [String] path file path
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @return [Hash<String, Object>, nil] server response
+        def send_server_request(client, path, options)
+          method_name = options[:mode] == :write ? 'fix' : 'check'
+          strategy = options[:strategy].to_s
+          client.send(method_name, file: path, strategy: strategy)
+        end
+
+        # Record a server error in the shared state and print an indicator.
+        #
+        # @param [String] path file path
+        # @param [Docscribe::CLI::Formatters::state] state shared processing state
+        # @param [String] message error message
+        # @return [void]
+        def server_error(path, state, message)
+          state[:had_errors] = true
+          state[:error_paths] << path
+          state[:error_messages][path] = message
+          $stderr.print('E')
+        end
+
+        # Dispatch the server result to check or write handler.
+        #
+        # @param [Hash<String, Object>] result server result with :changed and :changes keys
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records
+        # @param [String] path file path
+        # @param [Object] ctx context hash with :display_path, :options, :state keys
+        # @return [void]
+        def dispatch_server_result(result, file_changes, path, **ctx)
+          if ctx[:options][:mode] == :check
+            handle_via_server_check(path, file_changes: file_changes,
+                                          display_path: ctx[:display_path],
+                                          options: ctx[:options], state: ctx[:state])
+          else
+            write_server_result(result, file_changes, display_path: ctx[:display_path],
+                                                      options: ctx[:options], state: ctx[:state])
+          end
+        end
+
+        # Handle a server write-mode result.
+        #
+        # @param [Hash<String, Object>] result server result with :changed key
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records
+        # @param [String] display_path path shown in CLI output
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @param [Docscribe::CLI::Formatters::state] state shared processing state
+        # @return [void]
+        def write_server_result(result, file_changes, display_path:, options:, state:)
+          if result['changed']
+            state[:corrected] += 1
+            state[:corrected_paths] << display_path
+            state[:corrected_changes][display_path] = file_changes
+            log_check_verdict('CHANGED', display_path, options)
+          else
+            log_check_verdict('OK', display_path, options)
+          end
+        end
+
+        # Handle a check result from the server.
+        #
+        # @param [String] path file path
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records from server
+        # @param [String] display_path path shown in CLI output
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @param [Docscribe::CLI::Formatters::state] state shared processing state
+        # @return [void]
+        def handle_via_server_check(path, file_changes:, display_path:, options:, state:)
+          if file_changes.empty?
+            state[:checked_ok] += 1
+            return log_check_verdict('OK', display_path, options)
+          end
+
+          report_check_failure(display_path, file_changes, options)
+          update_check_failure_state(path, file_changes, state)
+        end
+
+        # Report a check failure with verbose or compact output.
+        #
+        # @param [String] display_path path shown in CLI output
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records from server
+        # @param [Docscribe::CLI::Formatters::opts] options CLI options
+        # @return [void]
+        def report_check_failure(display_path, file_changes, options)
+          if options[:verbose]
+            warn("FAIL #{display_path}")
+            print_check_explanations(file_changes)
+          else
+            $stderr.print('F')
+          end
+        end
+
+        # Update shared state after a check failure.
+        #
+        # @param [String] path file path
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records from server
+        # @param [Docscribe::CLI::Formatters::state] state shared processing state
+        # @return [void]
+        def update_check_failure_state(path, file_changes, state)
+          state[:checked_fail] += 1
+          state[:changed] = true
+          state[:fail_paths] << path
+          state[:fail_changes][path] = file_changes
+        end
+
+        # Convert server response change (string keys) to formatter-compatible
+        # change (symbol keys).
+        #
+        # @param [Hash<String, Object>] change change record from server
+        # @return [Docscribe::CLI::Formatters::change]
+        def symbolize_change(change)
+          {
+            type: change['type'].to_sym,
+            file: change['file'],
+            line: change['line'],
+            method: change['method'],
+            message: change['message']
+          }
         end
 
         # Expand CLI path arguments into a sorted list of Ruby files.

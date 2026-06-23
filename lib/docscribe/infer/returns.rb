@@ -67,16 +67,19 @@ module Docscribe
       # @param [Boolean] nil_as_optional whether `nil` unions should be rendered as optional types
       # @param [Object?] core_rbs_provider core RBS type lookup provider
       # @param [Hash<String, String>?] param_types parameter name -> type map
+      # @param [String?] container
+      # @param [Docscribe::Types::ProviderChain?] signature_provider
       # @return [Object]
-      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
-                                 param_types: nil)
+      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil, # rubocop:disable Metrics/ParameterLists
+                                 param_types: nil, container: nil, signature_provider: nil)
         body = extract_def_body(node)
         spec = { normal: FALLBACK_TYPE, rescues: [] } #: Hash[Symbol, untyped]
         return spec unless body
 
         types = build_local_variable_types(body, core_rbs_provider: core_rbs_provider, param_types: param_types)
         populate_returns_spec(spec, body, types, fallback_type: fallback_type, nil_as_optional: nil_as_optional,
-                                                 core_rbs_provider: core_rbs_provider, param_types: param_types)
+                                                 core_rbs_provider: core_rbs_provider, param_types: param_types,
+                                                 container: container, signature_provider: signature_provider)
         spec
       end
 
@@ -608,11 +611,8 @@ module Docscribe
       def handle_block_node(node, **opts)
         send_node = node.children[0]
         if send_node&.type == :send
-          recv = send_node.children[0]
-          meth = send_node.children[1]
-          rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types],
-                                          opts[:param_types])
-          return rbs_type if rbs_type
+          type = send_rbs_type(send_node.children[0], send_node.children[1], **opts)
+          return type if type
         end
 
         run_last_expr_type(node.children[2], **opts)
@@ -628,16 +628,29 @@ module Docscribe
         recv = node.children[0]
         meth = node.children[1]
 
-        if opts[:core_rbs_provider]
-          rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types],
-                                          opts[:param_types])
-          return rbs_type if rbs_type
-        end
+        rbs_type = send_rbs_type(recv, meth, **opts) if opts[:core_rbs_provider]
+        return rbs_type if rbs_type
 
         compound_type = infer_from_compound_assign(node, **opts)
         return compound_type if compound_type
 
         Literals.type_from_literal(node, fallback_type: opts[:fallback_type])
+      end
+
+      # Resolve RBS return type for a send node, trying explicit receiver first,
+      # then falling back to the method's container for implicit self calls.
+      #
+      # @note module_function: defines #send_rbs_type (visibility: private)
+      # @param [Parser::AST::Node, nil] recv the receiver node
+      # @param [Symbol] meth the method name
+      # @param [Object] opts additional keyword options
+      # @return [String, nil]
+      def send_rbs_type(recv, meth, **opts)
+        rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types],
+                                        opts[:param_types])
+        return rbs_type if rbs_type
+
+        container_rbs_return_type(meth, **opts) if recv.nil?
       end
 
       # Resolve RBS return type for a send node's receiver, if possible.
@@ -660,6 +673,31 @@ module Docscribe
 
         rbs = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
         rbs unless rbs == FALLBACK_TYPE
+      end
+
+      # Resolve return type from the current method's container via RBS.
+      #
+      # Handles implicit self calls (recv is nil) by looking up the method
+      # on the container class.
+      #
+      # @note module_function: defines #container_rbs_return_type (visibility: private)
+      # @param [Symbol] meth the method name being called
+      # @param [Object] opts additional keyword options (must include :container and :core_rbs_provider)
+      # @return [String, nil] resolved type or nil if unresolvable
+      def container_rbs_return_type(meth, **opts)
+        return unless opts[:container]
+
+        if opts[:core_rbs_provider]
+          rbs = resolve_rbs_return_type(opts[:container], meth, opts[:core_rbs_provider])
+          return rbs unless rbs == FALLBACK_TYPE
+        end
+
+        if opts[:signature_provider]
+          sig = opts[:signature_provider].signature_for(container: opts[:container], scope: :instance, name: meth)
+          return sig.return_type if sig
+        end
+
+        nil
       end
 
       # Map a receiver AST node to its RBS type name string.
