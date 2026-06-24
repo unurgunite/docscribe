@@ -1,21 +1,14 @@
-module Docscribe::CLI::ServerCmd
-  BANNER: String
-
-  def self.run: (Array[String] argv) -> Integer
-
-  private
-
-  def self.start_server: () -> Integer
-
-  def self.already_running: () -> Integer
-
-  def self.fork_and_wait: () -> void
-
-  def self.stop_server: () -> Integer
-
-  def self.show_status: () -> Integer
-
-  def self.usage: () -> String
-
-  def self.wait_for_startup: (?timeout: Integer) -> void
+module Docscribe
+  module CLI
+    module ServerCmd
+      BANNER: String
+      def self?.run: (Array[String] argv) -> Integer
+      def self?.start_server: (?String? config_path) -> Integer
+      def self?.stop_server: (?String? config_path) -> Integer
+      def self?.show_status: (?String? config_path) -> Integer
+      def self?.already_running: (?String? config_path) -> Integer
+      def self?.parse_args: (Array[String] argv) -> [ String?, String? ]
+      def self?.usage: () -> String
+    end
+  end
 end

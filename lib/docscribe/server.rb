@@ -19,33 +19,109 @@ module Docscribe
     IDLE_TIMEOUT = 300
 
     class << self
+      # Start the server daemon and wait for it to become ready.
+      #
+      # @param [String?] config_path optional config path for socket/pid lookup
+      # @param [Boolean] daemonize redirect stdin/stdout/stderr to /dev/null
+      # @param [Integer] timeout max seconds to wait for readiness
+      # @raise [StandardError]
+      # @return [void]
+      def ensure_running!(config_path: nil, daemonize: false, timeout: 5)
+        return if running?(config_path)
+        raise 'Server mode is unavailable on this Ruby/platform (Process.fork not supported)' unless Process.respond_to?(:fork)
+
+        warn 'Docscribe: starting server...'
+        pid = Process.fork do # steep:ignore NoMethod
+          [$stdin, $stdout].each { _1.reopen(File::NULL) }
+          $stderr.reopen(File::NULL) if daemonize
+          Daemon.new(config_path: config_path).start
+        end
+        Process.detach(pid)
+        wait_for_ready(config_path: config_path, timeout: timeout)
+      end
+
+      # Wait for the server to accept connections.
+      #
+      # @param [String?] config_path optional config path for socket/pid lookup
+      # @param [Integer] timeout max seconds to wait
+      # @param [Boolean] raise_on_timeout raise vs warn on timeout
+      # @raise [StandardError]
+      # @return [void]
+      def wait_for_ready(config_path: nil, timeout: 5, raise_on_timeout: true)
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+        loop do
+          return if running?(config_path)
+
+          if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+            raise('Docscribe: server failed to start') if raise_on_timeout
+
+            warn('Docscribe server failed to start within timeout')
+            return
+          end
+
+          sleep 0.1
+        end
+      end
+
       # Whether a server process is listening on the socket.
+      #
+      # On ECONNREFUSED, checks whether the PID process is still alive:
+      # if yes, the daemon is still starting up (don't clean up);
+      # if no, removes stale socket and pid files.
       #
       # @param [String?] config_path optional config path for socket lookup
       # @raise [Errno::ECONNREFUSED]
       # @raise [Errno::ENOENT]
       # @raise [Errno::ENOTSOCK]
       # @raise [StandardError]
-      # @return [Boolean] if StandardError
-      # @return [Boolean] if Errno::ECONNREFUSED, Errno::ENOENT, Errno::ENOTSOCK
+      # @return [Boolean]
+      # @return [Boolean] if Errno::ECONNREFUSED
+      # @return [Boolean] if Errno::ENOENT, Errno::ENOTSOCK
       # @return [Boolean] if StandardError
       def running?(config_path = nil)
         socket = UNIXSocket.new(socket_path(config_path))
         socket.close
         true
-      rescue Errno::ECONNREFUSED, Errno::ENOENT, Errno::ENOTSOCK
-        FileUtils.rm_f(socket_path(config_path))
-        FileUtils.rm_f(pid_path(config_path))
+      rescue Errno::ECONNREFUSED
+        handle_stale_socket?(config_path)
+      rescue Errno::ENOENT, Errno::ENOTSOCK
+        clean_socket_files(config_path)
         false
       rescue StandardError
         false
       end
 
-      # Read the PID of the running server process.
+      private
+
+      # Handle ECONNREFUSED: check if the pid process is alive.
+      # Cleans up only if the process is dead.
       #
-      # @param [String?] config_path optional config path for socket lookup
+      # @private
+      # @param [String?] config_path
+      # @return [Boolean] false (not running)
+      def handle_stale_socket?(config_path)
+        pid = read_pid(config_path)
+        return false if pid && process_alive?(pid)
+
+        clean_socket_files(config_path)
+        false
+      end
+
+      # @private
+      # @param [Integer] pid
+      # @raise [Errno::ESRCH]
+      # @return [Boolean]
+      # @return [Boolean] if Errno::ESRCH
+      def process_alive?(pid)
+        Process.kill(0, pid)
+        true
+      rescue Errno::ESRCH
+        false
+      end
+
+      # @param [String?] config_path
       # @raise [StandardError]
-      # @return [Integer?] if StandardError
+      # @return [Integer?]
       # @return [nil] if StandardError
       def read_pid(config_path = nil)
         File.read(pid_path(config_path)).to_i if File.exist?(pid_path(config_path))
@@ -53,9 +129,16 @@ module Docscribe
         nil
       end
 
-      # Path to the PID file for the server process.
-      #
-      # @param [String?] config_path optional config path for socket lookup
+      # Remove stale socket and pid files.
+      # @private
+      # @param [String?] config_path
+      # @return [void]
+      def clean_socket_files(config_path)
+        FileUtils.rm_f(socket_path(config_path))
+        FileUtils.rm_f(pid_path(config_path))
+      end
+
+      # @param [String?] config_path
       # @return [String]
       def pid_path(config_path = nil)
         "#{socket_path(config_path)}.pid"
@@ -72,12 +155,18 @@ module Docscribe
       def socket_path(config_path = nil)
         hash = Digest::MD5.hexdigest(Dir.pwd)
         if config_path
-          cfg_hash = Digest::MD5.hexdigest("#{config_path}:#{File.mtime(config_path).to_i}")
+          resolved = File.expand_path(config_path)
+          mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+          cfg_hash = Digest::MD5.hexdigest("#{resolved}:#{mtime}")
           "#{SOCKET_DIR}/docscribe-#{hash}-#{cfg_hash}.sock"
         else
           "#{SOCKET_DIR}/docscribe-#{hash}.sock"
         end
       end
+
+      public :read_pid
+      public :pid_path
+      public :socket_path
     end
 
     # JSON-line protocol helpers.
