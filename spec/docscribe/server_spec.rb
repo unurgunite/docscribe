@@ -353,7 +353,7 @@ RSpec.describe Docscribe::Server do
       end
     end
 
-    describe 'idle timeout' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    describe 'idle timeout' do
       let(:idle_dir) { Dir.mktmpdir }
       let(:idle_sock) { "#{idle_dir}/idle.sock" }
 
@@ -367,7 +367,7 @@ RSpec.describe Docscribe::Server do
       end
     end
 
-    describe 'file cache' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+    describe 'file cache' do
       let(:tmpdir) { Dir.mktmpdir }
       let(:test_file) { "#{tmpdir}/test.rb" }
       let(:daemon) { described_class.new(socket_path: "#{tmpdir}/cache.sock", idle_timeout: 60) }

@@ -453,7 +453,7 @@ module Docscribe
       # @param [Object] file path to file
       # @param [Object] strategy rewrite strategy
       # @return [Array] original source and rewrite result
-      def rewrite_file(file, strategy) # rubocop:disable Metrics/MethodLength
+      def rewrite_file(file, strategy)
         key = [file, strategy]
         mtime = File.mtime(file)
         hit = @file_cache[key]
