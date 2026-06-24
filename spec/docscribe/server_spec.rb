@@ -390,6 +390,14 @@ RSpec.describe Docscribe::Server do
           expect(daemon.send(:rewrite_file, test_file, :safe)).to eq(orig)
         end
       end
+
+      it 'clears cache when cli overrides change' do
+        with_cache_dir do |daemon, test_file|
+          daemon.send(:rewrite_file, test_file, :safe)
+          daemon.send(:apply_cli_overrides, Docscribe::CLI::Options::DEFAULT.merge(no_boilerplate: true).transform_keys(&:to_s))
+          expect(daemon.instance_variable_get(:@file_cache)).to be_empty
+        end
+      end
     end
   end
 end
