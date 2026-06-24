@@ -8,17 +8,27 @@ require 'securerandom'
 require 'digest/md5'
 
 SOCKET_DIR = '/tmp'
+ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml].freeze
 
 def socket_path(config_path = nil)
   hash = Digest::MD5.hexdigest(Dir.pwd)
-  if config_path
-    resolved = File.expand_path(config_path)
-    mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
-    cfg_hash = Digest::MD5.hexdigest("#{resolved}:#{mtime}")
-    "#{SOCKET_DIR}/docscribe-#{hash}-#{cfg_hash}.sock"
-  else
-    "#{SOCKET_DIR}/docscribe-#{hash}.sock"
+  env_seed = env_hash
+  suffix = config_path ? "-#{config_hash(config_path)}" : ''
+  "#{SOCKET_DIR}/docscribe-#{hash}#{suffix}#{env_seed}.sock"
+end
+
+def env_hash
+  parts = ENV_FILES.map do |file|
+    path = File.join(Dir.pwd, file)
+    File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
   end
+  Digest::MD5.hexdigest(parts.join(':'))
+end
+
+def config_hash(config_path)
+  resolved = File.expand_path(config_path)
+  mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+  Digest::MD5.hexdigest("#{resolved}:#{mtime}")
 end
 
 def send_request(sock, method, params = {})
