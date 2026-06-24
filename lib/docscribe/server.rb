@@ -140,24 +140,42 @@ module Docscribe
         "#{socket_path(config_path)}.pid"
       end
 
+      ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml].freeze
+
       # Derive a project-specific socket path from the current working directory.
       # Uses MD5 (deterministic across processes) instead of String#hash
       # (which varies per Ruby process due to random seeding).
       # When a config_path is given, its path + mtime are included in the hash
       # so different configs get different daemons.
+      # Environment files (Gemfile.lock, rbs_collection.lock.yaml) are also
+      # included so daemon is invalidated when gems or RBS types change.
       #
       # @param [String?] config_path optional config path to differentiate
       # @return [String]
       def socket_path(config_path = nil)
         hash = Digest::MD5.hexdigest(Dir.pwd)
-        if config_path
-          resolved = File.expand_path(config_path)
-          mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
-          cfg_hash = Digest::MD5.hexdigest("#{resolved}:#{mtime}")
-          "#{SOCKET_DIR}/docscribe-#{hash}-#{cfg_hash}.sock"
-        else
-          "#{SOCKET_DIR}/docscribe-#{hash}.sock"
+        env_seed = env_hash
+        suffix = config_path ? "-#{config_hash(config_path)}" : ''
+        "#{SOCKET_DIR}/docscribe-#{hash}#{suffix}#{env_seed}.sock"
+      end
+
+      # @param [String] config_path
+      # @return [String]
+      def config_hash(config_path)
+        resolved = File.expand_path(config_path)
+        mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+        Digest::MD5.hexdigest("#{resolved}:#{mtime}")
+      end
+
+      # Hash of environment files that affect analysis results.
+      # When any of these change, the daemon is invalidated (new socket path).
+      # @return [String]
+      def env_hash
+        parts = ENV_FILES.map do |file|
+          path = File.join(Dir.pwd, file)
+          File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
         end
+        Digest::MD5.hexdigest(parts.join(':'))
       end
 
       public :read_pid, :pid_path, :socket_path
