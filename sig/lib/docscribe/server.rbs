@@ -47,7 +47,7 @@ module Docscribe
       @config: Docscribe::Config?
       @config_path: String?
       @core_rbs_provider: untyped
-      @file_cache: untyped
+      @file_cache: Docscribe::LRUCache
       @effective_config: Docscribe::Config?
       @applied_overrides: Hash[String, untyped]?
 

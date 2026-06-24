@@ -5,6 +5,7 @@ require 'socket'
 require 'fileutils'
 require 'securerandom'
 require 'digest/md5'
+require_relative 'lru_cache'
 
 module Docscribe
   # Server/daemon mode for persistent multi-request operation.
@@ -169,6 +170,7 @@ module Docscribe
 
       # Hash of environment files that affect analysis results.
       # When any of these change, the daemon is invalidated (new socket path).
+      #
       # @return [String]
       def env_hash
         parts = ENV_FILES.map do |file|
@@ -313,7 +315,7 @@ module Docscribe
       # @param [nil] socket_path custom socket path
       # @param [IDLE_TIMEOUT] idle_timeout seconds before automatic shutdown
       # @param [nil] config_path custom config path
-      # @return [Hash]
+      # @return [LRUCache]
       def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil)
         @socket_path = socket_path || Server.socket_path(config_path)
         @idle_timeout = idle_timeout
@@ -321,7 +323,7 @@ module Docscribe
         @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @running = false
         @server = nil
-        @file_cache = {}
+        @file_cache = LRUCache.new
       end
 
       # Start the daemon: load dependencies, bind socket, enter listen loop.
