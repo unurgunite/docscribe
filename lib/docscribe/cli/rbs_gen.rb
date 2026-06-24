@@ -162,7 +162,7 @@ module Docscribe
         # @param [Hash<Symbol, Object>] options
         # @raise [Parser::SyntaxError]
         # @raise [StandardError]
-        # @return [Boolean] if StandardError
+        # @return [Boolean]
         # @return [Boolean] if Parser::SyntaxError
         # @return [Boolean] if StandardError
         def generate_for_file(path, options)

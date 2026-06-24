@@ -90,7 +90,7 @@ module Docscribe
       # @note module_function: defines #parse_expr (visibility: private)
       # @param [String?] src expression source
       # @raise [Parser::SyntaxError]
-      # @return [Parser::AST::Node, nil] if Parser::SyntaxError
+      # @return [Parser::AST::Node, nil]
       # @return [nil] if Parser::SyntaxError
       def parse_expr(src)
         return nil if src.nil? || src.strip.empty?

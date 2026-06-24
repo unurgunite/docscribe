@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'tmpdir'
 require 'docscribe/inline_rewriter/doc_builder'
 
 RSpec.describe Docscribe::InlineRewriter::DocBuilder do
@@ -226,6 +227,79 @@ RSpec.describe Docscribe::InlineRewriter::DocBuilder do
 
     it 'has exactly one @param tag entry (multiline ins + new kind)' do
       expect(out.scan(/^\s*# @param/).size).to eq(2)
+    end
+  end
+
+  describe 'does not duplicate conditional rescue @return in aggressive keep_descriptions mode' do
+    subject(:out) { inline(code, config: config, strategy: :aggressive) }
+
+    let(:config) { Docscribe::Config.new('keep_descriptions' => true, 'emit' => { 'rescue_conditional_returns' => true }) }
+
+    let(:code) { <<~RUBY }
+      class A
+        # @return [Integer] if RuntimeError
+        def foo
+          1
+        rescue RuntimeError
+          0
+        end
+      end
+    RUBY
+
+    it 'does not duplicate conditional @return [Integer] if RuntimeError' do
+      expect(out.scan(/^(\s*# @return \[Integer\] if RuntimeError\s*$)/).size).to eq(1)
+    end
+  end
+
+  describe 'rescue body returning a parameter with known type' do
+    subject(:out) { inline(code, config: conf, strategy: :aggressive) }
+
+    let(:conf) { Docscribe::Config.new('emit' => { 'rescue_conditional_returns' => true }) }
+
+    let(:code) { <<~RUBY }
+      class A
+        def count_lines(text = '')
+          text.lines.size
+        rescue StandardError
+          text
+        end
+      end
+    RUBY
+
+    it 'uses String, not Object, for rescue @return (param type from default)' do
+      expect(out).to include('# @return [String] if StandardError')
+    end
+  end
+
+  describe 'explicit receiver call in rescue resolved via signature_provider', :rbs do
+    subject(:out) { inline_with_rbs(code: code, rbs: rbs) }
+
+    let(:rbs) do
+      <<~RBS
+        class Demo
+          def fallback: -> String
+        end
+
+        class Foo
+          def bar: (Demo demo) -> String
+        end
+      RBS
+    end
+
+    let(:code) do
+      <<~RUBY
+        class Foo
+          def bar(demo)
+            "ok"
+          rescue StandardError
+            demo.fallback
+          end
+        end
+      RUBY
+    end
+
+    it 'resolves rescue return type from explicit receiver call via RBS' do
+      expect(out).to include('# @return [String] if StandardError')
     end
   end
 end

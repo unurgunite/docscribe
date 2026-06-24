@@ -52,7 +52,7 @@ module Docscribe
         # @raise [::RBS::BaseError]
         # @raise [SyntaxError]
         # @raise [StandardError]
-        # @return [void] if ::RBS::BaseError, SyntaxError, StandardError
+        # @return [void]
         # @return [nil] if LoadError
         # @return [nil] if ::RBS::BaseError, SyntaxError, StandardError
         def load_from_string(source, label:)

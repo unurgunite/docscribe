@@ -178,7 +178,7 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Object, nil] core_rbs_provider optional externally-provided core RBS provider
       # @raise [StandardError]
-      # @return [Object, nil] if StandardError
+      # @return [Object, nil]
       # @return [nil] if StandardError
       def load_core_rbs_provider(config, core_rbs_provider)
         core_rbs_provider || (config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil)
@@ -456,7 +456,7 @@ module Docscribe
       # @private
       # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
       # @raise [StandardError]
-      # @return [Integer] if StandardError
+      # @return [Integer]
       # @return [Integer] if StandardError
       def plugin_insertion_priority(insertion)
         return 0 unless insertion.is_a?(Hash)
@@ -471,7 +471,7 @@ module Docscribe
       # @private
       # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
       # @raise [StandardError]
-      # @return [String] if StandardError
+      # @return [String]
       # @return [String] if StandardError
       def plugin_insertion_label(insertion)
         return 'unknown' unless insertion.is_a?(Hash)
@@ -487,7 +487,7 @@ module Docscribe
       # @private
       # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
       # @raise [StandardError]
-      # @return [Integer, nil] if StandardError
+      # @return [Integer, nil]
       # @return [nil] if StandardError
       def plugin_insertion_line(insertion)
         return nil unless insertion.is_a?(Hash)
@@ -794,7 +794,9 @@ module Docscribe
       # @return [void]
       def merge_existing_descriptions!(params, parsed)
         params[:param_descriptions] = parsed[:param_descriptions] if parsed[:param_descriptions].any?
-        params[:return_description] = parsed[:return_description] if parsed[:return_description]
+        if parsed[:return_description] && !parsed[:return_description].start_with?('if ')
+          params[:return_description] = parsed[:return_description]
+        end
         params[:description] = parsed[:description] if parsed[:description].any?
       end
 
@@ -1240,7 +1242,7 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @raise [StandardError]
-      # @return [String, nil] if StandardError
+      # @return [String, nil]
       # @return [nil] if StandardError
       def build_attr_merge_additions(ins:, existing_lines:, config:, signature_provider:)
         missing = missing_attr_names(ins, existing_lines)
@@ -1326,7 +1328,7 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @raise [StandardError]
-      # @return [String, nil] if StandardError
+      # @return [String, nil]
       # @return [nil] if StandardError
       def build_attr_doc_for_node(ins, config:, signature_provider:)
         indent = SourceHelpers.line_indent(ins.node)
@@ -1447,8 +1449,8 @@ module Docscribe
       # @param [Docscribe::Config] config the active configuration
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider RBS signature provider
       # @raise [StandardError]
+      # @return [String]
       # @return [String] if StandardError
-      # @return [Object] if StandardError
       def attribute_type(ins, name_sym, config, signature_provider:)
         ty = config.fallback_type
         return ty unless signature_provider
@@ -1466,8 +1468,8 @@ module Docscribe
       # @param [String] code the source code being processed
       # @param [String] file the file name
       # @raise [StandardError]
-      # @return [Object, nil] if StandardError
-      # @return [Object?] if StandardError
+      # @return [Object, nil]
+      # @return [Docscribe::Types::RBS::Provider, nil?] if StandardError
       def build_signature_provider(config, code, file)
         if config.respond_to?(:signature_provider_for)
           config.signature_provider_for(source: code, file: file)
@@ -1525,7 +1527,7 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
       # @raise [StandardError]
-      # @return [Integer] if StandardError
+      # @return [Integer]
       # @return [Object] if StandardError
       def method_line_for(insertion)
         anchor_node_for(insertion).loc.expression.line

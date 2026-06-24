@@ -42,7 +42,7 @@ module Docscribe
         # @param [Symbol, String] name method name
         # @raise [::RBS::BaseError]
         # @raise [StandardError]
-        # @return [Docscribe::Types::MethodSignature, nil] if StandardError
+        # @return [Docscribe::Types::MethodSignature, nil]
         # @return [nil] if ::RBS::BaseError
         # @return [nil] if StandardError
         def signature_for(container:, scope:, name:)
@@ -105,7 +105,7 @@ module Docscribe
         # @param [Array<String>] collection_dirs RBS collection directories
         # @raise [::RBS::BaseError]
         # @raise [StandardError]
-        # @return [RBS::Environment] if ::RBS::BaseError
+        # @return [RBS::Environment]
         # @return [RBS::Environment] if ::RBS::BaseError
         def try_with_fallback_build_env(all_dirs, collection_dirs)
           # First attempt: load core types + all dirs (sig + collection).
@@ -179,7 +179,7 @@ module Docscribe
         #
         # @private
         # @raise [StandardError]
-        # @return [Array<String>] if StandardError
+        # @return [Array<String>]
         # @return [Array] if StandardError
         def stdlib_gem_names
           rbs_spec = Gem::Specification.find_by_name('rbs')
