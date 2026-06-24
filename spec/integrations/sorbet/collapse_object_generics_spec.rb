@@ -26,7 +26,7 @@ RSpec.describe Docscribe::InlineRewriter do
                    ))
     end
 
-    it 'keeps Array<Object> in @return tag' do
+    it 'keeps Array<Object> in @return tag', :aggregate_failures do
       expect(out).to include('# @return [Array<Object>]')
       expect(out).not_to include('# @return [Array]')
     end
@@ -40,7 +40,7 @@ RSpec.describe Docscribe::InlineRewriter do
                    ))
     end
 
-    it 'collapses Array<Object> to Array in @return tag' do
+    it 'collapses Array<Object> to Array in @return tag', :aggregate_failures do
       expect(out).to include('# @return [Array]')
       expect(out).not_to include('# @return [Array<Object>]')
     end
@@ -67,7 +67,7 @@ RSpec.describe Docscribe::InlineRewriter do
       RUBY
     end
 
-    it 'keeps Array<Integer> when collapse_object_generics is true' do
+    it 'keeps Array<Integer> when collapse_object_generics is true', :aggregate_failures do
       expect(out).to include('# @return [Array<Integer>]')
       expect(out).not_to include('# @return [Array]')
     end
@@ -94,7 +94,7 @@ RSpec.describe Docscribe::InlineRewriter do
       RUBY
     end
 
-    it 'collapse_generics collapses even non-Object generics' do
+    it 'collapse_generics collapses even non-Object generics', :aggregate_failures do
       expect(out).to include('# @return [Array]')
       expect(out).not_to include('# @return [Array<Integer>]')
     end

@@ -460,10 +460,7 @@ module Docscribe
         return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime
 
         src = File.read(file)
-        result = Docscribe::InlineRewriter.rewrite_with_report(
-          src, strategy: strategy, config: @config,
-               core_rbs_provider: @core_rbs_provider, file: file
-        )
+        result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: @config, core_rbs_provider: @core_rbs_provider, file: file)
         @file_cache[key] = { mtime: mtime, src: src, result: result }
         [src, result]
       end
