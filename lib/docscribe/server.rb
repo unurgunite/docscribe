@@ -156,7 +156,8 @@ module Docscribe
         hash = Digest::MD5.hexdigest(Dir.pwd)
         if config_path
           resolved = File.expand_path(config_path)
-          cfg_hash = Digest::MD5.hexdigest("#{resolved}:#{File.mtime(resolved).to_f}")
+          mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+          cfg_hash = Digest::MD5.hexdigest("#{resolved}:#{mtime}")
           "#{SOCKET_DIR}/docscribe-#{hash}-#{cfg_hash}.sock"
         else
           "#{SOCKET_DIR}/docscribe-#{hash}.sock"

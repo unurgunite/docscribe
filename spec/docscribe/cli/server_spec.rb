@@ -36,6 +36,20 @@ RSpec.describe Docscribe::CLI do
       end
     end
 
+    describe 'with --config / -C' do
+      let(:dir) { Dir.mktmpdir }
+
+      after { FileUtils.remove_entry(dir) }
+
+      it 'status -C works' do
+        _out, err, st = Open3.capture3(RbConfig.ruby, exe, 'server', 'status', '-C', 'nonexistent.yml', chdir: dir)
+        aggregate_failures do
+          expect(err).to include('not running')
+          expect(st.exitstatus).to eq(0)
+        end
+      end
+    end
+
     describe 'start' do
       let(:dir) { Dir.mktmpdir }
       let(:server_cmd) { ->(*args) { Open3.capture3(RbConfig.ruby, exe, 'server', *args, chdir: dir) } }

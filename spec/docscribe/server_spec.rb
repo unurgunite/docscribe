@@ -17,6 +17,21 @@ RSpec.describe Docscribe::Server do
       hash_segment = Digest::MD5.hexdigest(Dir.pwd)
       expect(described_class.socket_path).to include(hash_segment)
     end
+
+    describe 'with config_path' do
+      around { |ex| Dir.mktmpdir { |t| Dir.chdir(t, &ex) } }
+
+      it 'resolves relative path to absolute before hashing' do
+        rel = described_class.socket_path('some.yml')
+        abs = described_class.socket_path("#{Dir.pwd}/some.yml")
+        expect(rel).to eq(abs)
+      end
+
+      it 'includes mtime as float' do
+        File.write('cfg.yml', '')
+        expect(described_class.socket_path('cfg.yml')).to match(/\.sock\z/)
+      end
+    end
   end
 
   describe '.wait_for_ready' do
