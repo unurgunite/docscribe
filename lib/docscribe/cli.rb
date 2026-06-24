@@ -7,6 +7,8 @@ module Docscribe
   # CLI entry point and command dispatch.
   module CLI
     class << self
+      # @param [Array<String>] argv
+      # @return [Integer]
       def run(argv)
         argv = argv.dup
         return dispatch_subcommand(argv) if subcommand?(argv.first)
@@ -27,10 +29,16 @@ module Docscribe
 
       private
 
+      # @private
+      # @param [String?] cmd
+      # @return [Boolean]
       def subcommand?(cmd)
         COMMANDS.key?(cmd)
       end
 
+      # @private
+      # @param [Array<String>] argv
+      # @return [Integer]
       def dispatch_subcommand(argv)
         cmd = argv.shift
         const_name = COMMANDS[cmd]

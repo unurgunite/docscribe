@@ -70,6 +70,11 @@ module Docscribe
           run_files(options: options, conf: conf, paths: paths)
         end
 
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @param [Array<String>] argv
+        # @raise [RuntimeError]
+        # @return [Integer]
+        # @return [Integer] if RuntimeError
         def run_via_server(options:, argv:)
           require 'docscribe/server'
           conf = build_light_config(options)
@@ -102,6 +107,8 @@ module Docscribe
           run_exit_code(options, state)
         end
 
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @return [Docscribe::Config]
         def build_config(options)
           conf = Docscribe::Config.load(options[:config])
           conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
@@ -109,6 +116,8 @@ module Docscribe
           conf
         end
 
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @return [Docscribe::Config]
         def build_light_config(options)
           conf = Docscribe::Config.load(options[:config])
           Docscribe::CLI::ConfigBuilder.build(conf, options)
@@ -199,13 +208,19 @@ module Docscribe
                                  display_path: display_path, options: options, state: state)
         end
 
+        # @param [Docscribe::Server::Client] client
+        # @param [String] path
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @return [Hash<String, Object>, nil]
         def send_server_request(client, path, options)
           method_name = options[:mode] == :write ? :fix : :check
           strategy = options[:strategy].to_s
           cli_overrides = extract_cli_overrides(options)
-          params = { file: path, strategy: strategy }
-          params[:cli_overrides] = cli_overrides unless cli_overrides.empty?
-          client.send(method_name, **params)
+          if cli_overrides.empty?
+            client.send(method_name, file: path, strategy: strategy)
+          else
+            client.send(method_name, file: path, strategy: strategy, cli_overrides: cli_overrides)
+          end
         end
 
         # Record a server error in the shared state and print an indicator.
@@ -382,14 +397,18 @@ module Docscribe
           run_exit_code(options, state)
         end
 
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @return [Hash<String, Object>]
         def extract_cli_overrides(options)
           overrides = options.slice(*CLI_OVERRIDE_KEYS)
-          overrides.each_with_object({}) do |(k, v), h|
+          acc = {} #: Hash[String, untyped]
+          overrides.each do |k, v|
             next if v.nil? || v == false
             next if v.is_a?(Array) && v.empty?
 
-            h[k.to_s] = v
+            acc[k.to_s] = v
           end
+          acc
         end
 
         private
