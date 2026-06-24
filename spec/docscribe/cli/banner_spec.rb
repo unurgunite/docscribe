@@ -17,6 +17,7 @@ RSpec.describe Docscribe::CLI do
       end
 
       it "has BANNER constant in #{File.basename(file)}" do
+        require "docscribe/cli/#{File.basename(file, '.rb')}"
         expect(Object.const_get(BannerSpecHelper.module_name(file))).to be_const_defined(:BANNER)
       end
     end

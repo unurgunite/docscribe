@@ -4,11 +4,13 @@ module Docscribe
       class BaseProvider
         @collapse_generics: bool
 
+        @collapse_object_generics: bool
+
         @index: Hash[ [ String, Symbol, Symbol ], Types::MethodSignature ]
 
         @warned: bool
 
-        def initialize: (?collapse_generics: bool) -> void
+        def initialize: (?collapse_generics: bool, ?collapse_object_generics: bool) -> void
 
         def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Types::MethodSignature | nil)
 

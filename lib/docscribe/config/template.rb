@@ -98,6 +98,7 @@ module Docscribe
           enabled: false
           rbi_dirs: ["sorbet/rbi", "rbi"]
           collapse_generics: false
+          collapse_object_generics: false
 
         # Preserve existing @param/@return descriptions in aggressive mode
         keep_descriptions: false

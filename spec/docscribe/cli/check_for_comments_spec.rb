@@ -4,6 +4,7 @@ require 'tmpdir'
 require 'fileutils'
 require 'open3'
 require 'docscribe/cli'
+require 'docscribe/cli/check_for_comments'
 
 def resolve_config(raw, param_doc)
   instance_double(Docscribe::Config, raw: raw, param_documentation: param_doc)

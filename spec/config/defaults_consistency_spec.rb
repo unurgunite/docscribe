@@ -53,17 +53,19 @@ RSpec.describe Docscribe::Config do
   end
 
   describe 'rbs section' do
-    it 'has matching enabled and collapse_generics', :aggregate_failures do
+    it 'has matching enabled and collapse settings', :aggregate_failures do
       expect(yaml.dig('rbs', 'enabled')).to eq(default.dig('rbs', 'enabled'))
       expect(yaml.dig('rbs', 'collapse_generics')).to eq(default.dig('rbs', 'collapse_generics'))
+      expect(yaml.dig('rbs', 'collapse_object_generics')).to eq(default.dig('rbs', 'collapse_object_generics'))
       expect(yaml.dig('rbs', 'sig_dirs')).to match_array(default.dig('rbs', 'sig_dirs'))
     end
   end
 
   describe 'sorbet section' do
-    it 'has matching enabled and collapse_generics', :aggregate_failures do
+    it 'has matching enabled and collapse settings', :aggregate_failures do
       expect(yaml.dig('sorbet', 'enabled')).to eq(default.dig('sorbet', 'enabled'))
       expect(yaml.dig('sorbet', 'collapse_generics')).to eq(default.dig('sorbet', 'collapse_generics'))
+      expect(yaml.dig('sorbet', 'collapse_object_generics')).to eq(default.dig('sorbet', 'collapse_object_generics'))
       expect(yaml.dig('sorbet', 'rbi_dirs')).to match_array(default.dig('sorbet', 'rbi_dirs'))
     end
   end

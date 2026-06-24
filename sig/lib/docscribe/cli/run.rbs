@@ -3,9 +3,15 @@ module Docscribe
     module Run
       INITIAL_RUN_STATE: Formatters::state
 
+      CLI_OVERRIDE_KEYS: Array[Symbol]
+
       def self.run: (options: Formatters::opts, argv: Array[String]) -> Integer
 
       def self.run_via_server: (options: Formatters::opts, argv: Array[String]) -> Integer
+
+      def self.build_light_config: (Formatters::opts options) -> Config
+
+      def self.extract_cli_overrides: (Formatters::opts options) -> Hash[String, untyped]
 
       def self.run_files_via_server: (Docscribe::Server::Client client, Array[String] paths, Formatters::opts options) -> Integer
 

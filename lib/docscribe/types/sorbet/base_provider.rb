@@ -18,10 +18,12 @@ module Docscribe
         # Initialize
         #
         # @param [Boolean] collapse_generics whether generic container details
+        # @param [Boolean] collapse_object_generics collapse Object generics
         # @return [void]
-        def initialize(collapse_generics: false)
+        def initialize(collapse_generics: false, collapse_object_generics: false)
           require 'rbs'
           @collapse_generics = !!collapse_generics
+          @collapse_object_generics = !!collapse_object_generics
           @index = {}
           @warned = false
         end
@@ -210,7 +212,8 @@ module Docscribe
         def format_type(type)
           Docscribe::Types::RBS::TypeFormatter.to_yard(
             type,
-            collapse_generics: @collapse_generics
+            collapse_generics: @collapse_generics,
+            collapse_object_generics: @collapse_object_generics
           )
         end
 
@@ -220,7 +223,7 @@ module Docscribe
         # @param [String] name method name
         # @return [String]
         def normalize_container(name)
-          name.to_s.delete_prefix('::')
+          name.to_s.delete_prefix('::').sub(/\[.*\]/, '').sub(/<.*>/, '')
         end
 
         # Print one debug warning per provider instance when debugging is enabled.

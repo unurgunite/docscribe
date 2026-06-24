@@ -16,9 +16,10 @@ module Docscribe
         #
         # @param [Array<String>] rbi_dirs directories scanned recursively for
         # @param [Boolean] collapse_generics whether generic container types
+        # @param [Boolean] collapse_object_generics collapse Object generics
         # @return [void]
-        def initialize(rbi_dirs:, collapse_generics: false)
-          super(collapse_generics: collapse_generics)
+        def initialize(rbi_dirs:, collapse_generics: false, collapse_object_generics: false)
+          super(collapse_generics: collapse_generics, collapse_object_generics: collapse_object_generics)
 
           Array(rbi_dirs).each do |dir|
             path = Pathname(dir)

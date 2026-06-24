@@ -71,14 +71,15 @@ RSpec.describe Docscribe::Server do
 
   describe '.ensure_running!' do
     before do
-      allow(described_class).to receive(:running?).and_return(false)
-      allow(described_class).to receive(:wait_for_ready)
+      allow(described_class).to receive(:wait_for_ready).and_return(false)
       allow(Process).to receive(:fork).and_return(12_345)
       allow(Process).to receive(:detach)
     end
 
     it 'returns early when server is already running' do
-      allow(described_class).to receive(:running?).and_return(true)
+      allow(described_class).to receive(:wait_for_ready)
+        .with(config_path: nil, timeout: 0, raise_on_timeout: false)
+        .and_return(true)
       expect { described_class.ensure_running! }.not_to raise_error
     end
 
@@ -94,7 +95,7 @@ RSpec.describe Docscribe::Server do
 
     it 'calls wait_for_ready after fork' do
       described_class.ensure_running!
-      expect(described_class).to have_received(:wait_for_ready)
+      expect(described_class).to have_received(:wait_for_ready).at_least(:once)
     end
   end
 
@@ -350,6 +351,44 @@ RSpec.describe Docscribe::Server do
         client.shutdown
         sleep 0.3
         expect(File.exist?(socket_path)).to be false
+      end
+    end
+
+    describe 'idle timeout' do
+      def with_idle_daemon(timeout)
+        Dir.mktmpdir do |dir|
+          sock = "#{dir}/idle.sock"
+          daemon = described_class.new(socket_path: sock, idle_timeout: timeout)
+          thread = Thread.new { daemon.start }
+          sleep 0.1 until File.exist?(sock)
+          yield daemon, thread
+        end
+      end
+
+      it 'stops the daemon when idle timeout expires' do
+        with_idle_daemon(0.3) do |_daemon, thread|
+          expect(thread.join(2)).to be(thread)
+        end
+      end
+    end
+
+    describe 'file cache' do
+      def with_cache_dir
+        Dir.mktmpdir do |dir|
+          test_file = "#{dir}/test.rb"
+          daemon = described_class.new(socket_path: "#{dir}/cache.sock", idle_timeout: 60)
+          File.write(test_file, "def foo\nend")
+          daemon.send(:load_dependencies)
+          yield daemon, test_file
+        end
+      end
+
+      it 'caches across repeated calls' do
+        with_cache_dir do |daemon, test_file|
+          orig = daemon.send(:rewrite_file, test_file, :safe)
+          allow(Docscribe::InlineRewriter).to receive(:rewrite_with_report) { raise 'called twice' }
+          expect(daemon.send(:rewrite_file, test_file, :safe)).to eq(orig)
+        end
       end
     end
   end

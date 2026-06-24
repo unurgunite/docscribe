@@ -19,44 +19,44 @@ module Docscribe
     IDLE_TIMEOUT = 300
 
     class << self
-      # Start the server daemon and wait for it to become ready.
+      # Start the server daemon if not running.
       #
-      # @param [String?] config_path optional config path for socket/pid lookup
+      # @param [String?] config_path optional config file path
       # @param [Boolean] daemonize redirect stdin/stdout/stderr to /dev/null
       # @param [Integer] timeout max seconds to wait for readiness
       # @raise [StandardError]
       # @return [void]
       def ensure_running!(config_path: nil, daemonize: false, timeout: 5)
-        return if running?(config_path)
+        return if wait_for_ready(config_path: config_path, timeout: 0, raise_on_timeout: false)
         raise 'Server mode is unavailable on this Ruby/platform (Process.fork not supported)' unless Process.respond_to?(:fork)
 
-        warn 'Docscribe: starting server...'
-        pid = Process.fork do # steep:ignore NoMethod
-          [$stdin, $stdout].each { _1.reopen(File::NULL) }
-          $stderr.reopen(File::NULL) if daemonize
-          Daemon.new(config_path: config_path).start
+        lock_path = "#{socket_path(config_path)}.lock"
+        File.open(lock_path, File::RDWR | File::CREAT, 0o644) do |lock|
+          lock.flock(File::LOCK_EX)
+          next if wait_for_ready(config_path: config_path, timeout: 0, raise_on_timeout: false)
+
+          start_daemon_process(config_path: config_path, daemonize: daemonize)
         end
-        Process.detach(pid)
         wait_for_ready(config_path: config_path, timeout: timeout)
       end
 
-      # Wait for the server to accept connections.
+      # Start the server daemon and wait for it to become ready.
       #
       # @param [String?] config_path optional config path for socket/pid lookup
-      # @param [Integer] timeout max seconds to wait
-      # @param [Boolean] raise_on_timeout raise vs warn on timeout
+      # @param [Integer] timeout max seconds to wait for readiness
+      # @param [Boolean] raise_on_timeout
       # @raise [StandardError]
-      # @return [void]
+      # @return [Boolean]
       def wait_for_ready(config_path: nil, timeout: 5, raise_on_timeout: true)
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
         loop do
-          return if running?(config_path)
+          return true if running?(config_path)
 
           if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
             raise('Docscribe: server failed to start') if raise_on_timeout
 
             warn('Docscribe server failed to start within timeout')
-            return
+            return false
           end
 
           sleep 0.1
@@ -74,7 +74,7 @@ module Docscribe
       # @raise [Errno::ENOENT]
       # @raise [Errno::ENOTSOCK]
       # @raise [StandardError]
-      # @return [Boolean]
+      # @return [Boolean] if StandardError
       # @return [Boolean] if Errno::ECONNREFUSED
       # @return [Boolean] if Errno::ENOENT, Errno::ENOTSOCK
       # @return [Boolean] if StandardError
@@ -91,12 +91,9 @@ module Docscribe
         false
       end
 
-      private
-
       # Handle ECONNREFUSED: check if the pid process is alive.
       # Cleans up only if the process is dead.
       #
-      # @private
       # @param [String?] config_path
       # @return [Boolean] false (not running)
       def handle_stale_socket?(config_path)
@@ -107,10 +104,9 @@ module Docscribe
         false
       end
 
-      # @private
       # @param [Integer] pid
       # @raise [Errno::ESRCH]
-      # @return [Boolean]
+      # @return [Boolean] if Errno::ESRCH
       # @return [Boolean] if Errno::ESRCH
       def process_alive?(pid)
         Process.kill(0, pid)
@@ -121,7 +117,7 @@ module Docscribe
 
       # @param [String?] config_path
       # @raise [StandardError]
-      # @return [Integer?]
+      # @return [Integer?] if StandardError
       # @return [nil] if StandardError
       def read_pid(config_path = nil)
         File.read(pid_path(config_path)).to_i if File.exist?(pid_path(config_path))
@@ -130,7 +126,7 @@ module Docscribe
       end
 
       # Remove stale socket and pid files.
-      # @private
+      #
       # @param [String?] config_path
       # @return [void]
       def clean_socket_files(config_path)
@@ -164,9 +160,20 @@ module Docscribe
         end
       end
 
-      public :read_pid
-      public :pid_path
-      public :socket_path
+      public :read_pid, :pid_path, :socket_path
+
+      # @param [String?] config_path
+      # @param [Boolean] daemonize
+      # @return [void]
+      def start_daemon_process(config_path:, daemonize:)
+        warn 'Docscribe: starting server...'
+        pid = Process.fork do # steep:ignore NoMethod
+          [$stdin, $stdout].each { _1.reopen(File::NULL) }
+          $stderr.reopen(File::NULL) if daemonize
+          Daemon.new(config_path: config_path).start
+        end
+        Process.detach(pid)
+      end
     end
 
     # JSON-line protocol helpers.
@@ -224,18 +231,20 @@ module Docscribe
       #
       # @param [Object] file path to file to check
       # @param [Symbol] strategy rewrite strategy (:safe, :aggressive)
+      # @param [Hash] rest
       # @return [Object] response hash or nil if server unreachable
-      def check(file:, strategy: :safe)
-        request('check', file: file, strategy: strategy)
+      def check(file:, strategy: :safe, **rest)
+        request('check', file: file, strategy: strategy, **rest)
       end
 
       # Send a fix request to the server.
       #
       # @param [Object] file path to file to fix
       # @param [Symbol] strategy rewrite strategy (:safe, :aggressive)
+      # @param [Hash] rest
       # @return [Object] response hash or nil if server unreachable
-      def fix(file:, strategy: :safe)
-        request('fix', file: file, strategy: strategy)
+      def fix(file:, strategy: :safe, **rest)
+        request('fix', file: file, strategy: strategy, **rest)
       end
 
       # Send a shutdown request to the server.
@@ -286,7 +295,7 @@ module Docscribe
       # @param [nil] socket_path custom socket path
       # @param [IDLE_TIMEOUT] idle_timeout seconds before automatic shutdown
       # @param [nil] config_path custom config path
-      # @return [nil]
+      # @return [Hash]
       def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil)
         @socket_path = socket_path || Server.socket_path(config_path)
         @idle_timeout = idle_timeout
@@ -294,6 +303,7 @@ module Docscribe
         @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @running = false
         @server = nil
+        @file_cache = {}
       end
 
       # Start the daemon: load dependencies, bind socket, enter listen loop.
@@ -332,8 +342,6 @@ module Docscribe
         File.chmod(0o600, @socket_path)
       end
 
-      # Write PID file so clients can find the server process.
-      #
       # @private
       # @return [Object]
       def write_pid
@@ -349,7 +357,6 @@ module Docscribe
         while @running
           check_idle_timeout
           accept_client
-          @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         end
       rescue Interrupt
         @running = false
@@ -375,6 +382,7 @@ module Docscribe
         return unless client
 
         handle_client(client)
+        @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
 
       # Read a request from a client connection and dispatch it.
@@ -411,53 +419,69 @@ module Docscribe
         end
       end
 
-      # Handle a check request: read file, run rewriter, return results.
-      #
       # @private
-      # @param [Object] client connected client socket
-      # @param [Object] id request ID
-      # @param [Object] params request parameters
+      # @param [Object] client
+      # @param [Object] id
+      # @param [Object] params
       # @return [Object]
       def handle_check(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
         return send_error(client, id, -32_602, "File not found: #{file}") unless file && File.file?(file)
 
+        apply_cli_overrides(params['cli_overrides'])
         src, result = rewrite_file(file, strategy)
         send_result(client, id, 'status' => result[:output] == src ? 'ok' : 'fail',
                                 'changed' => result[:output] != src, 'changes' => result[:changes])
       end
 
-      # Handle a fix request: read file, rewrite, write back.
-      #
       # @private
-      # @param [Object] client connected client socket
-      # @param [Object] id request ID
-      # @param [Object] params request parameters
+      # @param [Object] client
+      # @param [Object] id
+      # @param [Object] params
       # @return [Object]
       def handle_fix(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
         return send_error(client, id, -32_602, "File not found: #{file}") unless file && File.file?(file)
 
+        apply_cli_overrides(params['cli_overrides'])
         src, result = rewrite_file(file, strategy)
         File.write(file, result[:output]) if result[:output] != src
         send_result(client, id, 'status' => 'ok',
                                 'changed' => result[:output] != src, 'changes' => result[:changes])
       end
 
-      # Read file, run InlineRewriter, and return [src, result].
-      #
       # @private
-      # @param [Object] file path to file
-      # @param [Object] strategy rewrite strategy
-      # @return [Array] original source and rewrite result
+      # @param [Object] overrides
+      # @return [Object]
+      def apply_cli_overrides(overrides)
+        return if overrides.nil? || overrides.empty?
+        return if @applied_overrides == overrides
+
+        config = @config or return
+        require 'docscribe/cli/config_builder'
+        opts = overrides.transform_keys(&:to_sym)
+        @effective_config = Docscribe::CLI::ConfigBuilder.build(config, opts)
+        @applied_overrides = overrides
+      end
+
+      # @private
+      # @param [Object] file
+      # @param [Object] strategy
+      # @raise [StandardError]
+      # @return [Array]
       def rewrite_file(file, strategy)
+        config = @effective_config || @config or raise 'Docscribe: config not loaded'
+        key = [file, strategy]
+        mtime = File.mtime(file)
+        hit = @file_cache[key]
+        return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime
+
         src = File.read(file)
-        result = Docscribe::InlineRewriter.rewrite_with_report(
-          src, strategy: strategy, config: @config,
-               core_rbs_provider: @core_rbs_provider, file: file
-        )
+        rbs = config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil
+        result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: config, core_rbs_provider: rbs, file: file)
+        @file_cache[key] = { mtime: mtime, src: src, result: result }
         [src, result]
       end
 
@@ -478,23 +502,21 @@ module Docscribe
       # @param [Object] client connected client socket
       # @param [Object] id request ID
       # @param [Object] result result data
-      # @return [nil]
+      # @return [Object]
       def send_result(client, id, result)
         response = { jsonrpc: '2.0', id: id, result: result }
-        client.puts(Protocol.serialize(response))
+        client.write(Protocol.serialize(response))
       end
 
-      # Send a JSON-RPC error response.
-      #
       # @private
-      # @param [Object] client connected client socket
-      # @param [Object] id request ID
-      # @param [Object] code error code
-      # @param [Object] message error message
-      # @return [nil]
+      # @param [Object] client
+      # @param [Object] id
+      # @param [Object] code
+      # @param [Object] message
+      # @return [Object]
       def send_error(client, id, code, message)
         response = { jsonrpc: '2.0', id: id, error: { code: code, message: message } }
-        client.puts(Protocol.serialize(response))
+        client.write(Protocol.serialize(response))
       end
 
       # Cleanup socket and PID files on shutdown.
