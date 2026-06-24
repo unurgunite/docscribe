@@ -155,7 +155,8 @@ module Docscribe
       def socket_path(config_path = nil)
         hash = Digest::MD5.hexdigest(Dir.pwd)
         if config_path
-          cfg_hash = Digest::MD5.hexdigest("#{config_path}:#{File.mtime(config_path).to_i}")
+          resolved = File.expand_path(config_path)
+          cfg_hash = Digest::MD5.hexdigest("#{resolved}:#{File.mtime(resolved).to_f}")
           "#{SOCKET_DIR}/docscribe-#{hash}-#{cfg_hash}.sock"
         else
           "#{SOCKET_DIR}/docscribe-#{hash}.sock"
