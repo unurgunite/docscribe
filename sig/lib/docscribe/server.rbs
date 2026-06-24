@@ -9,6 +9,7 @@ module Docscribe
     def self?.socket_path: (?String? config_path) -> String
     def self?.ensure_running!: (?config_path: String?, ?daemonize: bool, ?timeout: Integer) -> void
     def self?.wait_for_ready: (?config_path: String?, ?timeout: Integer, ?raise_on_timeout: bool) -> void
+    def self?.start_daemon_process: (config_path: String?, daemonize: bool) -> void
     def self?.handle_stale_socket?: (String? config_path) -> bool
     def self?.process_alive?: (Integer pid) -> bool
     def self?.clean_socket_files: (String? config_path) -> void
@@ -44,6 +45,8 @@ module Docscribe
       @config_path: String?
       @core_rbs_provider: untyped
       @file_cache: untyped
+      @effective_config: Docscribe::Config?
+      @applied_overrides: Hash[String, untyped]?
 
       def initialize: (?socket_path: String?, ?idle_timeout: Integer, ?config_path: String?) -> void
       def start: () -> void
@@ -60,6 +63,7 @@ module Docscribe
       def handle_request: (UNIXSocket, Hash[String, untyped]) -> void
       def handle_check: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def handle_fix: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
+      def apply_cli_overrides: (Hash[String, untyped]?) -> void
       def rewrite_file: (String, Symbol) -> [ String, Hash[Symbol, untyped] ]
       def handle_shutdown: (UNIXSocket, (String | Integer)) -> void
       def send_result: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void

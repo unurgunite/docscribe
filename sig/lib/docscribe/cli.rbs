@@ -4,7 +4,7 @@ module Docscribe
       def run: (Array[String]) -> Integer
     end
 
-    COMMANDS: Hash[String, _Subcommand]
+    COMMANDS: Hash[String, Symbol]
 
     def self.run: (Array[String] argv) -> Integer
 

@@ -4,7 +4,6 @@ require 'pathname'
 
 require 'docscribe/cli/config_builder'
 require 'docscribe/cli/formatters'
-require 'docscribe/inline_rewriter'
 
 module Docscribe
   module CLI
@@ -35,6 +34,14 @@ module Docscribe
           total: 0,
           processed: 0
         }.freeze
+
+        CLI_OVERRIDE_KEYS = %i[
+          keep_descriptions no_boilerplate
+          include exclude include_file exclude_file
+          rbs rbs_collection sig_dirs
+          sorbet rbi_dirs
+        ].freeze
+
         # Run Docscribe for files or STDIN using the selected mode and strategy.
         #
         # Modes:
@@ -52,6 +59,7 @@ module Docscribe
         def run(options:, argv:)
           return run_via_server(options: options, argv: argv) if options[:server]
 
+          require 'docscribe/inline_rewriter'
           conf = build_config(options)
 
           return run_stdin(options: options, conf: conf) if options[:mode] == :stdin
@@ -62,19 +70,9 @@ module Docscribe
           run_files(options: options, conf: conf, paths: paths)
         end
 
-        # Run via the background server daemon.
-        #
-        # Each file is processed by the server, which keeps the Ruby runtime loaded
-        # between requests.
-        #
-        # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
-        # @param [Array<String>] argv remaining path arguments
-        # @raise [RuntimeError]
-        # @return [Integer] if RuntimeError
-        # @return [Integer] if RuntimeError
         def run_via_server(options:, argv:)
           require 'docscribe/server'
-          conf = build_config(options)
+          conf = build_light_config(options)
           ensure_server_running!(config_path: conf.config_path)
           client = Docscribe::Server::Client.new(config_path: conf.config_path)
           paths = filtered_paths(argv, conf)
@@ -104,15 +102,16 @@ module Docscribe
           run_exit_code(options, state)
         end
 
-        # Load and build the effective config from CLI options.
-        #
-        # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
-        # @return [Docscribe::Config] effective config with plugins loaded
         def build_config(options)
           conf = Docscribe::Config.load(options[:config])
           conf = Docscribe::CLI::ConfigBuilder.build(conf, options)
           conf.load_plugins!
           conf
+        end
+
+        def build_light_config(options)
+          conf = Docscribe::Config.load(options[:config])
+          Docscribe::CLI::ConfigBuilder.build(conf, options)
         end
 
         # Rewrite code from STDIN using the selected strategy and print the
@@ -200,16 +199,13 @@ module Docscribe
                                  display_path: display_path, options: options, state: state)
         end
 
-        # Send a request to the server for a file.
-        #
-        # @param [Docscribe::Server::Client] client server client
-        # @param [String] path file path
-        # @param [Docscribe::CLI::Formatters::opts] options CLI options
-        # @return [Hash<String, Object>, nil] server response
         def send_server_request(client, path, options)
-          method_name = options[:mode] == :write ? 'fix' : 'check'
+          method_name = options[:mode] == :write ? :fix : :check
           strategy = options[:strategy].to_s
-          client.send(method_name, file: path, strategy: strategy)
+          cli_overrides = extract_cli_overrides(options)
+          params = { file: path, strategy: strategy }
+          params[:cli_overrides] = cli_overrides unless cli_overrides.empty?
+          client.send(method_name, **params)
         end
 
         # Record a server error in the shared state and print an indicator.
@@ -384,6 +380,16 @@ module Docscribe
           finalize_run(options, state)
 
           run_exit_code(options, state)
+        end
+
+        def extract_cli_overrides(options)
+          overrides = options.slice(*CLI_OVERRIDE_KEYS)
+          overrides.each_with_object({}) do |(k, v), h|
+            next if v.nil? || v == false
+            next if v.is_a?(Array) && v.empty?
+
+            h[k.to_s] = v
+          end
         end
 
         private

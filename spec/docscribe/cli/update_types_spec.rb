@@ -4,6 +4,7 @@ require 'tmpdir'
 require 'fileutils'
 require 'open3'
 require 'docscribe/cli'
+require 'docscribe/cli/update_types'
 
 DEFAULT_OPTS = Docscribe::CLI::Options::DEFAULT.dup
 

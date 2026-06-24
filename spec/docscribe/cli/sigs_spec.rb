@@ -4,6 +4,7 @@ require 'tmpdir'
 require 'fileutils'
 require 'open3'
 require 'docscribe/cli'
+require 'docscribe/cli/sigs'
 
 RSpec.describe Docscribe::CLI::Sigs do
   describe 'helper methods' do

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'docscribe/cli'
+require 'docscribe/cli/generate'
 require 'tmpdir'
 require 'fileutils'
 
