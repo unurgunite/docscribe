@@ -481,6 +481,7 @@ module Docscribe
         require 'docscribe/cli/config_builder'
         opts = overrides.transform_keys(&:to_sym)
         @effective_config = Docscribe::CLI::ConfigBuilder.build(config, opts)
+        @file_cache.clear
         @applied_overrides = overrides
       end
 

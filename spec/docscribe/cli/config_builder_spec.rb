@@ -96,7 +96,17 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
   end
 
   describe 'build' do
-    let(:base) { Docscribe::Config.new }
+    let(:base) { Docscribe::Config.new(config_path: '/tmp/.docscribe/test.yml') }
+
+    it 'preserves config_path from base without overrides' do
+      config = described_class.build(base, default_options)
+      expect(config.config_path).to eq('/tmp/.docscribe/test.yml')
+    end
+
+    it 'preserves config_path from base with overrides' do
+      config = described_class.build(base, default_options.merge(no_boilerplate: true))
+      expect(config.config_path).to eq('/tmp/.docscribe/test.yml')
+    end
 
     it 'sets emit flags when no_boilerplate is in options', :aggregate_failures do
       config = described_class.build(base, default_options.merge(no_boilerplate: true))
