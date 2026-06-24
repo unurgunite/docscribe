@@ -1,0 +1,82 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'optparse'
+require 'socket'
+require 'json'
+require 'securerandom'
+require 'digest/md5'
+
+SOCKET_DIR = '/tmp'
+
+def socket_path(config_path = nil)
+  hash = Digest::MD5.hexdigest(Dir.pwd)
+  if config_path
+    resolved = File.expand_path(config_path)
+    mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+    cfg_hash = Digest::MD5.hexdigest("#{resolved}:#{mtime}")
+    "#{SOCKET_DIR}/docscribe-#{hash}-#{cfg_hash}.sock"
+  else
+    "#{SOCKET_DIR}/docscribe-#{hash}.sock"
+  end
+end
+
+def send_request(sock, method, params = {})
+  socket = UNIXSocket.new(sock)
+  req = build_request(method, params)
+  socket.write("#{JSON.generate(req)}\n")
+  socket.close_write
+  line = socket.gets
+  line ? JSON.parse(line) : nil
+rescue Errno::ECONNREFUSED, Errno::ENOENT
+  nil
+ensure
+  socket&.close
+end
+
+def build_request(method, params = {})
+  { jsonrpc: '2.0', id: SecureRandom.uuid, method: method, params: params }
+end
+
+config_path = nil
+mode = nil
+file = nil
+
+OptionParser.new do |opts|
+  opts.on('-C', '--config <path>', 'Config file path') { |v| config_path = v }
+  opts.on('--check <file>', 'Check a file') do |v|
+    mode = :check
+    file = v
+  end
+  opts.on('--fix <file>', 'Fix a file') do |v|
+    mode = :fix
+    file = v
+  end
+  opts.on('--shutdown', 'Shutdown the server') { mode = :shutdown }
+  opts.on('--status', 'Show server status') { mode = :status }
+end.parse!
+
+sock = socket_path(config_path)
+
+case mode
+when :check
+  result = send_request(sock, 'check', file: file, strategy: :safe)
+  puts JSON.generate(result || { error: 'Connection failed' })
+when :fix
+  result = send_request(sock, 'fix', file: file, strategy: :safe)
+  puts JSON.generate(result || { error: 'Connection failed' })
+when :shutdown
+  result = send_request(sock, 'shutdown')
+  puts JSON.generate(result || { error: 'Connection failed' })
+when :status
+  alive = begin
+    File.exist?(sock) &&
+      UNIXSocket.new(sock).close && true
+  rescue StandardError
+    false
+  end
+  puts JSON.generate(alive ? { status: 'running', socket: sock } : { status: 'not_running' })
+else
+  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> | --shutdown | --status"
+  exit 1
+end

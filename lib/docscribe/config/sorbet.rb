@@ -47,7 +47,8 @@ module Docscribe
       Docscribe::Types::Sorbet::SourceProvider.new(
         source: source,
         file: file,
-        collapse_generics: sorbet_collapse_generics?
+        collapse_generics: sorbet_collapse_generics?,
+        collapse_object_generics: sorbet_collapse_object_generics?
       )
     rescue LoadError
       nil
@@ -74,10 +75,9 @@ module Docscribe
 
       @sorbet_rbi_provider ||= begin
         require 'docscribe/types/sorbet/rbi_provider'
-        Docscribe::Types::Sorbet::RBIProvider.new(
-          rbi_dirs: sorbet_rbi_dirs,
-          collapse_generics: sorbet_collapse_generics?
-        )
+        Docscribe::Types::Sorbet::RBIProvider.new(rbi_dirs: sorbet_rbi_dirs,
+                                                  collapse_generics: sorbet_collapse_generics?,
+                                                  collapse_object_generics: sorbet_collapse_object_generics?)
       rescue LoadError
         nil
       end
@@ -105,6 +105,15 @@ module Docscribe
     # @return [Boolean]
     def sorbet_collapse_generics?
       fetch_bool(%w[sorbet collapse_generics], rbs_collapse_generics?)
+    end
+
+    # Whether to collapse Object-typed generics in Sorbet types.
+    #
+    # Falls back to the RBS setting when Sorbet-specific config is not present.
+    #
+    # @return [Boolean]
+    def sorbet_collapse_object_generics?
+      fetch_bool(%w[sorbet collapse_object_generics], rbs_collapse_object_generics?)
     end
   end
 end

@@ -352,5 +352,38 @@ RSpec.describe Docscribe::Server do
         expect(File.exist?(socket_path)).to be false
       end
     end
+
+    describe 'idle timeout' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:idle_dir) { Dir.mktmpdir }
+      let(:idle_sock) { "#{idle_dir}/idle.sock" }
+
+      after { FileUtils.remove_entry(idle_dir) }
+
+      it 'stops the daemon when idle timeout expires' do
+        daemon = described_class.new(socket_path: idle_sock, idle_timeout: 0.3)
+        thread = Thread.new { daemon.start }
+        sleep 0.1 until File.exist?(idle_sock)
+        expect(thread.join(2)).to be(thread)
+      end
+    end
+
+    describe 'file cache' do # rubocop:disable RSpec/MultipleMemoizedHelpers
+      let(:tmpdir) { Dir.mktmpdir }
+      let(:test_file) { "#{tmpdir}/test.rb" }
+      let(:daemon) { described_class.new(socket_path: "#{tmpdir}/cache.sock", idle_timeout: 60) }
+
+      after { FileUtils.remove_entry(tmpdir) }
+
+      before do
+        File.write(test_file, "def foo\nend")
+        daemon.send(:load_dependencies)
+      end
+
+      it 'caches across repeated calls' do
+        orig = daemon.send(:rewrite_file, test_file, :safe)
+        allow(Docscribe::InlineRewriter).to receive(:rewrite_with_report) { raise 'called twice' }
+        expect(daemon.send(:rewrite_file, test_file, :safe)).to eq(orig)
+      end
+    end
   end
 end

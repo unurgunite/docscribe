@@ -2,7 +2,7 @@ module Docscribe
   module Types
     module Sorbet
       class SourceProvider < BaseProvider
-        def initialize: (source: String, file: String, ?collapse_generics: bool) -> void
+        def initialize: (source: String, file: String, ?collapse_generics: bool, ?collapse_object_generics: bool) -> void
       end
     end
   end

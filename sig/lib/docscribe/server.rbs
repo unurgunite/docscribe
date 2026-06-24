@@ -43,6 +43,7 @@ module Docscribe
       @config: Docscribe::Config?
       @config_path: String?
       @core_rbs_provider: untyped
+      @file_cache: untyped
 
       def initialize: (?socket_path: String?, ?idle_timeout: Integer, ?config_path: String?) -> void
       def start: () -> void

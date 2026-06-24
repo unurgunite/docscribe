@@ -17,5 +17,7 @@ module Docscribe
     def sorbet_rbi_dirs: () -> Array[String]
 
     def sorbet_collapse_generics?: () -> bool
+
+    def sorbet_collapse_object_generics?: () -> bool
   end
 end

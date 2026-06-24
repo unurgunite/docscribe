@@ -70,7 +70,8 @@ module Docscribe
       'sorbet' => {
         'enabled' => false,
         'rbi_dirs' => ['sorbet/rbi', 'rbi'],
-        'collapse_generics' => false
+        'collapse_generics' => false,
+        'collapse_object_generics' => false
       },
       'keep_descriptions' => false,
       'skip_anonymous_block_params' => false,

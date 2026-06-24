@@ -184,4 +184,31 @@ RSpec.describe Docscribe::CLI do
       end
     end
   end
+
+  describe 'docscribe-client thin executable' do
+    let(:dir) { Dir.mktmpdir }
+    let(:thin_exe) { File.expand_path('exe/docscribe-client') }
+    let(:file) { "#{dir}/test.rb" }
+
+    before do
+      File.write(file, <<~RUBY)
+        def hello
+          puts 'world'
+        end
+      RUBY
+      Open3.capture3(RbConfig.ruby, exe, 'server', 'start', chdir: dir)
+    end
+
+    after do
+      Open3.capture3(RbConfig.ruby, exe, 'server', 'stop', chdir: dir)
+      FileUtils.remove_entry(dir)
+    end
+
+    it 'checks a file and returns JSON', :aggregate_failures do
+      out, _, st = Open3.capture3(RbConfig.ruby, thin_exe, '--check', file, chdir: dir)
+      result = JSON.parse(out)
+      expect(result.dig('result', 'status')).to eq('fail')
+      expect(st.exitstatus).to eq(0)
+    end
+  end
 end

@@ -294,6 +294,7 @@ module Docscribe
         @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @running = false
         @server = nil
+        @file_cache = {}
       end
 
       # Start the daemon: load dependencies, bind socket, enter listen loop.
@@ -349,7 +350,6 @@ module Docscribe
         while @running
           check_idle_timeout
           accept_client
-          @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         end
       rescue Interrupt
         @running = false
@@ -375,6 +375,7 @@ module Docscribe
         return unless client
 
         handle_client(client)
+        @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
 
       # Read a request from a client connection and dispatch it.
@@ -452,12 +453,18 @@ module Docscribe
       # @param [Object] file path to file
       # @param [Object] strategy rewrite strategy
       # @return [Array] original source and rewrite result
-      def rewrite_file(file, strategy)
+      def rewrite_file(file, strategy) # rubocop:disable Metrics/MethodLength
+        key = [file, strategy]
+        mtime = File.mtime(file)
+        hit = @file_cache[key]
+        return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime
+
         src = File.read(file)
         result = Docscribe::InlineRewriter.rewrite_with_report(
           src, strategy: strategy, config: @config,
                core_rbs_provider: @core_rbs_provider, file: file
         )
+        @file_cache[key] = { mtime: mtime, src: src, result: result }
         [src, result]
       end
 
