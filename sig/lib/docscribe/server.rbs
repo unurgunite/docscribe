@@ -67,6 +67,7 @@ module Docscribe
       def handle_check: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def handle_fix: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def apply_cli_overrides: (Hash[String, untyped]?) -> void
+      def reset_effective_config: () -> void
       def rewrite_file: (String, Symbol) -> [ String, Hash[Symbol, untyped] ]
       def handle_shutdown: (UNIXSocket, (String | Integer)) -> void
       def send_result: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void

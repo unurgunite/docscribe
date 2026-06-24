@@ -476,7 +476,7 @@ module Docscribe
       # @param [Object] overrides
       # @return [Object]
       def apply_cli_overrides(overrides)
-        return if overrides.nil? || overrides.empty?
+        return reset_effective_config if overrides.nil? || overrides.empty?
         return if @applied_overrides == overrides
 
         config = @config or return
@@ -485,6 +485,15 @@ module Docscribe
         @effective_config = Docscribe::CLI::ConfigBuilder.build(config, opts)
         @file_cache.clear
         @applied_overrides = overrides
+      end
+
+      # @private
+      def reset_effective_config
+        return unless @effective_config
+
+        @effective_config = nil
+        @applied_overrides = nil
+        @file_cache.clear
       end
 
       # @private

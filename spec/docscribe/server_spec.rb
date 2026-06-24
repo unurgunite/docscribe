@@ -383,6 +383,18 @@ RSpec.describe Docscribe::Server do
         end
       end
 
+      def override_hash
+        {
+          'no_boilerplate' => true,
+          'include' => [],
+          'exclude' => [],
+          'include_file' => [],
+          'exclude_file' => [],
+          'sig_dirs' => [],
+          'rbi_dirs' => []
+        }
+      end
+
       it 'caches across repeated calls' do
         with_cache_dir do |daemon, test_file|
           orig = daemon.send(:rewrite_file, test_file, :safe)
@@ -394,7 +406,44 @@ RSpec.describe Docscribe::Server do
       it 'clears cache when cli overrides change' do
         with_cache_dir do |daemon, test_file|
           daemon.send(:rewrite_file, test_file, :safe)
-          daemon.send(:apply_cli_overrides, Docscribe::CLI::Options::DEFAULT.merge(no_boilerplate: true).transform_keys(&:to_s))
+          daemon.send(:apply_cli_overrides, override_hash)
+          expect(daemon.instance_variable_get(:@file_cache)).to be_empty
+        end
+      end
+
+      it 'sets effective_config when overrides applied' do
+        with_cache_dir do |daemon, _test_file|
+          daemon.send(:apply_cli_overrides, override_hash)
+          expect(daemon.instance_variable_get(:@effective_config)).not_to be_nil
+        end
+      end
+
+      it 'records applied_overrides' do
+        with_cache_dir do |daemon, _test_file|
+          daemon.send(:apply_cli_overrides, override_hash)
+          expect(daemon.instance_variable_get(:@applied_overrides)).to eq(override_hash)
+        end
+      end
+
+      it 'unsets effective_config when overrides become nil' do
+        with_cache_dir do |daemon, _test_file|
+          daemon.send(:apply_cli_overrides, override_hash)
+          daemon.send(:apply_cli_overrides, nil)
+          expect(daemon.instance_variable_get(:@effective_config)).to be_nil
+        end
+      end
+
+      it 'unsets applied_overrides when overrides become nil' do
+        with_cache_dir do |daemon, _test_file|
+          daemon.send(:apply_cli_overrides, override_hash)
+          daemon.send(:apply_cli_overrides, nil)
+          expect(daemon.instance_variable_get(:@applied_overrides)).to be_nil
+        end
+      end
+
+      it 'clears cache when overrides become nil' do
+        with_cache_dir do |daemon, _test_file|
+          daemon.send(:apply_cli_overrides, override_hash) && daemon.send(:apply_cli_overrides, nil)
           expect(daemon.instance_variable_get(:@file_cache)).to be_empty
         end
       end
