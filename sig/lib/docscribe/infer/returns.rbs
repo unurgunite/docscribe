@@ -89,6 +89,8 @@ module Docscribe
 
       def self?.resolve_rbs_for_send: ((Parser::AST::Node | nil) recv, Symbol meth, (untyped | nil) core_rbs_provider, (Hash[untyped, untyped] | nil) local_var_types, (Hash[String, String] | nil) param_types) -> (String | nil)
 
+      def self?.resolve_rbs_for_send_with_signature_provider: ((Parser::AST::Node | nil) recv, Symbol meth, **untyped opts) -> (String | nil)
+
       def self?.receiver_rbs_type_name: ((Parser::AST::Node | nil) recv, (untyped | nil) core_rbs_provider, (Hash[untyped, untyped] | nil) local_var_types, (Hash[String, String] | nil) param_types) -> (String | nil)
 
       def self?.resolve_lvar_rbs: (Parser::AST::Node? recv, Symbol meth, (untyped | nil) core_rbs_provider, (Hash[untyped, untyped] | nil) local_var_types, (Hash[String, String] | nil) param_types) -> (String | nil)

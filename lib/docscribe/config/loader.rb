@@ -45,7 +45,7 @@ module Docscribe
     # @param [String] yaml YAML document
     # @param [String?] filename optional filename for diagnostics
     # @raise [ArgumentError]
-    # @return [Hash<String, Object>] if ArgumentError
+    # @return [Hash<String, Object>]
     # @return [Object] if ArgumentError
     def self.safe_load_compat(yaml, filename: nil)
       pclasses = [] #: Array[String]

@@ -129,7 +129,7 @@ module Docscribe
         # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
         # @param [Docscribe::Config] conf effective config
         # @raise [StandardError]
-        # @return [Integer] if StandardError
+        # @return [Integer]
         # @return [Integer] if StandardError
         def run_stdin(options:, conf:)
           puts stdin_rewrite_result(options, conf)[:output]
@@ -514,7 +514,7 @@ module Docscribe
         # @param [String] path file path to display
         # @param [Pathname] pwd current working directory
         # @raise [StandardError]
-        # @return [String] if StandardError
+        # @return [String]
         # @return [Object] if StandardError
         def display_path_for(path, pwd:)
           abs = Pathname.new(path).expand_path
@@ -536,7 +536,7 @@ module Docscribe
         # @param [Docscribe::CLI::Formatters::opts] options CLI options
         # @param [Docscribe::CLI::Formatters::state] state shared processing state
         # @raise [StandardError]
-        # @return [String, nil] if StandardError
+        # @return [String, nil]
         # @return [nil] if StandardError
         def read_source_for_path(path, display_path:, options:, state:)
           File.read(path)
@@ -555,7 +555,7 @@ module Docscribe
         # @param [String] src source code
         # @param [Hash<Symbol, Object>] ctx context hash with :conf, :display_path, :options, :state keys
         # @raise [StandardError]
-        # @return [Hash<Symbol, Object>, nil] if StandardError
+        # @return [Hash<Symbol, Object>, nil]
         # @return [nil] if StandardError
         def rewrite_result_for_path(path, src:, ctx:)
           conf = ctx[:conf]
@@ -677,7 +677,7 @@ module Docscribe
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes structured change records
         # @param [Object] ctx context hash with :display_path, :options, :state keys
         # @raise [StandardError]
-        # @return [void] if StandardError
+        # @return [void]
         # @return [Object] if StandardError
         def handle_write_result(path, src:, out:, file_changes:, **ctx)
           return log_check_verdict('OK', ctx[:display_path], ctx[:options]) if out == src

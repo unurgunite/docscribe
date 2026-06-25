@@ -32,8 +32,8 @@ module Docscribe
     #
     # @param [String] path file path to test
     # @raise [StandardError]
+    # @return [String]
     # @return [String] if StandardError
-    # @return [Object] if StandardError
     def relative_path(path)
       Pathname.new(path).expand_path.relative_path_from(Pathname.pwd).cleanpath.to_s
     rescue StandardError

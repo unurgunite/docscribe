@@ -67,7 +67,7 @@ module Docscribe
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Object] opts additional keyword options forwarded to doc_setup
       # @raise [StandardError]
-      # @return [String, nil] if StandardError
+      # @return [String, nil]
       # @return [nil] if StandardError
       def build(insertion, config:, **opts)
         setup = doc_setup(insertion, config: config, **opts)
@@ -87,7 +87,7 @@ module Docscribe
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Object] options additional keyword options forwarded to downstream methods
       # @raise [StandardError]
-      # @return [String, nil] if StandardError
+      # @return [String, nil]
       # @return [nil] if StandardError
       def build_merge_additions(insertion, existing_lines:, config:, **options)
         setup = doc_setup(insertion, config: config, **options)
@@ -110,7 +110,7 @@ module Docscribe
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Object] options additional keyword options forwarded to downstream methods
       # @raise [StandardError]
-      # @return [Hash<Symbol, Object>] if StandardError
+      # @return [Hash<Symbol, Object>]
       # @return [Hash] if StandardError
       def build_missing_merge_result(insertion, existing_lines:, config:, **options)
         setup = doc_setup(insertion, config: config, **options)
@@ -696,7 +696,7 @@ module Docscribe
       # @note module_function: defines #extract_raise_types_from_line (visibility: private)
       # @param [String] line a `@raise` doc line
       # @raise [StandardError]
-      # @return [Array<String, nil>] if StandardError
+      # @return [Array<String, nil>]
       # @return [Array] if StandardError
       def extract_raise_types_from_line(line)
         return [] unless line.match?(/^\s*#\s*@raise\b/)
@@ -2004,7 +2004,7 @@ module Docscribe
       # @note module_function: defines #safe_node_source (visibility: private)
       # @param [Parser::AST::Node] node AST node whose source text to extract
       # @raise [StandardError]
-      # @return [String] if StandardError
+      # @return [String]
       # @return [String] if StandardError
       def safe_node_source(node)
         node.loc.expression.source

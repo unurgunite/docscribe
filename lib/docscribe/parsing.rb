@@ -42,7 +42,7 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer prepared source buffer
       # @param [Symbol] backend :auto, :parser, or :prism
       # @raise [NoMethodError]
-      # @return [Parser::AST::Node, nil] if NoMethodError
+      # @return [Parser::AST::Node, nil]
       # @return [nil] if NoMethodError
       def parse_buffer(buffer, backend: :auto)
         parser = parser_for(backend: backend)
@@ -73,7 +73,7 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer prepared source buffer
       # @param [Symbol] backend :auto, :parser, or :prism
       # @raise [NoMethodError]
-      # @return [(Parser::AST::Node?, Array<Parser::Source::Comment>), nil] if NoMethodError
+      # @return [(Parser::AST::Node?, Array<Parser::Source::Comment>), nil]
       # @return [nil] if NoMethodError
       def parse_with_comments_buffer(buffer, backend: :auto)
         parser = parser_for(backend: backend)

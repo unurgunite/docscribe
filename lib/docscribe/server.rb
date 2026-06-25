@@ -75,7 +75,7 @@ module Docscribe
       # @raise [Errno::ENOENT]
       # @raise [Errno::ENOTSOCK]
       # @raise [StandardError]
-      # @return [Boolean] if StandardError
+      # @return [Boolean]
       # @return [Boolean] if Errno::ECONNREFUSED
       # @return [Boolean] if Errno::ENOENT, Errno::ENOTSOCK
       # @return [Boolean] if StandardError
@@ -107,7 +107,7 @@ module Docscribe
 
       # @param [Integer] pid
       # @raise [Errno::ESRCH]
-      # @return [Boolean] if Errno::ESRCH
+      # @return [Boolean]
       # @return [Boolean] if Errno::ESRCH
       def process_alive?(pid)
         Process.kill(0, pid)
@@ -118,7 +118,7 @@ module Docscribe
 
       # @param [String?] config_path
       # @raise [StandardError]
-      # @return [Integer?] if StandardError
+      # @return [Integer?]
       # @return [nil] if StandardError
       def read_pid(config_path = nil)
         File.read(pid_path(config_path)).to_i if File.exist?(pid_path(config_path))
@@ -220,7 +220,7 @@ module Docscribe
       # @note module_function: defines #parse_response (visibility: private)
       # @param [String] line raw JSON line
       # @raise [JSON::ParserError]
-      # @return [Hash<String, Object>?] if JSON::ParserError
+      # @return [Hash<String, Object>?]
       # @return [nil] if JSON::ParserError
       def parse_response(line)
         JSON.parse(line)
@@ -242,7 +242,7 @@ module Docscribe
     class Client
       # @param [nil] socket_path custom socket path (defaults to server default)
       # @param [nil] config_path optional config path for socket lookup
-      # @return [Object]
+      # @return [Object, nil]
       def initialize(socket_path = nil, config_path: nil)
         @socket_path = socket_path || Server.socket_path(config_path)
       end
@@ -476,7 +476,7 @@ module Docscribe
       # @param [Object] overrides
       # @return [Object]
       def apply_cli_overrides(overrides)
-        return if overrides.nil? || overrides.empty?
+        return reset_effective_config if overrides.nil? || overrides.empty?
         return if @applied_overrides == overrides
 
         config = @config or return
@@ -485,6 +485,16 @@ module Docscribe
         @effective_config = Docscribe::CLI::ConfigBuilder.build(config, opts)
         @file_cache.clear
         @applied_overrides = overrides
+      end
+
+      # @private
+      # @return [Object]
+      def reset_effective_config
+        return unless @effective_config
+
+        @effective_config = nil
+        @applied_overrides = nil
+        @file_cache.clear
       end
 
       # @private
@@ -544,7 +554,7 @@ module Docscribe
       #
       # @private
       # @raise [StandardError]
-      # @return [Object] if StandardError
+      # @return [Object]
       # @return [nil] if StandardError
       def cleanup
         @server&.close

@@ -40,7 +40,7 @@ module Docscribe
     # @param [String] source Ruby source being rewritten
     # @param [String] file source name for diagnostics
     # @raise [LoadError]
-    # @return [Docscribe::Types::Sorbet::SourceProvider, nil] if LoadError
+    # @return [Docscribe::Types::Sorbet::SourceProvider, nil]
     # @return [nil] if LoadError
     def sorbet_source_provider(source, file)
       require 'docscribe/types/sorbet/source_provider'

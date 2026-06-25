@@ -14,7 +14,7 @@ module Docscribe
       # @note module_function: defines #infer_return_type (visibility: private)
       # @param [String?] method_source full method definition source
       # @raise [Parser::SyntaxError]
-      # @return [String] if Parser::SyntaxError
+      # @return [String]
       # @return [FALLBACK_TYPE] if Parser::SyntaxError
       def infer_return_type(method_source)
         return FALLBACK_TYPE if method_source.nil? || method_source.strip.empty?
@@ -238,7 +238,7 @@ module Docscribe
       # @return [String, nil]
       def handle_lvar_node(node, **opts)
         name = node.children[0].to_s
-        opts[:local_var_types]&.fetch(name, nil) || opts[:fallback_type]
+        lookup_lvar_type(name, opts[:local_var_types], opts[:param_types]) || opts[:fallback_type]
       end
 
       # Handle `:ivar` node for last_expr_type — look up instance variable in local_var_types.
@@ -650,6 +650,9 @@ module Docscribe
                                         opts[:param_types])
         return rbs_type if rbs_type
 
+        rbs_type = resolve_rbs_for_send_with_signature_provider(recv, meth, **opts)
+        return rbs_type if rbs_type
+
         container_rbs_return_type(meth, **opts) if recv.nil?
       end
 
@@ -666,13 +669,34 @@ module Docscribe
       # @param [Hash<String, String>, nil] param_types parameter name to type map
       # @return [String, nil] resolved type or nil if unresolvable
       def resolve_rbs_for_send(recv, meth, core_rbs_provider, local_var_types, param_types)
-        return nil unless core_rbs_provider
-
         recv_type = receiver_rbs_type_name(recv, core_rbs_provider, local_var_types, param_types)
         return nil unless recv_type
 
-        rbs = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
-        rbs unless rbs == FALLBACK_TYPE
+        if core_rbs_provider
+          rbs = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
+          return rbs unless rbs == FALLBACK_TYPE
+        end
+
+        nil
+      end
+
+      # Resolve RBS return type via signature_provider fallback.
+      #
+      # Tries project-level RBS when core_rbs_provider fails.
+      #
+      # @note module_function: defines #resolve_rbs_for_send_with_signature_provider (visibility: private)
+      # @param [Parser::AST::Node, nil] recv the receiver node
+      # @param [Symbol] meth the method name
+      # @param [Object] opts additional keyword options
+      # @return [String, nil]
+      def resolve_rbs_for_send_with_signature_provider(recv, meth, **opts)
+        return nil unless opts[:signature_provider]
+
+        recv_type = receiver_rbs_type_name(recv, opts[:core_rbs_provider], opts[:local_var_types],
+                                           opts[:param_types])
+        return nil unless recv_type
+
+        opts[:signature_provider].signature_for(container: recv_type, scope: :instance, name: meth)&.return_type
       end
 
       # Resolve return type from the current method's container via RBS.
