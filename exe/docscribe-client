@@ -6,8 +6,13 @@ require 'socket'
 require 'json'
 require 'securerandom'
 require 'digest/md5'
+require 'tmpdir'
 
-SOCKET_DIR = '/tmp'
+SOCKET_DIR = begin
+  tmp = Dir.tmpdir || '/tmp'
+  sock_overhead = "/docscribe-#{'a' * 64}.sock".bytesize
+  tmp.bytesize <= 104 - sock_overhead ? tmp : '/tmp'
+end
 ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml].freeze
 
 def socket_path(config_path = nil)
@@ -64,6 +69,7 @@ OptionParser.new do |opts|
   end
   opts.on('--shutdown', 'Shutdown the server') { mode = :shutdown }
   opts.on('--status', 'Show server status') { mode = :status }
+  opts.on('--ping', 'Ping the server') { mode = :ping }
 end.parse!
 
 sock = socket_path(config_path)
@@ -78,6 +84,9 @@ when :fix
 when :shutdown
   result = send_request(sock, 'shutdown')
   puts JSON.generate(result || { error: 'Connection failed' })
+when :ping
+  result = send_request(sock, 'ping')
+  puts JSON.generate(result || { error: 'Connection failed' })
 when :status
   alive = begin
     File.exist?(sock) &&
@@ -87,6 +96,6 @@ when :status
   end
   puts JSON.generate(alive ? { status: 'running', socket: sock } : { status: 'not_running' })
 else
-  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> | --shutdown | --status"
+  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> | --shutdown | --status | --ping"
   exit 1
 end

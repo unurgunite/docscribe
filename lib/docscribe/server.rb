@@ -5,6 +5,7 @@ require 'socket'
 require 'fileutils'
 require 'securerandom'
 require 'digest/md5'
+require 'tmpdir'
 require_relative 'lru_cache'
 
 module Docscribe
@@ -16,7 +17,14 @@ module Docscribe
   # - Auto-shutdown after idle timeout
   # - Protocol: JSON-RPC 2.0 over Unix socket
   module Server
-    SOCKET_DIR = '/tmp'
+    # Unix socket path max is 104 bytes on macOS (the more restrictive).
+    # Dir.tmpdir on macOS often returns a long path under /var/folders/.../T
+    # that exceeds this limit, so we fall back to /tmp when needed.
+    SOCKET_DIR = begin
+      tmp = Dir.tmpdir || '/tmp'
+      sock_overhead = "/docscribe-#{'a' * 64}.sock".bytesize # 80
+      tmp.bytesize <= 104 - sock_overhead ? tmp : '/tmp'
+    end
     IDLE_TIMEOUT = 300
 
     class << self
@@ -186,7 +194,7 @@ module Docscribe
       # @param [Boolean] daemonize
       # @return [void]
       def start_daemon_process(config_path:, daemonize:)
-        warn 'Docscribe: starting server...'
+        warn 'Docscribe: starting server...' if daemonize
         pid = Process.fork do # steep:ignore NoMethod
           [$stdin, $stdout].each { _1.reopen(File::NULL) }
           $stderr.reopen(File::NULL) if daemonize
@@ -240,38 +248,45 @@ module Docscribe
 
     # Client for communicating with a running Docscribe daemon.
     class Client
-      # @param [nil] socket_path custom socket path (defaults to server default)
-      # @param [nil] config_path optional config path for socket lookup
-      # @return [Object, nil]
+      # @param [String?] socket_path custom socket path (defaults to server default)
+      # @param [String?] config_path optional config path for socket lookup
+      # @return [void]
       def initialize(socket_path = nil, config_path: nil)
         @socket_path = socket_path || Server.socket_path(config_path)
       end
 
       # Send a check request to the server.
       #
-      # @param [Object] file path to file to check
+      # @param [String] file path to file to check
       # @param [Symbol] strategy rewrite strategy (:safe, :aggressive)
-      # @param [Hash] rest
-      # @return [Object] response hash or nil if server unreachable
+      # @param [Object] rest
+      # @return [Hash<String, Object>?] response hash or nil if server unreachable
       def check(file:, strategy: :safe, **rest)
         request('check', file: file, strategy: strategy, **rest)
       end
 
       # Send a fix request to the server.
       #
-      # @param [Object] file path to file to fix
+      # @param [String] file path to file to fix
       # @param [Symbol] strategy rewrite strategy (:safe, :aggressive)
-      # @param [Hash] rest
-      # @return [Object] response hash or nil if server unreachable
+      # @param [Object] rest
+      # @return [Hash<String, Object>?] response hash or nil if server unreachable
       def fix(file:, strategy: :safe, **rest)
         request('fix', file: file, strategy: strategy, **rest)
       end
 
       # Send a shutdown request to the server.
       #
-      # @return [Object] response hash or nil if server unreachable
+      # @return [Hash<String, Object>?] response hash or nil if server unreachable
       def shutdown
         request('shutdown')
+      end
+
+      # Ping the server and get version/pid/uptime info.
+      #
+      # @return [Hash<String, Object>?] response hash or nil if server unreachable
+      def ping
+        request('ping')
       end
 
       private
@@ -279,9 +294,9 @@ module Docscribe
       # Send a JSON-RPC request and read the response.
       #
       # @private
-      # @param [Object] method method name
-      # @param [Hash] params request parameters
-      # @return [Object]
+      # @param [String] method method name
+      # @param [Object] params request parameters
+      # @return [Hash<String, Object>?]
       def request(method, **params)
         connect do |socket|
           req = Protocol.build_request(method, params)
@@ -299,7 +314,7 @@ module Docscribe
       # @private
       # @raise [Errno::ECONNREFUSED]
       # @raise [Errno::ENOENT]
-      # @return [Object?, Object] yield return value or nil on connection error
+      # @return [T?] yield return value or nil on connection error
       def connect
         socket = UNIXSocket.new(@socket_path)
         yield socket
@@ -312,10 +327,10 @@ module Docscribe
 
     # Daemon process that loads the Ruby runtime once and serves requests.
     class Daemon
-      # @param [nil] socket_path custom socket path
-      # @param [IDLE_TIMEOUT] idle_timeout seconds before automatic shutdown
-      # @param [nil] config_path custom config path
-      # @return [LRUCache]
+      # @param [String?] socket_path custom socket path
+      # @param [Integer] idle_timeout seconds before automatic shutdown
+      # @param [String?] config_path custom config path
+      # @return [void]
       def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil)
         @socket_path = socket_path || Server.socket_path(config_path)
         @idle_timeout = idle_timeout
@@ -324,11 +339,12 @@ module Docscribe
         @running = false
         @server = nil
         @file_cache = LRUCache.new
+        @started_at = Time.now
       end
 
       # Start the daemon: load dependencies, bind socket, enter listen loop.
       #
-      # @return [Object]
+      # @return [void]
       def start
         load_dependencies
         setup_socket
@@ -343,7 +359,7 @@ module Docscribe
       # Load the full Docscribe runtime and build cached config.
       #
       # @private
-      # @return [Object]
+      # @return [void]
       def load_dependencies
         require 'docscribe'
         @config = Docscribe::Config.load(@config_path)
@@ -354,7 +370,7 @@ module Docscribe
       # Create and bind the Unix domain socket.
       #
       # @private
-      # @return [Object]
+      # @return [void]
       def setup_socket
         FileUtils.rm_f(@socket_path)
         FileUtils.mkdir_p(File.dirname(@socket_path))
@@ -363,7 +379,7 @@ module Docscribe
       end
 
       # @private
-      # @return [Object]
+      # @return [void]
       def write_pid
         File.write("#{@socket_path}.pid", Process.pid)
       end
@@ -372,7 +388,7 @@ module Docscribe
       #
       # @private
       # @raise [Interrupt]
-      # @return [Object, Boolean, Object]
+      # @return [void]
       def listen_loop
         while @running
           check_idle_timeout
@@ -387,7 +403,7 @@ module Docscribe
       # Check whether the idle timeout has been exceeded.
       #
       # @private
-      # @return [Boolean?]
+      # @return [void]
       def check_idle_timeout
         elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - @last_request_time
         @running = false if elapsed > @idle_timeout
@@ -396,7 +412,7 @@ module Docscribe
       # Accept a client connection if one is available.
       #
       # @private
-      # @return [Object]
+      # @return [void]
       def accept_client
         client = @server&.accept if @server&.wait_readable(1)
         return unless client
@@ -408,9 +424,9 @@ module Docscribe
       # Read a request from a client connection and dispatch it.
       #
       # @private
-      # @param [Object] client connected client socket
+      # @param [UNIXSocket] client connected client socket
       # @raise [StandardError]
-      # @return [Object]
+      # @return [void]
       def handle_client(client)
         request_line = client.gets or return
         request = Protocol.parse_response(request_line)
@@ -424,9 +440,9 @@ module Docscribe
       # Dispatch a parsed request to the appropriate handler.
       #
       # @private
-      # @param [Object] client connected client socket
-      # @param [Object] request parsed JSON-RPC request
-      # @return [Object]
+      # @param [UNIXSocket] client connected client socket
+      # @param [Hash<String, Object>] request parsed JSON-RPC request
+      # @return [void]
       def handle_request(client, request)
         method = request['method']
         params = request['params'] || {}
@@ -435,15 +451,16 @@ module Docscribe
         when 'check' then handle_check(client, request['id'], params)
         when 'fix' then handle_fix(client, request['id'], params)
         when 'shutdown' then handle_shutdown(client, request['id'])
+        when 'ping' then handle_ping(client, request['id'])
         else send_error(client, request['id'], -32_601, "Unknown method: #{method}")
         end
       end
 
       # @private
-      # @param [Object] client
-      # @param [Object] id
-      # @param [Object] params
-      # @return [Object]
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [Hash<String, Object>] params
+      # @return [void]
       def handle_check(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
@@ -456,10 +473,10 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] client
-      # @param [Object] id
-      # @param [Object] params
-      # @return [Object]
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [Hash<String, Object>] params
+      # @return [void]
       def handle_fix(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
@@ -473,8 +490,8 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] overrides
-      # @return [Object]
+      # @param [Hash<String, Object>?] overrides
+      # @return [void]
       def apply_cli_overrides(overrides)
         return reset_effective_config if overrides.nil? || overrides.empty?
         return if @applied_overrides == overrides
@@ -488,7 +505,7 @@ module Docscribe
       end
 
       # @private
-      # @return [Object]
+      # @return [void]
       def reset_effective_config
         return unless @effective_config
 
@@ -498,10 +515,10 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] file
-      # @param [Object] strategy
+      # @param [String] file
+      # @param [Symbol] strategy
       # @raise [StandardError]
-      # @return [Array]
+      # @return [(String, Hash<Symbol, Object>)]
       def rewrite_file(file, strategy)
         config = @effective_config || @config or raise 'Docscribe: config not loaded'
         key = [file, strategy]
@@ -519,32 +536,49 @@ module Docscribe
       # Handle a shutdown request.
       #
       # @private
-      # @param [Object] client connected client socket
-      # @param [Object] id request ID
-      # @return [Boolean]
+      # @param [UNIXSocket] client connected client socket
+      # @param [String, Integer] id request ID
+      # @return [void]
       def handle_shutdown(client, id)
         send_result(client, id, { 'status' => 'shutting_down' })
         @running = false
       end
 
+      # Handle a ping request.
+      #
+      # @private
+      # @param [UNIXSocket] client connected client socket
+      # @param [String, Integer] id request ID
+      # @return [void]
+      def handle_ping(client, id)
+        uptime = (Time.now - @started_at).to_i
+        send_result(client, id, {
+                      'version' => Docscribe::VERSION,
+                      'pid' => Process.pid,
+                      'socket_path' => @socket_path,
+                      'started_at' => @started_at.iso8601,
+                      'uptime' => uptime
+                    })
+      end
+
       # Send a JSON-RPC result response.
       #
       # @private
-      # @param [Object] client connected client socket
-      # @param [Object] id request ID
-      # @param [Object] result result data
-      # @return [Object]
+      # @param [UNIXSocket] client connected client socket
+      # @param [String, Integer] id request ID
+      # @param [Hash<String, Object>] result result data
+      # @return [void]
       def send_result(client, id, result)
         response = { jsonrpc: '2.0', id: id, result: result }
         client.write(Protocol.serialize(response))
       end
 
       # @private
-      # @param [Object] client
-      # @param [Object] id
-      # @param [Object] code
-      # @param [Object] message
-      # @return [Object]
+      # @param [UNIXSocket] client
+      # @param [String, Integer, nil] id
+      # @param [Integer] code
+      # @param [String] message
+      # @return [void]
       def send_error(client, id, code, message)
         response = { jsonrpc: '2.0', id: id, error: { code: code, message: message } }
         client.write(Protocol.serialize(response))
@@ -554,7 +588,7 @@ module Docscribe
       #
       # @private
       # @raise [StandardError]
-      # @return [Object]
+      # @return [void]
       # @return [nil] if StandardError
       def cleanup
         @server&.close

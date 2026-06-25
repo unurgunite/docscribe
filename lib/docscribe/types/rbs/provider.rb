@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'pathname'
+require 'yaml'
 require 'docscribe/types/signature'
 require 'docscribe/types/rbs/type_formatter'
 require 'docscribe/types/rbs/collection_loader'
@@ -132,6 +133,7 @@ module Docscribe
         def build_env_with_collection(all_dirs, collection_dirs)
           loader = ::RBS::EnvironmentLoader.new
           loader.add(library: 'rbs') # steep:ignore
+          load_stdlib_libraries!(loader)
           add_dirs_to_loader!(loader, all_dirs, collection_dirs)
           env = ::RBS::Environment.from_loader(loader).resolve_type_names
           @builder = ::RBS::DefinitionBuilder.new(env: env)
@@ -197,6 +199,7 @@ module Docscribe
         def build_env(dirs)
           loader = ::RBS::EnvironmentLoader.new
           loader.add(library: 'rbs') # steep:ignore
+          load_stdlib_libraries!(loader)
 
           dirs.each do |dir|
             path = Pathname(dir)
@@ -206,6 +209,31 @@ module Docscribe
           env = ::RBS::Environment.from_loader(loader).resolve_type_names
           @builder = ::RBS::DefinitionBuilder.new(env: env)
           env
+        end
+
+        # Load stdlib RBS libraries declared in rbs_collection.lock.yaml.
+        #
+        # Without this, RBS types defined in user sig/ files (e.g. UNIXSocket)
+        # fail to resolve and the entire RBS environment breaks, causing all
+        # type lookups to silently fall back to inference.
+        #
+        # @private
+        # @param [RBS::EnvironmentLoader] loader
+        # @raise [StandardError]
+        # @return [void]
+        # @return [nil] if StandardError
+        def load_stdlib_libraries!(loader)
+          lock_path = File.join(Dir.pwd, 'rbs_collection.lock.yaml')
+          return unless File.exist?(lock_path)
+
+          lock = YAML.safe_load_file(lock_path) # steep:ignore
+          (lock['gems'] || []).each do |gem|
+            next unless gem['source'] && gem['source']['type'] == 'stdlib'
+
+            loader.add(library: gem['name']) # steep:ignore
+          end
+        rescue StandardError => e
+          warn "Docscribe: Failed to load stdlib RBS libraries: #{e.message}"
         end
 
         # Build the appropriate instance or singleton definition for a container.

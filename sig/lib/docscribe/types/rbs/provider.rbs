@@ -39,6 +39,7 @@ module Docscribe
         def add_collection_gem_dirs: (::RBS::EnvironmentLoader loader, Pathname path, Array[String] stdlib) -> void
 
         def stdlib_gem_names: -> Array[String]
+        def load_stdlib_libraries!: (::RBS::EnvironmentLoader loader) -> void
 
         def definition_for: (container: String, scope: Symbol) -> (::RBS::Definition | nil)
 

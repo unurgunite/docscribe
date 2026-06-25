@@ -9,8 +9,8 @@ RSpec.describe Docscribe::Server do
   include ServerWireHelper
 
   describe '.socket_path' do
-    it 'returns a path under /tmp' do
-      expect(described_class.socket_path).to match(%r{\A/tmp/docscribe-})
+    it 'returns a path under tmpdir' do
+      expect(described_class.socket_path).to match(%r{\A(?:#{Regexp.escape(Dir.tmpdir)}|/tmp)/docscribe-})
     end
 
     it 'includes an MD5 of the working directory' do
@@ -151,7 +151,7 @@ RSpec.describe Docscribe::Server do
     after { FileUtils.rm_rf(dir) }
 
     it 'returns false when socket does not exist' do
-      allow(described_class).to receive(:socket_path).and_return('/tmp/nonexistent.sock')
+      allow(described_class).to receive(:socket_path).and_return("#{Dir.tmpdir}/nonexistent.sock")
       expect(described_class.running?).to be false
     end
 
@@ -243,6 +243,12 @@ RSpec.describe Docscribe::Server do
     describe '#shutdown' do
       it 'returns nil when server is unreachable' do
         expect(client.shutdown).to be_nil
+      end
+    end
+
+    describe '#ping' do
+      it 'returns nil when server is unreachable' do
+        expect(client.ping).to be_nil
       end
     end
 
@@ -351,6 +357,36 @@ RSpec.describe Docscribe::Server do
         client.shutdown
         sleep 0.3
         expect(File.exist?(socket_path)).to be false
+      end
+    end
+
+    describe 'ping request' do
+      def ping_response
+        client.ping
+      end
+
+      it 'responds to ping' do
+        expect(ping_response).not_to be_nil
+      end
+
+      it 'returns version' do
+        expect(ping_response.dig('result', 'version')).to eq(Docscribe::VERSION)
+      end
+
+      it 'returns pid' do
+        expect(ping_response.dig('result', 'pid')).to eq(Process.pid)
+      end
+
+      it 'returns socket_path' do
+        expect(ping_response.dig('result', 'socket_path')).to eq(socket_path)
+      end
+
+      it 'returns started_at as an ISO8601 string' do
+        expect(ping_response.dig('result', 'started_at')).to be_a(String)
+      end
+
+      it 'returns uptime as an integer' do
+        expect(ping_response.dig('result', 'uptime')).to be_a(Integer)
       end
     end
 

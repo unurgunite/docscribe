@@ -95,16 +95,31 @@ module Docscribe
         # @return [Integer] exit code
         def show_status(config_path = nil)
           require 'docscribe/server'
+          return warn('Docscribe server is not running') || 0 unless Docscribe::Server.running?(config_path)
 
-          unless Docscribe::Server.running?(config_path)
-            warn 'Docscribe server is not running'
-            return 0
-          end
+          info = Docscribe::Server::Client.new(config_path: config_path).ping
+          info ? show_status_from_ping(info) : show_status_fallback(config_path)
+          0
+        end
 
+        # @private
+        # @param [Hash<String, Object>] info ping response hash
+        # @return [void]
+        def show_status_from_ping(info)
+          pid = info.dig('result', 'pid')
+          version = info.dig('result', 'version')
+          uptime = info.dig('result', 'uptime')
+          sock = info.dig('result', 'socket_path')
+          warn "Docscribe server v#{version} is running (pid #{pid}, socket #{sock}, uptime #{uptime}s)"
+        end
+
+        # @private
+        # @param [String?] config_path
+        # @return [void]
+        def show_status_fallback(config_path)
           pid = Docscribe::Server.read_pid(config_path)
           sock = Docscribe::Server.socket_path(config_path)
           warn "Docscribe server is running (pid #{pid}, socket #{sock})"
-          0
         end
 
         # Print usage information for the server subcommand.
