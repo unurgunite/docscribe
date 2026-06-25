@@ -856,15 +856,7 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @return [Hash<String, String>, nil]
       def resolve_param_types(insertion, external_sig, config)
-        if external_sig
-          DocBuilder.build_param_types_from_node(
-            insertion.node, external_sig: external_sig, config: config
-          )
-        else
-          DocBuilder.build_param_types_from_node(
-            insertion.node, external_sig: nil, config: config
-          )
-        end
+        DocBuilder.build_param_types_from_node(insertion.node, external_sig: external_sig, config: config)
       end
 
       # Apply method insertion aggressive
