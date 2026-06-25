@@ -559,6 +559,8 @@ module Docscribe
                       'started_at' => @started_at.iso8601,
                       'uptime' => uptime
                     })
+      rescue => e
+        send_error(client, id, -32_603, "handle_ping: #{e.class}: #{e.message} @started_at=#{@started_at.inspect}")
       end
 
       # Send a JSON-RPC result response.
