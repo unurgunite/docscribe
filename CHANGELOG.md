@@ -1,3 +1,47 @@
+## 1.5.1
+
+### Added
+
+- **Server/daemon mode** (`docscribe server`):
+    - Start/stop/status subcommand for a persistent background daemon.
+    - JSON-RPC 2.0 protocol over Unix socket (`check`, `fix`, `shutdown`).
+    - Idle timeout (5 minutes) — daemon auto-exits after inactivity.
+    - `--server` flag for existing `docscribe` commands to use the daemon transparently.
+- **`docscribe-client`** — standalone thin client (`exe/docscribe-client`) for IDE plugins
+  and CI. Connects to the daemon without loading the full docscribe gem.
+- **Env invalidation:** daemon socket path includes mtime of `Gemfile.lock` and
+  `rbs_collection.lock.yaml`. Environment changes spawn a fresh daemon automatically.
+- **LRU file cache:** `Docscribe::LRUCache` (bounded at 1000 entries) caches parsed
+  results per file by mtime, serving repeated checks nearly instantly.
+- **Rescue-aware type inference for parameters:**
+    - `handle_lvar_node` now uses `lookup_lvar_type` which checks both
+      `local_var_types` and `param_types` — rescue body returning a parameter
+      defaults to the correct type instead of `Object`.
+- **Rescue-aware type inference for explicit receivers:**
+    - `resolve_rbs_for_send` falls back to `signature_provider` (project RBS)
+      when `core_rbs_provider` fails — enables type resolution for method calls
+      on explicit receivers in rescue bodies.
+
+### Fixed
+
+- **CLI override leak in daemon:** `apply_cli_overrides` now resets
+  `@effective_config`, `@applied_overrides`, and clears `@file_cache` when
+  overrides are `nil` or empty. Previously, stale overrides from a prior
+  request leaked into subsequent requests with no overrides.
+- **Duplicate `@return` tag in aggressive mode with rescue:** `merge_existing_descriptions!`
+  no longer treats machine-generated conditional annotations (e.g. `"if RuntimeError"`)
+  as human-written descriptions — skips `return_description` starting with `"if "`.
+- **RuboCop compliance:** 2 → 0 offenses in `lib/docscribe/infer/returns.rb`:
+  extracted `resolve_rbs_for_send_with_signature_provider` to fix
+  `Metrics/MethodLength` and `Metrics/ParameterLists`.
+- **RBS/Steep:** added signature for `resolve_rbs_for_send_with_signature_provider`.
+
+### Changed
+
+- **README updated:** new Server mode section documenting daemon, thin client,
+  env invalidation, LRU cache, CLI override handling.
+- **Editor Integration section** updated to reference `docscribe-client` and daemon.
+
 ## 1.5.0
 
 ### Added

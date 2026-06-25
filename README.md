@@ -85,6 +85,7 @@ docscribe -A lib
         * [`docscribe rbs` — generate RBS from YARD](#docscribe-rbs--generate-rbs-from-yard)
         * [`docscribe update_types` — two-pass type-aware documentation update](#docscribe-update_types--two-pass-type-aware-documentation-update)
         * [`docscribe check_for_comments` — find placeholder documentation](#docscribe-check_for_comments--find-placeholder-documentation)
+        * [`docscribe server` — persistent daemon mode](#docscribe-server--persistent-daemon-mode)
     * [Update strategies](#update-strategies)
         * [Safe strategy](#safe-strategy)
         * [Aggressive strategy](#aggressive-strategy)
@@ -166,6 +167,10 @@ loading, then delegates to the core engine which parses source code, collects me
 doc lines — combining heuristic type inference, external RBS/Sorbet signatures, and plugin output — and finally rewrites
 the source via a strategy (safe merge or aggressive replace).
 
+In server mode, a persistent daemon (`docscribe server`) keeps the runtime loaded and caches parsed results across
+invocations via an LRU cache, enabling near-instant repeated checks for IDE plugins. A thin client (`docscribe-client`)
+provides minimal-overhead socket communication without loading the full gem.
+
 ```mermaid
 flowchart TB
     subgraph CLI["CLI Layer"]
@@ -240,7 +245,18 @@ flowchart TB
         YTypes["Yard::Types\n9 AST node types\n(Named, Generic, etc.)"]
     end
 
+    subgraph Server["Server / Daemon"]
+        ThinClient["exe/docscribe-client\nThin client\n· socket send/receive\n· no gem load"]
+        ServerDaemon["Server::Daemon\nSocket listener\n· check / fix / shutdown\n· JSON-RPC 2.0"]
+        Cache["Docscribe::LRUCache\nFile result cache\n(max 1000, by mtime)"]
+    end
+
     Exe --> Run
+    Exe --> ServerDaemon
+    ThinClient --> ServerDaemon
+    ServerDaemon --> ConfigClass
+    ServerDaemon --> Cache
+    ServerDaemon --> InlineRewriter
     Run --> Options
     Run --> InitCmd
     Run --> GenCmd
@@ -249,6 +265,7 @@ flowchart TB
     Run --> SarifFormatter
     Run --> ConfigBuilder
     ConfigBuilder --> ConfigClass
+    ConfigBuilder --> ServerDaemon
     ConfigClass --> Defaults
     ConfigClass --> Loader
     ConfigClass --> Emit
@@ -298,7 +315,25 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    Input["Source files\n(.rb)"] --> Parse["Parsing.parse_buffer\nParser gem / Prism"]
+    subgraph Entry["Entry Points"]
+        Direct["docscribe lib\n(no --server)"]
+        ViaServer["docscribe --server\nor docscribe-client"]
+    end
+
+    subgraph Daemon["Server Daemon (Unix Socket)"]
+        Socket["Daemon#listen_loop\nJSON-RPC 2.0 dispatch"]
+        CacheCheck{"File cached &\nmtime fresh?"}
+        CacheStorage["LRUCache\n(1000 entries)"]
+        ApplyOverrides["apply_cli_overrides\n(reset on nil)"]
+    end
+
+    ViaServer --> Socket
+    Socket --> ApplyOverrides
+    ApplyOverrides --> CacheCheck
+    CacheCheck -->|Hit| Socket
+    CacheCheck -->|Miss| Parse
+    Direct --> Parse
+    Parse["Parsing.parse_buffer\nParser gem / Prism"]
     Parse --> AST["AST + Comments"]
     AST --> Collect["Collector.process\n· Find methods\n· Track visibility\n· Find attr_*"]
     AST --> CollectPlugins["CollectorPlugin#collect\n· Custom AST walks\n· Non-standard constructs"]
@@ -317,7 +352,11 @@ flowchart LR
     Strategy -->|Aggressive| Replace["Replace entirely"]
     Merge --> Rewritten["Rewriter#process\n-> rewritten source"]
     Replace --> Rewritten
-    Rewritten --> Output["Modified .rb file\n/ STDOUT"]
+    Rewritten --> Result["Result / response"]
+    Rewritten --> CacheStorage
+    CacheStorage --> Socket
+    Result -->|Direct mode| Output["Modified .rb file / STDOUT"]
+    Result -->|Server mode| Socket
 ```
 
 ## CLI
@@ -330,6 +369,7 @@ docscribe sigs [options] [files...]
 docscribe rbs [options] [files...]
 docscribe update_types [directory]
 docscribe check_for_comments [paths...]
+docscribe server [start|status|stop] [options]
 ```
 
 Docscribe has three main ways to run:
@@ -375,6 +415,10 @@ If you pass no files and don't use `--stdin`, Docscribe processes the current di
 
 - `--explain`  
   Show detailed reasons for each file (default; no-op for compatibility).
+
+- `--server`  
+  Run via a persistent daemon (Unix socket). Speeds up repeated invocations
+  by keeping the Ruby runtime loaded and caching results.
 
 - `-k`, `--keep-descriptions`  
   Preserve existing documentation text when rebuilding doc blocks in aggressive mode.
@@ -598,6 +642,78 @@ Exit code `0` if no placeholders found, `1` if any are detected.
 **Flags:**
 
 - `-h`, `--help` — show help.
+
+### `docscribe server` — persistent daemon mode
+
+> [!NOTE]
+> Server mode requires **Ruby 3.1+** (`Process.fork` for background daemon).
+
+`docscribe server` starts a background daemon that keeps the Ruby runtime loaded and caches parsed ASTs across
+invocations. Subsequent `docscribe` calls with `--server` communicate with the daemon over a Unix socket instead of
+reloading the entire toolchain.
+
+```shell
+# Start the daemon (auto-detached in background)
+docscribe server start
+
+# Check if the daemon is running
+docscribe server status
+
+# Stop the daemon
+docscribe server stop
+
+# Use the daemon for file checks (much faster on repeated calls)
+docscribe --server lib
+docscribe -a --server lib
+```
+
+**How it works:**
+
+1. `docscribe server start` forks a background process that listens on a Unix socket in the system temp directory.
+2. The socket path is derived from the project root, `Gemfile.lock` mtime, and `rbs_collection.lock.yaml` mtime — so any
+   environment change spawns a fresh daemon automatically.
+3. Client requests (`docscribe --server`) send JSON-RPC 2.0 messages over the socket: `check` (inspect), `fix` (apply
+   changes), and `shutdown`.
+4. The daemon holds a reusable `Docscribe::Config` instance and an LRU file cache (bounded at 1000 entries), so repeated
+   checks on the same files are nearly instant.
+5. After 5 minutes of inactivity the daemon shuts down automatically.
+
+**Thin client (`docscribe-client`):**
+
+For IDE plugins and CI systems that need minimal startup overhead, a standalone thin client is available as
+`exe/docscribe-client`. It connects to the daemon via the same Unix socket protocol without loading the full docscribe
+gem:
+
+```shell
+# Check a file via the daemon
+docscribe-client check lib/user.rb
+
+# Apply fixes via the daemon
+docscribe-client fix lib/user.rb
+
+# Stop the daemon
+docscribe-client shutdown
+```
+
+The thin client is used automatically by
+the [VS Code](https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode)
+and [RubyMine](https://plugins.jetbrains.com/plugin/32349-docscribe) plugins when the daemon is running.
+
+**Environment invalidation:**
+
+The daemon's socket path includes a hash of:
+
+- `Gemfile.lock` mtime — gem changes that may affect RBS signatures.
+- `rbs_collection.lock.yaml` mtime — RBS collection signature updates.
+
+If any of these files change, the next `docscribe --server` call will start a new daemon automatically. The old daemon
+is left to idle-timeout on its own.
+
+**CLI override handling:**
+
+When CLI overrides (`-C`, `--include`, `--exclude`, etc.) change between requests, the daemon resets its effective
+configuration, clears the file cache, and applies the new overrides before processing. If no overrides are passed, the
+cached state from the initial load is used, preserving performance.
 
 ## Update strategies
 
@@ -1757,7 +1873,6 @@ yard doc -o docs
 - Overload-aware signature selection;
 - Manual `@!attribute` merge policy;
 - Richer inference for common APIs;
-- Editor integration (LSP, VS Code extension);
 - Documentation coverage report — percentage of documented methods, params, returns;
 - Pre-commit hook auto-install (`docscribe init --pre-commit`);
 - Parallel processing for large codebases.
@@ -1784,6 +1899,10 @@ Docscribe provides IDE plugins for a better development experience:
 
 > [!NOTE]
 > Both plugins require **docscribe >= 1.5.0**.
+>
+> For optimal performance, both plugins use the `docscribe-client` thin client
+> to communicate with the docscribe daemon (see [server mode](#docscribe-server--persistent-daemon-mode)).
+> Start the daemon with `docscribe server start` for near-instant diagnostics.
 
 ## Contributing
 
