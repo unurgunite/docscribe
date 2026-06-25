@@ -6,6 +6,7 @@ require 'fileutils'
 require 'securerandom'
 require 'digest/md5'
 require 'tmpdir'
+require 'time'
 require_relative 'lru_cache'
 
 module Docscribe
@@ -549,7 +550,6 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client connected client socket
       # @param [String, Integer] id request ID
-      # @raise [StandardError] if ping response fails
       # @return [void]
       def handle_ping(client, id)
         uptime = (Time.now - @started_at).to_i
@@ -560,8 +560,6 @@ module Docscribe
                       'started_at' => @started_at.iso8601,
                       'uptime' => uptime
                     })
-      rescue StandardError => e
-        send_error(client, id, -32_603, "handle_ping: #{e.class}: #{e.message} @started_at=#{@started_at.inspect}")
       end
 
       # Send a JSON-RPC result response.

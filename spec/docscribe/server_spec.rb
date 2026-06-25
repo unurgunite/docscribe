@@ -370,8 +370,7 @@ RSpec.describe Docscribe::Server do
       end
 
       it 'returns version' do
-        resp = ping_response
-        expect(resp.dig('result', 'version')).to eq(Docscribe::VERSION), "ping_response=#{resp.inspect}"
+        expect(ping_response.dig('result', 'version')).to eq(Docscribe::VERSION)
       end
 
       it 'returns pid' do
