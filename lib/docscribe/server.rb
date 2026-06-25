@@ -549,6 +549,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client connected client socket
       # @param [String, Integer] id request ID
+      # @raise [StandardError] if ping response fails
       # @return [void]
       def handle_ping(client, id)
         uptime = (Time.now - @started_at).to_i
@@ -559,7 +560,7 @@ module Docscribe
                       'started_at' => @started_at.iso8601,
                       'uptime' => uptime
                     })
-      rescue => e
+      rescue StandardError => e
         send_error(client, id, -32_603, "handle_ping: #{e.class}: #{e.message} @started_at=#{@started_at.inspect}")
       end
 
