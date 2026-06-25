@@ -4,11 +4,13 @@
 
 - **Server/daemon mode** (`docscribe server`):
     - Start/stop/status subcommand for a persistent background daemon.
-    - JSON-RPC 2.0 protocol over Unix socket (`check`, `fix`, `shutdown`).
+    - JSON-RPC 2.0 protocol over Unix socket (`check`, `fix`, `shutdown`, `ping`).
     - Idle timeout (5 minutes) — daemon auto-exits after inactivity.
     - `--server` flag for existing `docscribe` commands to use the daemon transparently.
 - **`docscribe-client`** — standalone thin client (`exe/docscribe-client`) for IDE plugins
   and CI. Connects to the daemon without loading the full docscribe gem.
+    - `--status` flag to check if the daemon is running (exit code 0/1).
+    - `--ping` flag to get version, pid, uptime, and socket path from the daemon.
 - **Env invalidation:** daemon socket path includes mtime of `Gemfile.lock` and
   `rbs_collection.lock.yaml`. Environment changes spawn a fresh daemon automatically.
 - **LRU file cache:** `Docscribe::LRUCache` (bounded at 1000 entries) caches parsed
@@ -21,6 +23,9 @@
     - `resolve_rbs_for_send` falls back to `signature_provider` (project RBS)
       when `core_rbs_provider` fails — enables type resolution for method calls
       on explicit receivers in rescue bodies.
+- **RBS Provider stdlib loading:** `Provider` now loads stdlib libraries
+  (`socket`, `json`, `digest`, etc.) from `rbs_collection.lock.yaml`, enabling
+  correct resolution of RBS files that reference stdlib types (e.g. `UNIXSocket`).
 
 ### Fixed
 
@@ -35,11 +40,24 @@
   extracted `resolve_rbs_for_send_with_signature_provider` to fix
   `Metrics/MethodLength` and `Metrics/ParameterLists`.
 - **RBS/Steep:** added signature for `resolve_rbs_for_send_with_signature_provider`.
+- **RBS Provider silently returning `Object` for all lookups:** `Provider` failed to
+  load stdlib RBS libraries (`socket`, `json`, etc.), causing `NoTypeFoundError` on
+  any sig referencing stdlib types. All `signature_for` calls fell back to inference
+  which returned `Object`, silently breaking `docscribe update_types`.
+- **Unix socket path exceeding OS limit on macOS:** `Dir.tmpdir` returns a long path
+  under `/var/folders/.../T`, causing `ArgumentError: too long unix socket path`
+  (max 104 bytes). The daemon crashed silently on startup. Fixed by falling back to
+  `/tmp` when `Dir.tmpdir` exceeds the socket path length limit.
 
 ### Changed
 
+- **`docscribe server status` now uses `ping` protocol** for extended info:
+  version, pid, socket path, uptime.
+- **Daemon auto-start no longer prints to stderr:** the `"Docscribe: starting server..."`
+  message is only emitted on explicit `docscribe server start`, not on implicit
+  auto-start via `--server`.
 - **README updated:** new Server mode section documenting daemon, thin client,
-  env invalidation, LRU cache, CLI override handling.
+  env invalidation, LRU cache, CLI override handling, ping protocol.
 - **Editor Integration section** updated to reference `docscribe-client` and daemon.
 
 ## 1.5.0
