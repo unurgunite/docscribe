@@ -1,15 +1,17 @@
-# Docscribe
+<p align="center">
+  <img src="assets/icons/icon_128x128.png" alt="Docscribe logo" width="128">
+</p>
 
-[![Gem Version](https://img.shields.io/gem/v/docscribe.svg)](https://rubygems.org/gems/docscribe)
-[![RubyGems Downloads](https://img.shields.io/gem/dt/docscribe.svg)](https://rubygems.org/gems/docscribe)
-[![CI](https://github.com/unurgunite/docscribe/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/unurgunite/docscribe/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/unurgunite/docscribe.svg)](https://github.com/unurgunite/docscribe/blob/master/LICENSE.txt)
-[![Ruby](https://img.shields.io/badge/ruby-%3E%3D%202.7-blue.svg)](#installation)
-[![VS Code](https://img.shields.io/badge/VS%20Code-plugin-blue?logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode)
-[![RubyMine](https://img.shields.io/badge/RubyMine-plugin-green?logo=jetbrains)](https://plugins.jetbrains.com/plugin/32349-docscribe)
+<h1 align="center">DocScribe</h1>
 
-<p>
-  <img src="assets/icons/icon_256x256.png" alt="Docscribe logo" width="96">
+<p align="center">
+<a href="https://rubygems.org/gems/docscribe"><img src="https://img.shields.io/gem/v/docscribe.svg" alt="Gem Version"></a>
+<a href="https://rubygems.org/gems/docscribe"><img src="https://img.shields.io/gem/dt/docscribe.svg" alt="RubyGems Downloads"></a>
+<a href="https://github.com/unurgunite/docscribe/actions/workflows/ci.yml"><img src="https://github.com/unurgunite/docscribe/actions/workflows/ci.yml/badge.svg?branch=master" alt="CI"></a>
+<a href="https://github.com/unurgunite/docscribe/blob/master/LICENSE.txt"><img src="https://img.shields.io/github/license/unurgunite/docscribe.svg" alt="License"></a>
+<a href="#installation"><img src="https://img.shields.io/badge/ruby-%3E%3D%202.7-blue.svg" alt="Ruby"></a>
+<a href="https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode"><img src="https://img.shields.io/badge/VS%20Code-plugin-blue?logo=visualstudiocode" alt="VS Code"></a>
+<a href="https://plugins.jetbrains.com/plugin/32349-docscribe"><img src="https://img.shields.io/badge/RubyMine-plugin-green?logo=jetbrains" alt="RubyMine"></a>
 </p>
 
 ![Docscribe before/after demo](docs/image.png)
@@ -673,7 +675,7 @@ docscribe -a --server lib
 2. The socket path is derived from the project root, `Gemfile.lock` mtime, and `rbs_collection.lock.yaml` mtime — so any
    environment change spawns a fresh daemon automatically.
 3. Client requests (`docscribe --server`) send JSON-RPC 2.0 messages over the socket: `check` (inspect), `fix` (apply
-   changes), and `shutdown`.
+   changes), `shutdown`, and `ping` (health/version info).
 4. The daemon holds a reusable `Docscribe::Config` instance and an LRU file cache (bounded at 1000 entries), so repeated
    checks on the same files are nearly instant.
 5. After 5 minutes of inactivity the daemon shuts down automatically.
@@ -686,13 +688,19 @@ gem:
 
 ```shell
 # Check a file via the daemon
-docscribe-client check lib/user.rb
+docscribe-client --check lib/user.rb
 
 # Apply fixes via the daemon
-docscribe-client fix lib/user.rb
+docscribe-client --fix lib/user.rb
+
+# Check if the daemon is running
+docscribe-client --status
+
+# Get version, pid, uptime from the daemon
+docscribe-client --ping
 
 # Stop the daemon
-docscribe-client shutdown
+docscribe-client --shutdown
 ```
 
 The thin client is used automatically by

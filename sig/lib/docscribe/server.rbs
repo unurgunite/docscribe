@@ -1,3 +1,7 @@
+class Dir
+  def self?.tmpdir: () -> String
+end
+
 module Docscribe
   module Server
     SOCKET_DIR: String
@@ -31,6 +35,7 @@ module Docscribe
       def fix: (file: String, ?strategy: Symbol, **untyped) -> Hash[String, untyped]?
 
       def shutdown: () -> Hash[String, untyped]?
+      def ping: () -> Hash[String, untyped]?
 
       private
 
@@ -49,6 +54,7 @@ module Docscribe
       @core_rbs_provider: untyped
       @file_cache: Docscribe::LRUCache
       @effective_config: Docscribe::Config?
+      @started_at: Time
       @applied_overrides: Hash[String, untyped]?
 
       def initialize: (?socket_path: String?, ?idle_timeout: Integer, ?config_path: String?) -> void
@@ -70,6 +76,7 @@ module Docscribe
       def reset_effective_config: () -> void
       def rewrite_file: (String, Symbol) -> [ String, Hash[Symbol, untyped] ]
       def handle_shutdown: (UNIXSocket, (String | Integer)) -> void
+      def handle_ping: (UNIXSocket, (String | Integer)) -> void
       def send_result: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def send_error: (UNIXSocket, (String | Integer | nil), Integer, String) -> void
       def cleanup: () -> void
