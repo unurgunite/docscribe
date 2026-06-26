@@ -227,13 +227,25 @@ module Docscribe
           return unless File.exist?(lock_path)
 
           lock = YAML.safe_load_file(lock_path) # steep:ignore
-          (lock['gems'] || []).each do |gem|
-            next unless gem['source'] && gem['source']['type'] == 'stdlib'
-
-            loader.add(library: gem['name']) # steep:ignore
-          end
+          (lock['gems'] || []).each { |gem| add_stdlib_gem(loader, gem) }
         rescue StandardError => e
-          warn "Docscribe: Failed to load stdlib RBS libraries: #{e.message}"
+          warn "Docscribe: Failed to parse rbs_collection.lock.yaml: #{e.message}"
+        end
+
+        # Add a single stdlib gem from the lock file to the loader.
+        #
+        # @private
+        # @param [RBS::EnvironmentLoader] loader
+        # @param [Object] gem gem entry from rbs_collection.lock.yaml
+        # @raise [StandardError]
+        # @return [void]
+        # @return [nil] if StandardError
+        def add_stdlib_gem(loader, gem)
+          return unless gem.is_a?(Hash) && gem.dig('source', 'type') == 'stdlib'
+
+          loader.add(library: gem['name']) # steep:ignore
+        rescue StandardError => e
+          warn "Docscribe: Failed to load stdlib RBS library '#{gem['name']}': #{e.message}"
         end
 
         # Build the appropriate instance or singleton definition for a container.

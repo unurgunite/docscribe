@@ -23,7 +23,7 @@ module Docscribe
     # that exceeds this limit, so we fall back to /tmp when needed.
     SOCKET_DIR = begin
       tmp = Dir.tmpdir || '/tmp'
-      sock_overhead = "/docscribe-#{'a' * 64}.sock".bytesize # 80
+      sock_overhead = "/docscribe-#{'a' * 32}.sock".bytesize # 48
       tmp.bytesize <= 104 - sock_overhead ? tmp : '/tmp'
     end
     IDLE_TIMEOUT = 300
@@ -163,10 +163,14 @@ module Docscribe
       # @param [String?] config_path optional config path to differentiate
       # @return [String]
       def socket_path(config_path = nil)
-        hash = Digest::MD5.hexdigest(Dir.pwd)
-        env_seed = env_hash
-        suffix = config_path ? "-#{config_hash(config_path)}" : ''
-        "#{SOCKET_DIR}/docscribe-#{hash}#{suffix}#{env_seed}.sock"
+        seed = +Dir.pwd
+        seed << ":#{env_hash}"
+        if config_path
+          resolved = File.expand_path(config_path)
+          mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+          seed << ":#{resolved}:#{mtime}"
+        end
+        "#{SOCKET_DIR}/docscribe-#{Digest::MD5.hexdigest(seed)}.sock"
       end
 
       # @param [String] config_path
