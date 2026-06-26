@@ -14,7 +14,9 @@ RSpec.describe Docscribe::Server do
     end
 
     it 'includes an MD5 of the working directory' do
-      hash_segment = Digest::MD5.hexdigest(Dir.pwd)
+      seed = +Dir.pwd
+      seed << ":#{described_class.send(:env_hash)}"
+      hash_segment = Digest::MD5.hexdigest(seed)
       expect(described_class.socket_path).to include(hash_segment)
     end
 

@@ -10,16 +10,20 @@ require 'tmpdir'
 
 SOCKET_DIR = begin
   tmp = Dir.tmpdir || '/tmp'
-  sock_overhead = "/docscribe-#{'a' * 64}.sock".bytesize
+  sock_overhead = "/docscribe-#{'a' * 32}.sock".bytesize
   tmp.bytesize <= 104 - sock_overhead ? tmp : '/tmp'
 end
 ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml].freeze
 
 def socket_path(config_path = nil)
-  hash = Digest::MD5.hexdigest(Dir.pwd)
-  env_seed = env_hash
-  suffix = config_path ? "-#{config_hash(config_path)}" : ''
-  "#{SOCKET_DIR}/docscribe-#{hash}#{suffix}#{env_seed}.sock"
+  seed = +Dir.pwd
+  seed << ":#{env_hash}"
+  if config_path
+    resolved = File.expand_path(config_path)
+    mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+    seed << ":#{resolved}:#{mtime}"
+  end
+  "#{SOCKET_DIR}/docscribe-#{Digest::MD5.hexdigest(seed)}.sock"
 end
 
 def env_hash
