@@ -1,6 +1,8 @@
 module Docscribe
   module CLI
     module Generate
+      BANNER: String
+
       PLUGIN_TYPES: Array["tag" | "collector"]
 
       NEXT_STEPS_TEMPLATE: String
@@ -26,8 +28,6 @@ module Docscribe
       def self.write_plugin: (String? content, plugin_type: String?, class_name: String?, output_dir: String?) -> (1 | 0)
 
       def self.build_option_parser: (Hash[Symbol, untyped] opts) -> OptionParser
-
-      def self.parser_banner: () -> String
 
       def self.register_output_option: (OptionParser opt, Hash[Symbol, untyped] opts) -> void
 

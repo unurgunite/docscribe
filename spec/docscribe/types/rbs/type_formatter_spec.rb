@@ -118,5 +118,51 @@ RSpec.describe 'Docscribe::Types::RBS::TypeFormatter' do
         expect(yard(type)).to eq('Integer')
       end
     end
+
+    describe 'collapse_object_generics option' do
+      let(:object_type) { RBS::Types::Bases::Any.new(location: nil) }
+      let(:string_type) { RBS::Types::ClassInstance.new(name: type_name('::String'), args: [], location: nil) }
+      let(:integer_type) { RBS::Types::ClassInstance.new(name: type_name('::Integer'), args: [], location: nil) }
+
+      def yard_cog(type, collapse_object_generics: false)
+        Docscribe::Types::RBS::TypeFormatter.to_yard(type, collapse_object_generics: collapse_object_generics)
+      end
+
+      it 'keeps Array<Object> when collapse_object_generics is false (default)' do
+        type = RBS::Types::ClassInstance.new(name: type_name('::Array'), args: [object_type], location: nil)
+        expect(yard_cog(type)).to eq('Array<Object>')
+      end
+
+      it 'collapses Array<Object> to Array when collapse_object_generics is true' do
+        type = RBS::Types::ClassInstance.new(name: type_name('::Array'), args: [object_type], location: nil)
+        expect(yard_cog(type, collapse_object_generics: true)).to eq('Array')
+      end
+
+      it 'keeps Array<String> when collapse_object_generics is true' do
+        type = RBS::Types::ClassInstance.new(name: type_name('::Array'), args: [string_type], location: nil)
+        expect(yard_cog(type, collapse_object_generics: true)).to eq('Array<String>')
+      end
+
+      it 'keeps Array<Integer> when collapse_object_generics is true' do
+        type = RBS::Types::ClassInstance.new(name: type_name('::Array'), args: [integer_type], location: nil)
+        expect(yard_cog(type, collapse_object_generics: true)).to eq('Array<Integer>')
+      end
+
+      it 'collapses Hash<Object, Object> to Hash when collapse_object_generics is true' do
+        type = RBS::Types::ClassInstance.new(name: type_name('::Hash'), args: [object_type, object_type], location: nil)
+        expect(yard_cog(type, collapse_object_generics: true)).to eq('Hash')
+      end
+
+      it 'keeps Hash<String, Integer> when collapse_object_generics is true' do
+        type = RBS::Types::ClassInstance.new(name: type_name('::Hash'), args: [string_type, integer_type], location: nil)
+        expect(yard_cog(type, collapse_object_generics: true)).to eq('Hash<String, Integer>')
+      end
+
+      it 'collapse_generics overrides collapse_object_generics' do
+        type = RBS::Types::ClassInstance.new(name: type_name('::Array'), args: [string_type], location: nil)
+        result = Docscribe::Types::RBS::TypeFormatter.to_yard(type, collapse_generics: true, collapse_object_generics: false)
+        expect(result).to eq('Array')
+      end
+    end
   end
 end

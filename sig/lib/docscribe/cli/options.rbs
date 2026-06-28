@@ -1,9 +1,9 @@
 module Docscribe
   module CLI
     module Options
-      DEFAULT: { stdin: false, mode: :check, strategy: :safe, verbose: false, explain: false, quiet: false, format: :text, config: nil, include: Array[String], exclude: Array[String], include_file: Array[String], exclude_file: Array[String], rbs: false, sig_dirs: Array[String], sorbet: false, rbi_dirs: Array[String], rbs_collection: false, keep_descriptions: false, no_boilerplate: false, progress: false }
+      DEFAULT: { stdin: false, mode: :check, strategy: :safe, verbose: false, explain: false, quiet: false, format: :text, config: nil, include: Array[String], exclude: Array[String], include_file: Array[String], exclude_file: Array[String], rbs: false, sig_dirs: Array[String], sorbet: false, rbi_dirs: Array[String], rbs_collection: false, keep_descriptions: false, no_boilerplate: false, progress: false, server: false }
 
-      BANNER: "Usage: docscribe [options] [files...]\n\nDefault behavior:\n  Inspect files and report what safe doc updates would be applied.\n\nAutocorrect:\n    -a, --autocorrect              Apply safe doc updates in place\n                                   (insert missing docs, merge existing doc-like blocks,\n                                   normalize tag order)\n    -A, --autocorrect-all          Apply aggressive doc updates in place\n                                   (rebuild existing doc blocks)\n\nInput / config:\n        --stdin                    Read code from STDIN and print rewritten output\n    -C, --config PATH              Path to config YAML (default: docscribe.yml)\n\nType information:\n        --rbs                      Use RBS signatures for @param/@return when available\n        --sig-dir DIR              Add an RBS signature directory (repeatable). Implies `--rbs`.\n        --sorbet                   Use Sorbet signatures from inline sigs / RBI files when available\n        --rbi-dir DIR              Add a Sorbet RBI directory (repeatable). Implies --sorbet.\n        --rbs-collection           Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.\n\nFiltering:\n        --include PATTERN          Include PATTERN (method id or file path; glob or /regex/)\n        --exclude PATTERN          Exclude PATTERN (method id or file path; glob or /regex/)\n        --include-file PATTERN     Only process files matching PATTERN (glob or /regex/)\n        --exclude-file PATTERN     Skip files matching PATTERN (glob or /regex/)\n\nOutput:\n        --verbose                  Print per-file actions\n        --progress                 Show progress [N/total] per file\n    -e, --explain                  Show detailed reasons for changes\n\nOther:\n    -v, --version                  Print version and exit\n    -h, --help                     Show this help\n"
+      BANNER: String
 
       def self?.parse!: (Array[String] argv) -> Formatters::opts
 
@@ -16,6 +16,8 @@ module Docscribe
       def self?.define_stdin_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
 
       def self?.define_config_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
+
+      def self?.define_server_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
 
       def self?.define_type_options: (OptionParser opts, Hash[Symbol, untyped] options) -> void
 

@@ -54,7 +54,7 @@ module Docscribe
       # @param [String, Integer] priority plugin priority (higher wins for conflicts)
       # @raise [StandardError]
       # @raise [ArgumentError]
-      # @return [Integer] if StandardError
+      # @return [Integer]
       # @return [Object] if StandardError
       def parse_priority(priority)
         Integer(priority)

@@ -160,9 +160,9 @@ module Docscribe
         # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
         # @raise [Parser::SyntaxError]
         # @raise [StandardError]
-        # @return [void] if StandardError
-        # @return [Object] if Parser::SyntaxError
-        # @return [Object] if StandardError
+        # @return [void]
+        # @return [nil] if Parser::SyntaxError
+        # @return [nil] if StandardError
         def extract_methods_from_file(path, methods)
           src = File.read(path)
           ast = Docscribe::Parsing.parse(src, file: path)
@@ -281,7 +281,7 @@ module Docscribe
         # @param [Hash<Symbol, Object>] options
         # @raise [LoadError]
         # @raise [StandardError]
-        # @return [Docscribe::Types::RBS::Provider?] if StandardError
+        # @return [Docscribe::Types::RBS::Provider?]
         # @return [nil] if LoadError
         # @return [nil] if StandardError
         def build_provider(options)
@@ -298,7 +298,7 @@ module Docscribe
 
         # @private
         # @raise [StandardError]
-        # @return [Array<String>] if StandardError
+        # @return [Array<String>]
         # @return [Array] if StandardError
         def load_collection_dirs
           dir = Docscribe::Types::RBS::CollectionLoader.resolve

@@ -1,0 +1,16 @@
+module Docscribe
+  module CLI
+    module ServerCmd
+      BANNER: String
+      def self?.run: (Array[String] argv) -> Integer
+      def self?.start_server: (?String? config_path) -> Integer
+      def self?.stop_server: (?String? config_path) -> Integer
+      def self?.show_status: (?String? config_path) -> Integer
+      def self?.show_status_from_ping: (Hash[String, untyped] info) -> void
+      def self?.show_status_fallback: (String? config_path) -> void
+      def self?.already_running: (?String? config_path) -> Integer
+      def self?.parse_args: (Array[String] argv) -> [ String?, String? ]
+      def self?.usage: () -> String
+    end
+  end
+end

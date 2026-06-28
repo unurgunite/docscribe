@@ -14,12 +14,10 @@ module Docscribe
     # @return [Docscribe::Config]
     def self.load(path = nil)
       raw = {} #: Hash[String, untyped]
-      if path && File.file?(path)
-        raw = safe_load_file_compat(path)
-      elsif File.file?('docscribe.yml')
-        raw = safe_load_file_compat('docscribe.yml')
-      end
-      new(raw)
+      resolved = path if path && File.file?(path)
+      resolved ||= 'docscribe.yml' if File.file?('docscribe.yml')
+      raw = safe_load_file_compat(resolved) if resolved
+      new(config_path: resolved, **raw) # steep:ignore
     end
 
     # Safely load YAML from a file across Ruby/Psych versions.
@@ -47,7 +45,7 @@ module Docscribe
     # @param [String] yaml YAML document
     # @param [String?] filename optional filename for diagnostics
     # @raise [ArgumentError]
-    # @return [Hash<String, Object>] if ArgumentError
+    # @return [Hash<String, Object>]
     # @return [Object] if ArgumentError
     def self.safe_load_compat(yaml, filename: nil)
       pclasses = [] #: Array[String]

@@ -12,6 +12,16 @@ module Docscribe
     #   docscribe generate tag MyPlugin --output lib/docscribe_plugins
     #   docscribe generate tag MyPlugin --stdout
     module Generate
+      BANNER = <<~TEXT
+        Usage: docscribe generate <type> <PluginName> [options]
+
+        Types:
+          tag         Generate a TagPlugin skeleton
+          collector   Generate a CollectorPlugin skeleton
+
+        Options:
+      TEXT
+
       PLUGIN_TYPES = %w[tag collector].freeze
 
       NEXT_STEPS_TEMPLATE = <<~TEXT
@@ -275,27 +285,11 @@ module Docscribe
         # @return [OptionParser]
         def build_option_parser(opts)
           OptionParser.new do |opt|
-            opt.banner = parser_banner
+            opt.banner = BANNER
             register_output_option(opt, opts)
             register_stdout_option(opt, opts)
             register_help_option(opt, opts)
           end
-        end
-
-        # Return the usage banner for the generate subcommand parser.
-        #
-        # @private
-        # @return [String]
-        def parser_banner
-          <<~TEXT
-            Usage: docscribe generate <type> <PluginName> [options]
-
-            Types:
-              tag         Generate a TagPlugin skeleton
-              collector   Generate a CollectorPlugin skeleton
-
-            Options:
-          TEXT
         end
 
         # Register the --output option on the OptionParser.

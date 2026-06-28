@@ -58,7 +58,7 @@ module Docscribe
     # @param [Parser::AST::Node] ast parsed AST root node
     # @param [Parser::Source::Buffer] buffer source buffer for AST
     # @raise [StandardError]
-    # @return [Array<Hash<Symbol, Object>>] if StandardError
+    # @return [Array<Hash<Symbol, Object>>]
     # @return [Array] if StandardError
     def self.process_single_plugin_result(entry, ast, buffer)
       plugin = entry.plugin

@@ -1,0 +1,105 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'optparse'
+require 'socket'
+require 'json'
+require 'securerandom'
+require 'digest/md5'
+require 'tmpdir'
+
+SOCKET_DIR = begin
+  tmp = Dir.tmpdir || '/tmp'
+  sock_overhead = "/docscribe-#{'a' * 32}.sock".bytesize
+  tmp.bytesize <= 104 - sock_overhead ? tmp : '/tmp'
+end
+ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml].freeze
+
+def socket_path(config_path = nil)
+  seed = +Dir.pwd
+  seed << ":#{env_hash}"
+  if config_path
+    resolved = File.expand_path(config_path)
+    mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+    seed << ":#{resolved}:#{mtime}"
+  end
+  "#{SOCKET_DIR}/docscribe-#{Digest::MD5.hexdigest(seed)}.sock"
+end
+
+def env_hash
+  parts = ENV_FILES.map do |file|
+    path = File.join(Dir.pwd, file)
+    File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
+  end
+  Digest::MD5.hexdigest(parts.join(':'))
+end
+
+def config_hash(config_path)
+  resolved = File.expand_path(config_path)
+  mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+  Digest::MD5.hexdigest("#{resolved}:#{mtime}")
+end
+
+def send_request(sock, method, params = {})
+  socket = UNIXSocket.new(sock)
+  req = build_request(method, params)
+  socket.write("#{JSON.generate(req)}\n")
+  socket.close_write
+  line = socket.gets
+  line ? JSON.parse(line) : nil
+rescue Errno::ECONNREFUSED, Errno::ENOENT
+  nil
+ensure
+  socket&.close
+end
+
+def build_request(method, params = {})
+  { jsonrpc: '2.0', id: SecureRandom.uuid, method: method, params: params }
+end
+
+config_path = nil
+mode = nil
+file = nil
+
+OptionParser.new do |opts|
+  opts.on('-C', '--config <path>', 'Config file path') { |v| config_path = v }
+  opts.on('--check <file>', 'Check a file') do |v|
+    mode = :check
+    file = v
+  end
+  opts.on('--fix <file>', 'Fix a file') do |v|
+    mode = :fix
+    file = v
+  end
+  opts.on('--shutdown', 'Shutdown the server') { mode = :shutdown }
+  opts.on('--status', 'Show server status') { mode = :status }
+  opts.on('--ping', 'Ping the server') { mode = :ping }
+end.parse!
+
+sock = socket_path(config_path)
+
+case mode
+when :check
+  result = send_request(sock, 'check', file: file, strategy: :safe)
+  puts JSON.generate(result || { error: 'Connection failed' })
+when :fix
+  result = send_request(sock, 'fix', file: file, strategy: :safe)
+  puts JSON.generate(result || { error: 'Connection failed' })
+when :shutdown
+  result = send_request(sock, 'shutdown')
+  puts JSON.generate(result || { error: 'Connection failed' })
+when :ping
+  result = send_request(sock, 'ping')
+  puts JSON.generate(result || { error: 'Connection failed' })
+when :status
+  alive = begin
+    File.exist?(sock) &&
+      UNIXSocket.new(sock).close && true
+  rescue StandardError
+    false
+  end
+  puts JSON.generate(alive ? { status: 'running', socket: sock } : { status: 'not_running' })
+else
+  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> | --shutdown | --status | --ping"
+  exit 1
+end

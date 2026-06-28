@@ -260,7 +260,7 @@ module Docscribe
       # @note module_function: defines #line_indent (visibility: private)
       # @param [Parser::AST::Node] node target AST node
       # @raise [StandardError]
-      # @return [String] if StandardError
+      # @return [String]
       # @return [String] if StandardError
       def line_indent(node)
         line = node.loc.expression.source_line

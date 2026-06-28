@@ -1,27 +1,14 @@
 # frozen_string_literal: true
 
-require 'docscribe/cli/init'
-require 'docscribe/cli/generate'
 require 'docscribe/cli/options'
 require 'docscribe/cli/run'
-require 'docscribe/cli/sigs'
-require 'docscribe/cli/rbs_gen'
-require 'docscribe/cli/update_types'
-require 'docscribe/cli/check_for_comments'
 
 module Docscribe
   # CLI entry point and command dispatch.
   module CLI
     class << self
-      # Main CLI entry point.
-      #
-      # Dispatches:
-      # - `docscribe init ...`     to the config-template generator
-      # - `docscribe generate ...` to the plugin skeleton generator
-      # - all other commands to the main option parser and runner
-      #
-      # @param [Array<String>] argv raw command-line arguments
-      # @return [Integer] process exit code
+      # @param [Array<String>] argv
+      # @return [Integer]
       def run(argv)
         argv = argv.dup
         return dispatch_subcommand(argv) if subcommand?(argv.first)
@@ -30,33 +17,35 @@ module Docscribe
         Docscribe::CLI::Run.run(options: options, argv: argv)
       end
 
+      COMMANDS = {
+        'init' => :Init,
+        'generate' => :Generate,
+        'sigs' => :Sigs,
+        'rbs' => :RbsGen,
+        'update_types' => :UpdateTypes,
+        'check_for_comments' => :CheckForComments,
+        'server' => :ServerCmd
+      }.freeze
+
       private
 
-      # Subcommand
-      #
       # @private
-      # @param [String?] cmd potential subcommand name
+      # @param [String?] cmd
       # @return [Boolean]
       def subcommand?(cmd)
-        %w[init generate sigs rbs update_types check_for_comments].include?(cmd)
+        COMMANDS.key?(cmd)
       end
 
-      # Dispatch subcommand
-      #
       # @private
-      # @param [Array<String>] argv raw command-line arguments
+      # @param [Array<String>] argv
       # @return [Integer]
       def dispatch_subcommand(argv)
         cmd = argv.shift
-        case cmd
-        when 'init' then Docscribe::CLI::Init.run(argv)
-        when 'generate' then Docscribe::CLI::Generate.run(argv)
-        when 'sigs' then Docscribe::CLI::Sigs.run(argv)
-        when 'rbs' then Docscribe::CLI::RbsGen.run(argv)
-        when 'update_types' then Docscribe::CLI::UpdateTypes.run(argv)
-        when 'check_for_comments' then Docscribe::CLI::CheckForComments.run(argv)
-        else 0
-        end
+        const_name = COMMANDS[cmd]
+        return 0 unless const_name
+
+        require "docscribe/cli/#{cmd == 'rbs' ? 'rbs_gen' : cmd}"
+        Docscribe::CLI.const_get(const_name).run(argv)
       end
     end
   end

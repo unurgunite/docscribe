@@ -3,6 +3,7 @@
 require 'open3'
 require 'tmpdir'
 require 'docscribe/cli'
+require 'docscribe/server'
 
 RSpec.describe Docscribe::CLI::Run do
   subject(:result) { Open3.capture3('ruby', exe, *args, chdir: dir) }
@@ -390,6 +391,14 @@ RSpec.describe Docscribe::CLI::Run do
 
     it 'exits 0' do
       expect(result[2].exitstatus).to eq(0)
+    end
+  end
+
+  describe '.ensure_server_running!' do
+    it 'delegates to Docscribe::Server.ensure_running!' do
+      allow(Docscribe::Server).to receive(:ensure_running!)
+      described_class.send(:ensure_server_running!, config_path: nil)
+      expect(Docscribe::Server).to have_received(:ensure_running!).with(config_path: nil)
     end
   end
 end

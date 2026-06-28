@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'pathname'
+require 'yaml'
 require 'docscribe/types/signature'
 require 'docscribe/types/rbs/type_formatter'
 require 'docscribe/types/rbs/collection_loader'
@@ -42,7 +43,7 @@ module Docscribe
         # @param [Symbol, String] name method name
         # @raise [::RBS::BaseError]
         # @raise [StandardError]
-        # @return [Docscribe::Types::MethodSignature, nil] if StandardError
+        # @return [Docscribe::Types::MethodSignature, nil]
         # @return [nil] if ::RBS::BaseError
         # @return [nil] if StandardError
         def signature_for(container:, scope:, name:)
@@ -105,19 +106,89 @@ module Docscribe
         # @param [Array<String>] collection_dirs RBS collection directories
         # @raise [::RBS::BaseError]
         # @raise [StandardError]
+        # @return [RBS::Environment]
         # @return [RBS::Environment] if ::RBS::BaseError
-        # @return [Object] if ::RBS::BaseError
         def try_with_fallback_build_env(all_dirs, collection_dirs)
-          build_env(all_dirs)
+          # First attempt: load core types + all dirs (sig + collection).
+          # If duplicate declarations occur (stdlib gem in both `library: 'rbs'`
+          # and collection), retry with individual collection gem dirs,
+          # skipping those already provided by the rbs stdlib.
+          build_env_with_collection(all_dirs, collection_dirs)
         rescue ::RBS::BaseError => e
           raise unless collection_dirs.any? && !@collection_dropped
 
           @collection_dropped = true
-          if ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
-            warn "Docscribe: RBS collection error (#{e.class}), dropping collection dirs. " \
-                 'Set DOCSCRIBE_RBS_DEBUG=1 for details.'
-          end
+          warn "Docscribe: RBS collection error (#{e.class}), dropping collection dirs. " \
+               'Set DOCSCRIBE_RBS_DEBUG=1 for details.'
           build_env(@sig_dirs)
+        end
+
+        # Build the environment, handling potential duplicate declarations
+        # between rbs stdlib and collection gems.
+        #
+        # @private
+        # @param [Array<String>] all_dirs combined sig and collection dirs
+        # @param [Array<String>] collection_dirs RBS collection directories
+        # @return [RBS::Environment]
+        def build_env_with_collection(all_dirs, collection_dirs)
+          loader = ::RBS::EnvironmentLoader.new
+          loader.add(library: 'rbs') # steep:ignore
+          load_stdlib_libraries!(loader)
+          add_dirs_to_loader!(loader, all_dirs, collection_dirs)
+          env = ::RBS::Environment.from_loader(loader).resolve_type_names
+          @builder = ::RBS::DefinitionBuilder.new(env: env)
+          env
+        end
+
+        # Add directories to the loader, handling collection dirs separately.
+        #
+        # @private
+        # @param [RBS::EnvironmentLoader] loader
+        # @param [Array<String>] all_dirs
+        # @param [Array<String>] collection_dirs
+        # @return [void]
+        def add_dirs_to_loader!(loader, all_dirs, collection_dirs)
+          stdlib = stdlib_gem_names
+          all_dirs.each do |dir|
+            path = Pathname(dir)
+            next unless path.directory?
+
+            if collection_dirs.include?(dir)
+              add_collection_gem_dirs(loader, path, stdlib)
+            else
+              loader.add(path: path)
+            end
+          end
+        end
+
+        # Add individual collection gem directories to the loader.
+        #
+        # @private
+        # @param [RBS::EnvironmentLoader] loader
+        # @param [Pathname] path
+        # @param [Array<String>] stdlib
+        # @return [void]
+        def add_collection_gem_dirs(loader, path, stdlib)
+          path.children.each do |child|
+            next unless child.directory?
+            next if stdlib.include?(child.basename.to_s)
+
+            loader.add(path: child)
+          end
+        end
+
+        # Names of stdlib gems bundled with the `rbs` gem.
+        #
+        # @private
+        # @raise [StandardError]
+        # @return [Array<String>]
+        # @return [Array] if StandardError
+        def stdlib_gem_names
+          rbs_spec = Gem::Specification.find_by_name('rbs')
+          stdlib_dir = File.join(rbs_spec.gem_dir, 'stdlib')
+          Dir.children(stdlib_dir)
+        rescue StandardError
+          []
         end
 
         # Build an RBS environment from the given directories.
@@ -127,8 +198,8 @@ module Docscribe
         # @return [RBS::Environment]
         def build_env(dirs)
           loader = ::RBS::EnvironmentLoader.new
-          # Load core types transitively
           loader.add(library: 'rbs') # steep:ignore
+          load_stdlib_libraries!(loader)
 
           dirs.each do |dir|
             path = Pathname(dir)
@@ -140,6 +211,43 @@ module Docscribe
           env
         end
 
+        # Load stdlib RBS libraries declared in rbs_collection.lock.yaml.
+        #
+        # Without this, RBS types defined in user sig/ files (e.g. UNIXSocket)
+        # fail to resolve and the entire RBS environment breaks, causing all
+        # type lookups to silently fall back to inference.
+        #
+        # @private
+        # @param [RBS::EnvironmentLoader] loader
+        # @raise [StandardError]
+        # @return [void]
+        # @return [nil] if StandardError
+        def load_stdlib_libraries!(loader)
+          lock_path = File.join(Dir.pwd, 'rbs_collection.lock.yaml')
+          return unless File.exist?(lock_path)
+
+          lock = YAML.safe_load_file(lock_path) # steep:ignore
+          (lock['gems'] || []).each { |gem| add_stdlib_gem(loader, gem) }
+        rescue StandardError => e
+          warn "Docscribe: Failed to parse rbs_collection.lock.yaml: #{e.message}"
+        end
+
+        # Add a single stdlib gem from the lock file to the loader.
+        #
+        # @private
+        # @param [RBS::EnvironmentLoader] loader
+        # @param [Object] gem gem entry from rbs_collection.lock.yaml
+        # @raise [StandardError]
+        # @return [void]
+        # @return [nil] if StandardError
+        def add_stdlib_gem(loader, gem)
+          return unless gem.is_a?(Hash) && gem.dig('source', 'type') == 'stdlib'
+
+          loader.add(library: gem['name']) # steep:ignore
+        rescue StandardError => e
+          warn "Docscribe: Failed to load stdlib RBS library '#{gem['name']}': #{e.message}"
+        end
+
         # Build the appropriate instance or singleton definition for a container.
         #
         # @private
@@ -147,7 +255,10 @@ module Docscribe
         # @param [Symbol] scope :instance or :class
         # @return [RBS::Definition, nil]
         def definition_for(container:, scope:)
+          container = container.sub(/\[.*\]/, '').sub(/<.*>/, '')
           type_name = parse_type_name(absolute_const(container))
+          return nil unless @builder&.env&.type_name?(type_name)
+
           scope == :class ? @builder&.build_singleton(type_name) : @builder&.build_instance(type_name)
         end
 
@@ -311,13 +422,12 @@ module Docscribe
           end
         end
 
-        # Print one debug warning per provider instance when debugging is enabled.
+        # Print one warning per provider instance (avoiding repeated spam).
         #
         # @private
         # @param [String] msg warning message text
         # @return [void]
         def warn_once(msg)
-          return unless ENV['DOCSCRIBE_RBS_DEBUG'] == '1'
           return if @warned
 
           @warned = true

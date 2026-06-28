@@ -95,15 +95,19 @@ module Docscribe
       # @param [Boolean] nil_as_optional render nil as optional
       # @param [Docscribe::Types::RBS::Provider?] core_rbs_provider core RBS type lookup provider
       # @param [Hash<String, String>?] param_types parameter name -> type map
+      # @param [String?] container
+      # @param [Docscribe::Types::ProviderChain?] signature_provider
       # @return [Hash<Symbol, String, Array<(Array<String>, String)>>]
-      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil,
-                                 param_types: nil)
+      def returns_spec_from_node(node, fallback_type: FALLBACK_TYPE, nil_as_optional: true, core_rbs_provider: nil, # rubocop:disable Metrics/ParameterLists
+                                 param_types: nil, container: nil, signature_provider: nil)
         Returns.returns_spec_from_node(
           node,
           fallback_type: fallback_type,
           nil_as_optional: nil_as_optional,
           core_rbs_provider: core_rbs_provider,
-          param_types: param_types
+          param_types: param_types,
+          container: container,
+          signature_provider: signature_provider
         )
       end
 

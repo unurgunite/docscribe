@@ -67,7 +67,7 @@ module Docscribe
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Object] opts additional keyword options forwarded to doc_setup
       # @raise [StandardError]
-      # @return [String, nil] if StandardError
+      # @return [String, nil]
       # @return [nil] if StandardError
       def build(insertion, config:, **opts)
         setup = doc_setup(insertion, config: config, **opts)
@@ -87,7 +87,7 @@ module Docscribe
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Object] options additional keyword options forwarded to downstream methods
       # @raise [StandardError]
-      # @return [String, nil] if StandardError
+      # @return [String, nil]
       # @return [nil] if StandardError
       def build_merge_additions(insertion, existing_lines:, config:, **options)
         setup = doc_setup(insertion, config: config, **options)
@@ -110,7 +110,7 @@ module Docscribe
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Object] options additional keyword options forwarded to downstream methods
       # @raise [StandardError]
-      # @return [Hash<Symbol, Object>] if StandardError
+      # @return [Hash<Symbol, Object>]
       # @return [Hash] if StandardError
       def build_missing_merge_result(insertion, existing_lines:, config:, **options)
         setup = doc_setup(insertion, config: config, **options)
@@ -187,7 +187,9 @@ module Docscribe
       # @return [Hash<Symbol, Object>]
       def resolve_doc_setup!(setup, node, name, config, opts)
         external_sig = resolve_external_sig(setup[:container], setup[:scope], name, opts[:signature_provider])
-        returns_spec = compute_returns_spec(node, config, opts[:param_types], opts[:core_rbs_provider])
+        returns_spec = compute_returns_spec(node, config, opts[:param_types], opts[:core_rbs_provider],
+                                            signature_provider: opts[:signature_provider],
+                                            container: setup[:container])
         normal_type = opts[:return_type_override] || external_sig&.return_type || returns_spec[:normal]
 
         setup.merge(
@@ -229,11 +231,15 @@ module Docscribe
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<String, String>, nil] param_types hash accumulating parameter name-to-type mappings
       # @param [Object] core_rbs_provider RBS type provider
+      # @param [Docscribe::Types::ProviderChain?] signature_provider
+      # @param [String?] container
       # @return [Hash<Symbol, Object>]
-      def compute_returns_spec(node, config, param_types, core_rbs_provider)
+      def compute_returns_spec(node, config, param_types, core_rbs_provider, # rubocop:disable Metrics/ParameterLists
+                               signature_provider: nil, container: nil)
         Docscribe::Infer.returns_spec_from_node(
           node, fallback_type: config.fallback_type, nil_as_optional: config.nil_as_optional?,
-                param_types: param_types, core_rbs_provider: core_rbs_provider
+                param_types: param_types, core_rbs_provider: core_rbs_provider,
+                signature_provider: signature_provider, container: container
         )
       end
 
@@ -690,7 +696,7 @@ module Docscribe
       # @note module_function: defines #extract_raise_types_from_line (visibility: private)
       # @param [String] line a `@raise` doc line
       # @raise [StandardError]
-      # @return [Array<String, nil>] if StandardError
+      # @return [Array<String, nil>]
       # @return [Array] if StandardError
       def extract_raise_types_from_line(line)
         return [] unless line.match?(/^\s*#\s*@raise\b/)
@@ -1998,7 +2004,7 @@ module Docscribe
       # @note module_function: defines #safe_node_source (visibility: private)
       # @param [Parser::AST::Node] node AST node whose source text to extract
       # @raise [StandardError]
-      # @return [String] if StandardError
+      # @return [String]
       # @return [String] if StandardError
       def safe_node_source(node)
         node.loc.expression.source

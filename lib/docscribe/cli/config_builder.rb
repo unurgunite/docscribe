@@ -29,7 +29,7 @@ module Docscribe
         apply_rbs_overrides(raw, options) if rbs_overrides?(options)
         apply_sorbet_overrides(raw, options) if sorbet_overrides?(options)
         apply_output_overrides(raw, options)
-        conf = Docscribe::Config.new(raw)
+        conf = Docscribe::Config.new(config_path: base.config_path, **raw)
         warn_missing_rbs_collection(conf, options)
         conf
       end

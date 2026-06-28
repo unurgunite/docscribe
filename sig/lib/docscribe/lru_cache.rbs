@@ -1,0 +1,13 @@
+module Docscribe
+  class LRUCache
+    @max_size: Integer
+    @data: Hash[untyped, untyped]
+
+    def initialize: (?Integer max_size) -> void
+    def []: (untyped key) -> untyped
+    def []=: (untyped key, untyped val) -> untyped
+    def clear: () -> void
+    def empty?: () -> bool
+    def size: () -> Integer
+  end
+end
