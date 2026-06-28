@@ -37,13 +37,13 @@ module Docscribe
       # @raise [StandardError]
       # @return [void]
       def ensure_running!(config_path: nil, daemonize: false, timeout: 5)
-        return if wait_for_ready(config_path: config_path, timeout: 0, raise_on_timeout: false)
+        return if running?(config_path)
         raise 'Server mode is unavailable on this Ruby/platform (Process.fork not supported)' unless Process.respond_to?(:fork)
 
         lock_path = "#{socket_path(config_path)}.lock"
         File.open(lock_path, File::RDWR | File::CREAT, 0o644) do |lock|
           lock.flock(File::LOCK_EX)
-          next if wait_for_ready(config_path: config_path, timeout: 0, raise_on_timeout: false)
+          next if running?(config_path)
 
           start_daemon_process(config_path: config_path, daemonize: daemonize)
         end
@@ -57,7 +57,7 @@ module Docscribe
       # @param [Boolean] raise_on_timeout
       # @raise [StandardError]
       # @return [Boolean]
-      def wait_for_ready(config_path: nil, timeout: 5, raise_on_timeout: true)
+      def wait_for_ready(config_path: nil, timeout: 5, raise_on_timeout: true) # rubocop:disable SortedMethodsByCall/Waterfall
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
         loop do
           return true if running?(config_path)
@@ -193,6 +193,8 @@ module Docscribe
         Digest::MD5.hexdigest(parts.join(':'))
       end
 
+      public :read_pid, :pid_path, :socket_path
+
       # @param [String?] config_path
       # @param [Boolean] daemonize
       # @return [void]
@@ -200,13 +202,11 @@ module Docscribe
         warn 'Docscribe: starting server...' if daemonize
         pid = Process.fork do # steep:ignore NoMethod
           [$stdin, $stdout].each { _1.reopen(File::NULL) }
-          $stderr.reopen(File::NULL) if daemonize
+          $stderr.reopen(File::NULL)
           Daemon.new(config_path: config_path).start
         end
         Process.detach(pid)
       end
-
-      public :read_pid, :pid_path, :socket_path
     end
 
     # JSON-line protocol helpers.
