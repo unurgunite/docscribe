@@ -193,8 +193,6 @@ module Docscribe
         Digest::MD5.hexdigest(parts.join(':'))
       end
 
-      public :read_pid, :pid_path, :socket_path
-
       # @param [String?] config_path
       # @param [Boolean] daemonize
       # @return [void]
@@ -207,6 +205,8 @@ module Docscribe
         end
         Process.detach(pid)
       end
+
+      public :read_pid, :pid_path, :socket_path
     end
 
     # JSON-line protocol helpers.
