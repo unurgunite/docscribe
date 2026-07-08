@@ -34,7 +34,6 @@ module Docscribe
       # @param [String?] config_path optional config file path
       # @param [Boolean] daemonize redirect stdin/stdout/stderr to /dev/null
       # @param [Integer] timeout max seconds to wait for readiness
-      # @raise [StandardError]
       # @return [void]
       def ensure_running!(config_path: nil, daemonize: false, timeout: 5)
         return if running?(config_path)
@@ -197,8 +196,8 @@ module Docscribe
 
       # Check platform compatibility before starting server.
       #
-      # @raise [RuntimeError] descriptive message for Windows/JRuby
-      # @return [void]
+      # @raise [StandardError]
+      # @return [Object]
       def check_platform_support!
         unless defined?(UNIXSocket)
           raise 'Server mode requires Unix domain sockets, which are not available on Windows. ' \

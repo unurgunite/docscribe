@@ -49,8 +49,8 @@ module Docscribe
       MethodDef = Struct.new(:name, :scope, :container, :file, :line, keyword_init: true)
 
       class << self
-        # @param [Array<String>] argv
-        # @return [Integer]
+        # @param [Object] argv
+        # @return [Object]
         def run(argv)
           warn_ruby_version
           options = parse_options(argv)
@@ -63,7 +63,7 @@ module Docscribe
         private
 
         # @private
-        # @return [void]
+        # @return [Object]
         def warn_ruby_version
           return unless Gem::Version.new(RUBY_VERSION) < Gem::Version.new('3.0')
 
@@ -72,8 +72,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Array<String>] argv
-        # @return [Hash<Symbol, Object>]
+        # @param [Object] argv
+        # @return [Hash]
         def parse_options(argv)
           options = { sig_dirs: ['sig'], rbs_collection: false, verbose: false }
 
@@ -87,9 +87,9 @@ module Docscribe
         end
 
         # @private
-        # @param [OptionParser] opts
-        # @param [Hash<Symbol, Object>] options
-        # @return [void]
+        # @param [Object] opts
+        # @param [Object] options
+        # @return [Object]
         def register_sig_options(opts, options)
           opts.on('-s', '--sig-dir DIR', 'Add RBS signature directory (repeatable)') { |d| options[:sig_dirs] << d }
           opts.on('--rbs-collection', 'Use RBS collection') { options[:rbs_collection] = true }
@@ -101,8 +101,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Array<String>] args
-        # @return [Array<String>]
+        # @param [Object] args
+        # @return [Array<Elem>]
         def expand_paths(args)
           files = [] #: Array[String]
           args = ['.'] if args.empty?
@@ -111,9 +111,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Array<String>] files
-        # @param [String] path
-        # @return [void]
+        # @param [Object] files
+        # @param [Object] path
+        # @return [Object]
         def expand_single_path(files, path)
           if File.directory?(path)
             files.concat(Dir.glob(File.join(path, '**', '*.rb')))
@@ -132,8 +132,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Hash<Symbol, Object>] options
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
+        # @param [Object] options
+        # @param [Object] methods
         # @return [Integer]
         def run_with(options, methods)
           return 0 if methods.empty?
@@ -147,8 +147,8 @@ module Docscribe
         end
 
         # @private
-        # @param [Array<String>] paths
-        # @return [Array<Docscribe::CLI::Sigs::MethodDef>]
+        # @param [Object] paths
+        # @return [Array]
         def extract_methods(paths)
           methods = [] #: Array[MethodDef]
           paths.each { |path| extract_methods_from_file(path, methods) }
@@ -156,13 +156,13 @@ module Docscribe
         end
 
         # @private
-        # @param [String] path
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
+        # @param [Object] path
+        # @param [Object] methods
         # @raise [Parser::SyntaxError]
         # @raise [StandardError]
-        # @return [void]
-        # @return [nil] if Parser::SyntaxError
-        # @return [nil] if StandardError
+        # @return [Object]
+        # @return [Object] if Parser::SyntaxError
+        # @return [Object] if StandardError
         def extract_methods_from_file(path, methods)
           src = File.read(path)
           ast = Docscribe::Parsing.parse(src, file: path)
@@ -176,12 +176,12 @@ module Docscribe
         end
 
         # @private
-        # @param [Parser::AST::Node] node
-        # @param [Array<String>] containers
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
-        # @param [String] path
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
         # @param [Boolean] inside_sclass
-        # @return [void]
+        # @return [Object]
         def walk_for_methods(node, containers, methods, path, inside_sclass: false)
           return unless node.is_a?(Parser::AST::Node)
 
@@ -195,11 +195,11 @@ module Docscribe
         end
 
         # @private
-        # @param [Parser::AST::Node] node
-        # @param [Array<String>] containers
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
-        # @param [String] path
-        # @return [void]
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
+        # @return [Object]
         def walk_class_module(node, containers, methods, path)
           containers.push(const_name(node.children[0]))
           node.children.drop(1).each { |c| walk_for_methods(c, containers, methods, path) }
@@ -207,33 +207,33 @@ module Docscribe
         end
 
         # @private
-        # @param [Parser::AST::Node] node
-        # @param [Array<String>] containers
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
-        # @param [String] path
-        # @return [void]
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
+        # @return [Object]
         def walk_sclass(node, containers, methods, path)
           node.children.drop(1).each { |c| walk_for_methods(c, containers, methods, path, inside_sclass: true) }
         end
 
         # @private
-        # @param [Parser::AST::Node] node
-        # @param [Array<String>] containers
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
-        # @param [String] path
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
         # @param [Boolean] inside_sclass
-        # @return [void]
+        # @return [Object]
         def walk_children(node, containers, methods, path, inside_sclass: false)
           node.children.each { |c| walk_for_methods(c, containers, methods, path, inside_sclass: inside_sclass) }
         end
 
         # @private
-        # @param [Parser::AST::Node] node
-        # @param [Array<String>] containers
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
-        # @param [String] path
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
         # @param [Boolean] inside_sclass
-        # @return [void]
+        # @return [Object]
         def collect_def(node, containers, methods, path, inside_sclass: false)
           methods << MethodDef.new(
             name: node.children[0],
@@ -245,11 +245,11 @@ module Docscribe
         end
 
         # @private
-        # @param [Parser::AST::Node] node
-        # @param [Array<String>] containers
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
-        # @param [String] path
-        # @return [void]
+        # @param [Object] node
+        # @param [Object] containers
+        # @param [Object] methods
+        # @param [Object] path
+        # @return [Object]
         def collect_defs(node, containers, methods, path)
           methods << MethodDef.new(
             name: node.children[1],
@@ -261,15 +261,15 @@ module Docscribe
         end
 
         # @private
-        # @param [Array<String>] containers
-        # @return [String?]
+        # @param [Object] containers
+        # @return [Object?]
         def container_name(containers)
           containers.empty? ? nil : containers.join('::')
         end
 
         # @private
-        # @param [Parser::AST::Node] node
-        # @return [String]
+        # @param [Object] node
+        # @return [Object]
         def const_name(node)
           return node.to_s unless node.is_a?(Parser::AST::Node)
           return node.children[1].to_s if node.type == :const
@@ -278,10 +278,10 @@ module Docscribe
         end
 
         # @private
-        # @param [Hash<Symbol, Object>] options
+        # @param [Object] options
         # @raise [LoadError]
         # @raise [StandardError]
-        # @return [Docscribe::Types::RBS::Provider?]
+        # @return [Provider]
         # @return [nil] if LoadError
         # @return [nil] if StandardError
         def build_provider(options)
@@ -298,7 +298,7 @@ module Docscribe
 
         # @private
         # @raise [StandardError]
-        # @return [Array<String>]
+        # @return [Array]
         # @return [Array] if StandardError
         def load_collection_dirs
           dir = Docscribe::Types::RBS::CollectionLoader.resolve
@@ -309,10 +309,10 @@ module Docscribe
         end
 
         # @private
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
-        # @param [Docscribe::Types::RBS::Provider] provider
-        # @param [Boolean] verbose
-        # @return [Array<Docscribe::CLI::Sigs::MethodDef>]
+        # @param [Object] methods
+        # @param [Object] provider
+        # @param [Object] verbose
+        # @return [Array]
         def check_sigs(methods, provider, verbose:)
           missing = [] #: Array[MethodDef]
           methods.each do |m|
@@ -325,9 +325,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Docscribe::CLI::Sigs::MethodDef] method_def
-        # @param [Docscribe::Types::RBS::Provider] provider
-        # @return [Object, nil]
+        # @param [Object] method_def
+        # @param [Object] provider
+        # @return [Object]
         def lookup_signature(method_def, provider)
           container = method_def.container
           return nil unless container
@@ -340,7 +340,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Docscribe::CLI::Sigs::MethodDef] method_def
+        # @param [Object] method_def
         # @return [String]
         def format_method(method_def)
           prefix = method_def.scope == :class ? 'self.' : ''
@@ -349,9 +349,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] methods
-        # @param [Array<Docscribe::CLI::Sigs::MethodDef>] missing
-        # @return [void]
+        # @param [Object] methods
+        # @param [Object] missing
+        # @return [Object]
         def report_results(methods, missing)
           puts
           if missing.empty?
