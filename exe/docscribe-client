@@ -61,6 +61,8 @@ config_path = nil
 mode = nil
 file = nil
 ensure_flag = false
+batch_files = nil
+batch_timeout = nil
 
 OptionParser.new do |opts|
   opts.on('-C', '--config <path>', 'Config file path') { |v| config_path = v }
@@ -72,6 +74,11 @@ OptionParser.new do |opts|
     mode = :fix
     file = v
   end
+  opts.on('--check-batch <files>', 'Check multiple files (comma-separated)') do |v|
+    mode = :check_batch
+    batch_files = v
+  end
+  opts.on('--timeout <seconds>', 'Timeout per file in batch mode') { |v| batch_timeout = v.to_f }
   opts.on('--shutdown', 'Shutdown the server') { mode = :shutdown }
   opts.on('--status', 'Show server status') { mode = :status }
   opts.on('--ping', 'Ping the server') { mode = :ping }
@@ -120,6 +127,12 @@ when :check
 when :fix
   result = send_request(sock, 'fix', file: file, strategy: :safe)
   puts JSON.generate(result || { error: 'Connection failed' })
+when :check_batch
+  files = batch_files.split(',').map(&:strip)
+  params = { files: files, strategy: :safe }
+  params[:timeout] = batch_timeout if batch_timeout
+  result = send_request(sock, 'check_batch', **params)
+  puts JSON.generate(result || { error: 'Connection failed' })
 when :shutdown
   result = send_request(sock, 'shutdown')
   puts JSON.generate(result || { error: 'Connection failed' })
@@ -135,6 +148,6 @@ when :status
   end
   puts JSON.generate(alive ? { status: 'running', socket: sock } : { status: 'not_running' })
 else
-  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> | --shutdown | --status | --ping | --socket-path | --info | --ensure"
+  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> | --check-batch <files> | --shutdown | --status | --ping | --socket-path | --info | --ensure"
   exit 1
 end
