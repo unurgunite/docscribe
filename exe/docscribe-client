@@ -88,13 +88,13 @@ if ensure_flag && mode.nil?
   exit 0
 end
 
-if ensure_flag && (mode == :check || mode == :fix)
+if ensure_flag && %i[check fix].include?(mode)
   begin
     UNIXSocket.new(sock).close
   rescue Errno::ECONNREFUSED, Errno::ENOENT
     require 'docscribe/server'
     Docscribe::Server.ensure_running!(config_path: config_path)
-  rescue => e
+  rescue StandardError => e
     warn "docscribe: #{e.message}"
     exit 1
   end
