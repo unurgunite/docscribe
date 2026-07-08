@@ -38,7 +38,7 @@ module Docscribe
       # @return [void]
       def ensure_running!(config_path: nil, daemonize: false, timeout: 5)
         return if running?(config_path)
-        raise 'Server mode is unavailable on this Ruby/platform (Process.fork not supported)' unless Process.respond_to?(:fork)
+        check_platform_support!
 
         lock_path = "#{socket_path(config_path)}.lock"
         File.open(lock_path, File::RDWR | File::CREAT, 0o644) do |lock|
@@ -89,6 +89,8 @@ module Docscribe
       # @return [Boolean] if Errno::ENOENT, Errno::ENOTSOCK
       # @return [Boolean] if StandardError
       def running?(config_path = nil)
+        return false unless defined?(UNIXSocket)
+
         socket = UNIXSocket.new(socket_path(config_path))
         socket.close
         true
@@ -191,6 +193,21 @@ module Docscribe
           File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
         end
         Digest::MD5.hexdigest(parts.join(':'))
+      end
+
+      # Check platform compatibility before starting server.
+      #
+      # @raise [RuntimeError] descriptive message for Windows/JRuby
+      # @return [void]
+      def check_platform_support!
+        unless defined?(UNIXSocket)
+          raise 'Server mode requires Unix domain sockets, which are not available on Windows. ' \
+                'Use docscribe directly without --server flag.'
+        end
+        return if Process.respond_to?(:fork)
+
+        raise 'Server mode requires Process.fork, which is not available on JRuby. ' \
+              'Use docscribe directly without --server flag.'
       end
 
       public :read_pid, :pid_path, :socket_path
