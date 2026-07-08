@@ -476,11 +476,7 @@ module Docscribe
       # @param [UNIXSocket] client
       # @param [String, Integer] id
       # @param [Hash<String, Object>] params
-      # @raise [Docscribe::ParseError]
-      # @raise [StandardError]
       # @return [void]
-      # @return [Object] if Docscribe::ParseError
-      # @return [Object] if StandardError
       def handle_check(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
@@ -502,11 +498,7 @@ module Docscribe
       # @param [UNIXSocket] client
       # @param [String, Integer] id
       # @param [Hash<String, Object>] params
-      # @raise [Docscribe::ParseError]
-      # @raise [StandardError]
       # @return [void]
-      # @return [Object] if Docscribe::ParseError
-      # @return [Object] if StandardError
       def handle_fix(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
@@ -609,13 +601,14 @@ module Docscribe
         client.write(Protocol.serialize(response))
       end
 
+
       # Classify an exception into a standardized error code, message, and data.
       #
       # @private
-      # @param [Object] exception
-      # @param [nil] _method_name JSON-RPC method name (unused, for future use)
-      # @param [Hash] params request params for context
-      # @return [Array]
+      # @param [StandardError] exception
+      # @param [String, nil] _method_name JSON-RPC method name (unused, for future use)
+      # @param [Hash<String, Object>] params request params for context
+      # @return [(Integer, String, Hash)]
       def classify_error(exception, _method_name = nil, params = {})
         if exception.is_a?(LoadError) || exception.is_a?(Gem::LoadError)
           data = {}
@@ -643,10 +636,10 @@ module Docscribe
       # Send a structured syntax error response with file context.
       #
       # @private
-      # @param [Object] client
-      # @param [Object] id
-      # @param [Object] exception
-      # @param [Object] file path to the file being analyzed
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [StandardError] exception
+      # @param [String] file path to the file being analyzed
       # @return [void]
       def send_syntax_error(client, id, exception, file)
         data = { file: file, detail: exception.message }
