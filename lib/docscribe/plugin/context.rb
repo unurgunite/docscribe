@@ -3,36 +3,36 @@
 module Docscribe
   module Plugin
     # @!attribute [rw] node
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [Parser::AST::Node]
+    #   @param [Parser::AST::Node] value
     #
     # @!attribute [rw] container
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [String]
+    #   @param [String] value
     #
     # @!attribute [rw] scope
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [Symbol]
+    #   @param [Symbol] value
     #
     # @!attribute [rw] visibility
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [Symbol]
+    #   @param [Symbol] value
     #
     # @!attribute [rw] method_name
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [Symbol]
+    #   @param [Symbol] value
     #
     # @!attribute [rw] inferred_params
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [Hash<String, String>]
+    #   @param [Hash<String, String>] value
     #
     # @!attribute [rw] inferred_return
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [String]
+    #   @param [String] value
     #
     # @!attribute [rw] source
-    #   @return [Object]
-    #   @param [Object] value
+    #   @return [String]
+    #   @param [String] value
     Context = Struct.new(
       :node,
       :container,

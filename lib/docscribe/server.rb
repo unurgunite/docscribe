@@ -535,9 +535,9 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] client
-      # @param [Object] id
-      # @param [Object] params
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [Hash<String, Object>] params
       # @return [void]
       def handle_check_batch(client, id, params)
         files = params['files']
@@ -556,12 +556,10 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] file
-      # @param [Object] strategy
-      # @param [nil] timeout
-      # @raise [Timeout::Error]
-      # @raise [StandardError]
-      # @return [Hash, Object]
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @param [Integer, Float, nil] timeout
+      # @return [Hash<String, Object>]
       def process_file_in_batch(file, strategy, timeout = nil)
         return { 'file' => file, 'status' => 'error', 'error' => "File not found: #{file}" } unless File.file?(file)
 
@@ -609,7 +607,7 @@ module Docscribe
       end
 
       # @private
-      # @return [Object]
+      # @return [void]
       def reset_effective_config_internal
         return unless @effective_config
 
