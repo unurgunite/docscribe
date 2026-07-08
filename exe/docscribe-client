@@ -60,6 +60,7 @@ end
 config_path = nil
 mode = nil
 file = nil
+ensure_flag = false
 
 OptionParser.new do |opts|
   opts.on('-C', '--config <path>', 'Config file path') { |v| config_path = v }
@@ -74,11 +75,45 @@ OptionParser.new do |opts|
   opts.on('--shutdown', 'Shutdown the server') { mode = :shutdown }
   opts.on('--status', 'Show server status') { mode = :status }
   opts.on('--ping', 'Ping the server') { mode = :ping }
+  opts.on('--socket-path', 'Print socket path and exit') { mode = :socket_path }
+  opts.on('--info', 'Show server info') { mode = :info }
+  opts.on('--ensure', 'Ensure server is running before check/fix') { ensure_flag = true }
 end.parse!
 
 sock = socket_path(config_path)
 
+if ensure_flag && mode.nil?
+  require 'docscribe/server'
+  Docscribe::Server.ensure_running!(config_path: config_path)
+  exit 0
+end
+
+if ensure_flag && (mode == :check || mode == :fix)
+  begin
+    UNIXSocket.new(sock).close
+  rescue Errno::ECONNREFUSED, Errno::ENOENT
+    require 'docscribe/server'
+    Docscribe::Server.ensure_running!(config_path: config_path)
+  rescue => e
+    warn "docscribe: #{e.message}"
+    exit 1
+  end
+end
+
 case mode
+when :socket_path
+  puts sock
+when :info
+  result = send_request(sock, 'ping')
+  if result && result['result']
+    info = result['result']
+    info['status'] = 'running'
+    info['config_path'] = config_path if config_path
+    info['cli_overrides'] = {}
+    puts JSON.generate(info)
+  else
+    puts JSON.generate({ status: 'not_running', socket_path: sock })
+  end
 when :check
   result = send_request(sock, 'check', file: file, strategy: :safe)
   puts JSON.generate(result || { error: 'Connection failed' })
@@ -100,6 +135,6 @@ when :status
   end
   puts JSON.generate(alive ? { status: 'running', socket: sock } : { status: 'not_running' })
 else
-  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> | --shutdown | --status | --ping"
+  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> | --shutdown | --status | --ping | --socket-path | --info | --ensure"
   exit 1
 end
