@@ -609,20 +609,6 @@ module Docscribe
         client.write(Protocol.serialize(response))
       end
 
-      # @private
-      # @param [UNIXSocket] client
-      # @param [String, Integer, nil] id
-      # @param [Integer] code
-      # @param [String] message
-      # @param [nil] data optional structured error data
-      # @return [void]
-      def send_error(client, id, code, message, data = nil)
-        error = { code: code, message: message }
-        error[:data] = data if data
-        response = { jsonrpc: '2.0', id: id, error: error }
-        client.write(Protocol.serialize(response))
-      end
-
       # Classify an exception into a standardized error code, message, and data.
       #
       # @private
@@ -668,6 +654,20 @@ module Docscribe
         line ||= exception.respond_to?(:diagnostic) ? exception.diagnostic.location.line : nil
         data[:line] = line if line
         send_error(client, id, ERROR_CODES[:syntax_error], "Syntax error in #{file}", data)
+      end
+
+      # @private
+      # @param [UNIXSocket] client
+      # @param [String, Integer, nil] id
+      # @param [Integer] code
+      # @param [String] message
+      # @param [nil] data optional structured error data
+      # @return [void]
+      def send_error(client, id, code, message, data = nil)
+        error = { code: code, message: message }
+        error[:data] = data if data
+        response = { jsonrpc: '2.0', id: id, error: error }
+        client.write(Protocol.serialize(response))
       end
 
       # Cleanup socket and PID files on shutdown.
