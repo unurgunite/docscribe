@@ -332,6 +332,14 @@ module Docscribe
 
     # Daemon process that loads the Ruby runtime once and serves requests.
     class Daemon
+      # Standardized JSON-RPC error codes.
+      ERROR_CODES = {
+        gem_not_found: -32_000,
+        syntax_error: -32_001,
+        config_load_failure: -32_002,
+        timeout: -32_010,
+        internal: -32_099
+      }.freeze
       # @param [String?] socket_path custom socket path
       # @param [Integer] idle_timeout seconds before automatic shutdown
       # @param [String?] config_path custom config path
@@ -437,7 +445,10 @@ module Docscribe
         request = Protocol.parse_response(request_line)
         request ? handle_request(client, request) : send_error(client, nil, -32_700, 'Parse error')
       rescue StandardError => e
-        send_error(client, request&.dig('id'), -32_603, "#{e.class}: #{e.message}")
+        method_name = request&.dig('method')
+        error_params = request&.dig('params') || {}
+        code, message, data = classify_error(e, method_name, error_params)
+        send_error(client, request&.dig('id'), code, message, data)
       ensure
         client.close
       end
@@ -475,6 +486,12 @@ module Docscribe
         src, result = rewrite_file(file, strategy)
         send_result(client, id, 'status' => result[:output] == src ? 'ok' : 'fail',
                                 'changed' => result[:output] != src, 'changes' => result[:changes])
+      rescue Docscribe::ParseError => e
+        send_syntax_error(client, id, e, file)
+      rescue StandardError => e
+        raise unless defined?(Parser::SyntaxError) && e.is_a?(Parser::SyntaxError)
+
+        send_syntax_error(client, id, e, file)
       end
 
       # @private
@@ -492,6 +509,12 @@ module Docscribe
         File.write(file, result[:output]) if result[:output] != src
         send_result(client, id, 'status' => 'ok',
                                 'changed' => result[:output] != src, 'changes' => result[:changes])
+      rescue Docscribe::ParseError => e
+        send_syntax_error(client, id, e, file)
+      rescue StandardError => e
+        raise unless defined?(Parser::SyntaxError) && e.is_a?(Parser::SyntaxError)
+
+        send_syntax_error(client, id, e, file)
       end
 
       # @private
@@ -583,10 +606,60 @@ module Docscribe
       # @param [String, Integer, nil] id
       # @param [Integer] code
       # @param [String] message
+      # @param [Hash, nil] data optional structured error data
       # @return [void]
-      def send_error(client, id, code, message)
-        response = { jsonrpc: '2.0', id: id, error: { code: code, message: message } }
+      def send_error(client, id, code, message, data = nil)
+        error = { code: code, message: message }
+        error[:data] = data if data
+        response = { jsonrpc: '2.0', id: id, error: error }
         client.write(Protocol.serialize(response))
+      end
+
+      # Classify an exception into a standardized error code, message, and data.
+      #
+      # @private
+      # @param [StandardError] exception
+      # @param [String, nil] _method_name JSON-RPC method name (unused, for future use)
+      # @param [Hash<String, Object>] params request params for context
+      # @return [(Integer, String, Hash)]
+      def classify_error(exception, _method_name = nil, params = {})
+        if exception.is_a?(LoadError) || exception.is_a?(Gem::LoadError)
+          data = {}
+          data[:gem] = exception.path if exception.respond_to?(:path) && exception.path
+          [ERROR_CODES[:gem_not_found], "#{exception.class}: #{exception.message}", data]
+        elsif exception.is_a?(Docscribe::ParseError) ||
+              (defined?(Parser::SyntaxError) && exception.is_a?(Parser::SyntaxError))
+          file = (params['file'] if params.is_a?(Hash)).to_s
+          data = { file: file, detail: exception.message }
+          line = exception.respond_to?(:line) ? exception.line : nil
+          line ||= exception.respond_to?(:diagnostic) ? exception.diagnostic.location.line : nil
+          data[:line] = line if line
+          [ERROR_CODES[:syntax_error], "Syntax error in #{file}", data]
+        elsif defined?(Timeout::Error) && exception.is_a?(Timeout::Error)
+          file = (params['file'] if params.is_a?(Hash)).to_s
+          data = { timeout: @idle_timeout || 30, file: file }
+          [ERROR_CODES[:timeout], "#{exception.class}: #{exception.message}", data]
+        else
+          backtrace = exception.backtrace&.first(5) || []
+          data = { backtrace: backtrace }
+          [ERROR_CODES[:internal], "#{exception.class}: #{exception.message}", data]
+        end
+      end
+
+      # Send a structured syntax error response with file context.
+      #
+      # @private
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [StandardError] exception
+      # @param [String] file path to the file being analyzed
+      # @return [void]
+      def send_syntax_error(client, id, exception, file)
+        data = { file: file, detail: exception.message }
+        line = exception.respond_to?(:line) ? exception.line : nil
+        line ||= exception.respond_to?(:diagnostic) ? exception.diagnostic.location.line : nil
+        data[:line] = line if line
+        send_error(client, id, ERROR_CODES[:syntax_error], "Syntax error in #{file}", data)
       end
 
       # Cleanup socket and PID files on shutdown.
