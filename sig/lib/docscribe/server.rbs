@@ -2,6 +2,18 @@ class Dir
   def self?.tmpdir: () -> String
 end
 
+module Parser
+  class SyntaxError < StandardError
+    def line: () -> Integer?
+    def diagnostic: () -> untyped
+  end
+end
+
+module Timeout
+  class Error < StandardError
+  end
+end
+
 module Docscribe
   module Server
     SOCKET_DIR: String
@@ -57,6 +69,8 @@ module Docscribe
       @started_at: Time
       @applied_overrides: Hash[String, untyped]?
 
+      ERROR_CODES: Hash[Symbol, Integer]
+
       def initialize: (?socket_path: String?, ?idle_timeout: Integer, ?config_path: String?) -> void
       def start: () -> void
 
@@ -78,16 +92,16 @@ module Docscribe
       def handle_shutdown: (UNIXSocket, (String | Integer)) -> void
       def handle_ping: (UNIXSocket, (String | Integer)) -> void
       def send_result: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
-      def send_error: (UNIXSocket, (String | Integer | nil), Integer, String, ?Hash[Symbol, untyped]?) -> void
-      def classify_error: (StandardError, ?String?, ?Hash[Symbol, untyped]) -> [ Integer, String, Hash[Symbol, untyped]? ]
-      def send_syntax_error: (UNIXSocket, (String | Integer), StandardError, String) -> void
-      def handle_request_error: (UNIXSocket, (String | Integer), StandardError, String) -> void
-      def syntax_error?: (StandardError) -> bool
-      def timeout_error?: (StandardError) -> bool
-      def classify_gem_error: (StandardError) -> [ Integer, String, untyped ]
-      def classify_syntax_err: (StandardError, Hash[String, untyped]) -> [ Integer, String, untyped ]
-      def classify_timeout_err: (StandardError, Hash[String, untyped]) -> [ Integer, String, untyped ]
-      def classify_internal_err: (StandardError) -> [ Integer, String, untyped ]
+      def send_error: (UNIXSocket, (String | Integer | nil), Integer, String, ?untyped?) -> void
+      def classify_error: (Exception, ?String?, ?Hash[String, untyped]) -> [ Integer, String, untyped? ]
+      def send_syntax_error: (UNIXSocket, (String | Integer), untyped, String) -> void
+      def handle_request_error: (UNIXSocket, (String | Integer), untyped, String) -> void
+      def syntax_error?: (Exception) -> bool
+      def timeout_error?: (Exception) -> bool
+      def classify_gem_error: (untyped) -> [ Integer, String, untyped ]
+      def classify_syntax_err: (untyped, Hash[String, untyped]) -> [ Integer, String, untyped ]
+      def classify_timeout_err: (untyped, Hash[String, untyped]) -> [ Integer, String, untyped ]
+      def classify_internal_err: (untyped) -> [ Integer, String, untyped ]
       def cleanup: () -> void
     end
   end
