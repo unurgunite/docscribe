@@ -594,7 +594,7 @@ module Docscribe
 
         return_type = rest[1...type_end] #: String
         desc = rest[(type_end + 1)..]&.strip
-        [return_type, desc&.empty? ? nil : desc]
+        [return_type, desc && desc.empty? ? nil : desc]
       end
 
       # Extract all comment tags from line
