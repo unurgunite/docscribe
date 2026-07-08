@@ -481,7 +481,7 @@ module Docscribe
       # @return [void]
       # @return [Object] if Docscribe::ParseError
       # @return [Object] if StandardError
-      def handle_check(client, id, params) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength
+      def handle_check(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
         return send_error(client, id, -32_602, "File not found: #{file}") unless file && File.file?(file)
@@ -507,7 +507,7 @@ module Docscribe
       # @return [void]
       # @return [Object] if Docscribe::ParseError
       # @return [Object] if StandardError
-      def handle_fix(client, id, params) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength
+      def handle_fix(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
         return send_error(client, id, -32_602, "File not found: #{file}") unless file && File.file?(file)
@@ -609,6 +609,7 @@ module Docscribe
         client.write(Protocol.serialize(response))
       end
 
+
       # Classify an exception into a standardized error code, message, and data.
       #
       # @private
@@ -616,7 +617,7 @@ module Docscribe
       # @param [nil] _method_name JSON-RPC method name (unused, for future use)
       # @param [Hash] params request params for context
       # @return [Array]
-      def classify_error(exception, _method_name = nil, params = {}) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength,Metrics/PerceivedComplexity
+      def classify_error(exception, _method_name = nil, params = {}) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/MethodLength
         # steep:ignore:start
         if exception.is_a?(LoadError) || exception.is_a?(Gem::LoadError)
           data = {}
