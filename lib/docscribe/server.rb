@@ -493,7 +493,7 @@ module Docscribe
       rescue Docscribe::ParseError => e
         send_syntax_error(client, id, e, file)
       rescue StandardError => e
-        raise unless defined?(Parser::SyntaxError) && e.is_a?(Parser::SyntaxError)
+        raise unless defined?(Parser::SyntaxError) && e.is_a?(Parser::SyntaxError) # steep:ignore
 
         send_syntax_error(client, id, e, file)
       end
@@ -520,7 +520,7 @@ module Docscribe
       rescue Docscribe::ParseError => e
         send_syntax_error(client, id, e, file)
       rescue StandardError => e
-        raise unless defined?(Parser::SyntaxError) && e.is_a?(Parser::SyntaxError)
+        raise unless defined?(Parser::SyntaxError) && e.is_a?(Parser::SyntaxError) # steep:ignore
 
         send_syntax_error(client, id, e, file)
       end
@@ -617,7 +617,8 @@ module Docscribe
       # @param [nil] _method_name JSON-RPC method name (unused, for future use)
       # @param [Hash] params request params for context
       # @return [Array]
-      def classify_error(exception, _method_name = nil, params = {})
+      def classify_error(exception, _method_name = nil, params = {}) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/MethodLength
+        # steep:ignore:start
         if exception.is_a?(LoadError) || exception.is_a?(Gem::LoadError)
           data = {}
           data[:gem] = exception.path if exception.respond_to?(:path) && exception.path
@@ -626,8 +627,11 @@ module Docscribe
               (defined?(Parser::SyntaxError) && exception.is_a?(Parser::SyntaxError))
           file = (params['file'] if params.is_a?(Hash)).to_s
           data = { file: file, detail: exception.message }
-          line = exception.respond_to?(:line) ? exception.line : nil
-          line ||= exception.respond_to?(:diagnostic) ? exception.diagnostic.location.line : nil
+          line = if exception.respond_to?(:line)
+                   exception.line
+                 elsif exception.respond_to?(:diagnostic)
+                   exception.diagnostic.location.line
+                 end
           data[:line] = line if line
           [ERROR_CODES[:syntax_error], "Syntax error in #{file}", data]
         elsif defined?(Timeout::Error) && exception.is_a?(Timeout::Error)
@@ -639,21 +643,27 @@ module Docscribe
           data = { backtrace: backtrace }
           [ERROR_CODES[:internal], "#{exception.class}: #{exception.message}", data]
         end
+        # steep:ignore:end
       end
 
       # Send a structured syntax error response with file context.
       #
       # @private
-      # @param [Object] client
-      # @param [Object] id
-      # @param [Object] exception
-      # @param [Object] file path to the file being analyzed
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [StandardError] exception
+      # @param [String] file path to the file being analyzed
       # @return [void]
       def send_syntax_error(client, id, exception, file)
+        # steep:ignore:start
         data = { file: file, detail: exception.message }
-        line = exception.respond_to?(:line) ? exception.line : nil
-        line ||= exception.respond_to?(:diagnostic) ? exception.diagnostic.location.line : nil
+        line = if exception.respond_to?(:line)
+                 exception.line
+               elsif exception.respond_to?(:diagnostic)
+                 exception.diagnostic.location.line
+               end
         data[:line] = line if line
+        # steep:ignore:end
         send_error(client, id, ERROR_CODES[:syntax_error], "Syntax error in #{file}", data)
       end
 
@@ -666,7 +676,7 @@ module Docscribe
       # @return [void]
       def send_error(client, id, code, message, data = nil)
         error = { code: code, message: message }
-        error[:data] = data if data
+        error[:data] = data if data # steep:ignore
         response = { jsonrpc: '2.0', id: id, error: error }
         client.write(Protocol.serialize(response))
       end

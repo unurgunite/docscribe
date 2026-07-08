@@ -57,6 +57,8 @@ module Docscribe
       @started_at: Time
       @applied_overrides: Hash[String, untyped]?
 
+      ERROR_CODES: Hash[Symbol, Integer]
+
       def initialize: (?socket_path: String?, ?idle_timeout: Integer, ?config_path: String?) -> void
       def start: () -> void
 
@@ -78,7 +80,9 @@ module Docscribe
       def handle_shutdown: (UNIXSocket, (String | Integer)) -> void
       def handle_ping: (UNIXSocket, (String | Integer)) -> void
       def send_result: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
-      def send_error: (UNIXSocket, (String | Integer | nil), Integer, String) -> void
+      def send_error: (UNIXSocket, (String | Integer | nil), Integer, String, ?Hash[Symbol, untyped]?) -> void
+      def classify_error: (StandardError, ?String?, ?Hash[Symbol, untyped]) -> [ Integer, String, Hash[Symbol, untyped]? ]
+      def send_syntax_error: (UNIXSocket, (String | Integer), StandardError, String) -> void
       def cleanup: () -> void
     end
   end
