@@ -62,7 +62,7 @@ RSpec.describe Docscribe::CLI do
       it 'starts the server and reports success' do
         _out, err, st = server_cmd.call('start')
         aggregate_failures do
-          expect(err).to include('started')
+          expect(err).to match(/started/)
           expect(st.exitstatus).to eq(0)
         end
       end
