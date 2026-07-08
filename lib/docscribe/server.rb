@@ -490,12 +490,8 @@ module Docscribe
         src, result = rewrite_file(file, strategy)
         send_result(client, id, 'status' => result[:output] == src ? 'ok' : 'fail',
                                 'changed' => result[:output] != src, 'changes' => result[:changes])
-      rescue Docscribe::ParseError => e
-        send_syntax_error(client, id, e, file)
       rescue StandardError => e
-        raise unless defined?(Parser::SyntaxError) && e.is_a?(Parser::SyntaxError) # steep:ignore
-
-        send_syntax_error(client, id, e, file)
+        handle_request_error(client, id, e, file)
       end
 
       # @private
@@ -514,15 +510,11 @@ module Docscribe
 
         apply_cli_overrides(params['cli_overrides'])
         src, result = rewrite_file(file, strategy)
-        File.write(file, result[:output]) if result[:output] != src
-        send_result(client, id, 'status' => 'ok',
-                                'changed' => result[:output] != src, 'changes' => result[:changes])
-      rescue Docscribe::ParseError => e
-        send_syntax_error(client, id, e, file)
+        changed = result[:output] != src
+        File.write(file, result[:output]) if changed
+        send_result(client, id, 'status' => 'ok', 'changed' => changed, 'changes' => result[:changes])
       rescue StandardError => e
-        raise unless defined?(Parser::SyntaxError) && e.is_a?(Parser::SyntaxError) # steep:ignore
-
-        send_syntax_error(client, id, e, file)
+        handle_request_error(client, id, e, file)
       end
 
       # @private
@@ -609,51 +601,82 @@ module Docscribe
         client.write(Protocol.serialize(response))
       end
 
-
-      # Classify an exception into a standardized error code, message, and data.
-      #
-      # @private
-      # @param [Object] exception
-      # @param [nil] _method_name JSON-RPC method name (unused, for future use)
-      # @param [Hash] params request params for context
-      # @return [Array]
-      def classify_error(exception, _method_name = nil, params = {}) # rubocop:disable Metrics/CyclomaticComplexity,Metrics/MethodLength
+      def classify_error(exception, _method_name = nil, params = {})
         # steep:ignore:start
         if exception.is_a?(LoadError) || exception.is_a?(Gem::LoadError)
-          data = {}
-          data[:gem] = exception.path if exception.respond_to?(:path) && exception.path
-          [ERROR_CODES[:gem_not_found], "#{exception.class}: #{exception.message}", data]
-        elsif exception.is_a?(Docscribe::ParseError) ||
-              (defined?(Parser::SyntaxError) && exception.is_a?(Parser::SyntaxError))
-          file = (params['file'] if params.is_a?(Hash)).to_s
-          data = { file: file, detail: exception.message }
-          line = if exception.respond_to?(:line)
-                   exception.line
-                 elsif exception.respond_to?(:diagnostic)
-                   exception.diagnostic.location.line
-                 end
-          data[:line] = line if line
-          [ERROR_CODES[:syntax_error], "Syntax error in #{file}", data]
-        elsif defined?(Timeout::Error) && exception.is_a?(Timeout::Error)
-          file = (params['file'] if params.is_a?(Hash)).to_s
-          data = { timeout: @idle_timeout || 30, file: file }
-          [ERROR_CODES[:timeout], "#{exception.class}: #{exception.message}", data]
+          classify_gem_error(exception)
+        elsif syntax_error?(exception)
+          classify_syntax_err(exception, params)
+        elsif timeout_error?(exception)
+          classify_timeout_err(exception, params)
         else
-          backtrace = exception.backtrace&.first(5) || []
-          data = { backtrace: backtrace }
-          [ERROR_CODES[:internal], "#{exception.class}: #{exception.message}", data]
+          classify_internal_err(exception)
         end
         # steep:ignore:end
       end
 
-      # Send a structured syntax error response with file context.
-      #
-      # @private
-      # @param [UNIXSocket] client
-      # @param [String, Integer] id
-      # @param [StandardError] exception
-      # @param [String] file path to the file being analyzed
-      # @return [void]
+      def syntax_error?(exception)
+        # steep:ignore:start
+        exception.is_a?(Docscribe::ParseError) ||
+          (defined?(Parser::SyntaxError) && exception.is_a?(Parser::SyntaxError))
+        # steep:ignore:end
+      end
+
+      def timeout_error?(exception)
+        # steep:ignore:start
+        !!defined?(Timeout::Error) && exception.is_a?(Timeout::Error)
+        # steep:ignore:end
+      end
+
+      def classify_gem_error(exception)
+        # steep:ignore:start
+        data = {}
+        data[:gem] = exception.path if exception.respond_to?(:path) && exception.path
+        [ERROR_CODES[:gem_not_found], "#{exception.class}: #{exception.message}", data]
+        # steep:ignore:end
+      end
+
+      def classify_syntax_err(exception, params)
+        # steep:ignore:start
+        file = (params['file'] if params.is_a?(Hash)).to_s
+        data = { file: file, detail: exception.message }
+        line = if exception.respond_to?(:line)
+                 exception.line
+               elsif exception.respond_to?(:diagnostic)
+                 exception.diagnostic.location.line
+               end
+        data[:line] = line if line
+        [ERROR_CODES[:syntax_error], "Syntax error in #{file}", data]
+        # steep:ignore:end
+      end
+
+      def classify_timeout_err(exception, params)
+        # steep:ignore:start
+        file = (params['file'] if params.is_a?(Hash)).to_s
+        data = { timeout: @idle_timeout || 30, file: file }
+        [ERROR_CODES[:timeout], "#{exception.class}: #{exception.message}", data]
+        # steep:ignore:end
+      end
+
+      def classify_internal_err(exception)
+        # steep:ignore:start
+        backtrace = exception.backtrace&.first(5) || []
+        data = { backtrace: backtrace }
+        [ERROR_CODES[:internal], "#{exception.class}: #{exception.message}", data]
+        # steep:ignore:end
+      end
+
+      def handle_request_error(client, id, exception, file)
+        # steep:ignore:start
+        if exception.is_a?(Docscribe::ParseError) ||
+           (defined?(Parser::SyntaxError) && exception.is_a?(Parser::SyntaxError))
+          send_syntax_error(client, id, exception, file)
+        else
+          raise
+        end
+        # steep:ignore:end
+      end
+
       def send_syntax_error(client, id, exception, file)
         # steep:ignore:start
         data = { file: file, detail: exception.message }
@@ -663,8 +686,8 @@ module Docscribe
                  exception.diagnostic.location.line
                end
         data[:line] = line if line
-        # steep:ignore:end
         send_error(client, id, ERROR_CODES[:syntax_error], "Syntax error in #{file}", data)
+        # steep:ignore:end
       end
 
       # @private
