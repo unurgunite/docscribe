@@ -476,11 +476,9 @@ module Docscribe
       # @param [UNIXSocket] client
       # @param [String, Integer] id
       # @param [Hash<String, Object>] params
-      # @raise [Docscribe::ParseError]
       # @raise [StandardError]
       # @return [void]
-      # @return [Object] if Docscribe::ParseError
-      # @return [Object] if StandardError
+      # @return [void] if StandardError
       def handle_check(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
@@ -498,11 +496,9 @@ module Docscribe
       # @param [UNIXSocket] client
       # @param [String, Integer] id
       # @param [Hash<String, Object>] params
-      # @raise [Docscribe::ParseError]
       # @raise [StandardError]
       # @return [void]
-      # @return [Object] if Docscribe::ParseError
-      # @return [Object] if StandardError
+      # @return [void] if StandardError
       def handle_fix(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
@@ -601,6 +597,11 @@ module Docscribe
         client.write(Protocol.serialize(response))
       end
 
+      # @private
+      # @param [Exception] exception
+      # @param [String?] _method_name
+      # @param [Hash<String, Object>] params
+      # @return [(Integer, String, Object?)]
       def classify_error(exception, _method_name = nil, params = {})
         if exception.is_a?(LoadError) || exception.is_a?(Gem::LoadError)
           classify_gem_error(exception)
@@ -613,21 +614,34 @@ module Docscribe
         end
       end
 
+      # @private
+      # @param [Exception] exception
+      # @return [Boolean]
       def syntax_error?(exception)
         exception.is_a?(Docscribe::ParseError) ||
           (defined?(Parser::SyntaxError) && exception.is_a?(Parser::SyntaxError))
       end
 
+      # @private
+      # @param [Exception] exception
+      # @return [Boolean]
       def timeout_error?(exception)
         !!defined?(Timeout::Error) && exception.is_a?(Timeout::Error)
       end
 
+      # @private
+      # @param [Object] exception
+      # @return [(Integer, String, Object)]
       def classify_gem_error(exception)
         data = { gem: nil }
         data[:gem] = exception.path if exception.respond_to?(:path) && exception.path
         [ERROR_CODES[:gem_not_found], "#{exception.class}: #{exception.message}", data]
       end
 
+      # @private
+      # @param [Object] exception
+      # @param [Hash<String, Object>] params
+      # @return [(Integer, String, Object)]
       def classify_syntax_err(exception, params)
         file = (params['file'] if params.is_a?(Hash)).to_s
         line = if exception.respond_to?(:line)
@@ -639,18 +653,32 @@ module Docscribe
         [ERROR_CODES[:syntax_error], "Syntax error in #{file}", data]
       end
 
+      # @private
+      # @param [Object] exception
+      # @param [Hash<String, Object>] params
+      # @return [(Integer, String, Object)]
       def classify_timeout_err(exception, params)
         file = (params['file'] if params.is_a?(Hash)).to_s
         data = { timeout: @idle_timeout || 30, file: file }
         [ERROR_CODES[:timeout], "#{exception.class}: #{exception.message}", data]
       end
 
+      # @private
+      # @param [Object] exception
+      # @return [(Integer, String, Object)]
       def classify_internal_err(exception)
         backtrace = exception.backtrace&.first(5) || []
         data = { backtrace: backtrace }
         [ERROR_CODES[:internal], "#{exception.class}: #{exception.message}", data]
       end
 
+      # @private
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [Object] exception
+      # @param [String] file
+      # @raise [StandardError]
+      # @return [void]
       def handle_request_error(client, id, exception, file)
         if exception.is_a?(Docscribe::ParseError) ||
            (defined?(Parser::SyntaxError) && exception.is_a?(Parser::SyntaxError))
@@ -660,6 +688,12 @@ module Docscribe
         end
       end
 
+      # @private
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [Object] exception
+      # @param [String] file
+      # @return [void]
       def send_syntax_error(client, id, exception, file)
         line = if exception.respond_to?(:line)
                  exception.line
@@ -675,7 +709,7 @@ module Docscribe
       # @param [String, Integer, nil] id
       # @param [Integer] code
       # @param [String] message
-      # @param [nil] data optional structured error data
+      # @param [Object?] data optional structured error data
       # @return [void]
       def send_error(client, id, code, message, data = nil)
         error = { code: code, message: message }
