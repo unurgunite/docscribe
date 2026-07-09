@@ -37,6 +37,7 @@ module Docscribe
       # @return [void]
       def ensure_running!(config_path: nil, daemonize: false, timeout: 5)
         return if running?(config_path)
+
         check_platform_support!
 
         lock_path = "#{socket_path(config_path)}.lock"
@@ -85,7 +86,7 @@ module Docscribe
       # @raise [StandardError]
       # @return [Boolean]
       # @return [Boolean] if Errno::ECONNREFUSED
-      # @return [Boolean] if Errno::ENOENT, Errno::ENOTSOCK
+      # @return [void, Boolean] if Errno::ENOENT, Errno::ENOTSOCK
       # @return [Boolean] if StandardError
       def running?(config_path = nil)
         return false unless defined?(UNIXSocket)
@@ -96,8 +97,7 @@ module Docscribe
       rescue Errno::ECONNREFUSED
         handle_stale_socket?(config_path)
       rescue Errno::ENOENT, Errno::ENOTSOCK
-        clean_socket_files(config_path)
-        false
+        clean_socket_files(config_path) || false
       rescue StandardError
         false
       end
@@ -153,6 +153,29 @@ module Docscribe
 
       ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml].freeze
 
+      # @param [String] config_path
+      # @return [String]
+      def config_hash(config_path)
+        resolved = File.expand_path(config_path)
+        mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+        Digest::MD5.hexdigest("#{resolved}:#{mtime}")
+      end
+
+      # Check platform compatibility before starting server.
+      #
+      # @raise [StandardError]
+      # @return [void]
+      def check_platform_support!
+        unless defined?(UNIXSocket)
+          raise 'Server mode requires Unix domain sockets, which are not available on Windows. ' \
+                'Use docscribe directly without --server flag.'
+        end
+        return if Process.respond_to?(:fork)
+
+        raise 'Server mode requires Process.fork, which is not available on JRuby. ' \
+              'Use docscribe directly without --server flag.'
+      end
+
       # Derive a project-specific socket path from the current working directory.
       # Uses MD5 (deterministic across processes) instead of String#hash
       # (which varies per Ruby process due to random seeding).
@@ -174,14 +197,6 @@ module Docscribe
         "#{SOCKET_DIR}/docscribe-#{Digest::MD5.hexdigest(seed)}.sock"
       end
 
-      # @param [String] config_path
-      # @return [String]
-      def config_hash(config_path)
-        resolved = File.expand_path(config_path)
-        mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
-        Digest::MD5.hexdigest("#{resolved}:#{mtime}")
-      end
-
       # Hash of environment files that affect analysis results.
       # When any of these change, the daemon is invalidated (new socket path).
       #
@@ -192,21 +207,6 @@ module Docscribe
           File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
         end
         Digest::MD5.hexdigest(parts.join(':'))
-      end
-
-      # Check platform compatibility before starting server.
-      #
-      # @raise [StandardError]
-      # @return [Object]
-      def check_platform_support!
-        unless defined?(UNIXSocket)
-          raise 'Server mode requires Unix domain sockets, which are not available on Windows. ' \
-                'Use docscribe directly without --server flag.'
-        end
-        return if Process.respond_to?(:fork)
-
-        raise 'Server mode requires Process.fork, which is not available on JRuby. ' \
-              'Use docscribe directly without --server flag.'
       end
 
       public :read_pid, :pid_path, :socket_path
