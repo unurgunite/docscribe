@@ -26,7 +26,7 @@ module Docscribe
         local_var_types = build_local_variable_types(body)
         run_last_expr_type(body, fallback_type: FALLBACK_TYPE, nil_as_optional: true,
                                  local_var_types: local_var_types) || FALLBACK_TYPE
-      rescue Parser::SyntaxError # steep:ignore
+      rescue Parser::SyntaxError
         FALLBACK_TYPE
       end
 

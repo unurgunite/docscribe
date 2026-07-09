@@ -167,7 +167,7 @@ module Docscribe
         # @return [Boolean] if StandardError
         def generate_for_file(path, options)
           process_source?(File.read(path), path, options)
-        rescue Parser::SyntaxError => e # steep:ignore
+        rescue Parser::SyntaxError => e
           warn "Syntax error in #{path}: #{e.message}"
           false
         rescue StandardError => e

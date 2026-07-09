@@ -1,5 +1,7 @@
 module Docscribe
   class ParseError < StandardError
+    def line: () -> Integer?
+    def diagnostic: () -> untyped
   end
 
   module InlineRewriter
