@@ -552,7 +552,7 @@ module Docscribe
           process_file_in_batch(file, strategy, timeout)
         end
 
-        send_result(client, id, results)
+        send_result(client, id, { 'results' => results })
       end
 
       # @private
