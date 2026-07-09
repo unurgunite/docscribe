@@ -97,7 +97,7 @@ module Docscribe
       rescue Errno::ECONNREFUSED
         handle_stale_socket?(config_path)
       rescue Errno::ENOENT, Errno::ENOTSOCK
-        clean_socket_files(config_path) || false
+        clean_socket_files(config_path) && false
       rescue StandardError
         false
       end
