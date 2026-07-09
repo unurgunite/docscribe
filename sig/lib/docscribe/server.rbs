@@ -26,6 +26,7 @@ module Docscribe
     def self?.socket_path: (?String? config_path) -> String
     def self?.config_hash: (String config_path) -> String
     def self?.env_hash: () -> String
+    def self?.check_platform_support!: () -> void
     def self?.ensure_running!: (?config_path: String?, ?daemonize: bool, ?timeout: Integer) -> void
     def self?.wait_for_ready: (?config_path: String?, ?timeout: Integer, ?raise_on_timeout: bool) -> bool
     def self?.start_daemon_process: (config_path: String?, daemonize: bool) -> void

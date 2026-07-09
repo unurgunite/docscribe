@@ -648,7 +648,8 @@ Exit code `0` if no placeholders found, `1` if any are detected.
 ### `docscribe server` — persistent daemon mode
 
 > [!NOTE]
-> Server mode requires **Ruby 3.1+** (`Process.fork` for background daemon).
+> Server mode requires **Ruby 3.1+** and a platform with `Process.fork` and Unix domain sockets.
+> Not available on **Windows** (no Unix sockets) or **JRuby** (no `Process.fork`).
 
 `docscribe server` starts a background daemon that keeps the Ruby runtime loaded and caches parsed ASTs across
 invocations. Subsequent `docscribe` calls with `--server` communicate with the daemon over a Unix socket instead of
@@ -703,6 +704,25 @@ docscribe-client --ping
 docscribe-client --shutdown
 ```
 
+Additional thin client commands:
+
+```shell
+# Print the Unix socket path (for IDE plugin integration)
+docscribe-client --socket-path
+
+# Show server info: version, pid, uptime, config path
+docscribe-client --info
+
+# Auto-start the daemon before running a check or fix
+docscribe-client --ensure --check lib/user.rb
+
+# Start the daemon standalone (exits when ready)
+docscribe-client --ensure
+
+# Batch check multiple files in one RPC call
+docscribe-client --check-batch lib/a.rb,lib/b.rb,lib/c.rb
+```
+
 The thin client is used automatically by
 the [VS Code](https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode)
 and [RubyMine](https://plugins.jetbrains.com/plugin/32349-docscribe) plugins when the daemon is running.
@@ -716,6 +736,41 @@ The daemon's socket path includes a hash of:
 
 If any of these files change, the next `docscribe --server` call will start a new daemon automatically. The old daemon
 is left to idle-timeout on its own.
+
+**JSON-RPC protocol (semi-stable API):**
+
+The daemon speaks JSON-RPC 2.0 over Unix socket. Each request is a JSON line, each response is a JSON line.
+
+Methods:
+
+| Method | Parameters | Result |
+|--------|-----------|--------|
+| `check` | `file` (string), `strategy` ("safe"/"aggressive"), `cli_overrides` (hash, optional) | `status`, `changed`, `changes` |
+| `fix` | same as `check` | `status`, `changed`, `changes` |
+| `check_batch` | `files` (array of strings), `strategy`, `cli_overrides`, `timeout` (int, optional) | array of per-file results |
+| `ping` | — | `version`, `pid`, `socket_path`, `started_at`, `uptime` |
+| `shutdown` | — | `status` |
+
+Error codes (standardized for IDE plugin integration):
+
+| Code | Meaning | `error.data` fields |
+|------|---------|-------------------|
+| `-32000` | Gem/dependency not found | `gem` |
+| `-32001` | Syntax error in analyzed file | `file`, `line`, `detail` |
+| `-32002` | Config load failure | — |
+| `-32010` | Timeout | `timeout`, `file` |
+| `-32099` | Internal unhandled error | `backtrace` (first 5 lines) |
+
+**Socket path derivation:**
+
+The socket path is a deterministic hash of:
+- Working directory (`Dir.pwd`)
+- `Gemfile.lock` mtime and `rbs_collection.lock.yaml` mtime (environment invalidation)
+- Config file path and mtime (when `--config` is used)
+
+Result: `/tmp/docscribe-<MD5 hash>.sock`
+
+IDE plugins should use `docscribe-client --socket-path` instead of reimplementing this algorithm.
 
 **CLI override handling:**
 

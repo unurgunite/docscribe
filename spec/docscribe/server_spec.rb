@@ -87,7 +87,7 @@ RSpec.describe Docscribe::Server do
 
     it 'raises when fork is unavailable' do
       allow(Process).to receive(:respond_to?).with(:fork).and_return(false)
-      expect { described_class.ensure_running! }.to raise_error(/fork not supported/)
+      expect { described_class.ensure_running! }.to raise_error(/JRuby/)
     end
 
     it 'calls fork' do
