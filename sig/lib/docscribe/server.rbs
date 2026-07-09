@@ -10,6 +10,8 @@ module Parser
 end
 
 module Timeout
+  def self?.timeout: ((Integer | Float) sec) { () -> untyped } -> untyped
+
   class Error < StandardError
   end
 end
@@ -87,9 +89,15 @@ module Docscribe
       def handle_request: (UNIXSocket, Hash[String, untyped]) -> void
       def handle_check: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def handle_fix: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
+      def handle_check_batch: (untyped, untyped, untyped) -> void
+      def run_rewrite: (String, Symbol) -> Hash[String, untyped]
       def apply_cli_overrides: (Hash[String, untyped]?) -> void
+      def build_effective_config: (Hash[String, untyped]) -> void
       def reset_effective_config: () -> void
+      def reset_effective_config_internal: () -> void
       def rewrite_file: (String, Symbol) -> [ String, Hash[Symbol, untyped] ]
+      def rewrite_and_cache: (String, Symbol, untyped, untyped, untyped) -> [ String, Hash[Symbol, untyped] ]
+      def process_file_in_batch: (String, Symbol, ?(Integer | Float)?) -> Hash[String, untyped]
       def handle_shutdown: (UNIXSocket, (String | Integer)) -> void
       def handle_ping: (UNIXSocket, (String | Integer)) -> void
       def send_result: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void

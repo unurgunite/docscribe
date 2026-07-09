@@ -7,6 +7,7 @@ require 'securerandom'
 require 'digest/md5'
 require 'tmpdir'
 require 'time'
+require 'timeout'
 require_relative 'lru_cache'
 
 module Docscribe
@@ -369,6 +370,8 @@ module Docscribe
         @server = nil
         @file_cache = LRUCache.new
         @started_at = Time.now
+        @cache_mutex = Mutex.new
+        @config_mutex = Mutex.new
       end
 
       # Start the daemon: load dependencies, bind socket, enter listen loop.
@@ -439,15 +442,16 @@ module Docscribe
       end
 
       # Accept a client connection if one is available.
+      # Spawns a thread to handle each client concurrently.
       #
       # @private
       # @return [void]
       def accept_client
-        client = @server&.accept if @server&.wait_readable(1)
+        client = @server&.accept if @server&.wait_readable(0.1)
         return unless client
 
-        handle_client(client)
         @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        Thread.new(client) { |conn| handle_client(conn) }
       end
 
       # Read a request from a client connection and dispatch it.
@@ -482,6 +486,7 @@ module Docscribe
         case method
         when 'check' then handle_check(client, request['id'], params)
         when 'fix' then handle_fix(client, request['id'], params)
+        when 'check_batch' then handle_check_batch(client, request['id'], params)
         when 'shutdown' then handle_shutdown(client, request['id'])
         when 'ping' then handle_ping(client, request['id'])
         else send_error(client, request['id'], -32_601, "Unknown method: #{method}")
@@ -530,12 +535,71 @@ module Docscribe
       end
 
       # @private
+      # @param [Object] client
+      # @param [Object] id
+      # @param [Object] params
+      # @return [void]
+      def handle_check_batch(client, id, params)
+        files = params['files']
+        return send_error(client, id, -32_602, 'Missing files parameter') unless files.is_a?(Array) && !files.empty?
+
+        strategy = (params['strategy'] || 'safe').to_sym
+        timeout = params['timeout']
+
+        apply_cli_overrides(params['cli_overrides'])
+
+        results = files.map do |file|
+          process_file_in_batch(file, strategy, timeout)
+        end
+
+        send_result(client, id, { 'results' => results })
+      end
+
+      # @private
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @param [Integer, Float?] timeout
+      # @raise [Timeout::Error]
+      # @raise [StandardError]
+      # @return [Hash<String, Object>]
+      # @return [Hash] if Timeout::Error
+      # @return [Hash] if StandardError
+      def process_file_in_batch(file, strategy, timeout = nil)
+        return { 'file' => file, 'status' => 'error', 'error' => "File not found: #{file}" } unless File.file?(file)
+
+        block = -> { run_rewrite(file, strategy) }
+        timeout ? Timeout.timeout(timeout.to_f, &block) : block.call
+      rescue Timeout::Error
+        { 'file' => file, 'status' => 'error', 'error' => 'Timeout' }
+      rescue StandardError => e
+        { 'file' => file, 'status' => 'error', 'error' => "#{e.class}: #{e.message}" }
+      end
+
+      # @private
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @return [Hash<String, Object>]
+      def run_rewrite(file, strategy)
+        src, result = rewrite_file(file, strategy)
+        { 'file' => file, 'status' => result[:output] == src ? 'ok' : 'fail', 'changes' => result[:changes] }
+      end
+
+      # @private
       # @param [Hash<String, Object>?] overrides
       # @return [void]
       def apply_cli_overrides(overrides)
-        return reset_effective_config if overrides.nil? || overrides.empty?
-        return if @applied_overrides == overrides
+        @config_mutex.synchronize do
+          return reset_effective_config_internal if overrides.nil? || overrides.empty?
+          return if @applied_overrides == overrides
 
+          build_effective_config(overrides)
+        end
+      end
+
+      # @private
+      # @param [Hash<String, Object>] overrides
+      # @return [void]
+      def build_effective_config(overrides)
         config = @config or return
         require 'docscribe/cli/config_builder'
         opts = overrides.transform_keys(&:to_sym)
@@ -547,6 +611,12 @@ module Docscribe
       # @private
       # @return [void]
       def reset_effective_config
+        @config_mutex.synchronize { reset_effective_config_internal }
+      end
+
+      # @private
+      # @return [void]
+      def reset_effective_config_internal
         return unless @effective_config
 
         @effective_config = nil
@@ -560,12 +630,25 @@ module Docscribe
       # @raise [StandardError]
       # @return [(String, Hash<Symbol, Object>)]
       def rewrite_file(file, strategy)
-        config = @effective_config || @config or raise 'Docscribe: config not loaded'
-        key = [file, strategy]
-        mtime = File.mtime(file)
-        hit = @file_cache[key]
-        return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime
+        @cache_mutex.synchronize do
+          config = @effective_config || @config or raise 'Docscribe: config not loaded'
+          key = [file, strategy]
+          mtime = File.mtime(file)
+          hit = @file_cache[key]
+          return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime
 
+          rewrite_and_cache(file, strategy, config, key, mtime)
+        end
+      end
+
+      # @private
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @param [Object] config
+      # @param [Object] key
+      # @param [Object] mtime
+      # @return [(String, Hash<Symbol, Object>)]
+      def rewrite_and_cache(file, strategy, config, key, mtime)
         src = File.read(file)
         rbs = config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil
         result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: config, core_rbs_provider: rbs, file: file)
@@ -606,7 +689,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client connected client socket
       # @param [String, Integer] id request ID
-      # @param [Hash<String, Object>] result result data
+      # @param [Object] result result data
       # @return [void]
       def send_result(client, id, result)
         response = { jsonrpc: '2.0', id: id, result: result }

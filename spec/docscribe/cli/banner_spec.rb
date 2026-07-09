@@ -13,7 +13,7 @@ RSpec.describe Docscribe::CLI do
       next if File.basename(file).start_with?('_') || EXCLUDE.include?(File.basename(file))
 
       it "defines BANNER in #{File.basename(file)}" do
-        expect(File.read(file)).to match(/BANNER = <<~/)
+        expect(File.read(file)).to include('BANNER = <<~')
       end
 
       it "has BANNER constant in #{File.basename(file)}" do
