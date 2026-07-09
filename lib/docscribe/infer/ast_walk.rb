@@ -12,9 +12,9 @@ module Docscribe
       # Non-AST values are ignored.
       #
       # @note module_function: defines #walk (visibility: private)
-      # @param [Object] node root AST node
+      # @param [Parser::AST::Node, nil] node root AST node
       # @param [Proc] block visitor block
-      # @return [Object?]
+      # @return [void]
       def walk(node, &block)
         return unless node.is_a?(Parser::AST::Node)
 
