@@ -556,30 +556,32 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] file
-      # @param [Object] strategy
-      # @param [nil] timeout
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @param [Integer, Float?] timeout
       # @raise [Timeout::Error]
       # @raise [StandardError]
-      # @return [Hash, Object]
+      # @return [Hash<String, Object>]
+      # @return [Hash] if Timeout::Error
+      # @return [Hash] if StandardError
       def process_file_in_batch(file, strategy, timeout = nil)
         return { 'file' => file, 'status' => 'error', 'error' => "File not found: #{file}" } unless File.file?(file)
 
-        begin
-          if timeout
-            Timeout.timeout(timeout.to_f) do
-              src, result = rewrite_file(file, strategy)
-              { 'file' => file, 'status' => result[:output] == src ? 'ok' : 'fail', 'changes' => result[:changes] }
-            end
-          else
-            src, result = rewrite_file(file, strategy)
-            { 'file' => file, 'status' => result[:output] == src ? 'ok' : 'fail', 'changes' => result[:changes] }
-          end
-        rescue Timeout::Error
-          { 'file' => file, 'status' => 'error', 'error' => 'Timeout' }
-        rescue StandardError => e
-          { 'file' => file, 'status' => 'error', 'error' => "#{e.class}: #{e.message}" }
-        end
+        block = -> { run_rewrite(file, strategy) }
+        timeout ? Timeout.timeout(timeout.to_f, &block) : block.call
+      rescue Timeout::Error
+        { 'file' => file, 'status' => 'error', 'error' => 'Timeout' }
+      rescue StandardError => e
+        { 'file' => file, 'status' => 'error', 'error' => "#{e.class}: #{e.message}" }
+      end
+
+      # @private
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @return [Hash<String, Object>]
+      def run_rewrite(file, strategy)
+        src, result = rewrite_file(file, strategy)
+        { 'file' => file, 'status' => result[:output] == src ? 'ok' : 'fail', 'changes' => result[:changes] }
       end
 
       # @private
@@ -587,19 +589,23 @@ module Docscribe
       # @return [void]
       def apply_cli_overrides(overrides)
         @config_mutex.synchronize do
-          if overrides.nil? || overrides.empty?
-            reset_effective_config_internal
-            return
-          end
+          return reset_effective_config_internal if overrides.nil? || overrides.empty?
           return if @applied_overrides == overrides
 
-          config = @config or return
-          require 'docscribe/cli/config_builder'
-          opts = overrides.transform_keys(&:to_sym)
-          @effective_config = Docscribe::CLI::ConfigBuilder.build(config, opts)
-          @file_cache.clear
-          @applied_overrides = overrides
+          build_effective_config(overrides)
         end
+      end
+
+      # @private
+      # @param [Hash<String, Object>] overrides
+      # @return [void]
+      def build_effective_config(overrides)
+        config = @config or return
+        require 'docscribe/cli/config_builder'
+        opts = overrides.transform_keys(&:to_sym)
+        @effective_config = Docscribe::CLI::ConfigBuilder.build(config, opts)
+        @file_cache.clear
+        @applied_overrides = overrides
       end
 
       # @private
@@ -609,7 +615,7 @@ module Docscribe
       end
 
       # @private
-      # @return [Object]
+      # @return [void]
       def reset_effective_config_internal
         return unless @effective_config
 
@@ -631,12 +637,23 @@ module Docscribe
           hit = @file_cache[key]
           return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime
 
-          src = File.read(file)
-          rbs = config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil
-          result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: config, core_rbs_provider: rbs, file: file)
-          @file_cache[key] = { mtime: mtime, src: src, result: result }
-          [src, result]
+          rewrite_and_cache(file, strategy, config, key, mtime)
         end
+      end
+
+      # @private
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @param [Object] config
+      # @param [Object] key
+      # @param [Object] mtime
+      # @return [(String, Hash<Symbol, Object>)]
+      def rewrite_and_cache(file, strategy, config, key, mtime)
+        src = File.read(file)
+        rbs = config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil
+        result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: config, core_rbs_provider: rbs, file: file)
+        @file_cache[key] = { mtime: mtime, src: src, result: result }
+        [src, result]
       end
 
       # Handle a shutdown request.
@@ -672,7 +689,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client connected client socket
       # @param [String, Integer] id request ID
-      # @param [Hash<String, Object>] result result data
+      # @param [Object] result result data
       # @return [void]
       def send_result(client, id, result)
         response = { jsonrpc: '2.0', id: id, result: result }
