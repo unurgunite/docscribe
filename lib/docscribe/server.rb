@@ -7,6 +7,7 @@ require 'securerandom'
 require 'digest/md5'
 require 'tmpdir'
 require 'time'
+require 'timeout'
 require_relative 'lru_cache'
 
 module Docscribe
@@ -34,11 +35,11 @@ module Docscribe
       # @param [String?] config_path optional config file path
       # @param [Boolean] daemonize redirect stdin/stdout/stderr to /dev/null
       # @param [Integer] timeout max seconds to wait for readiness
-      # @raise [StandardError]
       # @return [void]
       def ensure_running!(config_path: nil, daemonize: false, timeout: 5)
         return if running?(config_path)
-        raise 'Server mode is unavailable on this Ruby/platform (Process.fork not supported)' unless Process.respond_to?(:fork)
+
+        check_platform_support!
 
         lock_path = "#{socket_path(config_path)}.lock"
         File.open(lock_path, File::RDWR | File::CREAT, 0o644) do |lock|
@@ -86,17 +87,18 @@ module Docscribe
       # @raise [StandardError]
       # @return [Boolean]
       # @return [Boolean] if Errno::ECONNREFUSED
-      # @return [Boolean] if Errno::ENOENT, Errno::ENOTSOCK
+      # @return [void, Boolean] if Errno::ENOENT, Errno::ENOTSOCK
       # @return [Boolean] if StandardError
       def running?(config_path = nil)
+        return false unless defined?(UNIXSocket)
+
         socket = UNIXSocket.new(socket_path(config_path))
         socket.close
         true
       rescue Errno::ECONNREFUSED
         handle_stale_socket?(config_path)
       rescue Errno::ENOENT, Errno::ENOTSOCK
-        clean_socket_files(config_path)
-        false
+        clean_socket_files(config_path) && false
       rescue StandardError
         false
       end
@@ -152,6 +154,29 @@ module Docscribe
 
       ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml].freeze
 
+      # @param [String] config_path
+      # @return [String]
+      def config_hash(config_path)
+        resolved = File.expand_path(config_path)
+        mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
+        Digest::MD5.hexdigest("#{resolved}:#{mtime}")
+      end
+
+      # Check platform compatibility before starting server.
+      #
+      # @raise [StandardError]
+      # @return [void]
+      def check_platform_support!
+        unless defined?(UNIXSocket)
+          raise 'Server mode requires Unix domain sockets, which are not available on Windows. ' \
+                'Use docscribe directly without --server flag.'
+        end
+        return if Process.respond_to?(:fork)
+
+        raise 'Server mode requires Process.fork, which is not available on JRuby. ' \
+              'Use docscribe directly without --server flag.'
+      end
+
       # Derive a project-specific socket path from the current working directory.
       # Uses MD5 (deterministic across processes) instead of String#hash
       # (which varies per Ruby process due to random seeding).
@@ -171,14 +196,6 @@ module Docscribe
           seed << ":#{resolved}:#{mtime}"
         end
         "#{SOCKET_DIR}/docscribe-#{Digest::MD5.hexdigest(seed)}.sock"
-      end
-
-      # @param [String] config_path
-      # @return [String]
-      def config_hash(config_path)
-        resolved = File.expand_path(config_path)
-        mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
-        Digest::MD5.hexdigest("#{resolved}:#{mtime}")
       end
 
       # Hash of environment files that affect analysis results.
@@ -332,6 +349,14 @@ module Docscribe
 
     # Daemon process that loads the Ruby runtime once and serves requests.
     class Daemon
+      # Standardized JSON-RPC error codes.
+      ERROR_CODES = {
+        gem_not_found: -32_000,
+        syntax_error: -32_001,
+        config_load_failure: -32_002,
+        timeout: -32_010,
+        internal: -32_099
+      }.freeze
       # @param [String?] socket_path custom socket path
       # @param [Integer] idle_timeout seconds before automatic shutdown
       # @param [String?] config_path custom config path
@@ -345,6 +370,8 @@ module Docscribe
         @server = nil
         @file_cache = LRUCache.new
         @started_at = Time.now
+        @cache_mutex = Mutex.new
+        @config_mutex = Mutex.new
       end
 
       # Start the daemon: load dependencies, bind socket, enter listen loop.
@@ -415,15 +442,16 @@ module Docscribe
       end
 
       # Accept a client connection if one is available.
+      # Spawns a thread to handle each client concurrently.
       #
       # @private
       # @return [void]
       def accept_client
-        client = @server&.accept if @server&.wait_readable(1)
+        client = @server&.accept if @server&.wait_readable(0.1)
         return unless client
 
-        handle_client(client)
         @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        Thread.new(client) { |conn| handle_client(conn) }
       end
 
       # Read a request from a client connection and dispatch it.
@@ -437,7 +465,10 @@ module Docscribe
         request = Protocol.parse_response(request_line)
         request ? handle_request(client, request) : send_error(client, nil, -32_700, 'Parse error')
       rescue StandardError => e
-        send_error(client, request&.dig('id'), -32_603, "#{e.class}: #{e.message}")
+        method_name = request&.dig('method')
+        error_params = request&.dig('params') || {}
+        code, message, data = classify_error(e, method_name, error_params)
+        send_error(client, request&.dig('id'), code, message, data)
       ensure
         client.close
       end
@@ -455,6 +486,7 @@ module Docscribe
         case method
         when 'check' then handle_check(client, request['id'], params)
         when 'fix' then handle_fix(client, request['id'], params)
+        when 'check_batch' then handle_check_batch(client, request['id'], params)
         when 'shutdown' then handle_shutdown(client, request['id'])
         when 'ping' then handle_ping(client, request['id'])
         else send_error(client, request['id'], -32_601, "Unknown method: #{method}")
@@ -465,7 +497,9 @@ module Docscribe
       # @param [UNIXSocket] client
       # @param [String, Integer] id
       # @param [Hash<String, Object>] params
+      # @raise [StandardError]
       # @return [void]
+      # @return [void] if StandardError
       def handle_check(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
@@ -475,13 +509,17 @@ module Docscribe
         src, result = rewrite_file(file, strategy)
         send_result(client, id, 'status' => result[:output] == src ? 'ok' : 'fail',
                                 'changed' => result[:output] != src, 'changes' => result[:changes])
+      rescue StandardError => e
+        handle_request_error(client, id, e, file)
       end
 
       # @private
       # @param [UNIXSocket] client
       # @param [String, Integer] id
       # @param [Hash<String, Object>] params
+      # @raise [StandardError]
       # @return [void]
+      # @return [void] if StandardError
       def handle_fix(client, id, params)
         file = params['file']
         strategy = (params['strategy'] || 'safe').to_sym
@@ -489,18 +527,79 @@ module Docscribe
 
         apply_cli_overrides(params['cli_overrides'])
         src, result = rewrite_file(file, strategy)
-        File.write(file, result[:output]) if result[:output] != src
-        send_result(client, id, 'status' => 'ok',
-                                'changed' => result[:output] != src, 'changes' => result[:changes])
+        changed = result[:output] != src
+        File.write(file, result[:output]) if changed
+        send_result(client, id, 'status' => 'ok', 'changed' => changed, 'changes' => result[:changes])
+      rescue StandardError => e
+        handle_request_error(client, id, e, file)
+      end
+
+      # @private
+      # @param [Object] client
+      # @param [Object] id
+      # @param [Object] params
+      # @return [void]
+      def handle_check_batch(client, id, params)
+        files = params['files']
+        return send_error(client, id, -32_602, 'Missing files parameter') unless files.is_a?(Array) && !files.empty?
+
+        strategy = (params['strategy'] || 'safe').to_sym
+        timeout = params['timeout']
+
+        apply_cli_overrides(params['cli_overrides'])
+
+        results = files.map do |file|
+          process_file_in_batch(file, strategy, timeout)
+        end
+
+        send_result(client, id, { 'results' => results })
+      end
+
+      # @private
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @param [Integer, Float?] timeout
+      # @raise [Timeout::Error]
+      # @raise [StandardError]
+      # @return [Hash<String, Object>]
+      # @return [Hash] if Timeout::Error
+      # @return [Hash] if StandardError
+      def process_file_in_batch(file, strategy, timeout = nil)
+        return { 'file' => file, 'status' => 'error', 'error' => "File not found: #{file}" } unless File.file?(file)
+
+        block = -> { run_rewrite(file, strategy) }
+        timeout ? Timeout.timeout(timeout.to_f, &block) : block.call
+      rescue Timeout::Error
+        { 'file' => file, 'status' => 'error', 'error' => 'Timeout' }
+      rescue StandardError => e
+        { 'file' => file, 'status' => 'error', 'error' => "#{e.class}: #{e.message}" }
+      end
+
+      # @private
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @return [Hash<String, Object>]
+      def run_rewrite(file, strategy)
+        src, result = rewrite_file(file, strategy)
+        { 'file' => file, 'status' => result[:output] == src ? 'ok' : 'fail', 'changes' => result[:changes] }
       end
 
       # @private
       # @param [Hash<String, Object>?] overrides
       # @return [void]
       def apply_cli_overrides(overrides)
-        return reset_effective_config if overrides.nil? || overrides.empty?
-        return if @applied_overrides == overrides
+        @config_mutex.synchronize do
+          return reset_effective_config_internal if overrides.nil? || overrides.empty?
+          return if @applied_overrides == overrides
 
+          build_effective_config(overrides)
+        end
+      end
+
+      # @private
+      # @param [Hash<String, Object>] overrides
+      # @return [void]
+      def build_effective_config(overrides)
         config = @config or return
         require 'docscribe/cli/config_builder'
         opts = overrides.transform_keys(&:to_sym)
@@ -512,6 +611,12 @@ module Docscribe
       # @private
       # @return [void]
       def reset_effective_config
+        @config_mutex.synchronize { reset_effective_config_internal }
+      end
+
+      # @private
+      # @return [void]
+      def reset_effective_config_internal
         return unless @effective_config
 
         @effective_config = nil
@@ -525,12 +630,25 @@ module Docscribe
       # @raise [StandardError]
       # @return [(String, Hash<Symbol, Object>)]
       def rewrite_file(file, strategy)
-        config = @effective_config || @config or raise 'Docscribe: config not loaded'
-        key = [file, strategy]
-        mtime = File.mtime(file)
-        hit = @file_cache[key]
-        return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime
+        @cache_mutex.synchronize do
+          config = @effective_config || @config or raise 'Docscribe: config not loaded'
+          key = [file, strategy]
+          mtime = File.mtime(file)
+          hit = @file_cache[key]
+          return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime
 
+          rewrite_and_cache(file, strategy, config, key, mtime)
+        end
+      end
+
+      # @private
+      # @param [String] file
+      # @param [Symbol] strategy
+      # @param [Object] config
+      # @param [Object] key
+      # @param [Object] mtime
+      # @return [(String, Hash<Symbol, Object>)]
+      def rewrite_and_cache(file, strategy, config, key, mtime)
         src = File.read(file)
         rbs = config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil
         result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: config, core_rbs_provider: rbs, file: file)
@@ -571,7 +689,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client connected client socket
       # @param [String, Integer] id request ID
-      # @param [Hash<String, Object>] result result data
+      # @param [Object] result result data
       # @return [void]
       def send_result(client, id, result)
         response = { jsonrpc: '2.0', id: id, result: result }
@@ -579,13 +697,123 @@ module Docscribe
       end
 
       # @private
+      # @param [Exception] exception
+      # @param [String?] _method_name
+      # @param [Hash<String, Object>] params
+      # @return [(Integer, String, Object?)]
+      def classify_error(exception, _method_name = nil, params = {})
+        if exception.is_a?(LoadError) || exception.is_a?(Gem::LoadError)
+          classify_gem_error(exception)
+        elsif syntax_error?(exception)
+          classify_syntax_err(exception, params)
+        elsif timeout_error?(exception)
+          classify_timeout_err(exception, params)
+        else
+          classify_internal_err(exception)
+        end
+      end
+
+      # @private
+      # @param [Exception] exception
+      # @return [Boolean]
+      def syntax_error?(exception)
+        exception.is_a?(Docscribe::ParseError) ||
+          (defined?(Parser::SyntaxError) && exception.is_a?(Parser::SyntaxError))
+      end
+
+      # @private
+      # @param [Exception] exception
+      # @return [Boolean]
+      def timeout_error?(exception)
+        !!defined?(Timeout::Error) && exception.is_a?(Timeout::Error)
+      end
+
+      # @private
+      # @param [Object] exception
+      # @return [(Integer, String, Object)]
+      def classify_gem_error(exception)
+        data = { gem: nil }
+        data[:gem] = exception.path if exception.respond_to?(:path) && exception.path
+        [ERROR_CODES[:gem_not_found], "#{exception.class}: #{exception.message}", data]
+      end
+
+      # @private
+      # @param [Object] exception
+      # @param [Hash<String, Object>] params
+      # @return [(Integer, String, Object)]
+      def classify_syntax_err(exception, params)
+        file = (params['file'] if params.is_a?(Hash)).to_s
+        line = if exception.respond_to?(:line)
+                 exception.line
+               elsif exception.respond_to?(:diagnostic)
+                 exception.diagnostic.location.line
+               end
+        data = { file: file, detail: exception.message, line: line }.compact
+        [ERROR_CODES[:syntax_error], "Syntax error in #{file}", data]
+      end
+
+      # @private
+      # @param [Object] exception
+      # @param [Hash<String, Object>] params
+      # @return [(Integer, String, Object)]
+      def classify_timeout_err(exception, params)
+        file = (params['file'] if params.is_a?(Hash)).to_s
+        data = { timeout: @idle_timeout || 30, file: file }
+        [ERROR_CODES[:timeout], "#{exception.class}: #{exception.message}", data]
+      end
+
+      # @private
+      # @param [Object] exception
+      # @return [(Integer, String, Object)]
+      def classify_internal_err(exception)
+        backtrace = exception.backtrace&.first(5) || []
+        data = { backtrace: backtrace }
+        [ERROR_CODES[:internal], "#{exception.class}: #{exception.message}", data]
+      end
+
+      # @private
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [Object] exception
+      # @param [String] file
+      # @raise [StandardError]
+      # @return [void]
+      def handle_request_error(client, id, exception, file)
+        if exception.is_a?(Docscribe::ParseError) ||
+           (defined?(Parser::SyntaxError) && exception.is_a?(Parser::SyntaxError))
+          send_syntax_error(client, id, exception, file)
+        else
+          raise
+        end
+      end
+
+      # @private
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [Object] exception
+      # @param [String] file
+      # @return [void]
+      def send_syntax_error(client, id, exception, file)
+        line = if exception.respond_to?(:line)
+                 exception.line
+               elsif exception.respond_to?(:diagnostic)
+                 exception.diagnostic.location.line
+               end
+        data = { file: file, detail: exception.message, line: line }.compact
+        send_error(client, id, ERROR_CODES[:syntax_error], "Syntax error in #{file}", data)
+      end
+
+      # @private
       # @param [UNIXSocket] client
       # @param [String, Integer, nil] id
       # @param [Integer] code
       # @param [String] message
+      # @param [Object?] data optional structured error data
       # @return [void]
-      def send_error(client, id, code, message)
-        response = { jsonrpc: '2.0', id: id, error: { code: code, message: message } }
+      def send_error(client, id, code, message, data = nil)
+        error = { code: code, message: message }
+        error[:data] = data if data
+        response = { jsonrpc: '2.0', id: id, error: error }
         client.write(Protocol.serialize(response))
       end
 
