@@ -98,7 +98,7 @@ module Docscribe
         buffer = Parser::Source::Buffer.new('(param)')
         buffer.source = src
         Docscribe::Parsing.parse_buffer(buffer)
-      rescue Parser::SyntaxError # steep:ignore
+      rescue Parser::SyntaxError
         nil
       end
     end

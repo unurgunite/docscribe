@@ -169,7 +169,7 @@ module Docscribe
           return unless ast
 
           walk_for_methods(ast, [], methods, path)
-        rescue Parser::SyntaxError => e # steep:ignore
+        rescue Parser::SyntaxError => e
           warn "Syntax error in #{path}: #{e.message}"
         rescue StandardError => e
           warn "Error parsing #{path}: #{e.class}: #{e.message}"
