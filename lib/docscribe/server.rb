@@ -689,7 +689,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client connected client socket
       # @param [String, Integer] id request ID
-      # @param [Object] result result data
+      # @param [Hash<String, Object>] result result data
       # @return [void]
       def send_result(client, id, result)
         response = { jsonrpc: '2.0', id: id, result: result }

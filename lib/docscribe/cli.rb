@@ -18,13 +18,15 @@ module Docscribe
       end
 
       COMMANDS = {
-        'init' => :Init,
-        'generate' => :Generate,
-        'sigs' => :Sigs,
-        'rbs' => :RbsGen,
-        'update_types' => :UpdateTypes,
         'check_for_comments' => :CheckForComments,
-        'server' => :ServerCmd
+        'config' => :ConfigDump,
+        'coverage' => :Coverage,
+        'generate' => :Generate,
+        'init' => :Init,
+        'rbs' => :RbsGen,
+        'server' => :ServerCmd,
+        'sigs' => :Sigs,
+        'update_types' => :UpdateTypes
       }.freeze
 
       private

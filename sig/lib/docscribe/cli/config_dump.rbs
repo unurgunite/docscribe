@@ -1,0 +1,15 @@
+module Docscribe
+  module CLI
+    module ConfigDump
+      BANNER: String
+
+      def self.run: (Array[String] argv) -> 0
+
+      private
+
+      def self.parse_options: (Array[String] argv) -> Hash[Symbol, untyped]
+      def self.build_parser: (Hash[Symbol, untyped] opts) -> OptionParser
+      def self.parse_cli_overrides: (Array[String] argv) -> Hash[Symbol, untyped]
+    end
+  end
+end

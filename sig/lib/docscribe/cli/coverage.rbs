@@ -1,0 +1,45 @@
+module Docscribe
+  module CLI
+    module Coverage
+      BANNER: String
+
+      class CoverageStats
+        attr_accessor total_methods: Integer
+        attr_accessor documented_methods: Integer
+        attr_accessor total_params: Integer
+        attr_accessor documented_params: Integer
+        attr_accessor total_returns: Integer
+        attr_accessor documented_returns: Integer
+
+        def initialize: (?total_methods: Integer, ?documented_methods: Integer, ?total_params: Integer, ?documented_params: Integer, ?total_returns: Integer, ?documented_returns: Integer) -> void
+
+        def method_coverage: () -> (Integer | Float)
+        def param_coverage: () -> (Integer | Float)
+        def return_coverage: () -> (Integer | Float)
+      end
+
+      def self.run: (Array[String] argv) -> 0
+
+      private
+
+      def self.parse_options: (Array[String] argv) -> Hash[Symbol, untyped]
+      def self.build_parser: (Hash[Symbol, untyped] opts) -> OptionParser
+      def self.expand_paths: (Array[String] argv, Config conf) -> Array[String]
+      def self.expand_files: (Array[String] args) -> Array[String]
+      def self.analyze_coverage: (Array[String] paths, Config _conf) -> CoverageStats
+      def self.init_stats: () -> CoverageStats
+      def self.analyze_file: (String path, CoverageStats stats) -> void
+      def self.analyze_node: (untyped node, CoverageStats stats, String src) -> void
+      def self.analyze_method_node: (untyped node, CoverageStats stats, String src) -> void
+      def self.analyze_documented_method: (untyped node, CoverageStats stats, String doc_comment) -> void
+      def self.count_method_params: (untyped node, CoverageStats stats) -> void
+      def self.count_params: (untyped node) -> Integer
+      def self.extract_doc_comment: (String src, Integer method_line) -> String?
+      def self.collect_comment_lines: (Array[String] lines, Integer method_line) -> Array[String]
+      def self.print_report: (CoverageStats stats, Hash[Symbol, untyped] opts) -> void
+      def self.print_json_report: (CoverageStats stats) -> void
+      def self.report_entry: (Integer total, Integer documented, (Integer | Float) coverage) -> Hash[Symbol, Integer | Float]
+      def self.print_text_report: (CoverageStats stats) -> void
+    end
+  end
+end
