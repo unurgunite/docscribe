@@ -35,6 +35,8 @@ module Docscribe
           processed: 0
         }.freeze
 
+        PARALLEL_DEFAULT_THREADS = 4
+
         CLI_OVERRIDE_KEYS = %i[
           keep_descriptions no_boilerplate
           include exclude include_file exclude_file
@@ -382,6 +384,10 @@ module Docscribe
         # @param [Array<String>] paths Ruby file paths to process
         # @return [Integer] process exit code
         def run_files(options:, conf:, paths:)
+          if options[:parallel] && paths.size > 1
+            return run_files_parallel(options: options, conf: conf, paths: paths)
+          end
+
           $stdout.sync = true
 
           state = initial_run_state
@@ -395,6 +401,81 @@ module Docscribe
           finalize_run(options, state)
 
           run_exit_code(options, state)
+        end
+
+        # Process files in parallel using a Thread pool.
+        #
+        # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
+        # @param [Docscribe::Config] conf effective config
+        # @param [Array<String>] paths Ruby file paths to process
+        # @return [Integer] process exit code
+        def run_files_parallel(options:, conf:, paths:)
+          $stdout.sync = true
+
+          thread_count = ENV.fetch('DOCSCRIBE_THREADS', PARALLEL_DEFAULT_THREADS).to_i
+          thread_count = [thread_count, 1].max
+
+          state = initial_run_state
+          state[:total] = paths.size
+          pwd = Pathname.pwd
+
+          mutex = Mutex.new
+          error_mutex = Mutex.new
+
+          threads = thread_count.times.map do
+            Thread.new do
+              loop do
+                path = nil
+                mutex.synchronize do
+                  path = paths.shift
+                end
+                break unless path
+
+                begin
+                  local_state = initial_run_state
+                  process_one_file(path, options: options, conf: conf, pwd: pwd, state: local_state)
+                  merge_state(state, local_state, error_mutex)
+                rescue StandardError => e
+                  error_mutex.synchronize do
+                    state[:had_errors] = true
+                    state[:error_paths] << path
+                    state[:error_messages][path] = "#{e.class}: #{e.message}"
+                  end
+                  $stderr.print('E')
+                end
+              end
+            end
+          end
+
+          threads.each(&:join)
+
+          finalize_run(options, state)
+          run_exit_code(options, state)
+        end
+
+        # Merge a thread-local state into the shared state under mutex protection.
+        #
+        # @param [Docscribe::CLI::Formatters::state] target shared state to merge into
+        # @param [Docscribe::CLI::Formatters::state] source thread-local state to merge from
+        # @param [Mutex] mutex mutex protecting the target state
+        # @return [void]
+        def merge_state(target, source, mutex)
+          mutex.synchronize do
+            target[:changed] ||= source[:changed]
+            target[:had_errors] ||= source[:had_errors]
+            target[:checked_ok] += source[:checked_ok]
+            target[:checked_fail] += source[:checked_fail]
+            target[:corrected] += source[:corrected]
+            target[:corrected_paths].concat(source[:corrected_paths])
+            source[:corrected_changes].each { |k, v| target[:corrected_changes][k] = v }
+            target[:fail_paths].concat(source[:fail_paths])
+            source[:fail_changes].each { |k, v| target[:fail_changes][k] = v }
+            target[:error_paths].concat(source[:error_paths])
+            source[:error_messages].each { |k, v| target[:error_messages][k] = v }
+            target[:type_mismatch_paths].concat(source[:type_mismatch_paths])
+            source[:type_mismatch_changes].each { |k, v| target[:type_mismatch_changes][k] = v }
+            target[:processed] += source[:processed]
+          end
         end
 
         # @param [Docscribe::CLI::Formatters::opts] options
