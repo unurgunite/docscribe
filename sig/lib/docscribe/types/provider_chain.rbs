@@ -10,6 +10,8 @@ module Docscribe
       def initialize: (*_Provider providers) -> void
 
       def signature_for: (container: String, scope: Symbol, name: (Symbol | String), ?param_count: Integer?, ?param_names: Array[String]) -> (Types::MethodSignature | nil)
+
+      def select_overload: (Types::MethodSignature sig, Integer? param_count, Array[String] param_names) -> (Types::MethodSignature | nil)
     end
   end
 end

@@ -26,7 +26,8 @@ RSpec.describe Docscribe::CLI::UpdateTypes do
 
     describe '.run_first_pass' do
       before do
-        opts = DEFAULT_OPTS.merge(mode: :write, strategy: :aggressive, rbs_collection: true, no_boilerplate: true, keep_descriptions: true, rbs: true)
+        opts = DEFAULT_OPTS.merge(mode: :write, strategy: :aggressive, rbs_collection: true, no_boilerplate: true,
+                                  keep_descriptions: true, rbs: true)
         allow(Docscribe::CLI::Options).to receive(:parse!).and_return(opts)
         allow(Docscribe::CLI::Run).to receive(:run)
       end

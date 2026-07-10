@@ -14,7 +14,8 @@ RSpec.describe Docscribe::CLI::CheckForComments do
   describe '.resolve_placeholders' do
     it 'returns default_message and param_documentation from config' do
       config = resolve_config({ 'doc' => nil }, 'Param documentation.')
-      expect(described_class.send(:resolve_placeholders, config)).to include('Method documentation.', 'Param documentation.')
+      expect(described_class.send(:resolve_placeholders,
+                                  config)).to include('Method documentation.', 'Param documentation.')
     end
 
     it 'returns unique values only' do

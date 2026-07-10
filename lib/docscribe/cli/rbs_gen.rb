@@ -85,7 +85,8 @@ module Docscribe
       # @!attribute [rw] inside_sclass
       #   @return [Boolean]
       #   @param [Boolean] value
-      WalkContext = Struct.new(:containers, :method_defs, :path, :comment_map, :src_lines, :inside_sclass, keyword_init: true)
+      WalkContext = Struct.new(:containers, :method_defs, :path, :comment_map, :src_lines, :inside_sclass,
+                               keyword_init: true)
 
       class << self
         # @param [Array<String>] argv

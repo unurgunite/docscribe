@@ -374,7 +374,7 @@ module Docscribe
       # Define parallel option
       #
       # @note module_function: defines #define_parallel_option (visibility: private)
-      # @param [OptionParser] opts the option parser to configure
+      # @param [Hash<Symbol, Object>] opts the option parser to configure
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_parallel_option(opts, options)

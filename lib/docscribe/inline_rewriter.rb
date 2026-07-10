@@ -841,13 +841,7 @@ module Docscribe
       # @return [Docscribe::Types::MethodSignature, nil]
       def resolve_external_signature(insertion, signature_provider)
         node_name = SourceHelpers.node_name(insertion.node) #: Symbol
-        param_count = nil
-        param_names = [] #: Array[untyped]
-        args = DocBuilder.extract_args_from_node(insertion.node)
-        if args
-          param_count = args.children.length
-          param_names = args.children.map { |a| a.children.first.to_s if a.respond_to?(:children) }.compact
-        end
+        param_count, param_names = extract_param_info(insertion)
         signature_provider&.signature_for(
           container: insertion.container,
           scope: insertion.scope,
@@ -855,6 +849,17 @@ module Docscribe
           param_count: param_count,
           param_names: param_names
         )
+      end
+
+      # @private
+      # @param [Object] insertion
+      # @return [(Integer?, Array<Object>)]
+      def extract_param_info(insertion)
+        args = DocBuilder.extract_args_from_node(insertion.node)
+        empty = [] #: Array[untyped]
+        return [nil, empty] unless args
+
+        [args.children.length, args.children.map { |a| a.children.first.to_s if a.respond_to?(:children) }.compact]
       end
 
       # Resolve param types
@@ -1246,8 +1251,24 @@ module Docscribe
       # @return [String, nil]
       # @return [nil] if StandardError
       def build_attr_merge_additions(ins:, existing_lines:, config:, signature_provider:)
-        missing = missing_attr_names(ins, existing_lines)
         indent = SourceHelpers.line_indent(ins.node)
+        lines = build_attr_merge_missing_lines(ins, existing_lines, indent, config, signature_provider)
+        lines.concat(build_attr_merge_tag_lines(ins, existing_lines, indent, config, signature_provider))
+
+        lines.empty? ? '' : lines.map { |l| "#{l}\n" }.join
+      rescue StandardError
+        nil
+      end
+
+      # @private
+      # @param [Object] ins
+      # @param [Array<String>] existing_lines
+      # @param [String] indent
+      # @param [Docscribe::Config] config
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider
+      # @return [Array<String>]
+      def build_attr_merge_missing_lines(ins, existing_lines, indent, config, signature_provider)
+        missing = missing_attr_names(ins, existing_lines)
         lines = [] #: Array[String]
 
         unless missing.empty?
@@ -1256,15 +1277,24 @@ module Docscribe
                                                  signature_provider: signature_provider, names: missing))
         end
 
-        tag_additions = build_missing_tag_additions(ins, existing_lines, indent, config, signature_provider)
-        unless tag_additions.empty?
-          lines << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#' && lines.empty?
-          lines.concat(tag_additions)
-        end
+        lines
+      end
 
-        lines.empty? ? '' : lines.map { |l| "#{l}\n" }.join
-      rescue StandardError
-        nil
+      # @private
+      # @param [Object] ins
+      # @param [Array<String>] existing_lines
+      # @param [String] indent
+      # @param [Docscribe::Config] config
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider
+      # @return [Array<String>]
+      def build_attr_merge_tag_lines(ins, existing_lines, indent, config, signature_provider)
+        tag_additions = build_missing_tag_additions(ins, existing_lines, indent, config, signature_provider)
+        return [] if tag_additions.empty?
+
+        result = [] #: Array[String]
+        result << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#'
+        result.concat(tag_additions)
+        result
       end
 
       # Missing attr names
@@ -1305,24 +1335,34 @@ module Docscribe
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @return [Array<String>]
       def build_missing_tag_additions(ins, existing_lines, indent, config, signature_provider)
-        additions = [] #: Array[String]
-
-        ins.names.each do |name_sym|
-          existing_line_idx = existing_attr_line_index(existing_lines, name_sym.to_s)
-          next unless existing_line_idx
-
-          access = ins.access
-          return_missing = %i[r rw].include?(access) && !existing_lines_contain_tag?(existing_lines, existing_line_idx, 'return')
-          param_missing = %i[w rw].include?(access) && !existing_lines_contain_tag?(existing_lines, existing_line_idx, 'param')
-
-          next unless return_missing || param_missing
+        ins.names.each_with_object([]) do |name_sym, additions|
+          idx = existing_attr_line_index(existing_lines, name_sym.to_s)
+          next unless idx
 
           attr_type = attribute_type(ins, name_sym, config, signature_provider: signature_provider)
-          additions << "#{indent}#   @return [#{attr_type}]" if return_missing
-          additions << format_attribute_param_tag(indent, 'value', attr_type, style: config.param_tag_style) if param_missing
+          additions << "#{indent}#   @return [#{attr_type}]" if attr_return_missing?(ins.access, existing_lines, idx)
+          if attr_param_missing?(ins.access, existing_lines, idx)
+            additions << format_attribute_param_tag(indent, 'value', attr_type, style: config.param_tag_style)
+          end
         end
+      end
 
-        additions
+      # @private
+      # @param [Symbol] access
+      # @param [Array<String>] existing_lines
+      # @param [Integer] idx
+      # @return [Boolean]
+      def attr_return_missing?(access, existing_lines, idx)
+        %i[r rw].include?(access) && !existing_lines_contain_tag?(existing_lines, idx, 'return')
+      end
+
+      # @private
+      # @param [Symbol] access
+      # @param [Array<String>] existing_lines
+      # @param [Integer] idx
+      # @return [Boolean]
+      def attr_param_missing?(access, existing_lines, idx)
+        %i[w rw].include?(access) && !existing_lines_contain_tag?(existing_lines, idx, 'param')
       end
 
       # Find index of line containing @!attribute for a specific name
@@ -1330,7 +1370,7 @@ module Docscribe
       # @private
       # @param [Array<String>] lines array of existing doc comment lines
       # @param [String] name the attribute name to search for
-      # @return [Integer, nil]
+      # @return [Integer?]
       def existing_attr_line_index(lines, name)
         Array(lines).each_with_index do |line, idx|
           return idx if line.match?(/\A\s*#\s*@!attribute\b(?:\s+\[[^\]]+\])?\s+#{Regexp.escape(name)}\b/)

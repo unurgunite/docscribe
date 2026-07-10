@@ -203,5 +203,15 @@ module Docscribe
     def self.extract_method_override!: ((Hash[Symbol, untyped] | nil) method_override) -> Hash[Symbol, untyped]
 
     def self.normalize_override_tags: (Array[untyped] tags) -> Array[Plugin::Tag]
+
+    def self.extract_param_info: (untyped insertion) -> [ Integer?, Array[untyped] ]
+
+    def self.build_attr_merge_missing_lines: (untyped ins, Array[String] existing_lines, String indent, Config config, (Types::ProviderChain | nil) signature_provider) -> Array[String]
+
+    def self.build_attr_merge_tag_lines: (untyped ins, Array[String] existing_lines, String indent, Config config, (Types::ProviderChain | nil) signature_provider) -> Array[String]
+
+    def self.attr_return_missing?: (Symbol access, Array[String] existing_lines, Integer idx) -> bool
+
+    def self.attr_param_missing?: (Symbol access, Array[String] existing_lines, Integer idx) -> bool
   end
 end

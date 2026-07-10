@@ -40,8 +40,8 @@ module Docscribe
 
       # Analyze method behavior from AST node and method name.
       #
-      # @param [Parser::AST::Node] node def or defs node
-      # @param [Symbol] method_name
+      # @param [Object] node def or defs node
+      # @param [Object] method_name
       # @return [Hash<Symbol, Object>]
       def analyze_behavior(node, method_name)
         body = extract_body(node)
@@ -50,9 +50,9 @@ module Docscribe
 
       # Get behavioral description for a method.
       #
-      # @param [Parser::AST::Node] node def or defs node
-      # @param [Symbol] method_name
-      # @return [String, nil]
+      # @param [Object] node def or defs node
+      # @param [Object] method_name
+      # @return [String?]
       def infer_behavior_description(node, method_name)
         body = extract_body(node)
         return nil unless body
@@ -63,8 +63,8 @@ module Docscribe
 
       # Extract method body from def/defs node.
       #
-      # @param [Parser::AST::Node] node def or defs node
-      # @return [Parser::AST::Node, nil]
+      # @param [Object] node def or defs node
+      # @return [Object?]
       def extract_body(node)
         return nil unless node.is_a?(Parser::AST::Node)
 

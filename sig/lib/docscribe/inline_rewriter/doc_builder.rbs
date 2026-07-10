@@ -65,6 +65,8 @@ module Docscribe
 
       def self?.extract_return_info: (String line, Hash[Symbol, untyped] info) -> void
 
+      def self?.extract_sig_param_info: (Parser::AST::Node? node) -> [ Integer?, Array[String] ]
+
       def self?.extract_visibility_info: (String line, Hash[Symbol, untyped] info) -> void
 
       def self?.extract_raise_info: (String line, Hash[String, bool] raise_types) -> void

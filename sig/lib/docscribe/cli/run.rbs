@@ -114,6 +114,24 @@ module Docscribe
 
       def self.build_failure_line: (Formatters::state state, Integer type_mismatch_count, Integer checked_error) -> String
 
+      def self.run_parallel_workers: (untyped options, untyped conf, Array[String] paths, Formatters::state state) -> void
+
+      def self.parallel_worker: (Hash[Symbol, untyped] pool) -> Thread
+
+      def self.fetch_work: (Array[String] paths, Mutex mutex) -> String?
+
+      def self.run_and_merge: (String path, Hash[Symbol, untyped] pool) -> void
+
+      def self.handle_worker_error: (StandardError exception, String path, Formatters::state state, Mutex error_mutex) -> void
+
+      def self.merge_state_flags: (Formatters::state target, Formatters::state source) -> void
+
+      def self.merge_state_counts: (Formatters::state target, Formatters::state source) -> void
+
+      def self.merge_state_arrays: (Formatters::state target, Formatters::state source) -> void
+
+      def self.merge_state_hashes: (Formatters::state target, Formatters::state source) -> void
+
       public
 
       def self.print_fail_paths: (Formatters::state state, Formatters::opts options) -> void

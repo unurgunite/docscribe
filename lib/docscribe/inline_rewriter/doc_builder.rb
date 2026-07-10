@@ -219,19 +219,26 @@ module Docscribe
       # @param [Symbol] scope method scope symbol
       # @param [Symbol] name the method name string
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external sig provider
+      # @param [Parser::AST::Node] node
       # @return [Docscribe::Types::MethodSignature, nil]
       def resolve_external_sig(container, scope, name, signature_provider, node = nil)
-        param_count = nil
-        param_names = [] #: Array[untyped]
-        if node
-          args = extract_args_from_node(node)
-          if args
-            param_count = args.children.length
-            param_names = args.children.map { |a| a.children.first.to_s if a.respond_to?(:children) }.compact
-          end
-        end
+        param_count, param_names = extract_sig_param_info(node)
         signature_provider&.signature_for(container: container, scope: scope, name: name,
                                           param_count: param_count, param_names: param_names)
+      end
+
+      # @note module_function: defines #extract_sig_param_info (visibility: private)
+      # @param [Parser::AST::Node?] node
+      # @return [(Integer?, Array<String>)]
+      def extract_sig_param_info(node)
+        empty = [] #: Array[String]
+        return [nil, empty] unless node
+
+        args = extract_args_from_node(node)
+        empty = [] #: Array[String]
+        return [nil, empty] unless args
+
+        [args.children.length, args.children.map { |a| a.children.first.to_s if a.respond_to?(:children) }.compact]
       end
 
       # Compute returns spec
