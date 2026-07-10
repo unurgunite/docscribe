@@ -58,7 +58,7 @@ module Docscribe
         # @private
         # @return [Hash<Symbol, String, Boolean>]
         def default_init_options
-          { config: 'docscribe.yml', force: false, stdout: false, help: false }
+          { config: 'docscribe.yml', force: false, stdout: false, help: false, pre_commit: false }
         end
 
         # Build and return an OptionParser for the init command.
@@ -72,6 +72,7 @@ module Docscribe
             o.on('--config PATH', 'Where to write the config (default: docscribe.yml)') { |v| opts[:config] = v }
             o.on('-f', '--force', 'Overwrite if the file already exists') { opts[:force] = true }
             o.on('--stdout', 'Print config template to STDOUT instead of writing a file') { opts[:stdout] = true }
+            o.on('--pre-commit', 'Install pre-commit hook for docscribe check') { opts[:pre_commit] = true }
             o.on('-h', '--help', 'Show this help') do
               opts[:help] = true
               puts o
@@ -86,6 +87,10 @@ module Docscribe
         # @param [String] yaml config template content
         # @return [Integer] exit code
         def write_init_config(opts, yaml)
+          if opts[:pre_commit]
+            return install_pre_commit_hook(opts)
+          end
+
           path = opts[:config]
           if File.exist?(path) && !opts[:force]
             warn "Config already exists: #{path} (use --force to overwrite)"
@@ -94,6 +99,47 @@ module Docscribe
 
           File.write(path, yaml)
           puts "Created: #{path}"
+          0
+        end
+        def install_pre_commit_hook(opts)
+          hook_dir = File.join('.git', 'hooks')
+          hook_path = File.join(hook_dir, 'pre-commit')
+
+          unless Dir.exist?(hook_dir)
+            warn "No .git/hooks directory found. Are you in a git repository?"
+            return 1
+          end
+
+          if File.exist?(hook_path) && !opts[:force]
+            warn "Pre-commit hook already exists: #{hook_path} (use --force to overwrite)"
+            return 1
+          end
+
+          hook_content = <<~'HOOK'
+            #!/bin/sh
+            # Docscribe pre-commit hook
+            # Runs docscribe check on staged Ruby files
+
+            STAGED_RUBY_FILES=$(git diff --cached --name-only --diff-filter=ACM -- '*.rb')
+            if [ -z "$STAGED_RUBY_FILES" ]; then
+              exit 0
+            fi
+
+            echo "Checking documentation with docscribe..."
+            bundle exec docscribe check $STAGED_RUBY_FILES
+            RESULT=$?
+
+            if [ $RESULT -ne 0 ]; then
+              echo "Documentation check failed. Please add documentation before committing."
+              exit 1
+            fi
+
+            exit 0
+          HOOK
+
+          File.write(hook_path, hook_content)
+          File.chmod(0o755, hook_path)
+          puts "Installed pre-commit hook: #{hook_path}"
           0
         end
       end

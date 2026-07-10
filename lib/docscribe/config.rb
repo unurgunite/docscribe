@@ -26,6 +26,15 @@ module Docscribe
       @raw = deep_merge(DEFAULT, raw)
       @config_path = config_path
     end
+
+    def to_h
+      hash = {}
+      instance_variables.each do |var|
+        key = var.to_s.sub('@', '')
+        hash[key] = instance_variable_get(var)
+      end
+      hash
+    end
   end
 end
 
