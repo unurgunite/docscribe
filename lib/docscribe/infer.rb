@@ -48,17 +48,6 @@ module Docscribe
         Behavior.analyze(body, method_name)
       end
 
-      # Extract method body from def/defs node.
-      #
-      # @param [Parser::AST::Node] node def or defs node
-      # @return [Parser::AST::Node, nil]
-      def extract_body(node)
-        return nil unless node.is_a?(Parser::AST::Node)
-
-        body_idx = node.type == :def ? 2 : 3
-        node.children[body_idx]
-      end
-
       # Get behavioral description for a method.
       #
       # @param [Parser::AST::Node] node def or defs node
@@ -70,6 +59,17 @@ module Docscribe
 
         analysis = Behavior.analyze(body, method_name)
         Behavior.infer_description(analysis, method_name)
+      end
+
+      # Extract method body from def/defs node.
+      #
+      # @param [Parser::AST::Node] node def or defs node
+      # @return [Parser::AST::Node, nil]
+      def extract_body(node)
+        return nil unless node.is_a?(Parser::AST::Node)
+
+        body_idx = node.type == :def ? 2 : 3
+        node.children[body_idx]
       end
 
       # Infer a parameter type from its internal name form and optional default

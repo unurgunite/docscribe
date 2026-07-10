@@ -231,7 +231,7 @@ module Docscribe
           end
         end
         signature_provider&.signature_for(container: container, scope: scope, name: name,
-                                           param_count: param_count, param_names: param_names)
+                                          param_count: param_count, param_names: param_names)
       end
 
       # Compute returns spec

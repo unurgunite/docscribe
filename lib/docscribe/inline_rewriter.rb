@@ -1352,8 +1352,8 @@ module Docscribe
         i = attr_line_idx + 1
         while i < lines.length
           line = lines[i]
-          break unless line.match?(/\A\s*#/)                    # not a comment line
-          break if line.match?(/\A\s*# @(?!@)/)                  # next top-level directive (single space)
+          break unless line.match?(/\A\s*#/) # not a comment line
+          break if line.match?(/\A\s*# @(?!@)/) # next top-level directive (single space)
           return true if line.match?(/\A\s*#\s{2,}@#{tag_name}\b/)
 
           i += 1

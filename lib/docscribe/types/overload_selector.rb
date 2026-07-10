@@ -9,7 +9,7 @@ module Docscribe
           return overloads.first if overloads.size == 1
 
           candidates = overloads.map { |sig| score_signature(sig, arg_count: arg_count, param_names: param_names) }
-          best = candidates.reject { |_sig, score| score.nil? }
+          best = candidates.compact
                            .max_by { |_sig, score| score }
 
           best&.first || overloads.first
@@ -36,9 +36,7 @@ module Docscribe
 
           score += 3 if sig.return_type && !sig.return_type.empty?
 
-          if sig.return_type && sig.return_type != 'Object'
-            score += 1
-          end
+          score += 1 if sig.return_type && sig.return_type != 'Object'
 
           [sig, score]
         end

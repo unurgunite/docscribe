@@ -4,7 +4,7 @@ module Docscribe
   module Infer
     module Behavior
       MUTATING_METHODS = %i[<< push pop delete merge update write save create destroy
-                             insert update_all delete_all].freeze
+                            insert update_all delete_all].freeze
 
       class << self
         def analyze(body, method_name)
@@ -23,13 +23,13 @@ module Docscribe
           result
         end
 
-        def infer_description(analysis, method_name)
+        def infer_description(analysis, _method_name)
           return nil unless analysis[:has_side_effects] || analysis[:predicate]
 
           if analysis[:predicate]
-            "Returns true if the condition is met, false otherwise"
+            'Returns true if the condition is met, false otherwise'
           elsif analysis[:returns_self]
-            "Returns self to allow method chaining"
+            'Returns self to allow method chaining'
           elsif analysis[:has_side_effects]
             nil
           end
@@ -57,9 +57,9 @@ module Docscribe
           method_sym = method_name.is_a?(Symbol) ? method_name : nil
           return unless method_sym
 
-          if MUTATING_METHODS.include?(method_sym)
-            result[:has_side_effects] = true
-          end
+          return unless MUTATING_METHODS.include?(method_sym)
+
+          result[:has_side_effects] = true
         end
       end
     end

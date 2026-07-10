@@ -384,9 +384,7 @@ module Docscribe
         # @param [Array<String>] paths Ruby file paths to process
         # @return [Integer] process exit code
         def run_files(options:, conf:, paths:)
-          if options[:parallel] && paths.size > 1
-            return run_files_parallel(options: options, conf: conf, paths: paths)
-          end
+          return run_files_parallel(options: options, conf: conf, paths: paths) if options[:parallel] && paths.size > 1
 
           $stdout.sync = true
 
