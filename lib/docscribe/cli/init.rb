@@ -69,15 +69,25 @@ module Docscribe
         def build_init_parser(opts)
           OptionParser.new do |o|
             o.banner = BANNER
-            o.on('--config PATH', 'Where to write the config (default: docscribe.yml)') { |v| opts[:config] = v }
-            o.on('-f', '--force', 'Overwrite if the file already exists') { opts[:force] = true }
-            o.on('--stdout', 'Print config template to STDOUT instead of writing a file') { opts[:stdout] = true }
-            o.on('--pre-commit', 'Install pre-commit hook for docscribe check') { opts[:pre_commit] = true }
+            add_init_options(o, opts)
             o.on('-h', '--help', 'Show this help') do
               opts[:help] = true
               puts o
             end
           end
+        end
+
+        # Add init-specific CLI options to the parser.
+        #
+        # @private
+        # @param [OptionParser] parser
+        # @param [Hash<Symbol, Object>] opts options hash
+        # @return [void]
+        def add_init_options(parser, opts)
+          parser.on('--config PATH', 'Where to write the config (default: docscribe.yml)') { |v| opts[:config] = v }
+          parser.on('-f', '--force', 'Overwrite if the file already exists') { opts[:force] = true }
+          parser.on('--stdout', 'Print config template to STDOUT instead of writing a file') { opts[:stdout] = true }
+          parser.on('--pre-commit', 'Install pre-commit hook for docscribe check') { opts[:pre_commit] = true }
         end
 
         # Write the config template to a file.
@@ -101,23 +111,47 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] opts
+        # @param [Hash<Symbol, Object>] opts
         # @return [Integer]
         def install_pre_commit_hook(opts)
           hook_dir = File.join('.git', 'hooks')
           hook_path = File.join(hook_dir, 'pre-commit')
 
+          return 1 unless hook_preconditions_met?(hook_dir, hook_path, opts)
+
+          File.write(hook_path, pre_commit_hook_script)
+          File.chmod(0o755, hook_path)
+          puts "Installed pre-commit hook: #{hook_path}"
+          0
+        end
+
+        # Check pre-commit hook installation preconditions.
+        #
+        # @private
+        # @param [String] hook_dir
+        # @param [String] hook_path
+        # @param [Hash<Symbol, Object>] opts
+        # @return [Boolean]
+        def hook_preconditions_met?(hook_dir, hook_path, opts)
           unless Dir.exist?(hook_dir)
             warn 'No .git/hooks directory found. Are you in a git repository?'
-            return 1
+            return false
           end
 
           if File.exist?(hook_path) && !opts[:force]
             warn "Pre-commit hook already exists: #{hook_path} (use --force to overwrite)"
-            return 1
+            return false
           end
 
-          hook_content = <<~HOOK
+          true
+        end
+
+        # Generate the pre-commit hook shell script content.
+        #
+        # @private
+        # @return [String]
+        def pre_commit_hook_script
+          <<~HOOK
             #!/bin/sh
             # Docscribe pre-commit hook
             # Runs docscribe check on staged Ruby files
@@ -138,11 +172,6 @@ module Docscribe
 
             exit 0
           HOOK
-
-          File.write(hook_path, hook_content)
-          File.chmod(0o755, hook_path)
-          puts "Installed pre-commit hook: #{hook_path}"
-          0
         end
       end
     end

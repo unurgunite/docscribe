@@ -7,6 +7,7 @@ require 'docscribe/cli/config_builder'
 
 module Docscribe
   module CLI
+    # Print the fully resolved configuration as YAML.
     module ConfigDump
       BANNER = <<~TEXT
         Usage: docscribe config [options]
@@ -17,7 +18,7 @@ module Docscribe
       TEXT
 
       class << self
-        # @param [Object] argv
+        # @param [Array<String>] argv
         # @return [Integer]
         def run(argv)
           opts = parse_options(argv)
@@ -33,11 +34,19 @@ module Docscribe
         private
 
         # @private
-        # @param [Object] argv
-        # @return [Hash]
+        # @param [Array<String>] argv
+        # @return [Hash<Symbol, Object>]
         def parse_options(argv)
           opts = { config: nil }
-          parser = OptionParser.new do |o|
+          build_parser(opts).parse!(argv)
+          opts
+        end
+
+        # @private
+        # @param [Hash<Symbol, Object>] opts
+        # @return [OptionParser]
+        def build_parser(opts)
+          OptionParser.new do |o|
             o.banner = BANNER
             o.on('--config PATH', 'Path to config file') { |v| opts[:config] = v }
             o.on('-h', '--help', 'Show help') do
@@ -45,13 +54,11 @@ module Docscribe
               puts o
             end
           end
-          parser.parse!(argv)
-          opts
         end
 
         # @private
-        # @param [Object] argv
-        # @return [Object]
+        # @param [Array<String>] argv
+        # @return [Hash<Symbol, Object>]
         def parse_cli_overrides(argv)
           opts = Docscribe::CLI::Options.parse!(argv)
           opts.slice(:rbs, :rbs_collection, :sorbet, :sig_dirs, :rbi_dirs, :include, :exclude)
