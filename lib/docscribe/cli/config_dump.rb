@@ -17,6 +17,8 @@ module Docscribe
       TEXT
 
       class << self
+        # @param [Object] argv
+        # @return [Integer]
         def run(argv)
           opts = parse_options(argv)
           return 0 if opts[:help]
@@ -30,17 +32,26 @@ module Docscribe
 
         private
 
+        # @private
+        # @param [Object] argv
+        # @return [Hash]
         def parse_options(argv)
           opts = { config: nil }
           parser = OptionParser.new do |o|
             o.banner = BANNER
             o.on('--config PATH', 'Path to config file') { |v| opts[:config] = v }
-            o.on('-h', '--help', 'Show help') { opts[:help] = true; puts o }
+            o.on('-h', '--help', 'Show help') do
+              opts[:help] = true
+              puts o
+            end
           end
           parser.parse!(argv)
           opts
         end
 
+        # @private
+        # @param [Object] argv
+        # @return [Object]
         def parse_cli_overrides(argv)
           opts = Docscribe::CLI::Options.parse!(argv)
           opts.slice(:rbs, :rbs_collection, :sorbet, :sig_dirs, :rbi_dirs, :include, :exclude)

@@ -87,9 +87,7 @@ module Docscribe
         # @param [String] yaml config template content
         # @return [Integer] exit code
         def write_init_config(opts, yaml)
-          if opts[:pre_commit]
-            return install_pre_commit_hook(opts)
-          end
+          return install_pre_commit_hook(opts) if opts[:pre_commit]
 
           path = opts[:config]
           if File.exist?(path) && !opts[:force]
@@ -101,12 +99,16 @@ module Docscribe
           puts "Created: #{path}"
           0
         end
+
+        # @private
+        # @param [Object] opts
+        # @return [Integer]
         def install_pre_commit_hook(opts)
           hook_dir = File.join('.git', 'hooks')
           hook_path = File.join(hook_dir, 'pre-commit')
 
           unless Dir.exist?(hook_dir)
-            warn "No .git/hooks directory found. Are you in a git repository?"
+            warn 'No .git/hooks directory found. Are you in a git repository?'
             return 1
           end
 
@@ -115,7 +117,7 @@ module Docscribe
             return 1
           end
 
-          hook_content = <<~'HOOK'
+          hook_content = <<~HOOK
             #!/bin/sh
             # Docscribe pre-commit hook
             # Runs docscribe check on staged Ruby files

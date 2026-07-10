@@ -27,6 +27,7 @@ module Docscribe
       @config_path = config_path
     end
 
+    # @return [Hash]
     def to_h
       hash = {}
       instance_variables.each do |var|

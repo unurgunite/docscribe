@@ -36,6 +36,8 @@ module Docscribe
       end
 
       class << self
+        # @param [Object] argv
+        # @return [Integer]
         def run(argv)
           opts = parse_options(argv)
           return 0 if opts[:help]
@@ -51,18 +53,28 @@ module Docscribe
 
         private
 
+        # @private
+        # @param [Object] argv
+        # @return [Hash]
         def parse_options(argv)
           opts = { config: nil, format: 'text' }
           parser = OptionParser.new do |o|
             o.banner = BANNER
             o.on('--config PATH', 'Path to config file') { |v| opts[:config] = v }
             o.on('--format FORMAT', 'Output format (text, json)') { |v| opts[:format] = v }
-            o.on('-h', '--help', 'Show help') { opts[:help] = true; puts o }
+            o.on('-h', '--help', 'Show help') do
+              opts[:help] = true
+              puts o
+            end
           end
           parser.parse!(argv)
           opts
         end
 
+        # @private
+        # @param [Object] argv
+        # @param [Object] conf
+        # @return [Array<Elem>]
         def expand_paths(argv, conf)
           require 'pathname'
           args = argv.empty? ? ['.'] : argv
@@ -77,7 +89,12 @@ module Docscribe
           files.uniq.sort.select { |p| conf.process_file?(p) }
         end
 
-        def analyze_coverage(paths, conf)
+        # @private
+        # @param [Object] paths
+        # @param [Object] conf
+        # @raise [StandardError]
+        # @return [CoverageStats]
+        def analyze_coverage(paths, _conf)
           require 'docscribe/parsing'
           require 'parser/current'
 
@@ -100,6 +117,11 @@ module Docscribe
           stats
         end
 
+        # @private
+        # @param [Object] node
+        # @param [Object] stats
+        # @param [Object] src
+        # @return [Object?]
         def analyze_node(node, stats, src)
           return unless node.is_a?(Parser::AST::Node)
 
@@ -111,9 +133,7 @@ module Docscribe
             if doc_comment
               stats.documented_methods += 1
 
-              if doc_comment.match?(/@return\b/)
-                stats.documented_returns += 1
-              end
+              stats.documented_returns += 1 if doc_comment.match?(/@return\b/)
               stats.total_returns += 1
 
               param_matches = doc_comment.scan(/@param\b/)
@@ -135,6 +155,10 @@ module Docscribe
           node.children.each { |child| analyze_node(child, stats, src) if child.is_a?(Parser::AST::Node) }
         end
 
+        # @private
+        # @param [Object] src
+        # @param [Object] method_line
+        # @return [String]
         def extract_doc_comment(src, method_line)
           lines = src.lines
           comment_lines = []
@@ -143,14 +167,20 @@ module Docscribe
           while idx >= 0
             line = lines[idx]
             break unless line =~ /^\s*#/
+
             comment_lines.unshift(line)
             idx -= 1
           end
 
           return nil if comment_lines.empty?
+
           comment_lines.join
         end
 
+        # @private
+        # @param [Object] stats
+        # @param [Object] opts
+        # @return [Object]
         def print_report(stats, opts)
           case opts[:format]
           when 'json'
@@ -161,8 +191,8 @@ module Docscribe
               returns: { total: stats.total_returns, documented: stats.documented_returns, coverage: stats.return_coverage }
             )
           else
-            puts "Documentation Coverage Report"
-            puts "============================="
+            puts 'Documentation Coverage Report'
+            puts '============================='
             puts
             puts "Methods: #{stats.documented_methods}/#{stats.total_methods} (#{stats.method_coverage}%)"
             puts "Params:  #{stats.documented_params}/#{stats.total_params} (#{stats.param_coverage}%)"
