@@ -1,3 +1,5 @@
+inherit_from: .rubocop_todo.yml
+
 plugins:
   - rubocop-sorted_methods_by_call
   - rubocop-rspec
