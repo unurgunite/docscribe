@@ -634,9 +634,7 @@ module Docscribe
       def normalize_plugin_doc(doc, indent, config:, anchor_node:)
         doc = normalize_plugin_doc_indent(doc, indent)
         doc = trim_trailing_blank_lines(doc)
-        if anchor_node && %i[def defs].include?(anchor_node.type) && config.include_default_message?
-          doc = prepend_default_message_if_no_prose(doc, anchor_node, indent, config)
-        end
+        doc = prepend_default_message_if_no_prose(doc, anchor_node, indent, config) if anchor_node && %i[def defs].include?(anchor_node.type) && config.include_default_message?
         doc
       end
 
@@ -798,9 +796,7 @@ module Docscribe
       # @return [void]
       def merge_existing_descriptions!(params, parsed)
         params[:param_descriptions] = parsed[:param_descriptions] if parsed[:param_descriptions].any?
-        if parsed[:return_description] && !parsed[:return_description].start_with?('if ')
-          params[:return_description] = parsed[:return_description]
-        end
+        params[:return_description] = parsed[:return_description] if parsed[:return_description] && !parsed[:return_description].start_with?('if ')
         params[:description] = parsed[:description] if parsed[:description].any?
       end
 
@@ -1346,9 +1342,7 @@ module Docscribe
 
           attr_type = attribute_type(ins, name_sym, config, signature_provider: signature_provider)
           additions << "#{indent}#   @return [#{attr_type}]" if attr_return_missing?(ins.access, existing_lines, idx)
-          if attr_param_missing?(ins.access, existing_lines, idx)
-            additions << format_attribute_param_tag(indent, 'value', attr_type, style: config.param_tag_style)
-          end
+          additions << format_attribute_param_tag(indent, 'value', attr_type, style: config.param_tag_style) if attr_param_missing?(ins.access, existing_lines, idx)
         end
       end
 

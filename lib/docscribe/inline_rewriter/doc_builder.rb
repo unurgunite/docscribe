@@ -849,9 +849,7 @@ module Docscribe
       # @param [Hash<Symbol, Object>] info parse info hash to update with visibility flags
       # @return [Array<String>]
       def merge_module_function_note_lines(indent, insertion, name, info)
-        unless insertion.respond_to?(:module_function) && insertion.module_function && !info[:has_module_function_note]
-          return []
-        end
+        return [] unless insertion.respond_to?(:module_function) && insertion.module_function && !info[:has_module_function_note]
 
         included_vis = insertion.included_instance_visibility || :private
         ["#{indent}# @note module_function: defines ##{name} (visibility: #{included_vis})"]
@@ -1245,9 +1243,7 @@ module Docscribe
         end
 
         method_name = :"build_#{arg_node.type}_lines"
-        if respond_to?(method_name, true)
-          return send(method_name, arg_node, indent, external_sig, param_types_override, **opts)
-        end
+        return send(method_name, arg_node, indent, external_sig, param_types_override, **opts) if respond_to?(method_name, true)
 
         []
       end
