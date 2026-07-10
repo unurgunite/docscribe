@@ -158,7 +158,8 @@ module Docscribe
       # @param [String] code the Ruby source code string to parse and rewrite
       # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
       # @raise [Docscribe::ParseError]
-      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node, Docscribe::Types::ProviderChain, nil, Object, nil>]
+      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node, Docscribe::Types::ProviderChain, nil, Object, nil>] rewrite environment with keys
+      #   :config, :file, :buffer, :ast, :core_rbs_provider
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
         file = (options[:file] || '(inline)').to_s
@@ -454,7 +455,8 @@ module Docscribe
       # Plugin insertion priority
       #
       # @private
-      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected
+      #   method insertion (plugin hash or collected insertion object)
       # @raise [StandardError]
       # @return [Integer]
       # @return [Integer] if StandardError
@@ -469,7 +471,8 @@ module Docscribe
       # Plugin insertion label
       #
       # @private
-      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected
+      #   method insertion (plugin hash or collected insertion object)
       # @raise [StandardError]
       # @return [String]
       # @return [String] if StandardError
@@ -485,7 +488,8 @@ module Docscribe
       # Plugin insertion line
       #
       # @private
-      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>, Docscribe::InlineRewriter::Collector::Insertion, Docscribe::InlineRewriter::Collector::AttrInsertion] insertion the collected
+      #   method insertion (plugin hash or collected insertion object)
       # @raise [StandardError]
       # @return [Integer, nil]
       # @return [nil] if StandardError
@@ -630,9 +634,7 @@ module Docscribe
       def normalize_plugin_doc(doc, indent, config:, anchor_node:)
         doc = normalize_plugin_doc_indent(doc, indent)
         doc = trim_trailing_blank_lines(doc)
-        if anchor_node && %i[def defs].include?(anchor_node.type) && config.include_default_message?
-          doc = prepend_default_message_if_no_prose(doc, anchor_node, indent, config)
-        end
+        doc = prepend_default_message_if_no_prose(doc, anchor_node, indent, config) if anchor_node && %i[def defs].include?(anchor_node.type) && config.include_default_message?
         doc
       end
 
@@ -794,9 +796,7 @@ module Docscribe
       # @return [void]
       def merge_existing_descriptions!(params, parsed)
         params[:param_descriptions] = parsed[:param_descriptions] if parsed[:param_descriptions].any?
-        if parsed[:return_description] && !parsed[:return_description].start_with?('if ')
-          params[:return_description] = parsed[:return_description]
-        end
+        params[:return_description] = parsed[:return_description] if parsed[:return_description] && !parsed[:return_description].start_with?('if ')
         params[:description] = parsed[:description] if parsed[:description].any?
       end
 
@@ -841,13 +841,7 @@ module Docscribe
       # @return [Docscribe::Types::MethodSignature, nil]
       def resolve_external_signature(insertion, signature_provider)
         node_name = SourceHelpers.node_name(insertion.node) #: Symbol
-        param_count = nil
-        param_names = []
-        args = DocBuilder.extract_args_from_node(insertion.node)
-        if args
-          param_count = args.children.length
-          param_names = args.children.map { |a| a.children.first.to_s if a.respond_to?(:children) }.compact
-        end
+        param_count, param_names = extract_param_info(insertion)
         signature_provider&.signature_for(
           container: insertion.container,
           scope: insertion.scope,
@@ -855,6 +849,17 @@ module Docscribe
           param_count: param_count,
           param_names: param_names
         )
+      end
+
+      # @private
+      # @param [Object] insertion
+      # @return [(Integer?, Array<Object>)]
+      def extract_param_info(insertion)
+        args = DocBuilder.extract_args_from_node(insertion.node)
+        empty = [] #: Array[untyped]
+        return [nil, empty] unless args
+
+        [args.children.length, args.children.map { |a| a.children.first.to_s if a.respond_to?(:children) }.compact]
       end
 
       # Resolve param types
@@ -1088,7 +1093,8 @@ module Docscribe
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @param [Parser::Source::Range] bol_range the beginning-of-line range for the attribute node
-      # @return [Hash<Symbol, Docscribe::InlineRewriter::Collector::AttrInsertion, Docscribe::Config, Docscribe::Types::ProviderChain, nil, Parser::Source::Range>]
+      # @return [Hash<Symbol, Docscribe::InlineRewriter::Collector::AttrInsertion, Docscribe::Config, Docscribe::Types::ProviderChain, nil, Parser::Source::Range>] attr insertion params with keys
+      #   :insertion, :config, :signature_provider, :bol_range
       def attr_insertion_params(insertion, config, signature_provider, bol_range)
         {
           insertion: insertion, config: config,
@@ -1246,8 +1252,24 @@ module Docscribe
       # @return [String, nil]
       # @return [nil] if StandardError
       def build_attr_merge_additions(ins:, existing_lines:, config:, signature_provider:)
-        missing = missing_attr_names(ins, existing_lines)
         indent = SourceHelpers.line_indent(ins.node)
+        lines = build_attr_merge_missing_lines(ins, existing_lines, indent, config, signature_provider)
+        lines.concat(build_attr_merge_tag_lines(ins, existing_lines, indent, config, signature_provider))
+
+        lines.empty? ? '' : lines.map { |l| "#{l}\n" }.join
+      rescue StandardError
+        nil
+      end
+
+      # @private
+      # @param [Object] ins
+      # @param [Array<String>] existing_lines
+      # @param [String] indent
+      # @param [Docscribe::Config] config
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider
+      # @return [Array<String>]
+      def build_attr_merge_missing_lines(ins, existing_lines, indent, config, signature_provider)
+        missing = missing_attr_names(ins, existing_lines)
         lines = [] #: Array[String]
 
         unless missing.empty?
@@ -1256,15 +1278,24 @@ module Docscribe
                                                  signature_provider: signature_provider, names: missing))
         end
 
-        tag_additions = build_missing_tag_additions(ins, existing_lines, indent, config, signature_provider)
-        unless tag_additions.empty?
-          lines << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#' && lines.empty?
-          lines.concat(tag_additions)
-        end
+        lines
+      end
 
-        lines.empty? ? '' : lines.map { |l| "#{l}\n" }.join
-      rescue StandardError
-        nil
+      # @private
+      # @param [Object] ins
+      # @param [Array<String>] existing_lines
+      # @param [String] indent
+      # @param [Docscribe::Config] config
+      # @param [Docscribe::Types::ProviderChain, nil] signature_provider
+      # @return [Array<String>]
+      def build_attr_merge_tag_lines(ins, existing_lines, indent, config, signature_provider)
+        tag_additions = build_missing_tag_additions(ins, existing_lines, indent, config, signature_provider)
+        return [] if tag_additions.empty?
+
+        result = [] #: Array[String]
+        result << "#{indent}#" if existing_lines.any? && existing_lines.last.strip != '#'
+        result.concat(tag_additions)
+        result
       end
 
       # Missing attr names
@@ -1305,24 +1336,32 @@ module Docscribe
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
       # @return [Array<String>]
       def build_missing_tag_additions(ins, existing_lines, indent, config, signature_provider)
-        additions = [] #: Array[String]
-
-        ins.names.each do |name_sym|
-          existing_line_idx = existing_attr_line_index(existing_lines, name_sym.to_s)
-          next unless existing_line_idx
-
-          access = ins.access
-          return_missing = %i[r rw].include?(access) && !existing_lines_contain_tag?(existing_lines, existing_line_idx, 'return')
-          param_missing = %i[w rw].include?(access) && !existing_lines_contain_tag?(existing_lines, existing_line_idx, 'param')
-
-          next unless return_missing || param_missing
+        ins.names.each_with_object([]) do |name_sym, additions|
+          idx = existing_attr_line_index(existing_lines, name_sym.to_s)
+          next unless idx
 
           attr_type = attribute_type(ins, name_sym, config, signature_provider: signature_provider)
-          additions << "#{indent}#   @return [#{attr_type}]" if return_missing
-          additions << format_attribute_param_tag(indent, 'value', attr_type, style: config.param_tag_style) if param_missing
+          additions << "#{indent}#   @return [#{attr_type}]" if attr_return_missing?(ins.access, existing_lines, idx)
+          additions << format_attribute_param_tag(indent, 'value', attr_type, style: config.param_tag_style) if attr_param_missing?(ins.access, existing_lines, idx)
         end
+      end
 
-        additions
+      # @private
+      # @param [Symbol] access
+      # @param [Array<String>] existing_lines
+      # @param [Integer] idx
+      # @return [Boolean]
+      def attr_return_missing?(access, existing_lines, idx)
+        %i[r rw].include?(access) && !existing_lines_contain_tag?(existing_lines, idx, 'return')
+      end
+
+      # @private
+      # @param [Symbol] access
+      # @param [Array<String>] existing_lines
+      # @param [Integer] idx
+      # @return [Boolean]
+      def attr_param_missing?(access, existing_lines, idx)
+        %i[w rw].include?(access) && !existing_lines_contain_tag?(existing_lines, idx, 'param')
       end
 
       # Find index of line containing @!attribute for a specific name
@@ -1330,7 +1369,7 @@ module Docscribe
       # @private
       # @param [Array<String>] lines array of existing doc comment lines
       # @param [String] name the attribute name to search for
-      # @return [Integer, nil]
+      # @return [Integer?]
       def existing_attr_line_index(lines, name)
         Array(lines).each_with_index do |line, idx|
           return idx if line.match?(/\A\s*#\s*@!attribute\b(?:\s+\[[^\]]+\])?\s+#{Regexp.escape(name)}\b/)
@@ -1352,8 +1391,8 @@ module Docscribe
         i = attr_line_idx + 1
         while i < lines.length
           line = lines[i]
-          break unless line.match?(/\A\s*#/)                    # not a comment line
-          break if line.match?(/\A\s*# @(?!@)/)                  # next top-level directive (single space)
+          break unless line.match?(/\A\s*#/) # not a comment line
+          break if line.match?(/\A\s*# @(?!@)/) # next top-level directive (single space)
           return true if line.match?(/\A\s*#\s{2,}@#{tag_name}\b/)
 
           i += 1

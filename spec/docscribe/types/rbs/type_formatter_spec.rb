@@ -154,13 +154,15 @@ RSpec.describe 'Docscribe::Types::RBS::TypeFormatter' do
       end
 
       it 'keeps Hash<String, Integer> when collapse_object_generics is true' do
-        type = RBS::Types::ClassInstance.new(name: type_name('::Hash'), args: [string_type, integer_type], location: nil)
+        type = RBS::Types::ClassInstance.new(name: type_name('::Hash'), args: [string_type, integer_type],
+                                             location: nil)
         expect(yard_cog(type, collapse_object_generics: true)).to eq('Hash<String, Integer>')
       end
 
       it 'collapse_generics overrides collapse_object_generics' do
         type = RBS::Types::ClassInstance.new(name: type_name('::Array'), args: [string_type], location: nil)
-        result = Docscribe::Types::RBS::TypeFormatter.to_yard(type, collapse_generics: true, collapse_object_generics: false)
+        result = Docscribe::Types::RBS::TypeFormatter.to_yard(type, collapse_generics: true,
+                                                                    collapse_object_generics: false)
         expect(result).to eq('Array')
       end
     end
