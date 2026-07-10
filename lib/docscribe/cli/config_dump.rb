@@ -61,7 +61,8 @@ module Docscribe
         # @return [Hash<Symbol, Object>]
         def parse_cli_overrides(argv)
           opts = Docscribe::CLI::Options.parse!(argv)
-          opts.slice(:rbs, :rbs_collection, :sorbet, :sig_dirs, :rbi_dirs, :include, :exclude)
+          opts.slice(:rbs, :rbs_collection, :sorbet, :sig_dirs, :rbi_dirs, :include, :exclude, :include_file,
+                     :exclude_file)
         end
       end
     end

@@ -20,8 +20,9 @@ module Docscribe
       attr_accessor positional_types: Array[String]
       attr_accessor rest_positional: (RestPositional | nil)
       attr_accessor rest_keywords: (RestKeywords | nil)
+      attr_accessor overloads: (Array[MethodSignature] | nil)
 
-      def initialize: (?return_type: String, ?param_types: Hash[String, String], ?positional_types: Array[String], ?rest_positional: (RestPositional | nil), ?rest_keywords: (RestKeywords | nil)) -> void
+      def initialize: (?return_type: String, ?param_types: Hash[String, String], ?positional_types: Array[String], ?rest_positional: (RestPositional | nil), ?rest_keywords: (RestKeywords | nil), ?overloads: (Array[MethodSignature] | nil)) -> void
     end
   end
 end
