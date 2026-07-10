@@ -73,72 +73,74 @@ docscribe -A lib
 
 ## Contents
 
-* [Docscribe](#docscribe)
-    * [Quick start](#quick-start)
-    * [Contents](#contents)
-    * [Installation](#installation)
-    * [Architecture](#architecture)
-        * [Data flow](#data-flow)
-    * [CLI](#cli)
-        * [Exit codes](#exit-codes)
-        * [Options](#options)
-        * [Examples](#examples)
-        * [`docscribe sigs` — check RBS signature coverage](#docscribe-sigs--check-rbs-signature-coverage)
-        * [`docscribe rbs` — generate RBS from YARD](#docscribe-rbs--generate-rbs-from-yard)
-        * [`docscribe update_types` — two-pass type-aware documentation update](#docscribe-update_types--two-pass-type-aware-documentation-update)
-        * [`docscribe check_for_comments` — find placeholder documentation](#docscribe-check_for_comments--find-placeholder-documentation)
-        * [`docscribe server` — persistent daemon mode](#docscribe-server--persistent-daemon-mode)
-    * [Update strategies](#update-strategies)
-        * [Safe strategy](#safe-strategy)
-        * [Aggressive strategy](#aggressive-strategy)
-        * [Output markers](#output-markers)
-    * [Tips & tricks](#tips--tricks)
-    * [Parser backend (Parser gem vs Prism)](#parser-backend-parser-gem-vs-prism)
-    * [External type integrations (optional)](#external-type-integrations-optional)
-        * [RBS](#rbs)
-            * [RBS collection auto-discovery](#rbs-collection-auto-discovery)
-        * [Sorbet](#sorbet)
-        * [Inline Sorbet example](#inline-sorbet-example)
-        * [Sorbet RBI example](#sorbet-rbi-example)
-        * [Sorbet comment placement](#sorbet-comment-placement)
-        * [Generic type formatting](#generic-type-formatting)
-        * [Notes and fallback behavior](#notes-and-fallback-behavior)
-    * [Type inference](#type-inference)
-    * [Rescue-aware returns and @raise](#rescue-aware-returns-and-raise)
-    * [Visibility semantics](#visibility-semantics)
-    * [API (library) usage](#api-library-usage)
-    * [Plugin system](#plugin-system)
-        * [TagPlugin](#tagplugin)
-        * [CollectorPlugin](#collectorplugin)
-            * [Plugin doc normalization (CollectorPlugin)](#plugin-doc-normalization-collectorplugin)
-            * [`method_override` (structured patch)](#method_override-structured-patch)
-        * [Registering plugins](#registering-plugins)
-        * [Plugin priority](#plugin-priority)
-        * [Idempotency](#idempotency)
-        * [Plugin examples](#plugin-examples)
-    * [Configuration](#configuration)
-        * [Anonymous block parameters](#anonymous-block-parameters)
-        * [Filtering](#filtering)
-        * [`attr_*` example](#attr_-example)
-        * [`Struct.new` examples](#structnew-examples)
-            * [Constant-assigned struct](#constant-assigned-struct)
-            * [Class-based struct](#class-based-struct)
-        * [Merge behavior](#merge-behavior)
-        * [Param tag style](#param-tag-style)
-        * [Create a starter config](#create-a-starter-config)
-        * [Generate a plugin skeleton](#generate-a-plugin-skeleton)
-        * [Full configuration reference](#full-configuration-reference)
-    * [CI integration](#ci-integration)
-    * [Comparison to YARD's parser](#comparison-to-yards-parser)
-    * [Limitations](#limitations)
-    * [Roadmap](#roadmap)
-    * [Editor Integration](#editor-integration)
-        * [VS Code](#vs-code)
-        * [RubyMine](#rubymine)
-    * [Contributing](#contributing)
-    * [Discussion & Community](#discussion--community)
-    * [Logo Attribution](#logo-attribution)
-    * [License](#license)
+* [Quick start](#quick-start)
+* [Contents](#contents)
+* [Installation](#installation)
+* [Architecture](#architecture)
+    * [Data flow](#data-flow)
+* [CLI](#cli)
+    * [Exit codes](#exit-codes)
+    * [Options](#options)
+    * [Examples](#examples)
+    * [`docscribe sigs` — check RBS signature coverage](#docscribe-sigs--check-rbs-signature-coverage)
+    * [`docscribe rbs` — generate RBS from YARD](#docscribe-rbs--generate-rbs-from-yard)
+    * [`docscribe update_types` — two-pass type-aware documentation update](#docscribe-update_types--two-pass-type-aware-documentation-update)
+    * [`docscribe check_for_comments` — find placeholder documentation](#docscribe-check_for_comments--find-placeholder-documentation)
+    * [`docscribe init` — project scaffolding](#docscribe-init--project-scaffolding)
+    * [`docscribe config` — view resolved configuration](#docscribe-config--view-resolved-configuration)
+    * [`docscribe coverage` — documentation coverage report](#docscribe-coverage--documentation-coverage-report)
+    * [`docscribe server` — persistent daemon mode](#docscribe-server--persistent-daemon-mode)
+* [Update strategies](#update-strategies)
+    * [Safe strategy](#safe-strategy)
+    * [Aggressive strategy](#aggressive-strategy)
+    * [Output markers](#output-markers)
+* [Tips & tricks](#tips--tricks)
+* [Parser backend (Parser gem vs Prism)](#parser-backend-parser-gem-vs-prism)
+* [External type integrations (optional)](#external-type-integrations-optional)
+    * [RBS](#rbs)
+        * [RBS collection auto-discovery](#rbs-collection-auto-discovery)
+    * [Sorbet](#sorbet)
+    * [Inline Sorbet example](#inline-sorbet-example)
+    * [Sorbet RBI example](#sorbet-rbi-example)
+    * [Sorbet comment placement](#sorbet-comment-placement)
+    * [Generic type formatting](#generic-type-formatting)
+    * [Notes and fallback behavior](#notes-and-fallback-behavior)
+* [Type inference](#type-inference)
+* [Rescue-aware returns and @raise](#rescue-aware-returns-and-raise)
+* [Visibility semantics](#visibility-semantics)
+* [API (library) usage](#api-library-usage)
+* [Plugin system](#plugin-system)
+    * [TagPlugin](#tagplugin)
+    * [CollectorPlugin](#collectorplugin)
+        * [Plugin doc normalization (CollectorPlugin)](#plugin-doc-normalization-collectorplugin)
+        * [`method_override` (structured patch)](#method_override-structured-patch)
+    * [Registering plugins](#registering-plugins)
+    * [Plugin priority](#plugin-priority)
+    * [Idempotency](#idempotency)
+    * [Plugin examples](#plugin-examples)
+* [Configuration](#configuration)
+    * [Anonymous block parameters](#anonymous-block-parameters)
+    * [Filtering](#filtering)
+    * [`attr_*` example](#attr_-example)
+    * [`Struct.new` examples](#structnew-examples)
+        * [Constant-assigned struct](#constant-assigned-struct)
+        * [Class-based struct](#class-based-struct)
+    * [Merge behavior](#merge-behavior)
+    * [Param tag style](#param-tag-style)
+    * [Create a starter config](#create-a-starter-config)
+    * [Generate a plugin skeleton](#generate-a-plugin-skeleton)
+    * [Full configuration reference](#full-configuration-reference)
+* [CI integration](#ci-integration)
+* [Comparison to YARD's parser](#comparison-to-yards-parser)
+* [Limitations](#limitations)
+* [Roadmap](#roadmap)
+* [Editor Integration](#editor-integration)
+    * [VS Code](#vs-code)
+    * [RubyMine](#rubymine)
+* [Contributing](#contributing)
+* [Discussion & Community](#discussion--community)
+* [Logo Attribution](#logo-attribution)
+* [License](#license)
 
 ## Installation
 
@@ -411,6 +413,9 @@ If you pass no files and don't use `--stdin`, Docscribe processes the current di
 - `--progress`  
   Show progress (`[N/total] path/to/file.rb`) on stderr as each file is processed.
 
+- `DOCSCRIBE_THREADS` (env var)  
+  Number of parallel worker threads (default: 4). Set to `1` for sequential processing.
+
 - `--quiet` (`-q`)  
   Only show status, no details (suppresses change reasons).
   Overrides the default detailed output.
@@ -645,6 +650,63 @@ Exit code `0` if no placeholders found, `1` if any are detected.
 
 - `-h`, `--help` — show help.
 
+### `docscribe init` — project scaffolding
+
+`docscribe init` creates a default `docscribe.yml` config file in the current directory. It asks interactive questions
+about your project and writes a tailored configuration.
+
+```shell
+# Create docscribe.yml interactively
+docscribe init
+
+# Create with default settings (non-interactive)
+docscribe init --default
+```
+
+**Flags:**
+
+- `--pre-commit` — generate and install a Git pre-commit hook that checks documentation on staged `.rb` files using
+  `docscribe --verbose`. The hook exits with a warning if staged files lack documentation.
+- `--pre-commit --uninstall` — remove the pre-commit hook.
+- `--pre-commit --dry-run` — preview the hook script without installing.
+- `--default` — skip interactive prompts, write default config.
+- `-h`, `--help` — show help.
+
+### `docscribe config` — view resolved configuration
+
+`docscribe config` prints the fully resolved configuration (defaults + file + CLI overrides) as YAML.
+
+```shell
+# Print resolved config
+docscribe config
+
+# Use a specific config file
+docscribe config --config path/to/docscribe.yml
+```
+
+**Flags:**
+
+- `--config PATH` — path to config file.
+- `-h`, `--help` — show help.
+
+### `docscribe coverage` — documentation coverage report
+
+`docscribe coverage` scans Ruby files and reports the percentage of documented methods, parameters, and return types.
+
+```shell
+# Generate coverage report (text table)
+docscribe coverage lib
+
+# JSON output for tooling
+docscribe coverage --format json lib
+```
+
+**Flags:**
+
+- `--format FORMAT` — output format: `text` (default, human-readable table) or `json` (machine-readable).
+- `--config PATH` — path to config file.
+- `-h`, `--help` — show help.
+
 ### `docscribe server` — persistent daemon mode
 
 > [!NOTE]
@@ -743,23 +805,23 @@ The daemon speaks JSON-RPC 2.0 over Unix socket. Each request is a JSON line, ea
 
 Methods:
 
-| Method | Parameters | Result |
-|--------|-----------|--------|
-| `check` | `file` (string), `strategy` ("safe"/"aggressive"), `cli_overrides` (hash, optional) | `status`, `changed`, `changes` |
-| `fix` | same as `check` | `status`, `changed`, `changes` |
-| `check_batch` | `files` (array of strings), `strategy`, `cli_overrides`, `timeout` (int, optional) | array of per-file results |
-| `ping` | — | `version`, `pid`, `socket_path`, `started_at`, `uptime` |
-| `shutdown` | — | `status` |
+| Method        | Parameters                                                                          | Result                                                  |
+|---------------|-------------------------------------------------------------------------------------|---------------------------------------------------------|
+| `check`       | `file` (string), `strategy` ("safe"/"aggressive"), `cli_overrides` (hash, optional) | `status`, `changed`, `changes`                          |
+| `fix`         | same as `check`                                                                     | `status`, `changed`, `changes`                          |
+| `check_batch` | `files` (array of strings), `strategy`, `cli_overrides`, `timeout` (int, optional)  | array of per-file results                               |
+| `ping`        | —                                                                                   | `version`, `pid`, `socket_path`, `started_at`, `uptime` |
+| `shutdown`    | —                                                                                   | `status`                                                |
 
 Error codes (standardized for IDE plugin integration):
 
-| Code | Meaning | `error.data` fields |
-|------|---------|-------------------|
-| `-32000` | Gem/dependency not found | `gem` |
-| `-32001` | Syntax error in analyzed file | `file`, `line`, `detail` |
-| `-32002` | Config load failure | — |
-| `-32010` | Timeout | `timeout`, `file` |
-| `-32099` | Internal unhandled error | `backtrace` (first 5 lines) |
+| Code     | Meaning                       | `error.data` fields         |
+|----------|-------------------------------|-----------------------------|
+| `-32000` | Gem/dependency not found      | `gem`                       |
+| `-32001` | Syntax error in analyzed file | `file`, `line`, `detail`    |
+| `-32002` | Config load failure           | —                           |
+| `-32010` | Timeout                       | `timeout`, `file`           |
+| `-32099` | Internal unhandled error      | `backtrace` (first 5 lines) |
 
 **Socket path derivation:**
 
@@ -797,6 +859,17 @@ Safe strategy:
 - preserves existing prose and comments where possible
 
 This is the recommended day-to-day mode.
+
+**`@!attribute` merge policy in safe mode:**
+
+When a method already has a YARD `@!attribute` doc block (e.g. `# @!attribute [rw] name`), safe mode does not
+overwrite it. Instead it merges only the missing parts:
+
+- If the attribute has `[r]` or `[rw]` access and no `@return` tag exists — adds `@return [Type]`.
+- If the attribute has `[w]` or `[rw]` access and no `@param` tag exists — adds `@param value [Type]`.
+- If some attrs from the `attr_*` call are present in the doc block but others are missing — adds only the missing ones.
+
+This preserves hand-written annotations while ensuring complete documentation.
 
 ### Aggressive strategy
 
@@ -1929,16 +2002,10 @@ yard doc -o docs
 
 ## Roadmap
 
-- Method behavior inference from AST;
+- Overload-aware signature selection;
 - Deeper YARD integration — parse `.c` source comments and generate docs for C-extensions;
 - Custom parser plugins — support non-Ruby languages (Crystal, etc.) via the plugin system;
-- Effective config dump;
-- Overload-aware signature selection;
-- Manual `@!attribute` merge policy;
-- Richer inference for common APIs;
-- Documentation coverage report — percentage of documented methods, params, returns;
-- Pre-commit hook auto-install (`docscribe init --pre-commit`);
-- Parallel processing for large codebases.
+- Richer inference for common APIs.
 
 ## Editor Integration
 
