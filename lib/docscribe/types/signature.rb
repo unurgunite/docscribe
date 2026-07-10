@@ -21,7 +21,12 @@ module Docscribe
     # @!attribute [rw] rest_keywords
     #   @return [Docscribe::Types::RestKeywords, nil]
     #   @param [Docscribe::Types::RestKeywords, nil] value
+    #
+    # @!attribute [rw] overloads
+    #   @return [Array<Docscribe::Types::MethodSignature>]
+    #   @param [Array<Docscribe::Types::MethodSignature>] value
     MethodSignature = Struct.new(:return_type, :param_types, :positional_types, :rest_positional, :rest_keywords,
+                                 :overloads,
                                  keyword_init: true)
 
     # @!attribute [rw] name

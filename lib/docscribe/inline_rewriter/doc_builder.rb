@@ -186,7 +186,7 @@ module Docscribe
       # @param [Hash<Symbol, Object>] opts additional options including
       # @return [Hash<Symbol, Object>]
       def resolve_doc_setup!(setup, node, name, config, opts)
-        external_sig = resolve_external_sig(setup[:container], setup[:scope], name, opts[:signature_provider])
+        external_sig = resolve_external_sig(setup[:container], setup[:scope], name, opts[:signature_provider], node)
         returns_spec = compute_returns_spec(node, config, opts[:param_types], opts[:core_rbs_provider],
                                             signature_provider: opts[:signature_provider],
                                             container: setup[:container])
@@ -220,8 +220,18 @@ module Docscribe
       # @param [Symbol] name the method name string
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external sig provider
       # @return [Docscribe::Types::MethodSignature, nil]
-      def resolve_external_sig(container, scope, name, signature_provider)
-        signature_provider&.signature_for(container: container, scope: scope, name: name)
+      def resolve_external_sig(container, scope, name, signature_provider, node = nil)
+        param_count = nil
+        param_names = []
+        if node
+          args = extract_args_from_node(node)
+          if args
+            param_count = args.children.length
+            param_names = args.children.map { |a| a.children.first.to_s if a.respond_to?(:children) }.compact
+          end
+        end
+        signature_provider&.signature_for(container: container, scope: scope, name: name,
+                                           param_count: param_count, param_names: param_names)
       end
 
       # Compute returns spec
