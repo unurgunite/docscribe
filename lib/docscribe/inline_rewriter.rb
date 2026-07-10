@@ -842,7 +842,7 @@ module Docscribe
       def resolve_external_signature(insertion, signature_provider)
         node_name = SourceHelpers.node_name(insertion.node) #: Symbol
         param_count = nil
-        param_names = []
+        param_names = [] #: Array[untyped]
         args = DocBuilder.extract_args_from_node(insertion.node)
         if args
           param_count = args.children.length

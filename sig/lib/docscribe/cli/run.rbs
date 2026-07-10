@@ -2,6 +2,7 @@ module Docscribe
   module CLI
     module Run
       INITIAL_RUN_STATE: Formatters::state
+      PARALLEL_DEFAULT_THREADS: Integer
 
       CLI_OVERRIDE_KEYS: Array[Symbol]
 
@@ -55,7 +56,11 @@ module Docscribe
 
       def self.run_files: (options: Formatters::opts, conf: Config, paths: Array[String]) -> Integer
 
+      def self.run_files_parallel: (options: Formatters::opts, conf: Config, paths: Array[String]) -> Integer
+
       private
+
+      def self.merge_state: (Formatters::state target, Formatters::state source, Mutex mutex) -> void
 
       def self.finalize_run: (Formatters::opts options, Formatters::state state) -> void
 

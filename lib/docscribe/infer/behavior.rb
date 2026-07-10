@@ -2,13 +2,23 @@
 
 module Docscribe
   module Infer
+    # Analyzes method behavior (predicates, side effects, mutating calls).
     module Behavior
       MUTATING_METHODS = %i[<< push pop delete merge update write save create destroy
                             insert update_all delete_all].freeze
 
       class << self
         def analyze(body, method_name)
-          result = {
+          result = default_result(method_name)
+
+          return result unless body.is_a?(Parser::AST::Node)
+
+          analyze_body(body, result)
+          result
+        end
+
+        def default_result(method_name)
+          {
             predicate: method_name&.to_s&.end_with?('?') || false,
             bang: method_name&.to_s&.end_with?('!') || false,
             has_side_effects: false,
@@ -16,11 +26,6 @@ module Docscribe
             returns_self: false,
             returns_boolean: false
           }
-
-          return result unless body.is_a?(Parser::AST::Node)
-
-          analyze_body(body, result)
-          result
         end
 
         def infer_description(analysis, _method_name)
@@ -47,6 +52,10 @@ module Docscribe
             result[:returns_self] = true if result[:returns_self]
           end
 
+          recurse_children(node, result)
+        end
+
+        def recurse_children(node, result)
           node.children.each do |child|
             analyze_body(child, result) if child.is_a?(Parser::AST::Node)
           end

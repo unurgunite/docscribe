@@ -429,6 +429,8 @@ module Docscribe
                 end
                 break unless path
 
+                # @type var path: String
+
                 begin
                   local_state = initial_run_state
                   process_one_file(path, options: options, conf: conf, pwd: pwd, state: local_state)

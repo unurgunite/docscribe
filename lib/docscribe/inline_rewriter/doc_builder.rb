@@ -222,7 +222,7 @@ module Docscribe
       # @return [Docscribe::Types::MethodSignature, nil]
       def resolve_external_sig(container, scope, name, signature_provider, node = nil)
         param_count = nil
-        param_names = []
+        param_names = [] #: Array[untyped]
         if node
           args = extract_args_from_node(node)
           if args

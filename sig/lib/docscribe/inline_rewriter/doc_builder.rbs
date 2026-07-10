@@ -19,7 +19,7 @@ module Docscribe
 
       def self?.extract_base_setup: (untyped insertion, Symbol name) -> Hash[Symbol, untyped]
 
-      def self?.resolve_external_sig: (String container, Symbol scope, Symbol name, (Types::ProviderChain | nil) signature_provider) -> (Types::MethodSignature | nil)
+      def self?.resolve_external_sig: (String container, Symbol scope, Symbol name, (Types::ProviderChain | nil) signature_provider, ?Parser::AST::Node node) -> (Types::MethodSignature | nil)
 
       def self?.compute_returns_spec: (Parser::AST::Node node, Config config, (Hash[String, String] | nil) param_types, untyped core_rbs_provider, ?container: String?, ?signature_provider: Types::ProviderChain?) -> Hash[Symbol, untyped]
 

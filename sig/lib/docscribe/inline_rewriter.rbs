@@ -180,6 +180,10 @@ module Docscribe
 
     def self.attr_visibility_lines: (String indent, Config config, Collector::AttrInsertion ins) -> Array[String]
 
+    def self.build_missing_tag_additions: (Collector::AttrInsertion ins, Array[String] existing_lines, String indent, Config config, (Types::ProviderChain | nil) signature_provider) -> Array[String]
+    def self.existing_attr_line_index: (Array[String] lines, String name) -> Integer?
+    def self.existing_lines_contain_tag?: (Array[String] lines, Integer attr_line_idx, String tag_name) -> bool
+
     def self.format_attribute_param_tag: (String indent, String name, String type, style: (String | Symbol)) -> String
 
     def self.attribute_type: (Collector::AttrInsertion ins, Symbol name_sym, Config config, signature_provider: (Types::ProviderChain | nil)) -> String

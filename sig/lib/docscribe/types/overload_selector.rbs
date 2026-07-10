@@ -1,0 +1,14 @@
+module Docscribe
+  module Types
+    module OverloadSelector
+      def self.select: (Array[untyped] overloads, arg_count: Integer, ?param_names: Array[String]) -> untyped?
+      def self.best_match: (Array[untyped] overloads, Integer arg_count, Array[String] param_names) -> [untyped, Integer]?
+
+      private
+
+      def self.score_signature: (untyped sig, arg_count: Integer, param_names: Array[String]) -> [untyped, Integer]?
+      def self.score_positional: (Integer pos_count, Integer arg_count, untyped sig) -> Integer
+      def self.score_params: (untyped sig, Array[String] param_names) -> Integer
+    end
+  end
+end
