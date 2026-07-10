@@ -48,9 +48,7 @@ module Docscribe
       # @param [Boolean] treat_options_keyword_as_hash whether to treat 'options:' as Hash
       # @return [String]
       def inferred_param_type(name, default_str, fallback_type, treat_options_keyword_as_hash:)
-        if name.end_with?(':') && default_str.nil?
-          return options_keyword_type(name, treat_options_keyword_as_hash, fallback_type)
-        end
+        return options_keyword_type(name, treat_options_keyword_as_hash, fallback_type) if name.end_with?(':') && default_str.nil?
 
         node = parse_expr(default_str)
         ty = Literals.type_from_literal(node, fallback_type: fallback_type)

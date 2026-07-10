@@ -1,0 +1,17 @@
+module Docscribe
+  module Infer
+    module Behavior
+      MUTATING_METHODS: Array[Symbol]
+
+      def self.analyze: (untyped body, untyped method_name) -> Hash[Symbol, untyped]
+      def self.infer_description: (Hash[Symbol, untyped] analysis, untyped method_name) -> String?
+
+      private
+
+      def self.analyze_body: (untyped node, Hash[Symbol, untyped] result) -> void
+      def self.analyze_send: (untyped node, Hash[Symbol, untyped] result) -> void
+      def self.default_result: (untyped method_name) -> Hash[Symbol, untyped]
+      def self.recurse_children: (untyped node, Hash[Symbol, untyped] result) -> void
+    end
+  end
+end

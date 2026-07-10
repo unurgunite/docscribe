@@ -2,6 +2,7 @@ module Docscribe
   module CLI
     module Run
       INITIAL_RUN_STATE: Formatters::state
+      PARALLEL_DEFAULT_THREADS: Integer
 
       CLI_OVERRIDE_KEYS: Array[Symbol]
 
@@ -55,7 +56,11 @@ module Docscribe
 
       def self.run_files: (options: Formatters::opts, conf: Config, paths: Array[String]) -> Integer
 
+      def self.run_files_parallel: (options: Formatters::opts, conf: Config, paths: Array[String]) -> Integer
+
       private
+
+      def self.merge_state: (Formatters::state target, Formatters::state source, Mutex mutex) -> void
 
       def self.finalize_run: (Formatters::opts options, Formatters::state state) -> void
 
@@ -108,6 +113,24 @@ module Docscribe
       def self.mismatch_only?: (Formatters::state state, Integer checked_error) -> bool
 
       def self.build_failure_line: (Formatters::state state, Integer type_mismatch_count, Integer checked_error) -> String
+
+      def self.run_parallel_workers: (untyped options, untyped conf, Array[String] paths, Formatters::state state) -> void
+
+      def self.parallel_worker: (Hash[Symbol, untyped] pool) -> Thread
+
+      def self.fetch_work: (Array[String] paths, Mutex mutex) -> String?
+
+      def self.run_and_merge: (String path, Hash[Symbol, untyped] pool) -> void
+
+      def self.handle_worker_error: (StandardError exception, String path, Formatters::state state, Mutex error_mutex) -> void
+
+      def self.merge_state_flags: (Formatters::state target, Formatters::state source) -> void
+
+      def self.merge_state_counts: (Formatters::state target, Formatters::state source) -> void
+
+      def self.merge_state_arrays: (Formatters::state target, Formatters::state source) -> void
+
+      def self.merge_state_hashes: (Formatters::state target, Formatters::state source) -> void
 
       public
 

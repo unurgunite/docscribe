@@ -9,11 +9,15 @@ module Docscribe
 
       def self.parse_init_options: (Array[String] argv) -> Hash[Symbol, untyped]
 
-      def self.default_init_options: () -> { config: "docscribe.yml", force: false, stdout: false, help: false }
+      def self.default_init_options: () -> { config: "docscribe.yml", force: false, stdout: false, help: false, pre_commit: bool }
 
       def self.build_init_parser: (Hash[Symbol, untyped] opts) -> OptionParser
 
       def self.write_init_config: (Hash[Symbol, untyped] opts, String yaml) -> (1 | 0)
+      def self.add_init_options: (OptionParser parser, Hash[Symbol, untyped] opts) -> void
+      def self.install_pre_commit_hook: (Hash[Symbol, untyped] opts) -> (0 | 1)
+      def self.hook_preconditions_met?: (String hook_dir, String hook_path, Hash[Symbol, untyped] opts) -> bool
+      def self.pre_commit_hook_script: () -> String
     end
   end
 end
