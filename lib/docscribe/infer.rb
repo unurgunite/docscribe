@@ -16,6 +16,7 @@ require_relative 'infer/literals'
 require_relative 'infer/params'
 require_relative 'infer/returns'
 require_relative 'infer/raises'
+require_relative 'infer/behavior'
 
 module Docscribe
   # Best-effort inference utilities used to generate YARD tags.
@@ -35,6 +36,40 @@ module Docscribe
       # @return [Array<String>]
       def infer_raises_from_node(node)
         Raises.infer_raises_from_node(node)
+      end
+
+      # Analyze method behavior from AST node and method name.
+      #
+      # @param [Object] node def or defs node
+      # @param [Object] method_name
+      # @return [Hash<Symbol, Object>]
+      def analyze_behavior(node, method_name)
+        body = extract_body(node)
+        Behavior.analyze(body, method_name)
+      end
+
+      # Get behavioral description for a method.
+      #
+      # @param [Object] node def or defs node
+      # @param [Object] method_name
+      # @return [String?]
+      def infer_behavior_description(node, method_name)
+        body = extract_body(node)
+        return nil unless body
+
+        analysis = Behavior.analyze(body, method_name)
+        Behavior.infer_description(analysis, method_name)
+      end
+
+      # Extract method body from def/defs node.
+      #
+      # @param [Object] node def or defs node
+      # @return [Object?]
+      def extract_body(node)
+        return nil unless node.is_a?(Parser::AST::Node)
+
+        body_idx = node.type == :def ? 2 : 3
+        node.children[body_idx]
       end
 
       # Infer a parameter type from its internal name form and optional default

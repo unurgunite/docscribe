@@ -19,7 +19,7 @@ module Docscribe
 
       def self?.extract_base_setup: (untyped insertion, Symbol name) -> Hash[Symbol, untyped]
 
-      def self?.resolve_external_sig: (String container, Symbol scope, Symbol name, (Types::ProviderChain | nil) signature_provider) -> (Types::MethodSignature | nil)
+      def self?.resolve_external_sig: (String container, Symbol scope, Symbol name, (Types::ProviderChain | nil) signature_provider, ?Parser::AST::Node node) -> (Types::MethodSignature | nil)
 
       def self?.compute_returns_spec: (Parser::AST::Node node, Config config, (Hash[String, String] | nil) param_types, untyped core_rbs_provider, ?container: String?, ?signature_provider: Types::ProviderChain?) -> Hash[Symbol, untyped]
 
@@ -64,6 +64,8 @@ module Docscribe
       def self?.extract_param_info: (String line, Hash[String, bool] param_names, Hash[String, String] param_types, ?(Hash[String, String] | nil) param_descriptions) -> void
 
       def self?.extract_return_info: (String line, Hash[Symbol, untyped] info) -> void
+
+      def self?.extract_sig_param_info: (Parser::AST::Node? node) -> [ Integer?, Array[String] ]
 
       def self?.extract_visibility_info: (String line, Hash[Symbol, untyped] info) -> void
 

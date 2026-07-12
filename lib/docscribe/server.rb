@@ -651,7 +651,8 @@ module Docscribe
       def rewrite_and_cache(file, strategy, config, key, mtime)
         src = File.read(file)
         rbs = config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil
-        result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: config, core_rbs_provider: rbs, file: file)
+        result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: config,
+                                                                    core_rbs_provider: rbs, file: file)
         @file_cache[key] = { mtime: mtime, src: src, result: result }
         [src, result]
       end
@@ -689,7 +690,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client connected client socket
       # @param [String, Integer] id request ID
-      # @param [Object] result result data
+      # @param [Hash<String, Object>] result result data
       # @return [void]
       def send_result(client, id, result)
         response = { jsonrpc: '2.0', id: id, result: result }

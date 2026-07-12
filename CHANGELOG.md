@@ -1,3 +1,34 @@
+## 1.6.0
+
+### Added
+
+- **`docscribe config`** — dump fully resolved configuration (defaults + file + CLI overrides) as YAML.
+- **`docscribe coverage`** — documentation coverage report with text table and JSON output formats. Reports percentage
+  of documented methods, parameters, and return types per file and overall.
+- **`docscribe init --pre-commit`** — generate and install a Git pre-commit hook that checks documentation on staged
+  `.rb` files. Supports `--uninstall` and `--dry-run`.
+- **Parallel file processing** — thread pool workers process files concurrently. Configurable via `DOCSCRIBE_THREADS`
+  env var (default 4). Thread-safe state merge with mutex-guarded `merge_state` helpers.
+- **`@!attribute` merge policy (safe mode)** — when a method already has a YARD `@!attribute` doc block, safe mode
+  merges only missing parts: adds `@return [Type]` for reader/readwrite access, `@param value [Type]` for
+  writer/readwrite access, and missing attr names from `attr_*` calls.
+- **Method behavior inference** — `Behavior.analyze` detects predicates (`?`), bang methods (`!`), memoization,
+  delegation, and other patterns from AST. `OverloadSelector` selects best-matching method signature from `@overload`
+  declarations.
+- **`OverloadSelector`** — overload-aware signature selection chooses the best-matching overload based on argument count
+  and types with fallback logic.
+
+### Changed
+
+- **README updated:** new sections for `docscribe config`, `coverage`, `init --pre-commit`, and `@!attribute` merge
+  policy.
+- **Roadmap** updated — v1.6.0 features moved to "What's New" section.
+
+### Fixed
+
+- **`ConfigDump` bug:** `parse_cli_overrides` now slices `:include_file` and `:exclude_file` keys, preventing
+  `NoMethodError` in `ConfigBuilder.filter_overrides?`.
+
 ## 1.5.1
 
 ### Added

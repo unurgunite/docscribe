@@ -148,6 +148,8 @@ when :status
   end
   puts JSON.generate(alive ? { status: 'running', socket: sock } : { status: 'not_running' })
 else
-  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> | --check-batch <files> | --shutdown | --status | --ping | --socket-path | --info | --ensure"
+  warn "Usage: #{$PROGRAM_NAME} --check <file> | --fix <file> " \
+       '| --check-batch <files> | --shutdown | --status | --ping ' \
+       '| --socket-path | --info | --ensure'
   exit 1
 end

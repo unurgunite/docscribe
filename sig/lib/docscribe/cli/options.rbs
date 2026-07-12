@@ -47,6 +47,8 @@ module Docscribe
 
       def self?.define_progress_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
 
+      def self?.define_parallel_option: (OptionParser parser, Hash[Symbol, untyped] opts) -> void
+
       def self?.define_explain_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void
 
       def self?.define_quiet_option: (OptionParser opts, Hash[Symbol, untyped] options) -> void

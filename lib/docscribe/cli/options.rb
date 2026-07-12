@@ -27,6 +27,7 @@ module Docscribe
         keep_descriptions: false,
         no_boilerplate: false,
         progress: false,
+        parallel: false,
         server: false
       }.freeze
 
@@ -76,6 +77,8 @@ module Docscribe
             -q, --quiet                    Only show status, no details
                 --format FORMAT            Output format: text (default), json, or sarif
 
+        Performance:
+                --parallel                 Process files in parallel (default: sequential)
 
         Other:
             -v, --version                  Print version and exit
@@ -335,6 +338,7 @@ module Docscribe
       def define_output_options(opts, options)
         define_verbose_option(opts, options)
         define_progress_option(opts, options)
+        define_parallel_option(opts, options)
         define_explain_option(opts, options)
         define_quiet_option(opts, options)
         define_format_option(opts, options)
@@ -364,6 +368,18 @@ module Docscribe
       def define_progress_option(opts, options)
         opts.on('--progress', 'Show progress [N/total] per file') do
           options[:progress] = true
+        end
+      end
+
+      # Define parallel option
+      #
+      # @note module_function: defines #define_parallel_option (visibility: private)
+      # @param [Hash<Symbol, Object>] opts the option parser to configure
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
+      # @return [void]
+      def define_parallel_option(opts, options)
+        opts.on('--parallel', 'Process files in parallel (default: sequential)') do
+          options[:parallel] = true
         end
       end
 
