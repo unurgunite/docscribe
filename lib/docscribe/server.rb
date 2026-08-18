@@ -567,7 +567,7 @@ module Docscribe
       def process_file_in_batch(file, strategy, timeout = nil)
         return { 'file' => file, 'status' => 'error', 'error' => "File not found: #{file}" } unless File.file?(file)
 
-        block = -> { run_rewrite(file, strategy) }
+        block = proc { run_rewrite(file, strategy) }
         timeout ? Timeout.timeout(timeout.to_f, &block) : block.call
       rescue Timeout::Error
         { 'file' => file, 'status' => 'error', 'error' => 'Timeout' }
