@@ -5,9 +5,6 @@ require 'fileutils'
 require 'tmpdir'
 
 RSpec.describe Docscribe::Server::Daemon do
-  include SuppressErrorHelper
-  include CleanFileHelper
-
   let!(:socket_path) { "#{Dir.mktmpdir}/docscribe-test.sock" }
   let!(:test_file) do
     path = "#{File.dirname(socket_path)}/test.rb"
@@ -41,32 +38,40 @@ RSpec.describe Docscribe::Server::Daemon do
   end
 
   describe 'check request' do
-    it 'returns ok for a file with no issues' do
-      response = client.check(file: create_clean_file(socket_path))
-      aggregate_failures do
-        expect(response).not_to be_nil
-        expect(response['result'].slice('status', 'changed')).to eq('status' => 'ok', 'changed' => false)
+    subject(:response) { client.check(file: checked_file) }
+
+    let(:checked_file) { test_file }
+
+    context 'with a clean file' do
+      let(:checked_file) { create_clean_file(socket_path) }
+
+      it 'returns ok for a file with no issues' do
+        aggregate_failures do
+          expect(response).not_to be_nil
+          expect(response['result'].slice('status', 'changed')).to eq('status' => 'ok', 'changed' => false)
+        end
+      end
+    end
+
+    context 'with a nonexistent file' do
+      let(:checked_file) { '/nonexistent.rb' }
+
+      it 'returns error for a nonexistent file' do
+        aggregate_failures do
+          expect(response).not_to be_nil
+          expect(response.dig('error', 'message')).to include('File not found')
+        end
       end
     end
 
     it 'returns fail for a file needing updates' do
-      response = client.check(file: test_file)
       aggregate_failures do
         expect(response).not_to be_nil
         expect(response['result']['status']).to eq('fail')
       end
     end
 
-    it 'returns error for a nonexistent file' do
-      response = client.check(file: '/nonexistent.rb')
-      aggregate_failures do
-        expect(response).not_to be_nil
-        expect(response.dig('error', 'message')).to include('File not found')
-      end
-    end
-
     it 'defaults to safe strategy when not specified', :aggregate_failures do
-      response = client.check(file: test_file)
       expect(response).not_to be_nil
       expect(response['error']).to be_nil
       expect(response['result']).to have_key('status')
@@ -74,8 +79,9 @@ RSpec.describe Docscribe::Server::Daemon do
   end
 
   describe 'fix request' do
+    subject(:response) { client.fix(file: test_file) }
+
     it 'returns success status' do
-      response = client.fix(file: test_file)
       aggregate_failures do
         expect(response).not_to be_nil
         expect(response['result']['status']).to eq('ok')
@@ -91,8 +97,9 @@ RSpec.describe Docscribe::Server::Daemon do
   end
 
   describe 'shutdown request' do
+    subject(:response) { client.shutdown }
+
     it 'responds to shutdown request' do
-      response = client.shutdown
       aggregate_failures do
         expect(response).not_to be_nil
         expect(response['result']['status']).to eq('shutting_down')
@@ -107,9 +114,7 @@ RSpec.describe Docscribe::Server::Daemon do
   end
 
   describe 'ping request' do
-    def ping_response
-      client.ping
-    end
+    let(:ping_response) { client.ping }
 
     it 'responds to ping' do
       expect(ping_response).not_to be_nil
@@ -137,16 +142,6 @@ RSpec.describe Docscribe::Server::Daemon do
   end
 
   describe 'idle timeout' do
-    def with_idle_daemon(timeout)
-      Dir.mktmpdir do |dir|
-        sock = "#{dir}/idle.sock"
-        daemon = described_class.new(socket_path: sock, idle_timeout: timeout)
-        thread = Thread.new { daemon.start }
-        sleep 0.1 until File.exist?(sock)
-        yield daemon, thread
-      end
-    end
-
     it 'stops the daemon when idle timeout expires' do
       with_idle_daemon(0.3) do |_daemon, thread|
         expect(thread.join(2)).to be(thread)
@@ -155,17 +150,7 @@ RSpec.describe Docscribe::Server::Daemon do
   end
 
   describe 'file cache' do
-    def with_cache_dir
-      Dir.mktmpdir do |dir|
-        test_file = "#{dir}/test.rb"
-        daemon = described_class.new(socket_path: "#{dir}/cache.sock", idle_timeout: 60)
-        File.write(test_file, "def foo\nend")
-        daemon.send(:load_dependencies)
-        yield daemon, test_file
-      end
-    end
-
-    def override_hash
+    let(:override_hash) do
       {
         'no_boilerplate' => true,
         'include' => [],

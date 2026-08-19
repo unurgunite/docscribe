@@ -35,3 +35,6 @@ Layout/LeadingCommentSpace:
 
 Layout/CommentIndentation:
   AllowForAlignment: true
+
+RSpec/MultipleMemoizedHelpers:
+  Max: 8

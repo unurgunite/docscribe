@@ -5,8 +5,6 @@ require 'fileutils'
 require 'tmpdir'
 
 RSpec.describe Docscribe::Server::Client do
-  include ServerWireHelper
-
   subject(:client) { described_class.new(socket_path) }
 
   let(:socket_path) { "#{Dir.mktmpdir}/test.sock" }

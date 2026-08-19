@@ -4,10 +4,6 @@ require 'tmpdir'
 require 'docscribe/server'
 
 RSpec.describe Docscribe::Server do
-  include SuppressErrorHelper
-  include CleanFileHelper
-  include ServerWireHelper
-
   describe '.socket_path' do
     it 'returns a path under tmpdir' do
       expect(described_class.socket_path).to match(%r{\A(?:#{Regexp.escape(Dir.tmpdir)}|/tmp)/docscribe-})
