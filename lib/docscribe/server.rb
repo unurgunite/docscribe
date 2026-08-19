@@ -535,9 +535,9 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] client
-      # @param [Object] id
-      # @param [Object] params
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [Hash<String, Object>] params
       # @return [void]
       def handle_check_batch(client, id, params)
         files = params['files']
@@ -567,8 +567,11 @@ module Docscribe
       def process_file_in_batch(file, strategy, timeout = nil)
         return { 'file' => file, 'status' => 'error', 'error' => "File not found: #{file}" } unless File.file?(file)
 
-        block = proc { run_rewrite(file, strategy) }
-        timeout ? Timeout.timeout(timeout.to_f, &block) : block.call
+        if timeout
+          Timeout.timeout(timeout.to_f) { run_rewrite(file, strategy) }
+        else
+          run_rewrite(file, strategy)
+        end
       rescue Timeout::Error
         { 'file' => file, 'status' => 'error', 'error' => 'Timeout' }
       rescue StandardError => e

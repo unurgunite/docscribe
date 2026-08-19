@@ -73,16 +73,15 @@ RSpec.describe Docscribe::Server do
 
   describe '.ensure_running!' do
     before do
-      allow(described_class).to receive(:wait_for_ready).and_return(false)
+      allow(described_class).to receive_messages(running?: false, wait_for_ready: false)
       allow(Process).to receive(:fork).and_return(12_345)
       allow(Process).to receive(:detach)
     end
 
     it 'returns early when server is already running' do
-      allow(described_class).to receive(:wait_for_ready)
-        .with(config_path: nil, timeout: 0, raise_on_timeout: false)
-        .and_return(true)
-      expect { described_class.ensure_running! }.not_to raise_error
+      allow(described_class).to receive(:running?).and_return(true)
+      described_class.ensure_running!
+      expect(Process).not_to have_received(:fork)
     end
 
     it 'raises when fork is unavailable' do
