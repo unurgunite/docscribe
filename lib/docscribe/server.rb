@@ -281,7 +281,7 @@ module Docscribe
       #
       # @param [String] file path to file to check
       # @param [Symbol] strategy rewrite strategy (:safe, :aggressive)
-      # @param [Object] rest
+      # @param [Hash<Symbol, Object>] rest extra JSON-RPC params (e.g. cli_overrides)
       # @return [Hash<String, Object>?] response hash or nil if server unreachable
       def check(file:, strategy: :safe, **rest)
         request('check', file: file, strategy: strategy, **rest)
@@ -291,7 +291,7 @@ module Docscribe
       #
       # @param [String] file path to file to fix
       # @param [Symbol] strategy rewrite strategy (:safe, :aggressive)
-      # @param [Object] rest
+      # @param [Hash<Symbol, Object>] rest extra JSON-RPC params (e.g. cli_overrides)
       # @return [Hash<String, Object>?] response hash or nil if server unreachable
       def fix(file:, strategy: :safe, **rest)
         request('fix', file: file, strategy: strategy, **rest)
@@ -317,7 +317,7 @@ module Docscribe
       #
       # @private
       # @param [String] method method name
-      # @param [Object] params request parameters
+      # @param [Hash<Symbol, Object>] params request parameters
       # @return [Hash<String, Object>?]
       def request(method, **params)
         connect do |socket|
@@ -647,9 +647,9 @@ module Docscribe
       # @private
       # @param [String] file
       # @param [Symbol] strategy
-      # @param [Object] config
-      # @param [Object] key
-      # @param [Object] mtime
+      # @param [Docscribe::Config?] config effective or base config
+      # @param [Array<(String, Symbol)>] key cache key
+      # @param [Time] mtime file modification time
       # @return [(String, Hash<Symbol, Object>)]
       def rewrite_and_cache(file, strategy, config, key, mtime)
         src = File.read(file)
@@ -733,8 +733,8 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] exception
-      # @return [(Integer, String, Object)]
+      # @param [Exception] exception
+      # @return [(Integer, String, Hash<Symbol, String?>)]
       def classify_gem_error(exception)
         data = { gem: nil }
         data[:gem] = exception.path if exception.respond_to?(:path) && exception.path
@@ -742,9 +742,9 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] exception
+      # @param [Exception] exception
       # @param [Hash<String, Object>] params
-      # @return [(Integer, String, Object)]
+      # @return [(Integer, String, Hash<Symbol, Object>)]
       def classify_syntax_err(exception, params)
         file = (params['file'] if params.is_a?(Hash)).to_s
         line = if exception.respond_to?(:line)
@@ -757,9 +757,9 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] exception
+      # @param [Exception] exception
       # @param [Hash<String, Object>] params
-      # @return [(Integer, String, Object)]
+      # @return [(Integer, String, Hash<Symbol, Object>)]
       def classify_timeout_err(exception, params)
         file = (params['file'] if params.is_a?(Hash)).to_s
         data = { timeout: @idle_timeout || 30, file: file }
@@ -767,8 +767,8 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] exception
-      # @return [(Integer, String, Object)]
+      # @param [Exception] exception
+      # @return [(Integer, String, Hash<Symbol, Object>)]
       def classify_internal_err(exception)
         backtrace = exception.backtrace&.first(5) || []
         data = { backtrace: backtrace }
@@ -778,7 +778,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client
       # @param [String, Integer] id
-      # @param [Object] exception
+      # @param [Exception] exception
       # @param [String] file
       # @raise [StandardError]
       # @return [void]
@@ -794,7 +794,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client
       # @param [String, Integer] id
-      # @param [Object] exception
+      # @param [Exception] exception
       # @param [String] file
       # @return [void]
       def send_syntax_error(client, id, exception, file)
@@ -812,7 +812,7 @@ module Docscribe
       # @param [String, Integer, nil] id
       # @param [Integer] code
       # @param [String] message
-      # @param [Object?] data optional structured error data
+      # @param [Hash<Symbol, Object>?] data optional structured error data
       # @return [void]
       def send_error(client, id, code, message, data = nil)
         error = { code: code, message: message }
