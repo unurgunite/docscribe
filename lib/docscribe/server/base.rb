@@ -147,7 +147,8 @@ module Docscribe
         "#{socket_path(config_path)}.pid"
       end
 
-      ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml].freeze
+      ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml docscribe.yml].freeze
+      SIG_RBS_GLOB = 'sig/**/*.rbs'.freeze
 
       # @param [String] config_path
       # @return [String]
@@ -195,6 +196,7 @@ module Docscribe
 
       # Hash of environment files that affect analysis results.
       # When any of these change, the daemon is invalidated (new socket path).
+      # Includes Gemfile.lock, rbs_collection.lock.yaml, docscribe.yml and all sig/**/*.rbs.
       #
       # @return [String]
       def env_hash
@@ -202,7 +204,23 @@ module Docscribe
           path = File.join(Dir.pwd, file)
           File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
         end
+        sig_files = Dir.glob(File.join(Dir.pwd, SIG_RBS_GLOB)).sort
+        sig_files.each do |sig_path|
+          parts << File.mtime(sig_path).to_f.to_s
+        end
+        parts << sig_files.size.to_s
         Digest::MD5.hexdigest(parts.join(':'))
+      end
+
+      # Hash of RBS signature files for cache invalidation inside daemon.
+      # Used by Daemon#rewrite_file to detect sig changes without requiring a new socket.
+      #
+      # @return [String]
+      def sig_hash
+        sig_files = Dir.glob(File.join(Dir.pwd, SIG_RBS_GLOB)).sort
+        parts = sig_files.map { |p| "#{p}:#{File.mtime(p).to_f}" }
+        parts << "count:#{sig_files.size}"
+        Digest::MD5.hexdigest(parts.join('|'))
       end
 
       public :read_pid, :pid_path, :socket_path
