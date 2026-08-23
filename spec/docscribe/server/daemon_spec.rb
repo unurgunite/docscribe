@@ -215,4 +215,98 @@ RSpec.describe Docscribe::Server::Daemon do
       end
     end
   end
+
+  # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+  describe 'rbs sig cache invalidation' do
+    context 'when RBS is available' do
+      before { skip_unless_rbs_available! }
+
+      it 'invalidates cache when sig file changes without touching ruby file' do
+        with_tmp_dir do |dir|
+          daemon = build_sig_daemon(dir, rbs: DaemonSigHelper::DEMO_RBS_INTEGER)
+          write_ruby("#{dir}/a.rb")
+          r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          expect(r1).to include('@param [Integer]')
+          update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
+          r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          expect(r2).to include('@param [String]')
+          expect(r1).not_to eq(r2)
+        end
+      end
+
+      it 'invalidates cache for new file after sig change' do
+        with_tmp_dir do |dir|
+          daemon = build_sig_daemon(dir)
+          write_ruby("#{dir}/a.rb")
+          write_ruby("#{dir}/b.rb")
+          r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          expect(r1).to include('@param [Integer]')
+          update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
+          r2 = rbs_rewrite(daemon, "#{dir}/b.rb")
+          expect(r2).to include('@param [String]')
+        end
+      end
+
+      it 'caches again after sig change' do
+        with_tmp_dir do |dir|
+          daemon = build_sig_daemon(dir)
+          write_ruby("#{dir}/a.rb")
+          r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
+          r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          allow(Docscribe::InlineRewriter).to receive(:rewrite_with_report) { raise 'should be cached' }
+          r3 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          expect(r3).to eq(r2)
+          expect(r1).not_to eq(r3)
+        end
+      end
+    end
+
+    context 'without RBS dependency' do
+      it 'stores sig_hash in cache entry' do
+        with_tmp_dir do |dir|
+          prepare_sig_files('sig/a.rbs', "class A\nend\n")
+          write_ruby("#{dir}/x.rb", "class A\n  def foo; end\nend\n")
+          daemon = build_plain_daemon(dir)
+          daemon.send(:apply_cli_overrides, rbs_overrides)
+          daemon.send(:rewrite_file, "#{dir}/x.rb", :safe)
+          hit = daemon.instance_variable_get(:@file_cache)[["#{dir}/x.rb", :safe]]
+          expect(hit).to include(:sig_hash)
+          config = daemon.instance_variable_get(:@effective_config) || daemon.instance_variable_get(:@config)
+          expect(hit[:sig_hash]).to eq(daemon.send(:sig_hash_for, config))
+        end
+      end
+
+      it 'sig_hash_for respects custom sig_dirs' do
+        with_tmp_dir do |dir|
+          prepare_sig_files('custom_sig/b.rbs', "class B\nend\n", 'sig/a.rbs', "class A\nend\n")
+          daemon = build_plain_daemon(dir)
+          h_custom = sig_hash_for_config(daemon, ['custom_sig'])
+          h_default = sig_hash_for_config(daemon, ['sig'])
+          expect(h_custom).not_to eq(h_default)
+        end
+      end
+
+      it 'sig_dirs_for falls back to sig when empty' do
+        with_tmp_dir do |dir|
+          daemon = build_plain_daemon(dir)
+          config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => [] })
+          expect(daemon.send(:sig_dirs_for, config)).to eq(['sig'])
+        end
+      end
+
+      it 'sig_hash changes when new sig file added' do
+        with_tmp_dir do |dir|
+          prepare_sig_files('sig/a.rbs', "class A\nend\n")
+          daemon = build_plain_daemon(dir)
+          config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => ['sig'] })
+          h1 = daemon.send(:sig_hash_for, config)
+          write_sig('sig/b.rbs', "class B\nend\n")
+          h2 = daemon.send(:sig_hash_for, config)
+          expect(h1).not_to eq(h2)
+        end
+      end
+    end
+  end
+  # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
 end

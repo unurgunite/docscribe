@@ -4,6 +4,7 @@ require 'socket'
 require 'fileutils'
 require 'time'
 require 'timeout'
+require 'digest/md5'
 require_relative '../lru_cache'
 
 module Docscribe
@@ -18,11 +19,12 @@ module Docscribe
         timeout: -32_010,
         internal: -32_099
       }.freeze
-      # @param [String, nil] socket_path custom socket path
+
+      # @param [String?] socket_path custom socket path
       # @param [Integer] idle_timeout seconds before automatic shutdown
-      # @param [String, nil] config_path custom config path
+      # @param [String?] config_path custom config path
       # @return [void]
-      def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil)
+      def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil) # rubocop:disable Metrics/MethodLength
         @socket_path = socket_path || Server.socket_path(config_path)
         @idle_timeout = idle_timeout
         @config_path = config_path
@@ -33,6 +35,7 @@ module Docscribe
         @started_at = Time.now
         @cache_mutex = Mutex.new
         @config_mutex = Mutex.new
+        @last_sig_hash = nil
       end
 
       # Start the daemon: load dependencies, bind socket, enter listen loop.
@@ -219,10 +222,10 @@ module Docscribe
       # @private
       # @param [String] file
       # @param [Symbol] strategy
-      # @param [Integer, Float, nil] timeout
+      # @param [Integer, Float?] timeout
       # @raise [Timeout::Error]
       # @raise [StandardError]
-      # @return [Hash<String, Object>]
+      # @return [Hash<String, String, Array<Hash<Symbol, Object>>>]
       # @return [Hash] if Timeout::Error
       # @return [Hash] if StandardError
       def process_file_in_batch(file, strategy, timeout = nil)
@@ -242,14 +245,14 @@ module Docscribe
       # @private
       # @param [String] file
       # @param [Symbol] strategy
-      # @return [Hash<String, Object>]
+      # @return [Hash<String, String, Array<Hash<Symbol, Object>>>]
       def run_rewrite(file, strategy)
         src, result = rewrite_file(file, strategy)
         { 'file' => file, 'status' => result[:output] == src ? 'ok' : 'fail', 'changes' => result[:changes] }
       end
 
       # @private
-      # @param [Hash<String, Object>, nil] overrides
+      # @param [Hash<String, Object>?] overrides
       # @return [void]
       def apply_cli_overrides(overrides)
         @config_mutex.synchronize do
@@ -292,33 +295,111 @@ module Docscribe
       # @param [String] file
       # @param [Symbol] strategy
       # @raise [StandardError]
-      # @return [(String, Hash<Symbol, Object>)]
+      # @return [(String, Hash<Symbol, String, Array<Hash<Symbol, Object>>>)]
       def rewrite_file(file, strategy)
         @cache_mutex.synchronize do
           config = @effective_config || @config or raise 'Docscribe: config not loaded'
           key = [file, strategy]
           mtime = File.mtime(file)
-          hit = @file_cache[key]
-          return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime
+          sig_hash = sig_hash_for(config)
+          handle_sig_change(sig_hash)
+          cached = cached_result(key, mtime, sig_hash)
+          return cached if cached
 
           rewrite_and_cache(file, strategy, config, key, mtime)
         end
       end
 
       # @private
+      # @param [String] sig_hash
+      # @return [void]
+      def handle_sig_change(sig_hash)
+        if @last_sig_hash && @last_sig_hash != sig_hash
+          [@config, @effective_config].compact.each { |c| clear_rbs_cache(c) }
+          @file_cache.clear
+        end
+        @last_sig_hash = sig_hash
+      end
+
+      # @private
+      # @param [Array<String, Symbol>] key
+      # @param [Time] mtime
+      # @param [String] sig_hash
+      # @return [(String, Hash<Symbol, String, Array<Hash<Symbol, Object>>>)?]
+      def cached_result(key, mtime, sig_hash)
+        hit = @file_cache[key]
+        return nil unless hit && hit[:mtime] == mtime && hit[:sig_hash] == sig_hash
+
+        [hit[:src], hit[:result]]
+      end
+
+      # Clear memoized RBS providers so next request rebuilds env with fresh sig files.
+      #
+      # @private
+      # @param [Docscribe::Config] config
+      # @raise [StandardError]
+      # @return [void]
+      # @return [nil] if StandardError
+      def clear_rbs_cache(config)
+        config.instance_variable_set(:@rbs_provider, nil) if config.instance_variable_defined?(:@rbs_provider)
+        config.instance_variable_set(:@core_rbs_provider, nil) if config.instance_variable_defined?(:@core_rbs_provider)
+      rescue StandardError
+        nil
+      end
+
+      # @private
       # @param [String] file
       # @param [Symbol] strategy
-      # @param [Docscribe::Config, nil] config effective or base config
-      # @param [Array<(String, Symbol)>] key cache key
+      # @param [Docscribe::Config] config effective or base config
+      # @param [Array<String, Symbol>] key cache key
       # @param [Time] mtime file modification time
-      # @return [(String, Hash<Symbol, Object>)]
+      # @return [(String, Hash<Symbol, String, Array<Hash<Symbol, Object>>>)]
       def rewrite_and_cache(file, strategy, config, key, mtime)
         src = File.read(file)
         rbs = config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil
         result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: config,
                                                                     core_rbs_provider: rbs, file: file)
-        @file_cache[key] = { mtime: mtime, src: src, result: result }
+        @file_cache[key] = { mtime: mtime, sig_hash: @last_sig_hash, src: src, result: result }
         [src, result]
+      end
+
+      # Hash of RBS signature files for cache invalidation.
+      # Includes all files under sig_dirs (default: sig/**/*.rbs).
+      #
+      # @private
+      # @param [Docscribe::Config] config effective or base config
+      # @raise [StandardError]
+      # @return [String]
+      # @return [String] if StandardError
+      def sig_hash_for(config)
+        files = sig_rbs_files(sig_dirs_for(config))
+        parts = files.map { |p| "#{p}:#{File.mtime(p).to_f}" if File.file?(p) }.compact
+        parts << "count:#{files.size}"
+        Digest::MD5.hexdigest(parts.join('|'))
+      rescue StandardError
+        '0'
+      end
+
+      # @private
+      # @param [Array<String>] dirs
+      # @return [Array<String>]
+      def sig_rbs_files(dirs)
+        dirs.flat_map { |dir| Dir.glob(File.join(Dir.pwd, dir, '**', '*.rbs')) }.uniq.sort
+      end
+
+      # Resolve sig dirs from config, falling back to defaults.
+      #
+      # @private
+      # @param [Docscribe::Config] config
+      # @raise [StandardError]
+      # @return [Array<String>]
+      # @return [Array] if StandardError
+      def sig_dirs_for(config)
+        raw_dirs = config.raw.dig('rbs', 'sig_dirs') if config.respond_to?(:raw)
+        dirs = Array(raw_dirs || Docscribe::Config::DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s) # steep:ignore
+        dirs.empty? ? ['sig'] : dirs
+      rescue StandardError
+        ['sig']
       end
 
       # Handle a shutdown request.
@@ -363,9 +444,9 @@ module Docscribe
 
       # @private
       # @param [Exception] exception
-      # @param [String, nil] _method_name
+      # @param [String?] _method_name
       # @param [Hash<String, Object>] params
-      # @return [(Integer, String, Object)]
+      # @return [(Integer, String, Hash<Symbol, Object, nil>, nil)]
       def classify_error(exception, _method_name = nil, params = {})
         if exception.is_a?(LoadError) || exception.is_a?(Gem::LoadError)
           classify_gem_error(exception)
@@ -394,8 +475,8 @@ module Docscribe
       end
 
       # @private
-      # @param [Exception] exception
-      # @return [(Integer, String, Hash<Symbol, String>)]
+      # @param [Object] exception
+      # @return [(Integer, String, Hash<Symbol, String, nil>)]
       def classify_gem_error(exception)
         data = { gem: nil }
         data[:gem] = exception.path if exception.respond_to?(:path) && exception.path
@@ -403,7 +484,7 @@ module Docscribe
       end
 
       # @private
-      # @param [Exception] exception
+      # @param [Object] exception
       # @param [Hash<String, Object>] params
       # @return [(Integer, String, Hash<Symbol, Object>)]
       def classify_syntax_err(exception, params)
@@ -439,7 +520,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client
       # @param [String, Integer] id
-      # @param [Exception] exception
+      # @param [Object] exception
       # @param [String] file
       # @raise [StandardError]
       # @return [void]
@@ -455,7 +536,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client
       # @param [String, Integer] id
-      # @param [Exception] exception
+      # @param [Object] exception
       # @param [String] file
       # @return [void]
       def send_syntax_error(client, id, exception, file)
@@ -473,7 +554,7 @@ module Docscribe
       # @param [String, Integer, nil] id
       # @param [Integer] code
       # @param [String] message
-      # @param [Hash<Symbol, Object>, nil] data optional structured error data
+      # @param [Object?] data optional structured error data
       # @return [void]
       def send_error(client, id, code, message, data = nil)
         error = { code: code, message: message }
