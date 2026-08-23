@@ -41,6 +41,7 @@ module Docscribe
       @config_mutex: Mutex
       @started_at: Time
       @applied_overrides: (Hash[String, Object] | nil)
+      @last_sig_hash: (String | nil)
 
       ERROR_CODES: Hash[Symbol, Integer]
 
@@ -67,7 +68,13 @@ module Docscribe
       def reset_effective_config: () -> void
       def reset_effective_config_internal: () -> void
       def rewrite_file: (String, Symbol) -> [String, { output: String, changes: Array[Hash[Symbol, untyped]] }]
+      def handle_sig_change: (String) -> void
+      def cached_result: (Array[(String | Symbol)], Time, String) -> [String, { output: String, changes: Array[Hash[Symbol, untyped]] }]?
+      def clear_rbs_cache: (Docscribe::Config) -> void
       def rewrite_and_cache: (String, Symbol, Docscribe::Config, Array[(String | Symbol)], Time) -> [String, { output: String, changes: Array[Hash[Symbol, untyped]] }]
+      def sig_hash_for: (Docscribe::Config) -> String
+      def sig_rbs_files: (Array[String]) -> Array[String]
+      def sig_dirs_for: (Docscribe::Config) -> Array[String]
       def handle_shutdown: (UNIXSocket, (String | Integer)) -> void
       def handle_ping: (UNIXSocket, (String | Integer)) -> void
       def send_result: (UNIXSocket, (String | Integer), Hash[String, Object]) -> void

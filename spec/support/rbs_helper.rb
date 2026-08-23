@@ -45,6 +45,7 @@ module RbsHelper
   # @param [String] code Ruby source to rewrite
   # @param [String] rbs RBS file content
   # @param [String] sig_dir_name relative path for the sig directory
+  # @param [Hash] config Param documentation.
   # @return [String] rewritten source
   def inline_with_rbs(code:, rbs:, sig_dir_name: 'sig', config: {})
     skip_unless_rbs_available!
@@ -61,6 +62,12 @@ module RbsHelper
     end
   end
 
+  # Method documentation.
+  #
+  # @param [Object] source Param documentation.
+  # @param [Array] extra Param documentation.
+  # @param [String] filename Param documentation.
+  # @return [Object]
   def rbs_out(source, *extra, filename: 'test.rb')
     Dir.mktmpdir do |dir|
       path = File.join(dir, filename)
@@ -69,6 +76,11 @@ module RbsHelper
     end
   end
 
+  # Method documentation.
+  #
+  # @param [Object] source Param documentation.
+  # @param [String] filename Param documentation.
+  # @return [Object]
   def with_rbs(source, filename: 'test.rb')
     Dir.mktmpdir do |dir|
       path = File.join(dir, filename)
@@ -77,6 +89,12 @@ module RbsHelper
     end
   end
 
+  # Method documentation.
+  #
+  # @param [Object] rb_source Param documentation.
+  # @param [Object] old_content Param documentation.
+  # @param [String] sig_name Param documentation.
+  # @return [Object]
   def with_existing_rbs(rb_source, old_content, sig_name: 'test.rbs')
     Dir.mktmpdir do |dir|
       path = File.join(dir, 'test.rb')
@@ -92,6 +110,12 @@ module RbsHelper
   # Skip the example if the RBS gem is unavailable.
   #
   # Call this at the top of any example that depends on RBS bridge parsing.
+  # Method documentation.
+  #
+  # @private
+  # @raise [LoadError]
+  # @return [Object]
+  # @return [Object] if LoadError
   def skip_unless_rbs_available!
     require 'rbs'
   rescue LoadError
@@ -101,6 +125,11 @@ module RbsHelper
   # Skip the example if the RBS gem or RubyVM::AbstractSyntaxTree is unavailable.
   #
   # Call this at the top of any example that depends on Sorbet/RBS bridge parsing.
+  # Method documentation.
+  #
+  # @private
+  # @raise [LoadError]
+  # @return [Object]
   def skip_unless_sorbet_bridge_available!
     begin
       require 'rbs'
@@ -111,6 +140,13 @@ module RbsHelper
     skip 'RubyVM::AbstractSyntaxTree not available' unless defined?(RubyVM::AbstractSyntaxTree)
   end
 
+  # Method documentation.
+  #
+  # @private
+  # @param [Object] dir Param documentation.
+  # @param [Object] sig_dir_name Param documentation.
+  # @param [Object] rbs_content Param documentation.
+  # @return [Hash]
   def rbs_config(dir, sig_dir_name, rbs_content)
     sig_dir = File.join(dir, sig_dir_name)
     FileUtils.mkdir_p(sig_dir)

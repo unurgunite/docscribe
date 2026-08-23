@@ -148,7 +148,7 @@ module Docscribe
       end
 
       ENV_FILES = %w[Gemfile.lock rbs_collection.lock.yaml docscribe.yml].freeze
-      SIG_RBS_GLOB = 'sig/**/*.rbs'.freeze
+      SIG_RBS_GLOB = 'sig/**/*.rbs'
 
       # @param [String] config_path
       # @return [String]
@@ -200,27 +200,40 @@ module Docscribe
       #
       # @return [String]
       def env_hash
-        parts = ENV_FILES.map do |file|
-          path = File.join(Dir.pwd, file)
-          File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
-        end
-        sig_files = Dir.glob(File.join(Dir.pwd, SIG_RBS_GLOB)).sort
-        sig_files.each do |sig_path|
-          parts << File.mtime(sig_path).to_f.to_s
-        end
-        parts << sig_files.size.to_s
+        parts = ENV_FILES.map { |file| env_file_mtime(file) }
+        parts.concat(sig_env_parts)
         Digest::MD5.hexdigest(parts.join(':'))
       end
 
       # Hash of RBS signature files for cache invalidation inside daemon.
       # Used by Daemon#rewrite_file to detect sig changes without requiring a new socket.
       #
-      # @return [Object]
+      # @return [String]
       def sig_hash
-        sig_files = Dir.glob(File.join(Dir.pwd, SIG_RBS_GLOB)).sort
-        parts = sig_files.map { |p| "#{p}:#{File.mtime(p).to_f}" }
-        parts << "count:#{sig_files.size}"
+        files = sig_files
+        parts = files.map { |p| "#{p}:#{File.mtime(p).to_f}" }
+        parts << "count:#{files.size}"
         Digest::MD5.hexdigest(parts.join('|'))
+      end
+
+      # @param [String] file
+      # @return [String]
+      def env_file_mtime(file)
+        path = File.join(Dir.pwd, file)
+        File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
+      end
+
+      # @return [Array<String>]
+      def sig_env_parts
+        files = sig_files
+        mtimes = files.map { |p| File.mtime(p).to_f.to_s }
+        mtimes << files.size.to_s
+        mtimes
+      end
+
+      # @return [Array<String>]
+      def sig_files
+        Dir.glob(File.join(Dir.pwd, SIG_RBS_GLOB)).sort
       end
 
       public :read_pid, :pid_path, :socket_path

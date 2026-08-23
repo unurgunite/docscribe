@@ -28,16 +28,25 @@ def socket_path(config_path = nil)
 end
 
 def env_hash
-  parts = ENV_FILES.map do |file|
-    path = File.join(Dir.pwd, file)
-    File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
-  end
-  sig_files = Dir.glob(File.join(Dir.pwd, SIG_RBS_GLOB)).sort
-  sig_files.each do |sig_path|
-    parts << File.mtime(sig_path).to_f.to_s
-  end
-  parts << sig_files.size.to_s
+  parts = ENV_FILES.map { |file| env_file_mtime(file) }
+  parts.concat(sig_env_parts)
   Digest::MD5.hexdigest(parts.join(':'))
+end
+
+def env_file_mtime(file)
+  path = File.join(Dir.pwd, file)
+  File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
+end
+
+def sig_env_parts
+  files = sig_files
+  mtimes = files.map { |p| File.mtime(p).to_f.to_s }
+  mtimes << files.size.to_s
+  mtimes
+end
+
+def sig_files
+  Dir.glob(File.join(Dir.pwd, SIG_RBS_GLOB)).sort
 end
 
 def config_hash(config_path)

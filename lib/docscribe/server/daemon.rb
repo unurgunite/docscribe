@@ -19,11 +19,12 @@ module Docscribe
         timeout: -32_010,
         internal: -32_099
       }.freeze
+
       # @param [String?] socket_path custom socket path
       # @param [Integer] idle_timeout seconds before automatic shutdown
       # @param [String?] config_path custom config path
       # @return [void]
-      def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil)
+      def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil) # rubocop:disable Metrics/MethodLength
         @socket_path = socket_path || Server.socket_path(config_path)
         @idle_timeout = idle_timeout
         @config_path = config_path
@@ -301,24 +302,43 @@ module Docscribe
           key = [file, strategy]
           mtime = File.mtime(file)
           sig_hash = sig_hash_for(config)
-          if @last_sig_hash && @last_sig_hash != sig_hash
-            [@config, @effective_config].compact.each { |c| clear_rbs_cache(c) }
-            @file_cache.clear
-          end
-          @last_sig_hash = sig_hash
-          hit = @file_cache[key]
-          return [hit[:src], hit[:result]] if hit && hit[:mtime] == mtime && hit[:sig_hash] == sig_hash
+          handle_sig_change(sig_hash)
+          cached = cached_result(key, mtime, sig_hash)
+          return cached if cached
 
-          rewrite_and_cache(file, strategy, config, key, mtime, sig_hash)
+          rewrite_and_cache(file, strategy, config, key, mtime)
         end
+      end
+
+      # @private
+      # @param [String] sig_hash
+      # @return [void]
+      def handle_sig_change(sig_hash)
+        if @last_sig_hash && @last_sig_hash != sig_hash
+          [@config, @effective_config].compact.each { |c| clear_rbs_cache(c) }
+          @file_cache.clear
+        end
+        @last_sig_hash = sig_hash
+      end
+
+      # @private
+      # @param [Array<String, Symbol>] key
+      # @param [Time] mtime
+      # @param [String] sig_hash
+      # @return [(String, Hash<Symbol, String, Array<Hash<Symbol, Object>>>)?]
+      def cached_result(key, mtime, sig_hash)
+        hit = @file_cache[key]
+        return nil unless hit && hit[:mtime] == mtime && hit[:sig_hash] == sig_hash
+
+        [hit[:src], hit[:result]]
       end
 
       # Clear memoized RBS providers so next request rebuilds env with fresh sig files.
       #
       # @private
-      # @param [Object] config
+      # @param [Docscribe::Config] config
       # @raise [StandardError]
-      # @return [T?]
+      # @return [void]
       # @return [nil] if StandardError
       def clear_rbs_cache(config)
         config.instance_variable_set(:@rbs_provider, nil) if config.instance_variable_defined?(:@rbs_provider)
@@ -333,14 +353,13 @@ module Docscribe
       # @param [Docscribe::Config] config effective or base config
       # @param [Array<String, Symbol>] key cache key
       # @param [Time] mtime file modification time
-      # @param [Object] sig_hash hash of sig files mtimes
       # @return [(String, Hash<Symbol, String, Array<Hash<Symbol, Object>>>)]
-      def rewrite_and_cache(file, strategy, config, key, mtime, sig_hash)
+      def rewrite_and_cache(file, strategy, config, key, mtime)
         src = File.read(file)
         rbs = config.respond_to?(:core_rbs_provider) ? config.core_rbs_provider : nil
         result = Docscribe::InlineRewriter.rewrite_with_report(src, strategy: strategy, config: config,
                                                                     core_rbs_provider: rbs, file: file)
-        @file_cache[key] = { mtime: mtime, sig_hash: sig_hash, src: src, result: result }
+        @file_cache[key] = { mtime: mtime, sig_hash: @last_sig_hash, src: src, result: result }
         [src, result]
       end
 
@@ -348,13 +367,12 @@ module Docscribe
       # Includes all files under sig_dirs (default: sig/**/*.rbs).
       #
       # @private
-      # @param [Object] config effective or base config
+      # @param [Docscribe::Config] config effective or base config
       # @raise [StandardError]
-      # @return [Object]
+      # @return [String]
       # @return [String] if StandardError
       def sig_hash_for(config)
-        dirs = sig_dirs_for(config)
-        files = dirs.flat_map { |dir| Dir.glob(File.join(Dir.pwd, dir, '**', '*.rbs')) }.uniq.sort
+        files = sig_rbs_files(sig_dirs_for(config))
         parts = files.map { |p| "#{p}:#{File.mtime(p).to_f}" if File.file?(p) }.compact
         parts << "count:#{files.size}"
         Digest::MD5.hexdigest(parts.join('|'))
@@ -362,16 +380,23 @@ module Docscribe
         '0'
       end
 
+      # @private
+      # @param [Array<String>] dirs
+      # @return [Array<String>]
+      def sig_rbs_files(dirs)
+        dirs.flat_map { |dir| Dir.glob(File.join(Dir.pwd, dir, '**', '*.rbs')) }.uniq.sort
+      end
+
       # Resolve sig dirs from config, falling back to defaults.
       #
       # @private
-      # @param [Object] config
+      # @param [Docscribe::Config] config
       # @raise [StandardError]
-      # @return [Array, Object]
+      # @return [Array<String>]
       # @return [Array] if StandardError
       def sig_dirs_for(config)
         raw_dirs = config.raw.dig('rbs', 'sig_dirs') if config.respond_to?(:raw)
-        dirs = Array(raw_dirs || Docscribe::Config::DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s)
+        dirs = Array(raw_dirs || Docscribe::Config::DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s) # steep:ignore
         dirs.empty? ? ['sig'] : dirs
       rescue StandardError
         ['sig']
