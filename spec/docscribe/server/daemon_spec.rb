@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 require 'docscribe/server'
+require 'docscribe/cli/update_types'
 require 'fileutils'
+require 'json'
+require 'stringio'
 require 'tmpdir'
 
 RSpec.describe Docscribe::Server::Daemon do
@@ -309,4 +312,111 @@ RSpec.describe Docscribe::Server::Daemon do
     end
   end
   # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
+
+  describe 'update_types request' do
+    it 'returns ok when UpdateTypes.run succeeds' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['.']).and_return(0)
+      resp = client.update_types
+      expect(resp).to include('result' => hash_including('status' => 'ok', 'dir' => '.', 'exit_code' => 0))
+    end
+
+    it 'respects dir param' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['lib']).and_return(0)
+      expect(client.update_types(dir: 'lib')['result']['dir']).to eq('lib')
+    end
+
+    it 'respects directory param via raw request' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['app']).and_return(0)
+      resp = send_raw_request(socket_path, 'update_types', { 'directory' => 'app' })
+      expect(resp['result']['dir']).to eq('app')
+    end
+
+    it 'defaults to . when dir not provided' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['.']).and_return(0)
+      resp = send_raw_request(socket_path, 'update_types', {})
+      expect(resp['result']['dir']).to eq('.')
+    end
+
+    it 'returns error when exit_code non-zero' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_return(2)
+      resp = client.update_types
+      expect(resp['error']).to include('code' => Docscribe::Server::Daemon::ERROR_CODES[:internal], 'message' => include('exit code 2'), 'data' => hash_including('exit_code' => 2))
+    end
+
+    it 'clears file cache after success' do
+      daemon.instance_variable_get(:@file_cache)[%w[test.rb safe]] =
+        { mtime: Time.now, sig_hash: '0', src: '', result: {} }
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_return(0)
+      client.update_types
+      expect(daemon.instance_variable_get(:@file_cache)).to be_empty
+    end
+
+    it 'applies cli_overrides without error for minimal hash' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_return(0)
+      resp = send_raw_request(socket_path, 'update_types',
+                              { 'cli_overrides' => { 'no_boilerplate' => true } })
+      expect(resp['result']['status']).to eq('ok')
+    end
+
+    it 'handles exception and returns internal error' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_raise(StandardError, 'boom')
+      resp = client.update_types
+      expect(resp['error']).to include('code' => Docscribe::Server::Daemon::ERROR_CODES[:internal], 'message' => include('boom'))
+    end
+
+    it 'does not return Unknown method for update_types' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_return(0)
+      expect(client.update_types['result']['status']).to eq('ok')
+    end
+
+    it 'passes dir correctly to UpdateTypes.run' do # rubocop:disable RSpec/MultipleExpectations
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['custom_dir']).and_return(0)
+      resp = send_raw_request(socket_path, 'update_types', { 'dir' => 'custom_dir' })
+      expect(Docscribe::CLI::UpdateTypes).to have_received(:run).with(['custom_dir'])
+      expect(resp['result']['dir']).to eq('custom_dir')
+    end
+
+    context 'with real filesystem and missing rbs_collection.lock.yaml' do
+      it 'returns ok and warns instead of failing' do
+        with_update_types_env do |dir, sock|
+          first, content, second = run_update_types_twice(sock, dir)
+          expect([first['result']['status'], content.include?('@return'),
+                  second['result']['status']]).to eq(['ok', true, 'ok'])
+        end
+      end
+    end
+
+    describe 'private helpers' do
+      let(:io) { StringIO.new }
+      let(:parsed) { JSON.parse(io.string) }
+      let(:run_result) { daemon.send(:run_update_types, 'lib') }
+
+      it 'update_types_dir prefers dir over directory' do
+        expect(daemon.send(:update_types_dir, { 'dir' => 'a', 'directory' => 'b' })).to eq('a')
+      end
+
+      it 'update_types_dir falls back to directory' do
+        expect(daemon.send(:update_types_dir, { 'directory' => 'b' })).to eq('b')
+      end
+
+      it 'update_types_dir defaults to .' do
+        expect(daemon.send(:update_types_dir, {})).to eq('.')
+      end
+
+      it 'run_update_types delegates to CLI' do
+        allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['lib']).and_return(0)
+        expect(run_result).to eq(0)
+      end
+
+      it 'send_update_types_response sends ok for zero exit' do
+        daemon.send(:send_update_types_response, io, 1, '.', 0)
+        expect(parsed['result']).to include('status' => 'ok', 'exit_code' => 0)
+      end
+
+      it 'send_update_types_response sends error for non-zero exit' do
+        daemon.send(:send_update_types_response, io, 1, '.', 1)
+        expect(parsed['error']['code']).to eq(Docscribe::Server::Daemon::ERROR_CODES[:internal])
+      end
+    end
+  end
 end

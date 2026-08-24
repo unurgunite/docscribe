@@ -143,7 +143,7 @@ module Docscribe
       # @param [UNIXSocket] client connected client socket
       # @param [Hash<String, Object>] request parsed JSON-RPC request
       # @return [void]
-      def handle_request(client, request)
+      def handle_request(client, request) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength
         method = request['method']
         params = request['params'] || {}
 
@@ -151,6 +151,7 @@ module Docscribe
         when 'check' then handle_check(client, request['id'], params)
         when 'fix' then handle_fix(client, request['id'], params)
         when 'check_batch' then handle_check_batch(client, request['id'], params)
+        when 'update_types' then handle_update_types(client, request['id'], params)
         when 'shutdown' then handle_shutdown(client, request['id'])
         when 'ping' then handle_ping(client, request['id'])
         else send_error(client, request['id'], -32_601, "Unknown method: #{method}")
@@ -254,7 +255,7 @@ module Docscribe
       # @private
       # @param [Hash<String, Object>?] overrides
       # @return [void]
-      def apply_cli_overrides(overrides)
+      def apply_cli_overrides(overrides) # rubocop:disable SortedMethodsByCall/Waterfall
         @config_mutex.synchronize do
           return reset_effective_config_internal if overrides.nil? || overrides.empty?
           return if @applied_overrides == overrides
@@ -269,7 +270,8 @@ module Docscribe
       def build_effective_config(overrides)
         config = @config or return
         require 'docscribe/cli/config_builder'
-        opts = overrides.transform_keys(&:to_sym)
+        require 'docscribe/cli/options'
+        opts = Docscribe::CLI::Options::DEFAULT.merge(overrides.transform_keys(&:to_sym))
         @effective_config = Docscribe::CLI::ConfigBuilder.build(config, opts)
         @file_cache.clear
         @applied_overrides = overrides
@@ -400,6 +402,57 @@ module Docscribe
         dirs.empty? ? ['sig'] : dirs
       rescue StandardError
         ['sig']
+      end
+
+      # Handle update_types request (used by RubyMine plugin).
+      #
+      # @private
+      # @param [UNIXSocket] client connected client socket
+      # @param [String, Integer] id request ID
+      # @param [Hash<String, Object>] params request params
+      # @raise [StandardError]
+      # @return [void]
+      # @return [void] if StandardError
+      def handle_update_types(client, id, params)
+        dir = update_types_dir(params)
+        apply_cli_overrides(params['cli_overrides'])
+        exit_code = run_update_types(dir)
+        @file_cache.clear
+        send_update_types_response(client, id, dir, exit_code)
+      rescue StandardError => e
+        @file_cache.clear
+        code, message, data = classify_error(e, 'update_types', params)
+        send_error(client, id, code, message, data)
+      end
+
+      # @private
+      # @param [Hash<String, Object>] params
+      # @return [String]
+      def update_types_dir(params)
+        params['dir'] || params['directory'] || '.'
+      end
+
+      # @private
+      # @param [String] dir
+      # @return [Integer]
+      def run_update_types(dir)
+        require 'docscribe/cli/update_types'
+        Docscribe::CLI::UpdateTypes.run([dir])
+      end
+
+      # @private
+      # @param [UNIXSocket] client
+      # @param [String, Integer] id
+      # @param [String] dir
+      # @param [Integer] exit_code
+      # @return [void]
+      def send_update_types_response(client, id, dir, exit_code)
+        if exit_code.zero?
+          send_result(client, id, 'status' => 'ok', 'dir' => dir, 'exit_code' => exit_code)
+        else
+          send_error(client, id, ERROR_CODES[:internal], "update_types failed with exit code #{exit_code}",
+                     { 'dir' => dir, 'exit_code' => exit_code })
+        end
       end
 
       # Handle a shutdown request.
