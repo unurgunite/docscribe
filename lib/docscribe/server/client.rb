@@ -40,6 +40,15 @@ module Docscribe
         request('shutdown')
       end
 
+      # Send an update_types request to the server.
+      #
+      # @param [String] dir directory to update (defaults to '.')
+      # @param [Object] rest extra JSON-RPC params (e.g. cli_overrides)
+      # @return [Hash<String, Object>?] response hash or nil if server unreachable
+      def update_types(dir: '.', **rest)
+        request('update_types', dir: dir, **rest)
+      end
+
       # Ping the server and get version/pid/uptime info.
       #
       # @return [Hash<String, Object>?] response hash or nil if server unreachable

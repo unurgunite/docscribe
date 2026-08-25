@@ -61,6 +61,10 @@ module Docscribe
       def handle_check: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def handle_fix: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def handle_check_batch: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
+      def handle_update_types: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
+      def update_types_dir: (Hash[String, untyped]) -> String
+      def run_update_types: (String) -> Integer
+      def send_update_types_response: (UNIXSocket, (String | Integer), String, Integer) -> void
       def process_file_in_batch: (String, Symbol, ?(Integer | Float)?) -> Hash[String, (String | Array[Hash[Symbol, untyped]])]
       def run_rewrite: (String, Symbol) -> Hash[String, (String | Array[Hash[Symbol, untyped]])]
       def apply_cli_overrides: (Hash[String, Object]?) -> void
