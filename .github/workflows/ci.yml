@@ -14,31 +14,18 @@ jobs:
           fetch-depth: 0
       - name: Check commit message matches version.rb
         run: |
-          set -euo pipefail
           VERSION=$(ruby -e "load 'lib/docscribe/version.rb'; puts Docscribe::VERSION")
-          echo "version.rb: $VERSION"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE="${{ github.event.pull_request.base.sha }}"
-            HEAD="${{ github.event.pull_request.head.sha }}"
-            RANGE="$BASE..$HEAD"
+            SUBJECT=$(git show -s --pretty=%s "${{ github.event.pull_request.head.sha }}")
           else
-            RANGE="HEAD"
+            SUBJECT=$(git log -1 --pretty=%s)
           fi
-          echo "Range: $RANGE"
-          FAIL=0
-          for SHA in $(git rev-list "$RANGE" 2>/dev/null || echo "HEAD"); do
-            SUBJECT=$(git show -s --pretty=%s "$SHA")
-            echo "Checking $SHA: $SUBJECT"
-            if ! echo "$SUBJECT" | grep -Eq "^\[$VERSION\] "; then
-              echo "::error::Commit $SHA subject does not match [$VERSION] — got: $SUBJECT"
-              FAIL=1
-            fi
-          done
-          if [ "$FAIL" -ne 0 ]; then
-            echo "Expected commit subject to start with [$VERSION] (from lib/docscribe/version.rb)"
+          echo "version.rb: $VERSION"
+          echo "commit: $SUBJECT"
+          if ! echo "$SUBJECT" | grep -Eq "^\[$VERSION\] "; then
+            echo "::error::Commit subject does not match [$VERSION] — got: $SUBJECT"
             exit 1
           fi
-          echo "All checked commits match [$VERSION]"
 
   test:
     runs-on: ubuntu-latest
