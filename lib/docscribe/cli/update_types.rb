@@ -75,8 +75,10 @@ module Docscribe
         # @param [String] dir
         # @return [Integer]
         def run_first_pass(dir)
-          puts 'Pass 1: Aggressive rebuild with RBS collection...'
-          argv1 = ['-AkB', '--rbs-collection', dir]
+          has_collection = File.exist?(File.join(dir, 'rbs_collection.lock.yaml')) || File.exist?('rbs_collection.lock.yaml')
+          flag = has_collection ? '--rbs-collection' : '--rbs'
+          puts "Pass 1: Aggressive rebuild with #{has_collection ? 'RBS collection' : 'RBS'}..."
+          argv1 = ['-AkB', flag, dir]
           options1 = Docscribe::CLI::Options.parse!(argv1)
           Docscribe::CLI::Run.run(options: options1, argv: [dir])
         end
@@ -85,8 +87,10 @@ module Docscribe
         # @param [String] dir
         # @return [Integer]
         def run_second_pass(dir)
-          puts 'Pass 2: Safe merge with RBS collection...'
-          argv2 = ['-aB', '--rbs-collection', dir]
+          has_collection = File.exist?(File.join(dir, 'rbs_collection.lock.yaml')) || File.exist?('rbs_collection.lock.yaml')
+          flag = has_collection ? '--rbs-collection' : '--rbs'
+          puts "Pass 2: Safe merge with #{has_collection ? 'RBS collection' : 'RBS'}..."
+          argv2 = ['-aB', flag, dir]
           options2 = Docscribe::CLI::Options.parse!(argv2)
           Docscribe::CLI::Run.run(options: options2, argv: [dir])
         end

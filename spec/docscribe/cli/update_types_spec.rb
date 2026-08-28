@@ -30,6 +30,7 @@ RSpec.describe Docscribe::CLI::UpdateTypes do
                                   keep_descriptions: true, rbs: true)
         allow(Docscribe::CLI::Options).to receive(:parse!).and_return(opts)
         allow(Docscribe::CLI::Run).to receive(:run)
+        allow(File).to receive(:exist?).and_return(true)
       end
 
       it 'calls Options.parse! with aggressive flags' do
@@ -37,9 +38,16 @@ RSpec.describe Docscribe::CLI::UpdateTypes do
         expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('-AkB'))
       end
 
-      it 'calls Options.parse! with rbs-collection flag' do
+      it 'calls Options.parse! with rbs-collection flag when collection exists' do
         described_class.send(:run_first_pass, 'lib')
         expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('--rbs-collection'))
+      end
+
+      it 'calls Options.parse! with --rbs when collection missing', :aggregate_failures do
+        allow(File).to receive(:exist?).and_return(false)
+        described_class.send(:run_first_pass, 'lib')
+        expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('--rbs'))
+        expect(Docscribe::CLI::Options).not_to have_received(:parse!).with(array_including('--rbs-collection'))
       end
 
       it 'calls Run.run with write mode and aggressive strategy' do
@@ -56,6 +64,7 @@ RSpec.describe Docscribe::CLI::UpdateTypes do
         opts = DEFAULT_OPTS.merge(mode: :write, strategy: :safe, rbs_collection: true, no_boilerplate: true, rbs: true)
         allow(Docscribe::CLI::Options).to receive(:parse!).and_return(opts)
         allow(Docscribe::CLI::Run).to receive(:run)
+        allow(File).to receive(:exist?).and_return(true)
       end
 
       it 'calls Options.parse! with safe flags' do
@@ -63,9 +72,16 @@ RSpec.describe Docscribe::CLI::UpdateTypes do
         expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('-aB'))
       end
 
-      it 'calls Options.parse! with rbs-collection flag' do
+      it 'calls Options.parse! with rbs-collection flag when collection exists' do
         described_class.send(:run_second_pass, 'lib')
         expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('--rbs-collection'))
+      end
+
+      it 'calls Options.parse! with --rbs when collection missing', :aggregate_failures do
+        allow(File).to receive(:exist?).and_return(false)
+        described_class.send(:run_second_pass, 'lib')
+        expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including('--rbs'))
+        expect(Docscribe::CLI::Options).not_to have_received(:parse!).with(array_including('--rbs-collection'))
       end
 
       it 'calls Run.run with write mode and safe strategy' do
