@@ -17,15 +17,23 @@ module Docscribe
     class TypeMismatchValidator
       # @!attribute [rw] type
       #   @return [Symbol] `:type_mismatch_return`, `:type_mismatch_param`, `:invalid_syntax`
+      #   @param [Symbol] value
+      #
       # @!attribute [rw] yard_type
-      #   @return [String, nil] type written in YARD
+      #   @return [String?] type written in YARD
+      #   @param [String?] value
+      #
       # @!attribute [rw] expected_type
-      #   @return [String] type inferred or from RBS/Sorbet
+      #   @return [String?] type inferred or from RBS/Sorbet
+      #   @param [String?] value
+      #
       # @!attribute [rw] message
       #   @return [String] human-readable
+      #   @param [String] value
       Result = Struct.new(:type, :yard_type, :expected_type, :message, keyword_init: true)
 
       # @param [String] fallback_type value of `inference.fallback_type` (default `Object`)
+      # @return [void]
       def initialize(fallback_type: Infer::FALLBACK_TYPE)
         @fallback_type = fallback_type.to_s
       end
@@ -66,7 +74,7 @@ module Docscribe
       #
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
-      # @return [Result, nil]
+      # @return [Docscribe::Validator::TypeMismatchValidator::Result, nil]
       def check_return(yard_type, expected_type)
         return invalid_return_result(yard_type, expected_type) if invalid_syntax?(yard_type)
         return unless mismatched_return?(yard_type, expected_type)
@@ -79,7 +87,7 @@ module Docscribe
       # @param [String] param_name
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
-      # @return [Result, nil]
+      # @return [Docscribe::Validator::TypeMismatchValidator::Result, nil]
       def check_param(param_name, yard_type, expected_type)
         return invalid_param_result(param_name, yard_type, expected_type) if invalid_syntax?(yard_type)
         return unless mismatched_param?(yard_type, expected_type)
@@ -87,10 +95,9 @@ module Docscribe
         mismatch_param_result(param_name, yard_type, expected_type)
       end
 
-      # @private
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
-      # @return [Result]
+      # @return [Docscribe::Validator::TypeMismatchValidator::Result]
       def invalid_return_result(yard_type, expected_type)
         Result.new(
           type: :invalid_syntax,
@@ -100,10 +107,9 @@ module Docscribe
         )
       end
 
-      # @private
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
-      # @return [Result]
+      # @return [Docscribe::Validator::TypeMismatchValidator::Result]
       def mismatch_return_result(yard_type, expected_type)
         Result.new(
           type: :type_mismatch_return,
@@ -113,11 +119,10 @@ module Docscribe
         )
       end
 
-      # @private
       # @param [String] param_name
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
-      # @return [Result]
+      # @return [Docscribe::Validator::TypeMismatchValidator::Result]
       def invalid_param_result(param_name, yard_type, expected_type)
         Result.new(
           type: :invalid_syntax,
@@ -127,11 +132,10 @@ module Docscribe
         )
       end
 
-      # @private
       # @param [String] param_name
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
-      # @return [Result]
+      # @return [Docscribe::Validator::TypeMismatchValidator::Result]
       def mismatch_param_result(param_name, yard_type, expected_type)
         Result.new(
           type: :type_mismatch_param,
@@ -145,6 +149,7 @@ module Docscribe
 
       # Normalize a type string for comparison (strip, squeeze spaces).
       #
+      # @private
       # @param [String] type_str
       # @return [String]
       def normalize(type_str)

@@ -1028,8 +1028,7 @@ module Docscribe
         end
       end
 
-      # @note module_function: defines # (visibility: private)
-      # @private
+      # @note module_function: defines #missing_param? (visibility: private)
       # @param [String] pname
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
@@ -1037,8 +1036,7 @@ module Docscribe
         !ctx[:info][:param_names].include?(pname)
       end
 
-      # @note module_function: defines # (visibility: private)
-      # @private
+      # @note module_function: defines #existing_param_type? (visibility: private)
       # @param [String] pname
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
@@ -1046,8 +1044,7 @@ module Docscribe
         !!ctx[:info][:param_types][pname]
       end
 
-      # @note module_function: defines # (visibility: private)
-      # @private
+      # @note module_function: defines #handle_missing_param (visibility: private)
       # @param [String] pname
       # @param [String] param_line
       # @param [Array<String>] lines
@@ -1058,8 +1055,7 @@ module Docscribe
         reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
       end
 
-      # @note module_function: defines # (visibility: private)
-      # @private
+      # @note module_function: defines #handle_existing_param (visibility: private)
       # @param [String] pname
       # @param [String] param_line
       # @param [Array<String>] lines
@@ -1079,8 +1075,7 @@ module Docscribe
         end
       end
 
-      # @note module_function: defines # (visibility: private)
-      # @private
+      # @note module_function: defines #param_needs_update? (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def param_needs_update?(ctx)
@@ -1089,8 +1084,8 @@ module Docscribe
 
       # Whether a YARD type string has invalid syntax.
       #
-      # @note module_function: defines # (visibility: private)
-      # @param [String, nil] type_str
+      # @note module_function: defines #invalid_yard_type? (visibility: private)
+      # @param [String?] type_str
       # @return [Boolean]
       def invalid_yard_type?(type_str)
         return false if type_str.nil? || type_str.strip.empty?
@@ -1100,7 +1095,7 @@ module Docscribe
 
       # Whether param validation should run via inferred/external types.
       #
-      # @note module_function: defines # (visibility: private)
+      # @note module_function: defines #should_validate_param? (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def should_validate_param?(ctx)
@@ -1124,8 +1119,7 @@ module Docscribe
         append_param_update(param_line, pname, new_type, lines, reasons, ctx)
       end
 
-      # @note module_function: defines # (visibility: private)
-      # @private
+      # @note module_function: defines #param_type_changed? (visibility: private)
       # @param [String] pname
       # @param [String, nil] new_type
       # @param [Hash<Symbol, Object>] ctx
@@ -1134,8 +1128,7 @@ module Docscribe
         new_type && ctx[:info][:param_types][pname] != new_type
       end
 
-      # @note module_function: defines # (visibility: private)
-      # @private
+      # @note module_function: defines #fallback_skipped? (visibility: private)
       # @param [String, nil] new_type
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
@@ -1143,11 +1136,10 @@ module Docscribe
         ctx[:config].respond_to?(:validate_types?) && ctx[:config].validate_types? && (new_type == ctx[:config].fallback_type)
       end
 
-      # @note module_function: defines # (visibility: private)
-      # @private
+      # @note module_function: defines #append_param_update (visibility: private)
       # @param [String] param_line
       # @param [String] pname
-      # @param [String] new_type
+      # @param [String, nil] new_type
       # @param [Array<String>] lines
       # @param [Array<Hash<Symbol, Object>>] reasons
       # @param [Hash<Symbol, Object>] ctx
@@ -1974,7 +1966,7 @@ module Docscribe
 
       # Whether YARD return type has invalid syntax.
       #
-      # @note module_function: defines # (visibility: private)
+      # @note module_function: defines #invalid_yard_return? (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def invalid_yard_return?(ctx)
@@ -1986,11 +1978,10 @@ module Docscribe
 
       # Record invalid return type.
       #
-      # @note module_function: defines # (visibility: private)
-      # @param [Array<String>] lines
+      # @note module_function: defines #record_invalid_return (visibility: private)
+      # @param [Array<String>] _lines Param documentation.
       # @param [Array<Hash<Symbol, Object>>] reasons
       # @param [Hash<Symbol, Object>] ctx
-      # @param [Object] _lines Param documentation.
       # @return [void]
       def record_invalid_return(_lines, reasons, ctx)
         yard = ctx[:info][:return_type]
@@ -2002,7 +1993,7 @@ module Docscribe
 
       # Whether return validation should run via inferred types.
       #
-      # @note module_function: defines # (visibility: private)
+      # @note module_function: defines #should_validate_return? (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def should_validate_return?(ctx)
@@ -2013,7 +2004,7 @@ module Docscribe
       #
       # Silences when expected is fallback (uncertain).
       #
-      # @note module_function: defines # (visibility: private)
+      # @note module_function: defines #mismatched_return? (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def mismatched_return?(ctx)
@@ -2028,7 +2019,7 @@ module Docscribe
 
       # Normalize type string for comparison.
       #
-      # @note module_function: defines # (visibility: private)
+      # @note module_function: defines #normalize_type (visibility: private)
       # @param [String] type_str
       # @return [String]
       def normalize_type(type_str)
