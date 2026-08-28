@@ -42,13 +42,13 @@ RSpec.describe Docscribe::Validator::TypeMismatchValidator do
   end
 
   describe '#check_return' do
-    it 'returns invalid_syntax result for Sym bol' do
+    it 'returns invalid_syntax result for Sym bol', :aggregate_failures do
       result = validator.check_return('Sym bol', 'Symbol')
       expect(result).not_to be_nil
       expect(result.type).to eq(:invalid_syntax)
     end
 
-    it 'returns type_mismatch when Integer vs String' do
+    it 'returns type_mismatch when Integer vs String', :aggregate_failures do
       result = validator.check_return('Integer', 'String')
       expect(result.type).to eq(:type_mismatch_return)
       expect(result.message).to include('Integer').and include('String')
@@ -69,7 +69,7 @@ RSpec.describe Docscribe::Validator::TypeMismatchValidator do
       expect(result.type).to eq(:invalid_syntax)
     end
 
-    it 'returns mismatch for String vs Integer' do
+    it 'returns mismatch for String vs Integer', :aggregate_failures do
       result = validator.check_param('x', 'String', 'Integer')
       expect(result.type).to eq(:type_mismatch_param)
       expect(result.message).to include('x')

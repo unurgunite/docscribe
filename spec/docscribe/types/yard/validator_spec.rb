@@ -3,89 +3,94 @@
 require 'docscribe/types/yard/validator'
 
 RSpec.describe Docscribe::Types::Yard::Validator do
-  def valid?(str)
-    described_class.valid?(str)
-  end
-
-  def syntax_valid?(str)
-    described_class.syntax_valid?(str)
-  end
-
   describe '.valid?' do
     it 'returns false for nil' do
-      expect(valid?(nil)).to be false
+      expect(nil).to be_invalid_yard_type
     end
 
     it 'returns false for empty string' do
-      expect(valid?('')).to be false
-      expect(valid?('   ')).to be false
+      expect('').to be_invalid_yard_type
+    end
+
+    it 'returns false for whitespace' do
+      expect('   ').to be_invalid_yard_type
     end
 
     it 'returns true for simple types' do
-      expect(valid?('String')).to be true
-      expect(valid?('Integer')).to be true
-      expect(valid?('Symbol')).to be true
+      aggregate_failures do
+        expect('String').to be_valid_yard_type
+        expect('Integer').to be_valid_yard_type
+        expect('Symbol').to be_valid_yard_type
+      end
     end
 
     it 'returns false for leftover content like Sym bol' do
-      expect(valid?('Sym bol')).to be false
+      expect('Sym bol').to be_invalid_yard_type
     end
 
     it 'returns true for union with comma' do
-      expect(valid?('String, Integer')).to be true
+      expect('String, Integer').to be_valid_yard_type
     end
 
     it 'returns false for double comma' do
-      expect(valid?('String,, Integer')).to be false
+      expect('String,, Integer').to be_invalid_yard_type
     end
 
     it 'returns false for unbalanced brackets' do
-      expect(valid?('Array<String')).to be false
-      expect(valid?('Array<String>>')).to be false
+      aggregate_failures do
+        expect('Array<String').to be_invalid_yard_type
+        expect('Array<String>>').to be_invalid_yard_type
+      end
     end
 
     it 'returns true for generic' do
-      expect(valid?('Array<String>')).to be true
-      expect(valid?('Hash<Symbol, Integer>')).to be true
+      aggregate_failures do
+        expect('Array<String>').to be_valid_yard_type
+        expect('Hash<Symbol, Integer>').to be_valid_yard_type
+      end
     end
 
     it 'returns true for optional' do
-      expect(valid?('String?')).to be true
+      expect('String?').to be_valid_yard_type
     end
 
     it 'returns true for namespaced type' do
-      expect(valid?('Foo::Bar')).to be true
+      expect('Foo::Bar').to be_valid_yard_type
     end
   end
 
   describe '.syntax_valid?' do
-    it 'delegates to valid? with balanced check' do
-      expect(syntax_valid?('String')).to be true
-      expect(syntax_valid?('Sym bol')).to be false
-      expect(syntax_valid?('Array<String>')).to be true
-      expect(syntax_valid?('Array<String')).to be false
+    it 'delegates to valid? with balanced check', :aggregate_failures do
+      expect('String').to be_valid_yard_syntax
+      expect('Sym bol').not_to be_valid_yard_syntax
+      expect('Array<String>').to be_valid_yard_syntax
+      expect('Array<String').not_to be_valid_yard_syntax
     end
   end
 
   describe '.balanced_brackets?' do
     it 'checks angle brackets' do
-      expect(described_class.balanced_brackets?('Array<String>')).to be true
-      expect(described_class.balanced_brackets?('Array<String')).to be false
+      aggregate_failures do
+        expect(balanced_yard_brackets?('Array<String>')).to be true
+        expect(balanced_yard_brackets?('Array<String')).to be false
+      end
     end
 
     it 'checks bracket' do
-      expect(described_class.balanced_brackets?('a[b]')).to be true
-      expect(described_class.balanced_brackets?('a[b')).to be false
+      aggregate_failures do
+        expect(balanced_yard_brackets?('a[b]')).to be true
+        expect(balanced_yard_brackets?('a[b')).to be false
+      end
     end
   end
 
   describe '.fully_consumed?' do
     it 'returns false for Sym bol' do
-      expect(described_class.fully_consumed?('Sym bol')).to be false
+      expect(fully_consumed_yard_type?('Sym bol')).to be false
     end
 
     it 'returns true for valid' do
-      expect(described_class.fully_consumed?('Symbol')).to be true
+      expect(fully_consumed_yard_type?('Symbol')).to be true
     end
   end
 end

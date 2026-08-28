@@ -22,7 +22,9 @@ module Docscribe
         # - no `,,`, `<>`, `,]` artefacts
         # - `Yard::Parser` consumes the entire string (catches `Sym bol` leftover)
         #
+        # @note module_function: defines # (visibility: private)
         # @param [String] type_str the YARD type string to validate (e.g. "String", "Array<String>", "Sym bol")
+        # @raise [StandardError]
         # @return [Boolean] true if valid syntax, false otherwise
         def valid?(type_str)
           syntax_valid?(type_str)
@@ -32,53 +34,67 @@ module Docscribe
 
         # Strict syntax validation with balanced brackets and full consumption.
         #
+        # @note module_function: defines # (visibility: private)
         # @param [String] type_str
+        # @raise [StandardError]
         # @return [Boolean]
         def syntax_valid?(type_str)
-          return false if type_str.nil? || type_str.strip.empty?
+          return false if blank_type?(type_str)
           return false unless balanced_brackets?(type_str)
-          return false if type_str.include?(',,') || type_str.include?('<>') || type_str.include?(',]')
-          return false unless fully_consumed?(type_str)
+          return false if artefact_type?(type_str)
 
-          true
+          fully_consumed?(type_str)
         rescue StandardError
           false
         end
 
+        # @note module_function: defines # (visibility: private)
+        # @private
+        # @param [String, nil] type_str
+        # @return [Boolean]
+        def blank_type?(type_str)
+          type_str.nil? || type_str.strip.empty?
+        end
+
+        # @note module_function: defines # (visibility: private)
+        # @private
+        # @param [String] type_str
+        # @return [Boolean]
+        def artefact_type?(type_str)
+          type_str.include?(',,') || type_str.include?('<>') || type_str.include?(',]')
+        end
+
         # Check balanced brackets for `<>`, `()`, `{}`, `[]`.
         #
+        # @note module_function: defines # (visibility: private)
         # @param [String] type_str
         # @return [Boolean]
         def balanced_brackets?(type_str)
-          depth_angle = 0
-          depth_paren = 0
-          depth_brace = 0
-          depth_bracket = 0
+          stack = []
+          pairs = { '>' => '<', ')' => '(', '}' => '{', ']' => '[' }
+          opens = pairs.values
+
           type_str.each_char do |ch|
-            case ch
-            when '<'
-              depth_angle += 1
-            when '>'
-              depth_angle -= 1
-              return false if depth_angle.negative?
-            when '('
-              depth_paren += 1
-            when ')'
-              depth_paren -= 1
-              return false if depth_paren.negative?
-            when '{'
-              depth_brace += 1
-            when '}'
-              depth_brace -= 1
-              return false if depth_brace.negative?
-            when '['
-              depth_bracket += 1
-            when ']'
-              depth_bracket -= 1
-              return false if depth_bracket.negative?
-            end
+            return false unless process_bracket_char?(ch, stack, pairs, opens)
           end
-          depth_angle.zero? && depth_paren.zero? && depth_brace.zero? && depth_bracket.zero?
+
+          stack.empty?
+        end
+
+        # @note module_function: defines # (visibility: private)
+        # @private
+        # @param [String] char
+        # @param [Array<String>] stack
+        # @param [Hash<String, String>] pairs
+        # @param [Array<String>] opens
+        # @return [Boolean]
+        def process_bracket_char?(char, stack, pairs, opens)
+          if opens.include?(char)
+            stack << char
+          elsif pairs.key?(char)
+            return false if stack.empty? || stack.pop != pairs[char]
+          end
+          true
         end
 
         # Whether `Yard::Parser` consumes the entire string.
@@ -86,7 +102,9 @@ module Docscribe
         # Catches cases like `Sym bol` where parser would return `Sym` and
         # leave ` bol` unconsumed.
         #
+        # @note module_function: defines # (visibility: private)
         # @param [String] type_str
+        # @raise [StandardError]
         # @return [Boolean]
         def fully_consumed?(type_str)
           stripped = type_str.strip

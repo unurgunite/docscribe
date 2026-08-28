@@ -68,23 +68,10 @@ module Docscribe
       # @param [String, nil] expected_type
       # @return [Result, nil]
       def check_return(yard_type, expected_type)
-        if invalid_syntax?(yard_type)
-          return Result.new(
-            type: :invalid_syntax,
-            yard_type: yard_type,
-            expected_type: expected_type,
-            message: "invalid YARD type [#{yard_type}]#{" expected [#{expected_type}]" if expected_type && expected_type != @fallback_type}"
-          )
-        end
-
+        return invalid_return_result(yard_type, expected_type) if invalid_syntax?(yard_type)
         return unless mismatched_return?(yard_type, expected_type)
 
-        Result.new(
-          type: :type_mismatch_return,
-          yard_type: yard_type,
-          expected_type: expected_type,
-          message: "updated @return from #{yard_type} to #{expected_type}"
-        )
+        mismatch_return_result(yard_type, expected_type)
       end
 
       # Build a Result for a param mismatch, or nil if no mismatch.
@@ -94,17 +81,58 @@ module Docscribe
       # @param [String, nil] expected_type
       # @return [Result, nil]
       def check_param(param_name, yard_type, expected_type)
-        if invalid_syntax?(yard_type)
-          return Result.new(
-            type: :invalid_syntax,
-            yard_type: yard_type,
-            expected_type: expected_type,
-            message: "invalid YARD type [#{yard_type}] for @param #{param_name}#{" expected [#{expected_type}]" if expected_type && expected_type != @fallback_type}"
-          )
-        end
-
+        return invalid_param_result(param_name, yard_type, expected_type) if invalid_syntax?(yard_type)
         return unless mismatched_param?(yard_type, expected_type)
 
+        mismatch_param_result(param_name, yard_type, expected_type)
+      end
+
+      # @private
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Result]
+      def invalid_return_result(yard_type, expected_type)
+        Result.new(
+          type: :invalid_syntax,
+          yard_type: yard_type,
+          expected_type: expected_type,
+          message: "invalid YARD type [#{yard_type}]#{" expected [#{expected_type}]" if expected_type && expected_type != @fallback_type}"
+        )
+      end
+
+      # @private
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Result]
+      def mismatch_return_result(yard_type, expected_type)
+        Result.new(
+          type: :type_mismatch_return,
+          yard_type: yard_type,
+          expected_type: expected_type,
+          message: "updated @return from #{yard_type} to #{expected_type}"
+        )
+      end
+
+      # @private
+      # @param [String] param_name
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Result]
+      def invalid_param_result(param_name, yard_type, expected_type)
+        Result.new(
+          type: :invalid_syntax,
+          yard_type: yard_type,
+          expected_type: expected_type,
+          message: "invalid YARD type [#{yard_type}] for @param #{param_name}#{" expected [#{expected_type}]" if expected_type && expected_type != @fallback_type}"
+        )
+      end
+
+      # @private
+      # @param [String] param_name
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Result]
+      def mismatch_param_result(param_name, yard_type, expected_type)
         Result.new(
           type: :type_mismatch_param,
           yard_type: yard_type,

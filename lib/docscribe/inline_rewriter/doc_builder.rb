@@ -1021,27 +1021,75 @@ module Docscribe
         pname = extract_param_name_from_param_line(param_line)
         return unless pname
 
-        if !ctx[:info][:param_names].include?(pname)
-          lines << "#{param_line}\n"
-          reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
-        elsif ctx[:info][:param_types][pname]
-          yard_type = ctx[:info][:param_types][pname]
-          if invalid_yard_type?(yard_type)
-            reasons << {
-              type: :invalid_type,
-              message: "invalid YARD type [#{yard_type}] for @param #{pname}",
-              extra: { param: pname }
-            }
-          elsif should_validate_param?(ctx) && yard_type
-            collect_updated_param(param_line, pname, lines, reasons, ctx)
-          elsif ctx[:external_sig]
-            collect_updated_param(param_line, pname, lines, reasons, ctx)
-          end
+        if missing_param?(pname, ctx)
+          handle_missing_param(pname, param_line, lines, reasons)
+        elsif existing_param_type?(pname, ctx)
+          handle_existing_param(pname, param_line, lines, reasons, ctx)
         end
+      end
+
+      # @note module_function: defines # (visibility: private)
+      # @private
+      # @param [String] pname
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def missing_param?(pname, ctx)
+        !ctx[:info][:param_names].include?(pname)
+      end
+
+      # @note module_function: defines # (visibility: private)
+      # @private
+      # @param [String] pname
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def existing_param_type?(pname, ctx)
+        !!ctx[:info][:param_types][pname]
+      end
+
+      # @note module_function: defines # (visibility: private)
+      # @private
+      # @param [String] pname
+      # @param [String] param_line
+      # @param [Array<String>] lines
+      # @param [Array<Hash<Symbol, Object>>] reasons
+      # @return [void]
+      def handle_missing_param(pname, param_line, lines, reasons)
+        lines << "#{param_line}\n"
+        reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
+      end
+
+      # @note module_function: defines # (visibility: private)
+      # @private
+      # @param [String] pname
+      # @param [String] param_line
+      # @param [Array<String>] lines
+      # @param [Array<Hash<Symbol, Object>>] reasons
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [void]
+      def handle_existing_param(pname, param_line, lines, reasons, ctx)
+        yard_type = ctx[:info][:param_types][pname]
+        if invalid_yard_type?(yard_type)
+          reasons << {
+            type: :invalid_type,
+            message: "invalid YARD type [#{yard_type}] for @param #{pname}",
+            extra: { param: pname }
+          }
+        elsif param_needs_update?(ctx)
+          collect_updated_param(param_line, pname, lines, reasons, ctx)
+        end
+      end
+
+      # @note module_function: defines # (visibility: private)
+      # @private
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def param_needs_update?(ctx)
+        should_validate_param?(ctx) || !!ctx[:external_sig]
       end
 
       # Whether a YARD type string has invalid syntax.
       #
+      # @note module_function: defines # (visibility: private)
       # @param [String, nil] type_str
       # @return [Boolean]
       def invalid_yard_type?(type_str)
@@ -1052,6 +1100,7 @@ module Docscribe
 
       # Whether param validation should run via inferred/external types.
       #
+      # @note module_function: defines # (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def should_validate_param?(ctx)
@@ -1069,10 +1118,41 @@ module Docscribe
       # @return [void]
       def collect_updated_param(param_line, pname, lines, reasons, ctx)
         new_type = extract_param_type_from_param_line(param_line)
-        return unless new_type && ctx[:info][:param_types][pname] != new_type
+        return unless param_type_changed?(pname, new_type, ctx)
+        return if fallback_skipped?(new_type, ctx)
 
-        return if ctx[:config].respond_to?(:validate_types?) && ctx[:config].validate_types? && (new_type == ctx[:config].fallback_type)
+        append_param_update(param_line, pname, new_type, lines, reasons, ctx)
+      end
 
+      # @note module_function: defines # (visibility: private)
+      # @private
+      # @param [String] pname
+      # @param [String, nil] new_type
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def param_type_changed?(pname, new_type, ctx)
+        new_type && ctx[:info][:param_types][pname] != new_type
+      end
+
+      # @note module_function: defines # (visibility: private)
+      # @private
+      # @param [String, nil] new_type
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def fallback_skipped?(new_type, ctx)
+        ctx[:config].respond_to?(:validate_types?) && ctx[:config].validate_types? && (new_type == ctx[:config].fallback_type)
+      end
+
+      # @note module_function: defines # (visibility: private)
+      # @private
+      # @param [String] param_line
+      # @param [String] pname
+      # @param [String] new_type
+      # @param [Array<String>] lines
+      # @param [Array<Hash<Symbol, Object>>] reasons
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [void]
+      def append_param_update(param_line, pname, new_type, lines, reasons, ctx) # rubocop:disable Metrics/ParameterLists
         lines << "#{param_line}\n" unless ctx[:strategy] == :safe
         reasons << {
           type: :updated_param,
@@ -1887,13 +1967,14 @@ module Docscribe
           record_invalid_return(lines, reasons, ctx)
         elsif return_type_changed?(ctx)
           record_updated_return(lines, reasons, ctx)
-        elsif should_validate_return?(ctx) && mismatched_return?(ctx)
+        elsif should_validate_return?(ctx) && mismatched_return?(ctx) # rubocop:disable Lint/DuplicateBranch
           record_updated_return(lines, reasons, ctx)
         end
       end
 
       # Whether YARD return type has invalid syntax.
       #
+      # @note module_function: defines # (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def invalid_yard_return?(ctx)
@@ -1905,9 +1986,11 @@ module Docscribe
 
       # Record invalid return type.
       #
+      # @note module_function: defines # (visibility: private)
       # @param [Array<String>] lines
       # @param [Array<Hash<Symbol, Object>>] reasons
       # @param [Hash<Symbol, Object>] ctx
+      # @param [Object] _lines Param documentation.
       # @return [void]
       def record_invalid_return(_lines, reasons, ctx)
         yard = ctx[:info][:return_type]
@@ -1919,6 +2002,7 @@ module Docscribe
 
       # Whether return validation should run via inferred types.
       #
+      # @note module_function: defines # (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def should_validate_return?(ctx)
@@ -1929,6 +2013,7 @@ module Docscribe
       #
       # Silences when expected is fallback (uncertain).
       #
+      # @note module_function: defines # (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def mismatched_return?(ctx)
@@ -1943,6 +2028,7 @@ module Docscribe
 
       # Normalize type string for comparison.
       #
+      # @note module_function: defines # (visibility: private)
       # @param [String] type_str
       # @return [String]
       def normalize_type(type_str)
