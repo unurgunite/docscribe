@@ -3,6 +3,8 @@
 require 'docscribe/plugin'
 require 'docscribe/infer'
 require 'docscribe/inline_rewriter/source_helpers'
+require 'docscribe/types/yard/validator'
+require 'docscribe/validator/type_mismatch_validator'
 
 module Docscribe
   module InlineRewriter
@@ -1022,9 +1024,38 @@ module Docscribe
         if !ctx[:info][:param_names].include?(pname)
           lines << "#{param_line}\n"
           reasons << { type: :missing_param, message: "missing @param #{pname}", extra: { param: pname } }
-        elsif ctx[:external_sig] && ctx[:info][:param_types][pname]
-          collect_updated_param(param_line, pname, lines, reasons, ctx)
+        elsif ctx[:info][:param_types][pname]
+          yard_type = ctx[:info][:param_types][pname]
+          if invalid_yard_type?(yard_type)
+            reasons << {
+              type: :invalid_type,
+              message: "invalid YARD type [#{yard_type}] for @param #{pname}",
+              extra: { param: pname }
+            }
+          elsif should_validate_param?(ctx) && yard_type
+            collect_updated_param(param_line, pname, lines, reasons, ctx)
+          elsif ctx[:external_sig]
+            collect_updated_param(param_line, pname, lines, reasons, ctx)
+          end
         end
+      end
+
+      # Whether a YARD type string has invalid syntax.
+      #
+      # @param [String, nil] type_str
+      # @return [Boolean]
+      def invalid_yard_type?(type_str)
+        return false if type_str.nil? || type_str.strip.empty?
+
+        !Types::Yard::Validator.valid?(type_str)
+      end
+
+      # Whether param validation should run via inferred/external types.
+      #
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def should_validate_param?(ctx)
+        ctx[:config].respond_to?(:validate_types?) && ctx[:config].validate_types?
       end
 
       # Collect updated param
@@ -1039,6 +1070,8 @@ module Docscribe
       def collect_updated_param(param_line, pname, lines, reasons, ctx)
         new_type = extract_param_type_from_param_line(param_line)
         return unless new_type && ctx[:info][:param_types][pname] != new_type
+
+        return if ctx[:config].respond_to?(:validate_types?) && ctx[:config].validate_types? && (new_type == ctx[:config].fallback_type)
 
         lines << "#{param_line}\n" unless ctx[:strategy] == :safe
         reasons << {
@@ -1850,9 +1883,70 @@ module Docscribe
 
         if !ctx[:info][:has_return]
           record_missing_return(lines, reasons, ctx)
+        elsif invalid_yard_return?(ctx)
+          record_invalid_return(lines, reasons, ctx)
         elsif return_type_changed?(ctx)
           record_updated_return(lines, reasons, ctx)
+        elsif should_validate_return?(ctx) && mismatched_return?(ctx)
+          record_updated_return(lines, reasons, ctx)
         end
+      end
+
+      # Whether YARD return type has invalid syntax.
+      #
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def invalid_yard_return?(ctx)
+        yard = ctx[:info][:return_type]
+        return false unless yard
+
+        !Types::Yard::Validator.valid?(yard)
+      end
+
+      # Record invalid return type.
+      #
+      # @param [Array<String>] lines
+      # @param [Array<Hash<Symbol, Object>>] reasons
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [void]
+      def record_invalid_return(_lines, reasons, ctx)
+        yard = ctx[:info][:return_type]
+        reasons << {
+          type: :invalid_type,
+          message: "invalid YARD type [#{yard}] for @return, expected [#{ctx[:normal_type]}]"
+        }
+      end
+
+      # Whether return validation should run via inferred types.
+      #
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def should_validate_return?(ctx)
+        ctx[:config].respond_to?(:validate_types?) && ctx[:config].validate_types?
+      end
+
+      # Whether YARD return mismatches expected inferred/external type.
+      #
+      # Silences when expected is fallback (uncertain).
+      #
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def mismatched_return?(ctx)
+        yard = ctx[:info][:return_type]
+        expected = ctx[:normal_type]
+        return false unless yard && expected
+        return false if expected == ctx[:config].fallback_type
+        return false if normalize_type(yard) == normalize_type(expected)
+
+        true
+      end
+
+      # Normalize type string for comparison.
+      #
+      # @param [String] type_str
+      # @return [String]
+      def normalize_type(type_str)
+        type_str.to_s.strip.squeeze(' ')
       end
 
       # Record missing return

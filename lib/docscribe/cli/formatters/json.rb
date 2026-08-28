@@ -20,7 +20,8 @@ module Docscribe
           insert_full_doc_block: 'convention',
           unsorted_tags: 'convention',
           updated_param: 'warning',
-          updated_return: 'warning'
+          updated_return: 'warning',
+          invalid_type: 'warning'
         }.freeze
 
         COP_NAME_MAP = {
@@ -32,7 +33,8 @@ module Docscribe
           insert_full_doc_block: 'Docscribe/MissingDocBlock',
           unsorted_tags: 'Docscribe/UnsortedTags',
           updated_param: 'Docscribe/UpdatedParam',
-          updated_return: 'Docscribe/UpdatedReturn'
+          updated_return: 'Docscribe/UpdatedReturn',
+          invalid_type: 'Docscribe/InvalidType'
         }.freeze
 
         # Output JSON check summary.
