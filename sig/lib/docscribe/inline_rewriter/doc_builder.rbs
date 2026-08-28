@@ -250,6 +250,36 @@ module Docscribe
       def self?.param_rest_after_type: (String line) -> String?
 
       def self?.name_after_type_bracket: (String rest, Integer type_end) -> String?
+
+      def self?.missing_param?: (String pname, Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.handle_missing_param: (String pname, String param_line, Array[String] lines, Array[Hash[Symbol, untyped]] reasons) -> void
+
+      def self?.existing_param_type?: (String pname, Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.handle_existing_param: (String pname, String param_line, Array[String] lines, Array[Hash[Symbol, untyped]] reasons, Hash[Symbol, untyped] ctx) -> void
+
+      def self?.param_needs_update?: (Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.invalid_yard_type?: (String? type_str) -> bool
+
+      def self?.should_validate_param?: (Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.param_type_changed?: (String pname, (String | nil) new_type, Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.fallback_skipped?: ((String | nil) new_type, Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.append_param_update: (String param_line, String pname, (String | nil) new_type, Array[String] lines, Array[Hash[Symbol, untyped]] reasons, Hash[Symbol, untyped] ctx) -> void
+
+      def self?.invalid_yard_return?: (Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.record_invalid_return: (Array[String] lines, Array[Hash[Symbol, untyped]] reasons, Hash[Symbol, untyped] ctx) -> void
+
+      def self?.should_validate_return?: (Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.mismatched_return?: (Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.normalize_type: (String type_str) -> String
     end
   end
 end

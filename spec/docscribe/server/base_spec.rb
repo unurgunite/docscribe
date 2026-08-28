@@ -68,6 +68,10 @@ RSpec.describe Docscribe::Server do
   end
 
   describe '.ensure_running!' do
+    around { |ex| Dir.mktmpdir { |t| Dir.chdir(t, &ex) } }
+
+    after { described_class.clean_socket_files(nil) }
+
     before do
       allow(described_class).to receive_messages(running?: false, wait_for_ready: false)
       allow(Process).to receive(:fork).and_return(12_345)

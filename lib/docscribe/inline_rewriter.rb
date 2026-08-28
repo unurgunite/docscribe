@@ -1011,7 +1011,7 @@ module Docscribe
       # @return [void]
       def log_method_doc_changes!(insertion:, merge_result:, **rest)
         reason_specs = merge_result[:reasons] || []
-        type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return].include?(r[:type]) }
+        type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return invalid_type].include?(r[:type]) }
 
         return unless rest[:new_block] != rest[:old_block] || type_mismatch_reasons.any?
 
