@@ -84,6 +84,29 @@ RSpec.describe Docscribe::InlineRewriter do
     it 'reports invalid_type even without validate_types' do
       expect(result[:changes].select { |c| c[:type] == :invalid_type }.size).to eq(1)
     end
+
+    it 'provides corrected line for safe fix Sym bol -> Symbol', :aggregate_failures do
+      expect(result[:output]).to include('@return [Symbol]')
+      expect(result[:output]).not_to include('Sym bol')
+    end
+  end
+
+  describe 'invalid syntax Objec3t' do
+    let(:code) do
+      <<~RUBY
+        class Foo
+          # @return [Objec3t]
+          def bar
+            Object.new
+          end
+        end
+      RUBY
+    end
+
+    it 'provides corrected line for safe fix Objec3t -> Object', :aggregate_failures do
+      expect(result[:output]).to include('@return [Object]')
+      expect(result[:output]).not_to include('Objec3t')
+    end
   end
 
   describe 'param mismatch' do
@@ -104,6 +127,25 @@ RSpec.describe Docscribe::InlineRewriter do
       updated = result[:changes].select { |c| c[:type] == :updated_param }
       expect(updated.size).to eq(1)
       expect(updated.first[:message]).to include('x')
+    end
+  end
+
+  describe 'param invalid syntax' do
+    let(:code) do
+      <<~RUBY
+        class Foo
+          # @param [Sym bol] x
+          # @return [Symbol]
+          def bar(x = :sym)
+            x
+          end
+        end
+      RUBY
+    end
+
+    it 'provides corrected line for safe fix', :aggregate_failures do
+      expect(result[:output]).to include('@param [Symbol] x')
+      expect(result[:output]).not_to include('Sym bol')
     end
   end
 end

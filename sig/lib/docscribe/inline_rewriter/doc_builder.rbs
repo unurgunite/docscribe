@@ -255,6 +255,8 @@ module Docscribe
 
       def self?.handle_missing_param: (String pname, String param_line, Array[String] lines, Array[Hash[Symbol, untyped]] reasons) -> void
 
+      def self?.handle_invalid_param: (String pname, String param_line, String yard_type, Array[String] lines, Array[Hash[Symbol, untyped]] reasons) -> void
+
       def self?.existing_param_type?: (String pname, Hash[Symbol, untyped] ctx) -> bool
 
       def self?.handle_existing_param: (String pname, String param_line, Array[String] lines, Array[Hash[Symbol, untyped]] reasons, Hash[Symbol, untyped] ctx) -> void
@@ -279,7 +281,13 @@ module Docscribe
 
       def self?.mismatched_return?: (Hash[Symbol, untyped] ctx) -> bool
 
-      def self?.normalize_type: (String type_str) -> String
+      def self?.yard_in_expected_union?: (String yard, String expected) -> bool
+
+      def self?.void_compatible?: ((String | nil) yard, (String | nil) expected, String fallback) -> bool
+
+      def self?.fallback_union?: ((String | nil) type_str, String fallback) -> bool
+
+      def self?.normalize_type: ((String | nil) type_str) -> String
     end
   end
 end

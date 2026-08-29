@@ -1065,14 +1065,26 @@ module Docscribe
       def handle_existing_param(pname, param_line, lines, reasons, ctx)
         yard_type = ctx[:info][:param_types][pname]
         if invalid_yard_type?(yard_type)
-          reasons << {
-            type: :invalid_type,
-            message: "invalid YARD type [#{yard_type}] for @param #{pname}",
-            extra: { param: pname }
-          }
+          handle_invalid_param(pname, param_line, yard_type, lines, reasons)
         elsif param_needs_update?(ctx)
           collect_updated_param(param_line, pname, lines, reasons, ctx)
         end
+      end
+
+      # @note module_function: defines #handle_invalid_param (visibility: private)
+      # @param [String] pname
+      # @param [String] param_line
+      # @param [String] yard_type
+      # @param [Array<String>] lines
+      # @param [Array<Hash<Symbol, Object>>] reasons
+      # @return [void]
+      def handle_invalid_param(pname, param_line, yard_type, lines, reasons)
+        lines << "#{param_line}\n"
+        reasons << {
+          type: :invalid_type,
+          message: "invalid YARD type [#{yard_type}] for @param #{pname}",
+          extra: { param: pname }
+        }
       end
 
       # @note module_function: defines #param_needs_update? (visibility: private)
@@ -1087,8 +1099,10 @@ module Docscribe
       # @note module_function: defines #invalid_yard_type? (visibility: private)
       # @param [String?] type_str
       # @return [Boolean]
-      def invalid_yard_type?(type_str)
+      def invalid_yard_type?(type_str) # rubocop:disable SortedMethodsByCall/Waterfall
         return false if type_str.nil? || type_str.strip.empty?
+        return true if type_str.match?(/\d/)
+        return true if type_str.match?(/[^\x00-\x7F]/)
 
         !Types::Yard::Validator.valid?(type_str)
       end
@@ -1973,18 +1987,19 @@ module Docscribe
         yard = ctx[:info][:return_type]
         return false unless yard
 
-        !Types::Yard::Validator.valid?(yard)
+        invalid_yard_type?(yard)
       end
 
       # Record invalid return type.
       #
       # @note module_function: defines #record_invalid_return (visibility: private)
-      # @param [Array<String>] _lines Param documentation.
+      # @param [Array<String>] lines
       # @param [Array<Hash<Symbol, Object>>] reasons
       # @param [Hash<Symbol, Object>] ctx
       # @return [void]
-      def record_invalid_return(_lines, reasons, ctx)
+      def record_invalid_return(lines, reasons, ctx)
         yard = ctx[:info][:return_type]
+        lines << "#{ctx[:indent]}# @return [#{ctx[:normal_type]}]\n"
         reasons << {
           type: :invalid_type,
           message: "invalid YARD type [#{yard}] for @return, expected [#{ctx[:normal_type]}]"
@@ -2012,15 +2027,54 @@ module Docscribe
         expected = ctx[:normal_type]
         return false unless yard && expected
         return false if expected == ctx[:config].fallback_type
+        return false if void_compatible?(yard, expected, ctx[:config].fallback_type)
+        return false if yard_in_expected_union?(yard, expected)
         return false if normalize_type(yard) == normalize_type(expected)
 
         true
       end
 
+      # Whether yard type is included in expected union (e.g. Boolean in Object, Boolean).
+      #
+      # @note module_function: defines #yard_in_expected_union? (visibility: private)
+      # @param [String] yard
+      # @param [String] expected
+      # @return [Boolean]
+      def yard_in_expected_union?(yard, expected)
+        normalized_yard = normalize_type(yard)
+        expected.split(',').any? { |part| normalize_type(part) == normalized_yard }
+      end
+
+      # Whether void YARD type is compatible with fallback union.
+      #
+      # @note module_function: defines #void_compatible? (visibility: private)
+      # @param [String, nil] yard
+      # @param [String, nil] expected
+      # @param [String] fallback
+      # @return [Boolean]
+      def void_compatible?(yard, expected, fallback)
+        return false unless normalize_type(yard) == 'void'
+
+        fallback_union?(expected, fallback) || normalize_type(expected) == 'nil' || normalize_type(expected) == 'void'
+      end
+
+      # Whether a type string is a union of only fallback types (with optional `?`).
+      #
+      # @note module_function: defines #fallback_union? (visibility: private)
+      # @param [String, nil] type_str
+      # @param [String] fallback
+      # @return [Boolean]
+      def fallback_union?(type_str, fallback)
+        return false if type_str.nil? || type_str.strip.empty?
+
+        parts = type_str.to_s.split(',').map { |p| p.strip.delete_suffix('?').strip }
+        parts.all? { |p| p == fallback || p.empty? }
+      end
+
       # Normalize type string for comparison.
       #
       # @note module_function: defines #normalize_type (visibility: private)
-      # @param [String] type_str
+      # @param [String, nil] type_str
       # @return [String]
       def normalize_type(type_str)
         type_str.to_s.strip.squeeze(' ')
