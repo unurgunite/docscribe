@@ -34,7 +34,13 @@ module Docscribe
 
       private
 
-      def normalize: (String type_str) -> String
+      def void_compatible?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
+      def fallback_union?: ((String | nil) type_str) -> bool
+
+      def yard_in_expected_union?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
+      def normalize: ((String | nil) type_str) -> String
     end
   end
 end

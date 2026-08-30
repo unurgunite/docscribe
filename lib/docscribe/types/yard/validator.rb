@@ -25,7 +25,7 @@ module Docscribe
         # @note module_function: defines #valid? (visibility: private)
         # @param [String, nil] type_str the YARD type string to validate (e.g. "String", "Array<String>", "Sym bol")
         # @raise [StandardError]
-        # @return [Boolean] true if valid syntax, false otherwise
+        # @return [Boolean]
         # @return [Boolean] if StandardError
         def valid?(type_str)
           syntax_valid?(type_str)

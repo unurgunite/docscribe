@@ -126,6 +126,14 @@ module Docscribe
 
     def self.compute_doc_replacement: (Hash[Symbol, untyped] info, Array[String] missing_lines, **untyped options) -> [ bool, String, String ]
 
+    def self.filter_for_missing: (Hash[Symbol, untyped] info, Array[String] missing_lines) -> Hash[Symbol, untyped]
+
+    def self.return_filter_needed?: (Array[String] doc_lines, Array[String] missing_lines) -> bool
+
+    def self.param_names_for_filter: (Array[String] doc_lines, Array[String] missing_lines) -> Array[String]
+
+    def self.extract_param_name_for_filter: (String line) -> (String | nil)
+
     def self.log_method_doc_changes!: (insertion: Collector::Insertion, merge_result: Hash[Symbol, untyped], **untyped rest) -> void
 
     def self.apply_method_insertion_safe_without_info!: (**untyped options) -> void

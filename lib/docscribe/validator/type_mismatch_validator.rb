@@ -16,19 +16,19 @@ module Docscribe
     # When `expected` is `Object` (fallback) we silence to avoid false positives.
     class TypeMismatchValidator
       # @!attribute [rw] type
-      #   @return [Symbol] `:type_mismatch_return`, `:type_mismatch_param`, `:invalid_syntax`
+      #   @return [Symbol]
       #   @param [Symbol] value
       #
       # @!attribute [rw] yard_type
-      #   @return [String?] type written in YARD
+      #   @return [String?]
       #   @param [String?] value
       #
       # @!attribute [rw] expected_type
-      #   @return [String?] type inferred or from RBS/Sorbet
+      #   @return [String?]
       #   @param [String?] value
       #
       # @!attribute [rw] message
-      #   @return [String] human-readable
+      #   @return [String]
       #   @param [String] value
       Result = Struct.new(:type, :yard_type, :expected_type, :message, keyword_init: true)
 
@@ -52,12 +52,48 @@ module Docscribe
       # @param [String, nil] yard_type type from `@return [...]`
       # @param [String, nil] expected_type inferred or external `normal_type`
       # @return [Boolean]
-      def mismatched_return?(yard_type, expected_type)
+      def mismatched_return?(yard_type, expected_type) # rubocop:disable Metrics/CyclomaticComplexity
         return false if yard_type.nil? || yard_type.strip.empty?
         return false if expected_type.nil? || expected_type.strip.empty?
         return false if normalize(expected_type) == @fallback_type # uncertain -> silence
+        return false if void_compatible?(yard_type, expected_type)
+        return false if yard_in_expected_union?(yard_type, expected_type)
 
         normalize(yard_type) != normalize(expected_type)
+      end
+
+      # Whether yard type is included in expected union.
+      #
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Boolean]
+      def yard_in_expected_union?(yard_type, expected_type)
+        return false if yard_type.nil? || expected_type.nil?
+
+        normalized_yard = normalize(yard_type)
+        expected_type.split(',').any? { |part| normalize(part) == normalized_yard }
+      end
+
+      # Whether void YARD type is compatible with fallback union.
+      #
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Boolean]
+      def void_compatible?(yard_type, expected_type)
+        return false unless normalize(yard_type) == 'void'
+
+        fallback_union?(expected_type) || normalize(expected_type) == 'nil' || normalize(expected_type) == 'void'
+      end
+
+      # Whether a type string is a union of only fallback types (with optional `?`).
+      #
+      # @param [String, nil] type_str
+      # @return [Boolean]
+      def fallback_union?(type_str)
+        return false if type_str.nil? || type_str.strip.empty?
+
+        parts = type_str.to_s.split(',').map { |p| p.strip.delete_suffix('?').strip }
+        parts.all? { |p| p == @fallback_type || p.empty? }
       end
 
       # Whether a YARD type string has invalid syntax (e.g. `Sym bol` leftover).
@@ -150,7 +186,7 @@ module Docscribe
       # Normalize a type string for comparison (strip, squeeze spaces).
       #
       # @private
-      # @param [String] type_str
+      # @param [String, nil] type_str
       # @return [String]
       def normalize(type_str)
         type_str.to_s.strip.squeeze(' ')
