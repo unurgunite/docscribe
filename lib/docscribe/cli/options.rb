@@ -40,7 +40,7 @@ module Docscribe
                docscribe generate <type> <name> [options]
                docscribe sigs [options] [files...]
                docscribe rbs [options] [files...]
-               docscribe update_types [directory]
+               docscribe update_types [directory|file]
                docscribe check_for_comments [paths...]
 
         Default behavior:

@@ -92,6 +92,58 @@ RSpec.describe Docscribe::CLI::UpdateTypes do
         )
       end
     end
+
+    describe 'file target' do
+      before do
+        opts = DEFAULT_OPTS.merge(mode: :write, strategy: :aggressive, rbs_collection: true, no_boilerplate: true,
+                                  keep_descriptions: true, rbs: true)
+        allow(Docscribe::CLI::Options).to receive(:parse!).and_return(opts)
+        allow(Docscribe::CLI::Run).to receive(:run)
+        allow(File).to receive(:exist?).and_return(true)
+      end
+
+      it 'passes file path to Run.run and uses dirname for RBS flag', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        Dir.mktmpdir do |dir|
+          file = File.join(dir, 'foo.rb')
+          FileUtils.touch(file)
+          described_class.send(:run_first_pass, file)
+          expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including(dir))
+          expect(Docscribe::CLI::Run).to have_received(:run).with(
+            options: hash_including(mode: :write, strategy: :aggressive),
+            argv: [file]
+          )
+        end
+      end
+
+      it 'handles file target in second pass', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        Dir.mktmpdir do |dir|
+          file = File.join(dir, 'bar.rb')
+          FileUtils.touch(file)
+          opts = DEFAULT_OPTS.merge(mode: :write, strategy: :safe, rbs_collection: true, no_boilerplate: true, rbs: true)
+          allow(Docscribe::CLI::Options).to receive(:parse!).and_return(opts)
+          described_class.send(:run_second_pass, file)
+          expect(Docscribe::CLI::Options).to have_received(:parse!).with(array_including(dir))
+          expect(Docscribe::CLI::Run).to have_received(:run).with(
+            options: hash_including(mode: :write, strategy: :safe),
+            argv: [file]
+          )
+        end
+      end
+    end
+  end
+
+  describe 'file-scoped integration' do
+    it 'updates only target file, not whole directory', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+      Dir.mktmpdir do |dir|
+        file1 = File.join(dir, 'a.rb')
+        file2 = File.join(dir, 'b.rb')
+        File.write(file1, "class A\ndef foo\n1\nend\nend\n")
+        File.write(file2, "class B\ndef bar\n2\nend\nend\n")
+        described_class.run([file1])
+        expect(File.read(file1)).to include('@return')
+        expect(File.read(file2)).not_to include('@return')
+      end
+    end
   end
 
   describe '.run' do

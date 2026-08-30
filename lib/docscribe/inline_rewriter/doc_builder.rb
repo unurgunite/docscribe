@@ -1083,6 +1083,7 @@ module Docscribe
         reasons << {
           type: :invalid_type,
           message: "invalid YARD type [#{yard_type}] for @param #{pname}",
+          source: 'syntax',
           extra: { param: pname }
         }
       end
@@ -1163,6 +1164,7 @@ module Docscribe
         reasons << {
           type: :updated_param,
           message: "updated @param #{pname} from #{ctx[:info][:param_types][pname]} to #{new_type}",
+          source: ctx[:external_sig] ? 'rbs' : 'infer',
           extra: { param: pname }
         }
       end
@@ -2002,7 +2004,8 @@ module Docscribe
         lines << "#{ctx[:indent]}# @return [#{ctx[:normal_type]}]\n"
         reasons << {
           type: :invalid_type,
-          message: "invalid YARD type [#{yard}] for @return, expected [#{ctx[:normal_type]}]"
+          message: "invalid YARD type [#{yard}] for @return, expected [#{ctx[:normal_type]}]",
+          source: 'syntax'
         }
       end
 
@@ -2102,7 +2105,8 @@ module Docscribe
       def record_updated_return(lines, reasons, ctx)
         lines << "#{ctx[:indent]}# @return [#{ctx[:normal_type]}]\n" unless ctx[:strategy] == :safe
         reasons << { type: :updated_return,
-                     message: "updated @return from #{ctx[:info][:return_type]} to #{ctx[:normal_type]}" }
+                     message: "updated @return from #{ctx[:info][:return_type]} to #{ctx[:normal_type]}",
+                     source: ctx[:external_sig] ? 'rbs' : 'infer' }
       end
 
       # Return type changed

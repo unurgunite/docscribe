@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'tmpdir'
+require 'fileutils'
 require 'docscribe/inline_rewriter'
 require 'docscribe/config'
 
@@ -146,6 +148,69 @@ RSpec.describe Docscribe::InlineRewriter do
     it 'provides corrected line for safe fix', :aggregate_failures do
       expect(result[:output]).to include('@param [Symbol] x')
       expect(result[:output]).not_to include('Sym bol')
+    end
+  end
+
+  describe 'source field' do
+    context 'with syntax source for invalid YARD' do
+      let(:code) do
+        <<~RUBY
+          class Foo
+            # @return [Sym bol]
+            def bar
+              :x
+            end
+          end
+        RUBY
+      end
+      let(:config) { Docscribe::Config.new('validate_types' => true) }
+
+      it 'reports syntax source' do
+        expect(result[:changes].first[:source]).to eq('syntax')
+      end
+    end
+
+    context 'with infer source for mismatch without RBS' do
+      let(:code) do
+        <<~RUBY
+          class Foo
+            # @return [Integer]
+            def bar
+              "hello"
+            end
+          end
+        RUBY
+      end
+      let(:config) { Docscribe::Config.new('validate_types' => true) }
+
+      it 'reports infer source' do
+        expect(result[:changes].first[:source]).to eq('infer')
+      end
+    end
+
+    context 'with rbs source when RBS type differs' do
+      let(:code) do
+        <<~RUBY
+          class Foo
+            # @return [Integer]
+            def bar
+              "hello"
+            end
+          end
+        RUBY
+      end
+
+      it 'reports rbs source' do # rubocop:disable RSpec/ExampleLength
+        skip_unless_rbs_available!
+        Dir.mktmpdir do |dir|
+          sig_dir = File.join(dir, 'sig')
+          FileUtils.mkdir_p(sig_dir)
+          File.write(File.join(sig_dir, 'foo.rbs'), "class Foo\n  def bar: () -> String\nend\n")
+          config = Docscribe::Config.new('validate_types' => true, 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] })
+          result = described_class.rewrite_with_report(code, strategy: :safe, config: config, file: 'test.rb')
+          expect(result[:changes].first[:source]).to eq('rbs')
+        end
+      end
     end
   end
 end

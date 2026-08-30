@@ -10,7 +10,7 @@ module Docscribe
     # Two-pass update: rebuild docs then re-merge with RBS types.
     #
     # Usage:
-    #   docscribe update_types [directory]
+    #   docscribe update_types [directory|file]
     #
     # Pass 1: `-AkB --rbs-collection <dir>` — aggressive rebuild, keep descriptions,
     #   no boilerplate, using RBS collection signatures.
@@ -18,7 +18,7 @@ module Docscribe
     #   using RBS collection signatures.
     module UpdateTypes
       BANNER = <<~TEXT
-        Usage: docscribe update_types [directory]
+        Usage: docscribe update_types [directory|file]
 
         Two-pass type-aware documentation update.
 
@@ -35,14 +35,14 @@ module Docscribe
         # @return [Integer]
         def run(argv)
           options = parse_options(argv)
-          dir = options[:dir]
+          target = options[:dir]
 
           announce_start
 
-          exit1 = run_first_pass(dir)
+          exit1 = run_first_pass(target)
           return exit1 unless exit1.zero?
 
-          exit2 = run_second_pass(dir)
+          exit2 = run_second_pass(target)
           return exit2 unless exit2.zero?
 
           announce_complete
@@ -72,27 +72,29 @@ module Docscribe
         end
 
         # @private
-        # @param [String] dir
+        # @param [String] target
         # @return [Integer]
-        def run_first_pass(dir)
-          has_collection = File.exist?(File.join(dir, 'rbs_collection.lock.yaml')) || File.exist?('rbs_collection.lock.yaml')
+        def run_first_pass(target)
+          dir_for_flag = File.file?(target) ? File.dirname(target) : target
+          has_collection = File.exist?(File.join(dir_for_flag, 'rbs_collection.lock.yaml')) || File.exist?('rbs_collection.lock.yaml')
           flag = has_collection ? '--rbs-collection' : '--rbs'
           puts "Pass 1: Aggressive rebuild with #{has_collection ? 'RBS collection' : 'RBS'}..."
-          argv1 = ['-AkB', flag, dir]
+          argv1 = ['-AkB', flag, dir_for_flag]
           options1 = Docscribe::CLI::Options.parse!(argv1)
-          Docscribe::CLI::Run.run(options: options1, argv: [dir])
+          Docscribe::CLI::Run.run(options: options1, argv: [target])
         end
 
         # @private
-        # @param [String] dir
+        # @param [String] target
         # @return [Integer]
-        def run_second_pass(dir)
-          has_collection = File.exist?(File.join(dir, 'rbs_collection.lock.yaml')) || File.exist?('rbs_collection.lock.yaml')
+        def run_second_pass(target)
+          dir_for_flag = File.file?(target) ? File.dirname(target) : target
+          has_collection = File.exist?(File.join(dir_for_flag, 'rbs_collection.lock.yaml')) || File.exist?('rbs_collection.lock.yaml')
           flag = has_collection ? '--rbs-collection' : '--rbs'
           puts "Pass 2: Safe merge with #{has_collection ? 'RBS collection' : 'RBS'}..."
-          argv2 = ['-aB', flag, dir]
+          argv2 = ['-aB', flag, dir_for_flag]
           options2 = Docscribe::CLI::Options.parse!(argv2)
-          Docscribe::CLI::Run.run(options: options2, argv: [dir])
+          Docscribe::CLI::Run.run(options: options2, argv: [target])
         end
 
         # @private

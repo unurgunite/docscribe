@@ -1066,15 +1066,17 @@ module Docscribe
       # @param [Hash<Symbol, Object>] merge_result merge operation result
       # @param [Object] rest additional keyword arguments forwarded to add_change
       # @return [void]
-      def log_method_doc_changes!(insertion:, merge_result:, **rest)
+      def log_method_doc_changes!(insertion:, merge_result:, **rest) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity
         reason_specs = merge_result[:reasons] || []
         type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return invalid_type].include?(r[:type]) }
 
         return unless rest[:new_block] != rest[:old_block] || type_mismatch_reasons.any?
 
         reason_specs.each do |reason|
+          extra = (reason[:extra] || {}).dup
+          extra[:source] = reason[:source] if reason[:source]
           add_change(changes: rest[:changes], type: reason[:type], insertion: insertion,
-                     file: rest[:file], message: reason[:message], extra: reason[:extra] || {})
+                     file: rest[:file], message: reason[:message], extra: extra)
         end
       end
 
