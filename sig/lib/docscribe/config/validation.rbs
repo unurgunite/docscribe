@@ -1,5 +1,5 @@
 module Docscribe
   class Config
-    DEFAULT: Hash[String, untyped]
+    def validate_types?: () -> bool
   end
 end

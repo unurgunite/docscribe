@@ -41,6 +41,7 @@ module Docscribe
       @config_mutex: Mutex
       @started_at: Time
       @applied_overrides: (Hash[String, Object] | nil)
+      @last_sig_hash: (String | nil)
 
       ERROR_CODES: Hash[Symbol, Integer]
 
@@ -60,6 +61,10 @@ module Docscribe
       def handle_check: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def handle_fix: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def handle_check_batch: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
+      def handle_update_types: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
+      def update_types_dir: (Hash[String, untyped]) -> String
+      def run_update_types: (String) -> Integer
+      def send_update_types_response: (UNIXSocket, (String | Integer), String, Integer) -> void
       def process_file_in_batch: (String, Symbol, ?(Integer | Float)?) -> Hash[String, (String | Array[Hash[Symbol, untyped]])]
       def run_rewrite: (String, Symbol) -> Hash[String, (String | Array[Hash[Symbol, untyped]])]
       def apply_cli_overrides: (Hash[String, Object]?) -> void
@@ -67,7 +72,13 @@ module Docscribe
       def reset_effective_config: () -> void
       def reset_effective_config_internal: () -> void
       def rewrite_file: (String, Symbol) -> [String, { output: String, changes: Array[Hash[Symbol, untyped]] }]
+      def handle_sig_change: (String) -> void
+      def cached_result: (Array[(String | Symbol)], Time, String) -> [String, { output: String, changes: Array[Hash[Symbol, untyped]] }]?
+      def clear_rbs_cache: (Docscribe::Config) -> void
       def rewrite_and_cache: (String, Symbol, Docscribe::Config, Array[(String | Symbol)], Time) -> [String, { output: String, changes: Array[Hash[Symbol, untyped]] }]
+      def sig_hash_for: (Docscribe::Config) -> String
+      def sig_rbs_files: (Array[String]) -> Array[String]
+      def sig_dirs_for: (Docscribe::Config) -> Array[String]
       def handle_shutdown: (UNIXSocket, (String | Integer)) -> void
       def handle_ping: (UNIXSocket, (String | Integer)) -> void
       def send_result: (UNIXSocket, (String | Integer), Hash[String, Object]) -> void

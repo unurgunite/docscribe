@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 require 'docscribe/server'
+require 'docscribe/cli/update_types'
 require 'fileutils'
+require 'json'
+require 'stringio'
 require 'tmpdir'
 
 RSpec.describe Docscribe::Server::Daemon do
@@ -212,6 +215,207 @@ RSpec.describe Docscribe::Server::Daemon do
       with_cache_dir do |daemon, _test_file|
         daemon.send(:apply_cli_overrides, override_hash) && daemon.send(:apply_cli_overrides, nil)
         expect(daemon.instance_variable_get(:@file_cache)).to be_empty
+      end
+    end
+  end
+
+  # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
+  describe 'rbs sig cache invalidation' do
+    context 'when RBS is available' do
+      before { skip_unless_rbs_available! }
+
+      it 'invalidates cache when sig file changes without touching ruby file' do
+        with_tmp_dir do |dir|
+          daemon = build_sig_daemon(dir, rbs: DaemonSigHelper::DEMO_RBS_INTEGER)
+          write_ruby("#{dir}/a.rb")
+          r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          expect(r1).to include('@param [Integer]')
+          update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
+          r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          expect(r2).to include('@param [String]')
+          expect(r1).not_to eq(r2)
+        end
+      end
+
+      it 'invalidates cache for new file after sig change' do
+        with_tmp_dir do |dir|
+          daemon = build_sig_daemon(dir)
+          write_ruby("#{dir}/a.rb")
+          write_ruby("#{dir}/b.rb")
+          r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          expect(r1).to include('@param [Integer]')
+          update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
+          r2 = rbs_rewrite(daemon, "#{dir}/b.rb")
+          expect(r2).to include('@param [String]')
+        end
+      end
+
+      it 'caches again after sig change' do
+        with_tmp_dir do |dir|
+          daemon = build_sig_daemon(dir)
+          write_ruby("#{dir}/a.rb")
+          r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
+          r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          allow(Docscribe::InlineRewriter).to receive(:rewrite_with_report) { raise 'should be cached' }
+          r3 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          expect(r3).to eq(r2)
+          expect(r1).not_to eq(r3)
+        end
+      end
+    end
+
+    context 'without RBS dependency' do
+      it 'stores sig_hash in cache entry' do
+        with_tmp_dir do |dir|
+          prepare_sig_files('sig/a.rbs', "class A\nend\n")
+          write_ruby("#{dir}/x.rb", "class A\n  def foo; end\nend\n")
+          daemon = build_plain_daemon(dir)
+          daemon.send(:apply_cli_overrides, rbs_overrides)
+          daemon.send(:rewrite_file, "#{dir}/x.rb", :safe)
+          hit = daemon.instance_variable_get(:@file_cache)[["#{dir}/x.rb", :safe]]
+          expect(hit).to include(:sig_hash)
+          config = daemon.instance_variable_get(:@effective_config) || daemon.instance_variable_get(:@config)
+          expect(hit[:sig_hash]).to eq(daemon.send(:sig_hash_for, config))
+        end
+      end
+
+      it 'sig_hash_for respects custom sig_dirs' do
+        with_tmp_dir do |dir|
+          prepare_sig_files('custom_sig/b.rbs', "class B\nend\n", 'sig/a.rbs', "class A\nend\n")
+          daemon = build_plain_daemon(dir)
+          h_custom = sig_hash_for_config(daemon, ['custom_sig'])
+          h_default = sig_hash_for_config(daemon, ['sig'])
+          expect(h_custom).not_to eq(h_default)
+        end
+      end
+
+      it 'sig_dirs_for falls back to sig when empty' do
+        with_tmp_dir do |dir|
+          daemon = build_plain_daemon(dir)
+          config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => [] })
+          expect(daemon.send(:sig_dirs_for, config)).to eq(['sig'])
+        end
+      end
+
+      it 'sig_hash changes when new sig file added' do
+        with_tmp_dir do |dir|
+          prepare_sig_files('sig/a.rbs', "class A\nend\n")
+          daemon = build_plain_daemon(dir)
+          config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => ['sig'] })
+          h1 = daemon.send(:sig_hash_for, config)
+          write_sig('sig/b.rbs', "class B\nend\n")
+          h2 = daemon.send(:sig_hash_for, config)
+          expect(h1).not_to eq(h2)
+        end
+      end
+    end
+  end
+  # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
+
+  describe 'update_types request' do
+    it 'returns ok when UpdateTypes.run succeeds' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['.']).and_return(0)
+      resp = client.update_types
+      expect(resp).to include('result' => hash_including('status' => 'ok', 'dir' => '.', 'exit_code' => 0))
+    end
+
+    it 'respects dir param' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['lib']).and_return(0)
+      expect(client.update_types(dir: 'lib')['result']['dir']).to eq('lib')
+    end
+
+    it 'respects directory param via raw request' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['app']).and_return(0)
+      resp = send_raw_request(socket_path, 'update_types', { 'directory' => 'app' })
+      expect(resp['result']['dir']).to eq('app')
+    end
+
+    it 'defaults to . when dir not provided' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['.']).and_return(0)
+      resp = send_raw_request(socket_path, 'update_types', {})
+      expect(resp['result']['dir']).to eq('.')
+    end
+
+    it 'returns error when exit_code non-zero' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_return(2)
+      resp = client.update_types
+      expect(resp['error']).to include('code' => Docscribe::Server::Daemon::ERROR_CODES[:internal], 'message' => include('exit code 2'), 'data' => hash_including('exit_code' => 2))
+    end
+
+    it 'clears file cache after success' do
+      daemon.instance_variable_get(:@file_cache)[%w[test.rb safe]] =
+        { mtime: Time.now, sig_hash: '0', src: '', result: {} }
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_return(0)
+      client.update_types
+      expect(daemon.instance_variable_get(:@file_cache)).to be_empty
+    end
+
+    it 'applies cli_overrides without error for minimal hash' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_return(0)
+      resp = send_raw_request(socket_path, 'update_types',
+                              { 'cli_overrides' => { 'no_boilerplate' => true } })
+      expect(resp['result']['status']).to eq('ok')
+    end
+
+    it 'handles exception and returns internal error' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_raise(StandardError, 'boom')
+      resp = client.update_types
+      expect(resp['error']).to include('code' => Docscribe::Server::Daemon::ERROR_CODES[:internal], 'message' => include('boom'))
+    end
+
+    it 'does not return Unknown method for update_types' do
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).and_return(0)
+      expect(client.update_types['result']['status']).to eq('ok')
+    end
+
+    it 'passes dir correctly to UpdateTypes.run' do # rubocop:disable RSpec/MultipleExpectations
+      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['custom_dir']).and_return(0)
+      resp = send_raw_request(socket_path, 'update_types', { 'dir' => 'custom_dir' })
+      expect(Docscribe::CLI::UpdateTypes).to have_received(:run).with(['custom_dir'])
+      expect(resp['result']['dir']).to eq('custom_dir')
+    end
+
+    context 'with real filesystem and missing rbs_collection.lock.yaml' do
+      it 'returns ok and warns instead of failing' do
+        with_update_types_env do |dir, sock|
+          first, content, second = run_update_types_twice(sock, dir)
+          expect([first['result']['status'], content.include?('@return'),
+                  second['result']['status']]).to eq(['ok', true, 'ok'])
+        end
+      end
+    end
+
+    describe 'private helpers' do
+      let(:io) { StringIO.new }
+      let(:parsed) { JSON.parse(io.string) }
+      let(:run_result) { daemon.send(:run_update_types, 'lib') }
+
+      it 'update_types_dir prefers dir over directory' do
+        expect(daemon.send(:update_types_dir, { 'dir' => 'a', 'directory' => 'b' })).to eq('a')
+      end
+
+      it 'update_types_dir falls back to directory' do
+        expect(daemon.send(:update_types_dir, { 'directory' => 'b' })).to eq('b')
+      end
+
+      it 'update_types_dir defaults to .' do
+        expect(daemon.send(:update_types_dir, {})).to eq('.')
+      end
+
+      it 'run_update_types delegates to CLI' do
+        allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['lib']).and_return(0)
+        expect(run_result).to eq(0)
+      end
+
+      it 'send_update_types_response sends ok for zero exit' do
+        daemon.send(:send_update_types_response, io, 1, '.', 0)
+        expect(parsed['result']).to include('status' => 'ok', 'exit_code' => 0)
+      end
+
+      it 'send_update_types_response sends error for non-zero exit' do
+        daemon.send(:send_update_types_response, io, 1, '.', 1)
+        expect(parsed['error']['code']).to eq(Docscribe::Server::Daemon::ERROR_CODES[:internal])
       end
     end
   end

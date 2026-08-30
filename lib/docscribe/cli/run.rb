@@ -42,6 +42,7 @@ module Docscribe
           include exclude include_file exclude_file
           rbs rbs_collection sig_dirs
           sorbet rbi_dirs
+          validate_types
         ].freeze
 
         # Run Docscribe for files or STDIN using the selected mode and strategy.
@@ -605,7 +606,7 @@ module Docscribe
           return unless result
 
           dispatch_file_result(path, src: src, out: result[:output], file_changes: result[:changes] || [],
-                                     display_path: display_path, options: options, state: state)
+                                     display_path: display_path, options: options, state: state, conf: conf)
         end
 
         # Print progress indicator to stderr when --progress is active.
@@ -735,9 +736,20 @@ module Docscribe
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes structured change records
         # @param [Object] ctx context hash with :display_path, :options, :state keys
         # @return [void]
-        def handle_check_result(path, src:, out:, file_changes:, **ctx)
+        def handle_check_result(path, src:, out:, file_changes:, **ctx) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
           type_mismatches = type_mismatch_changes(file_changes)
-          has_real_changes = file_changes.any? { |c| !%i[updated_param updated_return].include?(c[:type]) }
+          has_real_changes = file_changes.any? { |c| !%i[updated_param updated_return invalid_type].include?(c[:type]) }
+          validate = ctx[:options][:validate_types] || (ctx[:conf].respond_to?(:validate_types?) && ctx[:conf].validate_types?)
+
+          # When --validate-types is enabled, mismatches are failures (exit 1), not just MT
+          if validate && type_mismatches.any? && out == src && !has_real_changes
+            handle_check_failed(path, file_changes: file_changes, display_path: ctx[:display_path],
+                                      options: ctx[:options], state: ctx[:state])
+            # also track as type mismatch for summary
+            ctx[:state][:type_mismatch_paths] << ctx[:display_path] unless ctx[:state][:type_mismatch_paths].include?(ctx[:display_path])
+            ctx[:state][:type_mismatch_changes][ctx[:display_path]] = type_mismatches
+            return
+          end
 
           if out == src && !has_real_changes
             handle_check_no_changes(path, type_mismatches: type_mismatches, display_path: ctx[:display_path],
@@ -755,7 +767,7 @@ module Docscribe
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes structured change records
         # @return [Array<Docscribe::CLI::Formatters::change>]
         def type_mismatch_changes(file_changes)
-          file_changes.select { |c| %i[updated_param updated_return].include?(c[:type]) }
+          file_changes.select { |c| %i[updated_param updated_return invalid_type].include?(c[:type]) }
         end
 
         # Handle check result when there are no real changes.

@@ -993,13 +993,70 @@ module Docscribe
       # @return [(Boolean, String, String)]
       def compute_doc_replacement(info, missing_lines, **options)
         dc = options[:config]
+        filter = filter_for_missing(info, missing_lines)
         sorted = Docscribe::InlineRewriter::DocBlock.merge(
           info[:doc_lines], missing_lines: [], sort_tags: dc.sort_tags?, tag_order: dc.tag_order
         )
         merged = Docscribe::InlineRewriter::DocBlock.merge(
-          info[:doc_lines], missing_lines: missing_lines, sort_tags: dc.sort_tags?, tag_order: dc.tag_order
+          info[:doc_lines], missing_lines: missing_lines, sort_tags: dc.sort_tags?, tag_order: dc.tag_order,
+                            filter_existing: filter
         )
         [sorted != info[:doc_lines], (info[:preserved_lines] + merged).join, info[:lines].join]
+      end
+
+      # Build filter for DocBlock.merge when missing lines replace existing invalid tags.
+      #
+      # @private
+      # @param [Hash<Symbol, Object>] info parsed doc info from method_doc_comment_info
+      # @param [Array<String>] missing_lines generated missing lines
+      # @return [Hash<Symbol, Object>] filter for existing entries
+      def filter_for_missing(info, missing_lines)
+        filter = {} #: Hash[Symbol, untyped]
+        doc_lines = Array(info[:doc_lines]) #: Array[String]
+        filter[:return] = true if return_filter_needed?(doc_lines, missing_lines)
+        names = param_names_for_filter(doc_lines, missing_lines)
+        filter[:param_names] = names if names.any?
+        filter
+      end
+
+      # Whether return filter is needed.
+      #
+      # @private
+      # @param [Array<String>] doc_lines existing doc lines
+      # @param [Array<String>] missing_lines generated missing lines
+      # @return [Boolean]
+      def return_filter_needed?(doc_lines, missing_lines)
+        doc_lines.any? { |l| l.include?('@return') } && missing_lines.any? { |l| l.include?('@return') }
+      end
+
+      # Param names that need filtering.
+      #
+      # @private
+      # @param [Array<String>] doc_lines existing doc lines
+      # @param [Array<String>] missing_lines generated missing lines
+      # @return [Array<String>]
+      def param_names_for_filter(doc_lines, missing_lines)
+        missing_names = missing_lines.filter_map { |l| extract_param_name_for_filter(l) }
+        existing_names = doc_lines.filter_map { |l| extract_param_name_for_filter(l) }
+        missing_names & existing_names
+      end
+
+      # Extract param name from a generated @param line for filtering.
+      #
+      # @private
+      # @param [String] line generated param line
+      # @return [String, nil]
+      def extract_param_name_for_filter(line)
+        content = line.sub(/^\s*#\s*/, '')
+        if (m = content.match(/@param\s+(\S+)\s+\[/))
+          return m[1]
+        elsif (m = content.match(/@param\s+\[/))
+          rest = content[(m.end(0) - 1)..] # steep:ignore
+          type_end = rest.index(']') # steep:ignore
+          return rest[(type_end + 1)..].to_s.strip.split(/\s+/).first if type_end # steep:ignore
+        end
+
+        nil
       end
 
       # Log method doc changes
@@ -1011,7 +1068,7 @@ module Docscribe
       # @return [void]
       def log_method_doc_changes!(insertion:, merge_result:, **rest)
         reason_specs = merge_result[:reasons] || []
-        type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return].include?(r[:type]) }
+        type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return invalid_type].include?(r[:type]) }
 
         return unless rest[:new_block] != rest[:old_block] || type_mismatch_reasons.any?
 
