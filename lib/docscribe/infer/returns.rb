@@ -615,7 +615,8 @@ module Docscribe
           return type if type
         end
 
-        run_last_expr_type(node.children[2], **opts)
+        inner = run_last_expr_type(node.children[2], **opts)
+        inner ? "Array<#{inner}>" : nil
       end
 
       # Handle `:send` node for last_expr_type.
