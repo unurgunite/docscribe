@@ -41,6 +41,8 @@ module Docscribe
 
       def yard_in_expected_union?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
 
+      def generic_compatible?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
       def normalize: ((String | nil) type_str) -> String
     end
   end

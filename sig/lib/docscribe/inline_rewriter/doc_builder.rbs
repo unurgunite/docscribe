@@ -331,6 +331,8 @@ module Docscribe
 
       def self?.yard_in_expected_union?: (String yard, String expected) -> bool
 
+      def self?.generic_compatible?: (String yard, String expected) -> bool
+
       def self?.void_compatible?: ((String | nil) yard, (String | nil) expected, String fallback) -> bool
 
       def self?.fallback_union?: ((String | nil) type_str, String fallback) -> bool

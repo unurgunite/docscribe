@@ -2030,16 +2030,31 @@ module Docscribe
       # @note module_function: defines #mismatched_return? (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
-      def mismatched_return?(ctx)
+      def mismatched_return?(ctx) # rubocop:disable Metrics/CyclomaticComplexity
         yard = ctx[:info][:return_type]
         expected = ctx[:normal_type]
         return false unless yard && expected
         return false if expected == ctx[:config].fallback_type
         return false if void_compatible?(yard, expected, ctx[:config].fallback_type)
         return false if yard_in_expected_union?(yard, expected)
+        return false if generic_compatible?(yard, expected)
         return false if normalize_type(yard) == normalize_type(expected)
 
         true
+      end
+
+      # Whether YARD type is generic compatible (Hash vs Hash<Symbol, String>).
+      #
+      # @note module_function: defines #generic_compatible? (visibility: private)
+      # @param [String] yard
+      # @param [String] expected
+      # @return [Boolean]
+      def generic_compatible?(yard, expected)
+        ny = normalize_type(yard)
+        ne = normalize_type(expected)
+        return true if ny == ne
+
+        (ny.start_with?("#{ne}<") && ne !~ /[<\[]/) || (ne.start_with?("#{ny}<") && ny !~ /[<\[]/)
       end
 
       # Whether yard type is included in expected union (e.g. Boolean in Object, Boolean).

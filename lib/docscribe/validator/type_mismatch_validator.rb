@@ -56,14 +56,28 @@ module Docscribe
       # @param [String, nil] yard_type type from `@return [...]`
       # @param [String, nil] expected_type inferred or external `normal_type`
       # @return [Boolean]
-      def mismatched_return?(yard_type, expected_type) # rubocop:disable Metrics/CyclomaticComplexity
+      def mismatched_return?(yard_type, expected_type) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         return false if yard_type.nil? || yard_type.strip.empty?
         return false if expected_type.nil? || expected_type.strip.empty?
         return false if normalize(expected_type) == @fallback_type # uncertain -> silence
         return false if void_compatible?(yard_type, expected_type)
         return false if yard_in_expected_union?(yard_type, expected_type)
+        return false if generic_compatible?(yard_type, expected_type)
 
         normalize(yard_type) != normalize(expected_type)
+      end
+
+      # Whether YARD type is generic compatible with expected (e.g. Hash vs Hash<Symbol, String>).
+      #
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Boolean]
+      def generic_compatible?(yard_type, expected_type)
+        ny = normalize(yard_type)
+        ne = normalize(expected_type)
+        return true if ny == ne
+
+        (ny.start_with?("#{ne}<") && ne !~ /[<\[]/) || (ne.start_with?("#{ny}<") && ny !~ /[<\[]/)
       end
 
       # Whether yard type is included in expected union.

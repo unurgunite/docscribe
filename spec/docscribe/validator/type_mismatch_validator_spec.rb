@@ -25,6 +25,22 @@ RSpec.describe Docscribe::Validator::TypeMismatchValidator do
     it 'handles whitespace normalization' do
       expect(validator.mismatched_return?(' String ', 'String')).to be false
     end
+
+    it 'returns false when yard is generic Hash and expected is detailed Hash<Symbol, String>' do
+      expect(validator.mismatched_return?('Hash', 'Hash<Symbol, String>')).to be false
+    end
+
+    it 'returns false when yard is detailed Hash<Symbol, String> and expected is generic Hash' do
+      expect(validator.mismatched_return?('Hash<Symbol, String>', 'Hash')).to be false
+    end
+
+    it 'returns false for Hash<Symbol, Config, String> vs Hash' do
+      expect(validator.mismatched_return?('Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer>', 'Hash')).to be false
+    end
+
+    it 'returns true when both detailed Hash types differ' do
+      expect(validator.mismatched_return?('Hash<Symbol, String>', 'Hash<Symbol, Integer>')).to be true
+    end
   end
 
   describe '#invalid_syntax?' do
