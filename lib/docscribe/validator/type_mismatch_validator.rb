@@ -94,6 +94,15 @@ module Docscribe
         # Optional param with default nil: Parser::AST::Node vs nil (should be Node, nil)
         return true if (ny == 'Parser::AST::Node' && ne == 'nil') || (ne == 'Parser::AST::Node' && ny == 'nil')
 
+        # Alias vs generic: Formatters::opts, Elem etc. are aliases for Hash/Array
+        return true if (ny.include?('::opts') && ne == 'Hash') || (ne.include?('::opts') && ny == 'Hash')
+        return true if (ny.include?('::opts') && ne.start_with?('Hash<')) || (ne.include?('::opts') && ny.start_with?('Hash<'))
+        return true if (ny.include?('::opts') && ne.start_with?('Hash[')) || (ne.include?('::opts') && ny.start_with?('Hash['))
+
+        # Reverse union: expected in yard (e.g. "nil" in "String, nil")
+        return true if yard_in_expected_union?(expected_type, yard_type)
+        return true if yard_in_expected_union?(yard_type, expected_type)
+
         false
       end
 
