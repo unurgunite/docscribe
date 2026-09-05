@@ -154,7 +154,7 @@ module Docscribe
 
       # Setup rewrite env
       #
-      # @private1
+      # @private
       # @param [String] code the Ruby source code string to parse and rewrite
       # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
       # @raise [Docscribe::ParseError]
