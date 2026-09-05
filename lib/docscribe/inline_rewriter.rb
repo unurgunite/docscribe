@@ -1101,7 +1101,7 @@ module Docscribe
 
       # Filter options to keep only doc-building params for safe-without-info mode.
       # @private
-      # @param [Object] options the full options hash to filter
+      # @param [Hash[Symbol, untyped]] options the full options hash to filter
       # @return [Object]
 
       # Add change
