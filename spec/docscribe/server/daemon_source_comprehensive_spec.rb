@@ -67,6 +67,67 @@ RSpec.describe Docscribe::Server::Daemon do
   end
 
   describe 'source field propagation via daemon' do
+    def rewrite_for_content(content)
+      Dir.mktmpdir do |tmp_dir|
+        path = File.join(tmp_dir, 'a.rb')
+        File.write(path, content)
+        daemon.send(:apply_cli_overrides, validate_overrides)
+        daemon.send(:run_rewrite, path, :safe)
+      end
+    end
+
+    def syntax_source(content)
+      Dir.mktmpdir do |tmp_dir|
+        path = File.join(tmp_dir, 'b.rb')
+        File.write(path, content)
+        daemon.send(:apply_cli_overrides, validate_overrides)
+        trigger_check(path)
+        fetch_syntax(path)
+      end
+    end
+
+    def trigger_check(path)
+      client.check(file: path)
+      send_raw_request(socket_path, 'check', { 'file' => path })
+    end
+
+    def fetch_syntax(path)
+      _source, result = daemon.send(:rewrite_file, path, :safe)
+      result[:changes].first[:source]
+    end
+
+    def mixed_batch_results(first_content, second_content)
+      Dir.mktmpdir do |tmp_dir|
+        first = File.join(tmp_dir, 'a.rb')
+        second = File.join(tmp_dir, 'b.rb')
+        File.write(first, first_content)
+        File.write(second, second_content)
+        run_mixed(first, second)
+      end
+    end
+
+    def run_mixed(first_path, second_path)
+      daemon.send(:apply_cli_overrides, validate_overrides)
+      first = daemon.send(:run_rewrite, first_path, :safe)
+      second = daemon.send(:run_rewrite, second_path, :safe)
+      batch = [first_path, second_path].map { |path| daemon.send(:run_rewrite, path, :safe) }
+      extract_mixed(first, second, batch)
+    end
+
+    def extract_mixed(first, second, batch)
+      [
+        source_for(first, 'updated_return'),
+        source_for(second, 'invalid_type'),
+        batch.size,
+        source_for(batch[0], 'updated_return'),
+        source_for(batch[1], 'invalid_type')
+      ]
+    end
+
+    def source_for(result, type)
+      result['changes'].find { |change| change['type'].to_s == type }['source']
+    end
+
     context 'when YARD return mismatches inferred type' do
       let(:ruby_source) do
         <<~RUBY
@@ -79,15 +140,14 @@ RSpec.describe Docscribe::Server::Daemon do
         RUBY
       end
 
-      it 'run_rewrite stringifies source field' do
-        Dir.mktmpdir do |tmp_dir|
-          file_path = File.join(tmp_dir, 'a.rb')
-          File.write(file_path, ruby_source)
-          daemon.send(:apply_cli_overrides, validate_overrides)
-          rewrite_result = daemon.send(:run_rewrite, file_path, :safe)
-          expect(rewrite_result['changes'].first['source']).to eq('infer')
-          expect(rewrite_result['changes'].first['type'].to_s).to eq('updated_return')
-        end
+      it 'run_rewrite stringifies source field - source' do
+        result = rewrite_for_content(ruby_source)
+        expect(result['changes'].first['source']).to eq('infer')
+      end
+
+      it 'run_rewrite stringifies source field - type' do
+        result = rewrite_for_content(ruby_source)
+        expect(result['changes'].first['type'].to_s).to eq('updated_return')
       end
     end
 
@@ -104,16 +164,8 @@ RSpec.describe Docscribe::Server::Daemon do
       end
 
       it 'check request returns changes with source syntax' do
-        Dir.mktmpdir do |tmp_dir|
-          file_path = File.join(tmp_dir, 'b.rb')
-          File.write(file_path, ruby_source)
-          daemon.send(:apply_cli_overrides, validate_overrides)
-          _client_response = client.check(file: file_path)
-          raw_response = send_raw_request(socket_path, 'check', { 'file' => file_path })
-          _changes = raw_response['result']['changes'] || raw_response['result']['result'] || []
-          _source, result = daemon.send(:rewrite_file, file_path, :safe)
-          expect(result[:changes].first[:source]).to eq('syntax')
-        end
+        source = syntax_source(ruby_source)
+        expect(source).to eq('syntax')
       end
     end
 
@@ -121,22 +173,17 @@ RSpec.describe Docscribe::Server::Daemon do
       let(:first_file_content) { "class A\n# @return [Integer]\ndef foo\n\"hi\"\nend\nend\n" }
       let(:second_file_content) { "class B\n# @return [Sym bol]\ndef bar\n:x\nend\nend\n" }
 
-      it 'handles check_batch with mixed sources', :aggregate_failures do
-        Dir.mktmpdir do |tmp_dir|
-          first_path = File.join(tmp_dir, 'a.rb')
-          second_path = File.join(tmp_dir, 'b.rb')
-          File.write(first_path, first_file_content)
-          File.write(second_path, second_file_content)
-          daemon.send(:apply_cli_overrides, validate_overrides)
-          first_result = daemon.send(:run_rewrite, first_path, :safe)
-          second_result = daemon.send(:run_rewrite, second_path, :safe)
-          expect(first_result['changes'].find { |change| change['type'].to_s == 'updated_return' }['source']).to eq('infer')
-          expect(second_result['changes'].find { |change| change['type'].to_s == 'invalid_type' }['source']).to eq('syntax')
-          batch_results = [first_path, second_path].map { |path| daemon.send(:run_rewrite, path, :safe) }
-          expect(batch_results.size).to eq(2)
-          expect(batch_results[0]['changes'].find { |change| change['type'].to_s == 'updated_return' }['source']).to eq('infer')
-          expect(batch_results[1]['changes'].find { |change| change['type'].to_s == 'invalid_type' }['source']).to eq('syntax')
-        end
+      it 'handles check_batch first pass', :aggregate_failures do
+        first_src, second_src, = mixed_batch_results(first_file_content, second_file_content)
+        expect(first_src).to eq('infer')
+        expect(second_src).to eq('syntax')
+      end
+
+      it 'handles check_batch batch pass', :aggregate_failures do
+        _, _, size, batch_first, batch_second = mixed_batch_results(first_file_content, second_file_content)
+        expect(size).to eq(2)
+        expect(batch_first).to eq('infer')
+        expect(batch_second).to eq('syntax')
       end
     end
   end
@@ -156,22 +203,33 @@ RSpec.describe Docscribe::Server::Daemon do
 
     before { skip_unless_rbs_available! }
 
-    it 'returns rbs source when sig provides different type' do
+    def rbs_daemon_source
       Dir.mktmpdir do |tmp_dir|
         Dir.chdir(tmp_dir) do
           FileUtils.mkdir_p('sig')
           File.write('sig/foo.rbs', rbs_signature)
           File.write('foo.rb', ruby_source)
-          second_daemon = described_class.new(socket_path: "#{tmp_dir}/rbs2.sock", idle_timeout: 60)
-          second_daemon.send(:load_dependencies)
-          second_daemon.send(:apply_cli_overrides,
-                             { 'validate_types' => true, 'rbs' => true, 'sig_dirs' => ['sig'], 'include' => [], 'exclude' => [], 'include_file' => [], 'exclude_file' => [], 'rbi_dirs' => [],
-                               'no_boilerplate' => true })
-          _source, result = second_daemon.send(:rewrite_file, File.join(tmp_dir, 'foo.rb'), :safe)
-          expect(result[:changes].first[:source]).to eq('rbs')
-          second_daemon.instance_variable_get(:@file_cache).clear
+          run_rbs_daemon(tmp_dir)
         end
       end
+    end
+
+    def run_rbs_daemon(tmp_dir)
+      second_daemon = described_class.new(socket_path: "#{tmp_dir}/rbs2.sock", idle_timeout: 60)
+      second_daemon.send(:load_dependencies)
+      second_daemon.send(:apply_cli_overrides, rbs_overrides)
+      _source, result = second_daemon.send(:rewrite_file, File.join(tmp_dir, 'foo.rb'), :safe)
+      second_daemon.instance_variable_get(:@file_cache).clear
+      result[:changes].first[:source]
+    end
+
+    def rbs_overrides
+      { 'validate_types' => true, 'rbs' => true, 'sig_dirs' => ['sig'], 'include' => [], 'exclude' => [], 'include_file' => [], 'exclude_file' => [], 'rbi_dirs' => [], 'no_boilerplate' => true }
+    end
+
+    it 'returns rbs source when sig provides different type' do
+      source = rbs_daemon_source
+      expect(source).to eq('rbs')
     end
   end
 end

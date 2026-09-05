@@ -74,21 +74,19 @@ RSpec.describe Docscribe::Validator::TypeMismatchValidator do
       expect(validator.mismatched_return?('Hash', 'Hash[Symbol, untyped]')).to be false
     end
 
-    context 'when validating **kwargs param' do
-      context 'when types are compatible' do
-        it 'returns nil for generic kwargs', :aggregate_failures do
-          expect(validator.check_param('kwargs', 'Hash', 'Hash')).to be_nil
-          expect(validator.check_param('kwargs', 'Hash', 'Hash[Symbol, untyped]')).to be_nil
-        end
+    context 'when types are compatible' do
+      it 'returns nil for generic kwargs', :aggregate_failures do
+        expect(validator.check_param('kwargs', 'Hash', 'Hash')).to be_nil
+        expect(validator.check_param('kwargs', 'Hash', 'Hash[Symbol, untyped]')).to be_nil
       end
+    end
 
-      context 'when detailed Hash mismatch' do
-        subject(:validation_result) { validator.check_param('kwargs', 'Hash<Symbol, String>', 'Hash<Symbol, Integer>') }
+    context 'when detailed Hash mismatch' do
+      subject(:validation_result) { validator.check_param('kwargs', 'Hash<Symbol, String>', 'Hash<Symbol, Integer>') }
 
-        it 'returns param mismatch', :aggregate_failures do
-          expect(validation_result).not_to be_nil
-          expect(validation_result.type).to eq(:type_mismatch_param)
-        end
+      it 'returns param mismatch', :aggregate_failures do
+        expect(validation_result).not_to be_nil
+        expect(validation_result.type).to eq(:type_mismatch_param)
       end
     end
   end
@@ -122,14 +120,35 @@ RSpec.describe Docscribe::Validator::TypeMismatchValidator do
     end
 
     describe '#fallback_union? detects unions of only fallback' do
-      it 'detects unions of only fallback', :aggregate_failures do
+      it 'returns true for Object' do
         expect(validator.send(:fallback_union?, 'Object')).to be true
+      end
+
+      it 'returns true for Object, Object' do
         expect(validator.send(:fallback_union?, 'Object, Object')).to be true
+      end
+
+      it 'returns true for FALLBACK_TYPE' do
         expect(validator.send(:fallback_union?, 'FALLBACK_TYPE')).to be true
+      end
+
+      it 'returns true for untyped' do
         expect(validator.send(:fallback_union?, 'untyped')).to be true
+      end
+
+      it 'returns false for String, Object' do
         expect(validator.send(:fallback_union?, 'String, Object')).to be false
+      end
+
+      it 'returns false for String' do
         expect(validator.send(:fallback_union?, 'String')).to be false
+      end
+
+      it 'returns false for nil' do
         expect(validator.send(:fallback_union?, nil)).to be false
+      end
+
+      it 'returns false for empty string' do
         expect(validator.send(:fallback_union?, '')).to be false
       end
     end

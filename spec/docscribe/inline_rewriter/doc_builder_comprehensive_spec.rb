@@ -190,8 +190,11 @@ RSpec.describe Docscribe::InlineRewriter::DocBuilder do
       let(:change) { result[:changes].find { |entry| entry[:type] == :updated_return } }
       let(:config) { Docscribe::Config.new('validate_types' => true) }
 
-      it 'reports updated_return with infer source via safe mode' do
+      it 'reports updated_return via safe mode' do
         expect(change).not_to be_nil
+      end
+
+      it 'reports infer source for updated_return' do
         expect(change[:source]).to eq('infer')
       end
     end

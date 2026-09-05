@@ -234,8 +234,13 @@ module Docscribe
         # @param [Docscribe::CLI::Formatters::change] change change info hash
         # @param [String?] severity offense severity level
         # @return [Hash<Symbol, Object>]
-        def build_offense(change, severity) # rubocop:disable Metrics/MethodLength
-          offense = {
+        def build_offense(change, severity)
+          offense = base_offense(change, severity)
+          attach_source(offense, change)
+        end
+
+        def base_offense(change, severity)
+          {
             severity: severity || SEVERITY_MAP[change[:type]] || 'convention',
             cop_name: COP_NAME_MAP[change[:type]] || cop_name_fallback(change),
             message: build_message(change),
@@ -243,9 +248,16 @@ module Docscribe
             correctable: true,
             location: location_for(change)
           }
-          source = change[:source] || change['source'] # steep:ignore
+        end
+
+        def attach_source(offense, change)
+          source = offense_source(change)
           offense[:source] = source if source
           offense
+        end
+
+        def offense_source(change)
+          change[:source] || change['source'] # steep:ignore
         end
 
         # Build location hash from change.

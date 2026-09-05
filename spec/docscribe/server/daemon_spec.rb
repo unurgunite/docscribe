@@ -219,73 +219,135 @@ RSpec.describe Docscribe::Server::Daemon do
     end
   end
 
-  # rubocop:disable RSpec/ExampleLength, RSpec/MultipleExpectations
   describe 'rbs sig cache invalidation' do
     context 'when RBS is available' do
       before { skip_unless_rbs_available! }
 
-      it 'invalidates cache when sig file changes without touching ruby file' do
+      def sig_pair_after_change(dir)
+        daemon = build_sig_daemon(dir, rbs: DaemonSigHelper::DEMO_RBS_INTEGER)
+        write_ruby("#{dir}/a.rb")
+        r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+        update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
+        r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
+        [r1, r2]
+      end
+
+      def sig_pair_new_file(dir)
+        daemon = build_sig_daemon(dir)
+        write_ruby("#{dir}/a.rb")
+        write_ruby("#{dir}/b.rb")
+        r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+        update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
+        r2 = rbs_rewrite(daemon, "#{dir}/b.rb")
+        [r1, r2]
+      end
+
+      def sig_triple_cached(dir)
+        daemon = build_sig_daemon(dir)
+        write_ruby("#{dir}/a.rb")
+        r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+        update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
+        r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
+        allow(Docscribe::InlineRewriter).to receive(:rewrite_with_report) { raise 'should be cached' }
+        r3 = rbs_rewrite(daemon, "#{dir}/a.rb")
+        [r1, r2, r3]
+      end
+
+      it 'initially includes Integer param' do
         with_tmp_dir do |dir|
-          daemon = build_sig_daemon(dir, rbs: DaemonSigHelper::DEMO_RBS_INTEGER)
-          write_ruby("#{dir}/a.rb")
-          r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          r1, = sig_pair_after_change(dir)
           expect(r1).to include('@param [Integer]')
-          update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
-          r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
+        end
+      end
+
+      it 'after sig change includes String param' do
+        with_tmp_dir do |dir|
+          _, r2 = sig_pair_after_change(dir)
           expect(r2).to include('@param [String]')
+        end
+      end
+
+      it 'changes output after sig change' do
+        with_tmp_dir do |dir|
+          r1, r2 = sig_pair_after_change(dir)
           expect(r1).not_to eq(r2)
         end
       end
 
-      it 'invalidates cache for new file after sig change' do
+      it 'new file initially includes Integer' do
         with_tmp_dir do |dir|
-          daemon = build_sig_daemon(dir)
-          write_ruby("#{dir}/a.rb")
-          write_ruby("#{dir}/b.rb")
-          r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          r1, = sig_pair_new_file(dir)
           expect(r1).to include('@param [Integer]')
-          update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
-          r2 = rbs_rewrite(daemon, "#{dir}/b.rb")
+        end
+      end
+
+      it 'new file after sig change includes String' do
+        with_tmp_dir do |dir|
+          _, r2 = sig_pair_new_file(dir)
           expect(r2).to include('@param [String]')
         end
       end
 
-      it 'caches again after sig change' do
+      it 'caches rewritten result' do
         with_tmp_dir do |dir|
-          daemon = build_sig_daemon(dir)
-          write_ruby("#{dir}/a.rb")
-          r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
-          update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
-          r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
-          allow(Docscribe::InlineRewriter).to receive(:rewrite_with_report) { raise 'should be cached' }
-          r3 = rbs_rewrite(daemon, "#{dir}/a.rb")
+          _, r2, r3 = sig_triple_cached(dir)
           expect(r3).to eq(r2)
+        end
+      end
+
+      it 'changes cached output after sig change' do
+        with_tmp_dir do |dir|
+          r1, _, r3 = sig_triple_cached(dir)
           expect(r1).not_to eq(r3)
         end
       end
     end
 
     context 'without RBS dependency' do
+      def cache_hit_for(dir)
+        prepare_sig_files('sig/a.rbs', "class A\nend\n")
+        write_ruby("#{dir}/x.rb", "class A\n  def foo; end\nend\n")
+        daemon = build_plain_daemon(dir)
+        daemon.send(:apply_cli_overrides, rbs_overrides)
+        daemon.send(:rewrite_file, "#{dir}/x.rb", :safe)
+        hit = daemon.instance_variable_get(:@file_cache)[["#{dir}/x.rb", :safe]]
+        config = daemon.instance_variable_get(:@effective_config) || daemon.instance_variable_get(:@config)
+        [hit, daemon, config]
+      end
+
+      def custom_vs_default_hashes(dir)
+        prepare_sig_files('custom_sig/b.rbs', "class B\nend\n", 'sig/a.rbs', "class A\nend\n")
+        daemon = build_plain_daemon(dir)
+        [sig_hash_for_config(daemon, ['custom_sig']), sig_hash_for_config(daemon, ['sig'])]
+      end
+
+      def sig_hash_pair(dir)
+        prepare_sig_files('sig/a.rbs', "class A\nend\n")
+        daemon = build_plain_daemon(dir)
+        config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => ['sig'] })
+        h1 = daemon.send(:sig_hash_for, config)
+        write_sig('sig/b.rbs', "class B\nend\n")
+        h2 = daemon.send(:sig_hash_for, config)
+        [h1, h2]
+      end
+
       it 'stores sig_hash in cache entry' do
         with_tmp_dir do |dir|
-          prepare_sig_files('sig/a.rbs', "class A\nend\n")
-          write_ruby("#{dir}/x.rb", "class A\n  def foo; end\nend\n")
-          daemon = build_plain_daemon(dir)
-          daemon.send(:apply_cli_overrides, rbs_overrides)
-          daemon.send(:rewrite_file, "#{dir}/x.rb", :safe)
-          hit = daemon.instance_variable_get(:@file_cache)[["#{dir}/x.rb", :safe]]
+          hit, = cache_hit_for(dir)
           expect(hit).to include(:sig_hash)
-          config = daemon.instance_variable_get(:@effective_config) || daemon.instance_variable_get(:@config)
+        end
+      end
+
+      it 'stores correct sig_hash value' do
+        with_tmp_dir do |dir|
+          hit, daemon, config = cache_hit_for(dir)
           expect(hit[:sig_hash]).to eq(daemon.send(:sig_hash_for, config))
         end
       end
 
       it 'sig_hash_for respects custom sig_dirs' do
         with_tmp_dir do |dir|
-          prepare_sig_files('custom_sig/b.rbs', "class B\nend\n", 'sig/a.rbs', "class A\nend\n")
-          daemon = build_plain_daemon(dir)
-          h_custom = sig_hash_for_config(daemon, ['custom_sig'])
-          h_default = sig_hash_for_config(daemon, ['sig'])
+          h_custom, h_default = custom_vs_default_hashes(dir)
           expect(h_custom).not_to eq(h_default)
         end
       end
@@ -300,18 +362,12 @@ RSpec.describe Docscribe::Server::Daemon do
 
       it 'sig_hash changes when new sig file added' do
         with_tmp_dir do |dir|
-          prepare_sig_files('sig/a.rbs', "class A\nend\n")
-          daemon = build_plain_daemon(dir)
-          config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => ['sig'] })
-          h1 = daemon.send(:sig_hash_for, config)
-          write_sig('sig/b.rbs', "class B\nend\n")
-          h2 = daemon.send(:sig_hash_for, config)
+          h1, h2 = sig_hash_pair(dir)
           expect(h1).not_to eq(h2)
         end
       end
     end
   end
-  # rubocop:enable RSpec/ExampleLength, RSpec/MultipleExpectations
 
   describe 'update_types request' do
     it 'returns ok when UpdateTypes.run succeeds' do
@@ -369,11 +425,21 @@ RSpec.describe Docscribe::Server::Daemon do
       expect(client.update_types['result']['status']).to eq('ok')
     end
 
-    it 'passes dir correctly to UpdateTypes.run' do # rubocop:disable RSpec/MultipleExpectations
-      allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['custom_dir']).and_return(0)
-      resp = send_raw_request(socket_path, 'update_types', { 'dir' => 'custom_dir' })
-      expect(Docscribe::CLI::UpdateTypes).to have_received(:run).with(['custom_dir'])
-      expect(resp['result']['dir']).to eq('custom_dir')
+    context 'when passing custom dir' do
+      before do
+        allow(Docscribe::CLI::UpdateTypes).to receive(:run).with(['custom_dir']).and_return(0)
+      end
+
+      let(:custom_resp) { send_raw_request(socket_path, 'update_types', { 'dir' => 'custom_dir' }) }
+
+      it 'passes dir to UpdateTypes.run' do
+        custom_resp
+        expect(Docscribe::CLI::UpdateTypes).to have_received(:run).with(['custom_dir'])
+      end
+
+      it 'returns dir in response' do
+        expect(custom_resp['result']['dir']).to eq('custom_dir')
+      end
     end
 
     context 'with real filesystem and missing rbs_collection.lock.yaml' do

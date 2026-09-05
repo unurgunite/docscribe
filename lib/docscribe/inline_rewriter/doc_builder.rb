@@ -717,23 +717,38 @@ module Docscribe
       # @raise [StandardError]
       # @return [Array<String, nil>]
       # @return [Array] if StandardError
-      def extract_raise_types_from_line(line) # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
+      def extract_raise_types_from_line(line)
         return [] unless line.match?(/^\s*#\s*@raise\b/)
 
-        if (m = line.match(/^\s*#\s*@raise\s*\[([^\]]+)\]/))
-          if (captured = m[1])
-            parse_raise_bracket_list(captured)
-          else
-            []
-          end
-        elsif (m = line.match(/^\s*#\s*@raise\s+([A-Z]\w*(?:::[A-Z]\w*)*)/))
-          captured = m[1]
-          captured ? [captured] : []
-        else
-          []
-        end
+        bracketed_raise_types(line) || bare_raise_type(line) || []
       rescue StandardError
         []
+      end
+
+      # Bracketed raise types from line
+      #
+      # @note module_function: defines #bracketed_raise_types (visibility: private)
+      # @param [String] line a `@raise` doc line
+      # @return [Array<String>, nil]
+      def bracketed_raise_types(line)
+        m = line.match(/^\s*#\s*@raise\s*\[([^\]]+)\]/)
+        return nil unless m
+
+        captured = m[1]
+        captured ? parse_raise_bracket_list(captured) : []
+      end
+
+      # Bare raise type from line
+      #
+      # @note module_function: defines #bare_raise_type (visibility: private)
+      # @param [String] line a `@raise` doc line
+      # @return [Array<String>, nil]
+      def bare_raise_type(line)
+        m = line.match(/^\s*#\s*@raise\s+([A-Z]\w*(?:::[A-Z]\w*)*)/)
+        return nil unless m
+
+        captured = m[1]
+        captured ? [captured] : []
       end
 
       # Parse raise bracket list
@@ -2035,19 +2050,76 @@ module Docscribe
       # @note module_function: defines #mismatched_return? (visibility: private)
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
-      def mismatched_return?(ctx) # rubocop:disable Metrics/CyclomaticComplexity
-        yard = ctx[:info][:return_type]
-        expected = ctx[:normal_type]
+      def mismatched_return?(ctx)
+        yard, expected, fallback = mismatched_return_types(ctx)
         return false unless yard && expected
-        return false if expected == ctx[:config].fallback_type
-        return false if fallback_union?(expected, ctx[:config].fallback_type)
-        return false if void_compatible?(yard, expected, ctx[:config].fallback_type)
-        return false if yard_in_expected_union?(yard, expected)
-        return false if generic_compatible?(yard, expected)
-        return false if normalize_type(yard) == normalize_type(expected)
-        return false if normalize_type(yard).delete_suffix('?') == normalize_type(expected).delete_suffix('?')
+        return false if expected_suppressed?(expected, fallback)
+        return false if yard_compatible?(yard, expected, fallback)
+        return false if types_normalized_equal?(yard, expected)
 
         true
+      end
+
+      # Extract yard/expected/fallback triple for return mismatch check.
+      #
+      # @note module_function: defines #mismatched_return_types (visibility: private)
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [(String?, String?, String)]
+      def mismatched_return_types(ctx)
+        [ctx[:info][:return_type], ctx[:normal_type], ctx[:config].fallback_type]
+      end
+
+      # Whether expected type is suppressed as fallback.
+      #
+      # @note module_function: defines #expected_suppressed? (visibility: private)
+      # @param [String] expected
+      # @param [String] fallback
+      # @return [Boolean]
+      def expected_suppressed?(expected, fallback)
+        expected == fallback || fallback_union?(expected, fallback)
+      end
+
+      # Whether yard type is compatible with expected via void/union/generic.
+      #
+      # @note module_function: defines #yard_compatible? (visibility: private)
+      # @param [String] yard
+      # @param [String] expected
+      # @param [String] fallback
+      # @return [Boolean]
+      def yard_compatible?(yard, expected, fallback)
+        void_compatible?(yard, expected, fallback) ||
+          yard_in_expected_union?(yard, expected) ||
+          generic_compatible?(yard, expected)
+      end
+
+      # Whether types are equal after normalization (including optional "?").
+      #
+      # @note module_function: defines #types_normalized_equal? (visibility: private)
+      # @param [String] yard
+      # @param [String] expected
+      # @return [Boolean]
+      def types_normalized_equal?(yard, expected)
+        normalized_equal?(yard, expected) || optional_normalized_equal?(yard, expected)
+      end
+
+      # Whether normalized types are equal.
+      #
+      # @note module_function: defines #normalized_equal? (visibility: private)
+      # @param [String] yard
+      # @param [String] expected
+      # @return [Boolean]
+      def normalized_equal?(yard, expected)
+        normalize_type(yard) == normalize_type(expected)
+      end
+
+      # Whether optional-normalized types are equal.
+      #
+      # @note module_function: defines #optional_normalized_equal? (visibility: private)
+      # @param [String] yard
+      # @param [String] expected
+      # @return [Boolean]
+      def optional_normalized_equal?(yard, expected)
+        normalize_type(yard).delete_suffix('?') == normalize_type(expected).delete_suffix('?')
       end
 
       # Whether YARD type is generic compatible (Hash vs Hash<Symbol, String>).

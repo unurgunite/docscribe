@@ -64,6 +64,9 @@ RSpec.describe Docscribe::InlineRewriter do
 
       it 'does not use Hash[Symbol, untyped] for **kwargs' do
         expect(output).not_to include('Hash[Symbol, untyped]')
+      end
+
+      it 'does not use Hash<Symbol, untyped> for **kwargs' do
         expect(output).not_to include('Hash<Symbol, untyped>')
       end
     end
@@ -285,8 +288,11 @@ RSpec.describe Docscribe::InlineRewriter do
   describe 'tuple vs Array compatibility in inference' do
     let(:validator) { Docscribe::Validator::TypeMismatchValidator.new }
 
-    it 'treats tuple vs Array as compatible via generic_compatible' do
+    it 'treats tuple vs Array as compatible in one direction' do
       expect(validator.generic_compatible?('(String, Integer)', 'Array')).to be true
+    end
+
+    it 'treats Array vs tuple as compatible in reverse direction' do
       expect(validator.generic_compatible?('Array', '(String, Integer)')).to be true
     end
 
@@ -330,14 +336,35 @@ RSpec.describe Docscribe::InlineRewriter do
       end
       let(:config) { Docscribe::Config.new('emit' => { 'header' => true }) }
 
-      it 'infers Integer, String, Symbol, Boolean, Float, nil', :aggregate_failures do
+      it 'infers Integer for integer literal' do
         expect(output).to include('@return [Integer]')
+      end
+
+      it 'infers String for string literal' do
         expect(output).to include('@return [String]')
+      end
+
+      it 'infers Symbol for symbol literal' do
         expect(output).to include('@return [Symbol]')
+      end
+
+      it 'infers Boolean for true literal' do
         expect(output).to include('@return [Boolean]')
+      end
+
+      it 'infers Float for float literal' do
         expect(output).to include('@return [Float]')
+      end
+
+      it 'infers nil for nil literal' do
         expect(output).to include('@return [nil]')
+      end
+
+      it 'infers Array for array literal' do
         expect(output).to include('@return [Array]')
+      end
+
+      it 'infers Hash for hash literal' do
         expect(output).to include('@return [Hash]')
       end
     end

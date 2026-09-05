@@ -56,17 +56,14 @@ module Docscribe
       # @param [String, nil] yard_type type from `@return [...]`
       # @param [String, nil] expected_type inferred or external `normal_type`
       # @return [Boolean]
-      def mismatched_return?(yard_type, expected_type) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
-        return false if yard_type.nil? || yard_type.strip.empty?
-        return false if expected_type.nil? || expected_type.strip.empty?
-        return false if normalize(expected_type) == @fallback_type # uncertain -> silence
-        return false if fallback_union?(expected_type) # fallback union -> silence for any yard
-        return false if void_compatible?(yard_type, expected_type)
-        return false if yard_in_expected_union?(yard_type, expected_type)
-        return false if generic_compatible?(yard_type, expected_type)
-        return false if normalize(yard_type).delete_suffix('?') == normalize(expected_type).delete_suffix('?')
+      def mismatched_return?(yard_type, expected_type)
+        return false if blank_type?(yard_type)
+        return false if blank_type?(expected_type)
+        return false if expected_suppressed?(expected_type)
+        return false if yard_compatible?(yard_type, expected_type)
+        return false if types_normalized_equal?(yard_type, expected_type)
 
-        normalize(yard_type) != normalize(expected_type)
+        !normalized_equal?(yard_type, expected_type)
       end
 
       # Whether YARD type is generic compatible with expected (e.g. Hash vs Hash<Symbol, String>).
@@ -243,6 +240,66 @@ module Docscribe
       end
 
       private
+
+      # Whether type string blank (nil or whitespace).
+      #
+      # @private
+      # @param [String, nil] type_str
+      # @return [Boolean]
+      def blank_type?(type_str)
+        type_str.nil? || type_str.strip.empty?
+      end
+
+      # Whether expected suppressed as fallback (uncertain).
+      #
+      # @private
+      # @param [String, nil] expected_type
+      # @return [Boolean]
+      def expected_suppressed?(expected_type)
+        normalize(expected_type) == @fallback_type || fallback_union?(expected_type)
+      end
+
+      # Whether yard compatible with expected via void/union/generic.
+      #
+      # @private
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Boolean]
+      def yard_compatible?(yard_type, expected_type)
+        void_compatible?(yard_type, expected_type) ||
+          yard_in_expected_union?(yard_type, expected_type) ||
+          generic_compatible?(yard_type, expected_type)
+      end
+
+      # Whether types equal after normalization (including optional "?").
+      #
+      # @private
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Boolean]
+      def types_normalized_equal?(yard_type, expected_type)
+        normalized_equal?(yard_type, expected_type) || optional_normalized_equal?(yard_type, expected_type)
+      end
+
+      # Whether normalized types equal.
+      #
+      # @private
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Boolean]
+      def normalized_equal?(yard_type, expected_type)
+        normalize(yard_type) == normalize(expected_type)
+      end
+
+      # Whether optional-normalized types equal.
+      #
+      # @private
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Boolean]
+      def optional_normalized_equal?(yard_type, expected_type)
+        normalize(yard_type).delete_suffix('?') == normalize(expected_type).delete_suffix('?')
+      end
 
       # Normalize a type string for comparison (strip, squeeze spaces, unify RBS/YARD syntax).
       #

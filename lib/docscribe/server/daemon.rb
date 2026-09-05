@@ -20,22 +20,41 @@ module Docscribe
         internal: -32_099
       }.freeze
 
+      REQUEST_HANDLERS = {
+        'check' => :handle_check,
+        'fix' => :handle_fix,
+        'check_batch' => :handle_check_batch,
+        'update_types' => :handle_update_types
+      }.freeze
+
       # @param [String?] socket_path custom socket path
       # @param [Integer] idle_timeout seconds before automatic shutdown
       # @param [String?] config_path custom config path
       # @return [void]
-      def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil) # rubocop:disable Metrics/MethodLength
+      def initialize(socket_path: nil, idle_timeout: IDLE_TIMEOUT, config_path: nil)
+        setup_socket_config(socket_path, config_path, idle_timeout)
+        setup_runtime_state
+        setup_caches
+      end
+
+      def setup_socket_config(socket_path, config_path, idle_timeout)
         @socket_path = socket_path || Server.socket_path(config_path)
-        @idle_timeout = idle_timeout
         @config_path = config_path
+        @idle_timeout = idle_timeout
+      end
+
+      def setup_runtime_state
         @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @running = false
         @server = nil
-        @file_cache = LRUCache.new
         @started_at = Time.now
+        @last_sig_hash = nil
+      end
+
+      def setup_caches
+        @file_cache = LRUCache.new
         @cache_mutex = Mutex.new
         @config_mutex = Mutex.new
-        @last_sig_hash = nil
       end
 
       # Start the daemon: load dependencies, bind socket, enter listen loop.
@@ -143,15 +162,21 @@ module Docscribe
       # @param [UNIXSocket] client connected client socket
       # @param [Hash<String, Object>] request parsed JSON-RPC request
       # @return [void]
-      def handle_request(client, request) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/MethodLength
+      def handle_request(client, request)
         method = request['method']
         params = request['params'] || {}
+        dispatch_request(client, request, method, params)
+      end
 
+      def dispatch_request(client, request, method, params)
+        handler = REQUEST_HANDLERS[method]
+        return send(handler, client, request['id'], params) if handler
+
+        dispatch_control_request(client, request, method)
+      end
+
+      def dispatch_control_request(client, request, method)
         case method
-        when 'check' then handle_check(client, request['id'], params)
-        when 'fix' then handle_fix(client, request['id'], params)
-        when 'check_batch' then handle_check_batch(client, request['id'], params)
-        when 'update_types' then handle_update_types(client, request['id'], params)
         when 'shutdown' then handle_shutdown(client, request['id'])
         when 'ping' then handle_ping(client, request['id'])
         else send_error(client, request['id'], -32_601, "Unknown method: #{method}")

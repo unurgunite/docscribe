@@ -1066,18 +1066,38 @@ module Docscribe
       # @param [Hash<Symbol, Object>] merge_result merge operation result
       # @param [Hash] rest additional keyword arguments forwarded to add_change
       # @return [void]
-      def log_method_doc_changes!(insertion:, merge_result:, **rest) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity
+      def log_method_doc_changes!(insertion:, merge_result:, **rest)
         reason_specs = merge_result[:reasons] || []
-        type_mismatch_reasons = reason_specs.select { |r| %i[updated_param updated_return invalid_type].include?(r[:type]) }
+        return unless doc_changed?(rest, reason_specs)
 
-        return unless rest[:new_block] != rest[:old_block] || type_mismatch_reasons.any?
+        log_reasons(reason_specs, insertion, rest)
+      end
 
-        reason_specs.each do |reason|
-          extra = (reason[:extra] || {}).dup
-          extra[:source] = reason[:source] if reason[:source]
-          add_change(changes: rest[:changes], type: reason[:type], insertion: insertion,
-                     file: rest[:file], message: reason[:message], extra: extra)
-        end
+      def doc_changed?(rest, reason_specs)
+        rest[:new_block] != rest[:old_block] || type_mismatch_reasons?(reason_specs)
+      end
+
+      def type_mismatch_reasons?(reason_specs)
+        reason_specs.any? { |r| type_mismatch_type?(r[:type]) }
+      end
+
+      def type_mismatch_type?(type)
+        %i[updated_param updated_return invalid_type].include?(type)
+      end
+
+      def log_reasons(reason_specs, insertion, rest)
+        reason_specs.each { |reason| log_single_reason(reason, insertion, rest) }
+      end
+
+      def log_single_reason(reason, insertion, rest)
+        add_change(changes: rest[:changes], type: reason[:type], insertion: insertion,
+                   file: rest[:file], message: reason[:message], extra: extra_for_reason(reason))
+      end
+
+      def extra_for_reason(reason)
+        extra = (reason[:extra] || {}).dup
+        extra[:source] = reason[:source] if reason[:source]
+        extra
       end
 
       # Apply method insertion safe without info

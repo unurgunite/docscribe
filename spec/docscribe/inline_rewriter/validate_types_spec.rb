@@ -199,17 +199,25 @@ RSpec.describe Docscribe::InlineRewriter do
           end
         RUBY
       end
+      let(:tmp_dir) { Dir.mktmpdir }
+      let(:sig_dir) do
+        dir = File.join(tmp_dir, 'sig')
+        FileUtils.mkdir_p(dir)
+        File.write(File.join(dir, 'foo.rbs'), "class Foo\n  def bar: () -> String\nend\n")
+        dir
+      end
+      let(:rbs_config) do
+        Docscribe::Config.new('validate_types' => true, 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] })
+      end
+      let(:rbs_result) do
+        described_class.rewrite_with_report(code, strategy: :safe, config: rbs_config, file: 'test.rb')
+      end
 
-      it 'reports rbs source' do # rubocop:disable RSpec/ExampleLength
+      after { FileUtils.remove_entry(tmp_dir) }
+
+      it 'reports rbs source' do
         skip_unless_rbs_available!
-        Dir.mktmpdir do |dir|
-          sig_dir = File.join(dir, 'sig')
-          FileUtils.mkdir_p(sig_dir)
-          File.write(File.join(sig_dir, 'foo.rbs'), "class Foo\n  def bar: () -> String\nend\n")
-          config = Docscribe::Config.new('validate_types' => true, 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] })
-          result = described_class.rewrite_with_report(code, strategy: :safe, config: config, file: 'test.rb')
-          expect(result[:changes].first[:source]).to eq('rbs')
-        end
+        expect(rbs_result[:changes].first[:source]).to eq('rbs')
       end
     end
   end

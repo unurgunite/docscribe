@@ -739,27 +739,50 @@ module Docscribe
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes structured change records
         # @param [Object] ctx context hash with :display_path, :options, :state keys
         # @return [void]
-        def handle_check_result(path, src:, out:, file_changes:, **ctx) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+        def handle_check_result(path, src:, out:, file_changes:, **ctx)
           type_mismatches = type_mismatch_changes(file_changes)
-          has_real_changes = file_changes.any? { |c| !%i[updated_param updated_return invalid_type].include?(c[:type]) }
-          validate = ctx[:options][:validate_types] || (ctx[:conf].respond_to?(:validate_types?) && ctx[:conf].validate_types?)
+          has_real_changes = real_changes?(file_changes)
+          return handle_validated_type_mismatch(path, file_changes, type_mismatches, ctx) if validated_mismatch?(ctx, type_mismatches, out, src, has_real_changes)
+          return handle_no_changes(path, type_mismatches, ctx) if no_real_changes?(out, src, has_real_changes)
 
-          # When --validate-types is enabled, mismatches are failures (exit 1), not just MT
-          if validate && type_mismatches.any? && out == src && !has_real_changes
-            handle_check_failed(path, file_changes: file_changes, display_path: ctx[:display_path],
-                                      options: ctx[:options], state: ctx[:state])
-            # also track as type mismatch for summary
-            ctx[:state][:type_mismatch_paths] << ctx[:display_path] unless ctx[:state][:type_mismatch_paths].include?(ctx[:display_path])
-            ctx[:state][:type_mismatch_changes][ctx[:display_path]] = type_mismatches
-            return
-          end
+          handle_failed_check(path, file_changes, ctx)
+        end
 
-          if out == src && !has_real_changes
-            handle_check_no_changes(path, type_mismatches: type_mismatches, display_path: ctx[:display_path],
-                                          options: ctx[:options], state: ctx[:state])
-            return
-          end
+        def real_changes?(file_changes)
+          file_changes.any? { |c| !%i[updated_param updated_return invalid_type].include?(c[:type]) }
+        end
 
+        def validated_mismatch?(ctx, type_mismatches, out, src, has_real_changes)
+          validate_types_enabled?(ctx) && type_mismatches.any? && out == src && !has_real_changes
+        end
+
+        def validate_types_enabled?(ctx)
+          ctx[:options][:validate_types] ||
+            (ctx[:conf].respond_to?(:validate_types?) && ctx[:conf].validate_types?)
+        end
+
+        def no_real_changes?(out, src, has_real_changes)
+          out == src && !has_real_changes
+        end
+
+        def handle_validated_type_mismatch(path, file_changes, type_mismatches, ctx)
+          handle_failed_check(path, file_changes, ctx)
+          track_validated_mismatch(type_mismatches, ctx)
+        end
+
+        def track_validated_mismatch(type_mismatches, ctx)
+          state = ctx[:state]
+          display_path = ctx[:display_path]
+          state[:type_mismatch_paths] << display_path unless state[:type_mismatch_paths].include?(display_path)
+          state[:type_mismatch_changes][display_path] = type_mismatches
+        end
+
+        def handle_no_changes(path, type_mismatches, ctx)
+          handle_check_no_changes(path, type_mismatches: type_mismatches, display_path: ctx[:display_path],
+                                        options: ctx[:options], state: ctx[:state])
+        end
+
+        def handle_failed_check(path, file_changes, ctx)
           handle_check_failed(path, file_changes: file_changes, display_path: ctx[:display_path],
                                     options: ctx[:options], state: ctx[:state])
         end
