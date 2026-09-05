@@ -19,15 +19,15 @@ module Docscribe
           private
 
           # @private
-          # @param [Docscribe::Types::Yard::node] node
-          # @return [String, nil]
+          # @param [Object] node
+          # @return [Object]
           def rbs_for_node(node)
             simple_type(node) || composite_type(node) || collection_type(node)
           end
 
           # @private
-          # @param [Docscribe::Types::Yard::node] node
-          # @return [String, nil]
+          # @param [Object] node
+          # @return [Object]
           def simple_type(node)
             case node
             when Named then format_named(node)
@@ -36,8 +36,8 @@ module Docscribe
           end
 
           # @private
-          # @param [Docscribe::Types::Yard::node] node
-          # @return [String, nil]
+          # @param [Object] node
+          # @return [Object]
           def composite_type(node)
             case node
             when Union then format_union(node)
@@ -47,8 +47,8 @@ module Docscribe
           end
 
           # @private
-          # @param [Docscribe::Types::Yard::node] node
-          # @return [String, nil]
+          # @param [Object] node
+          # @return [Object]
           def collection_type(node)
             case node
             when Generic then format_generic(node)

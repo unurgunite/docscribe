@@ -15,7 +15,7 @@ module Docscribe
       # @param [String?] method_source full method definition source
       # @raise [Parser::SyntaxError]
       # @return [String]
-      # @return [FALLBACK_TYPE] if Parser::SyntaxError
+      # @return [Object] if Parser::SyntaxError
       def infer_return_type(method_source)
         return FALLBACK_TYPE if method_source.nil? || method_source.strip.empty?
 
@@ -625,6 +625,11 @@ module Docscribe
         block_send_type || run_last_expr_type(node.children[2], **opts)
       end
 
+      # @note module_function: defines #block_send_rbs_type (visibility: private)
+      # @param [Object] node
+      # @param [Object] send_node
+      # @param [Hash] opts
+      # @return [Object]
       def block_send_rbs_type(node, send_node, **opts)
         rbs_type = send_rbs_type(send_node.children[0], send_node.children[1], **opts)
         return nil unless rbs_type
@@ -632,6 +637,11 @@ module Docscribe
         block_rbs_with_inner(rbs_type, node.children[2], **opts) || rbs_type
       end
 
+      # @note module_function: defines #block_rbs_with_inner (visibility: private)
+      # @param [Object] rbs_type
+      # @param [Object] block_body
+      # @param [Hash] opts
+      # @return [Object]
       def block_rbs_with_inner(rbs_type, block_body, **opts)
         inner = run_last_expr_type(block_body, **opts)
         return nil unless inner && generic_placeholder?(rbs_type)
@@ -639,6 +649,9 @@ module Docscribe
         rbs_type.gsub(/\bU\b/, inner).gsub(/\bElem\b/, inner)
       end
 
+      # @note module_function: defines #generic_placeholder? (visibility: private)
+      # @param [Object] rbs_type
+      # @return [Object]
       def generic_placeholder?(rbs_type)
         rbs_type.include?('U') || rbs_type.include?('Elem')
       end
@@ -801,14 +814,25 @@ module Docscribe
         receiver_send_type(recv, core_rbs_provider, local_var_types, param_types)
       end
 
+      # @note module_function: defines #receiver_literal_type (visibility: private)
+      # @param [Object] recv
+      # @return [Object?]
       def receiver_literal_type(recv)
         LITERAL_RBS_TYPES[recv.type] if LITERAL_RBS_TYPES.key?(recv.type)
       end
 
+      # @note module_function: defines #var_receiver? (visibility: private)
+      # @param [Object] recv
+      # @return [Boolean]
       def var_receiver?(recv)
         %i[lvar ivar gvar cvar].include?(recv.type)
       end
 
+      # @note module_function: defines #receiver_var_type (visibility: private)
+      # @param [Object] recv
+      # @param [Object] local_var_types
+      # @param [Object] param_types
+      # @return [Object]
       def receiver_var_type(recv, local_var_types, param_types)
         raw = lookup_lvar_type(recv.children.first, local_var_types, param_types)
         return nil unless raw
@@ -820,12 +844,21 @@ module Docscribe
         cleaned
       end
 
+      # @note module_function: defines #stripped_union_type (visibility: private)
+      # @param [Object] raw
+      # @return [Object]
       def stripped_union_type(raw)
         parts = raw.split(',').map { |p| p.strip.delete_suffix('?').strip }
         non_nil = parts.reject { |p| %w[nil FALLBACK_TYPE].include?(p) }
         (non_nil.first || parts.first).to_s.strip.delete_suffix('?').strip
       end
 
+      # @note module_function: defines #receiver_send_type (visibility: private)
+      # @param [Object] recv
+      # @param [Object] core_rbs_provider
+      # @param [Object] local_var_types
+      # @param [Object] param_types
+      # @return [String, nil]
       def receiver_send_type(recv, core_rbs_provider, local_var_types, param_types)
         run_last_expr_type(recv, fallback_type: FALLBACK_TYPE, nil_as_optional: false,
                                  core_rbs_provider: core_rbs_provider, param_types: param_types,
@@ -1041,6 +1074,10 @@ module Docscribe
         unify_nil_types(type_a, type_b, nil_as_optional: nil_as_optional)
       end
 
+      # @note module_function: defines #coalesce_type (visibility: private)
+      # @param [Object] type
+      # @param [Object] fallback_type
+      # @return [String]
       def coalesce_type(type, fallback_type)
         normalized = type || fallback_type
         normalized = fallback_type if normalized == 'FALLBACK_TYPE'

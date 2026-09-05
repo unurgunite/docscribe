@@ -239,6 +239,10 @@ module Docscribe
           attach_source(offense, change)
         end
 
+        # @private
+        # @param [Object] change
+        # @param [Object] severity
+        # @return [Hash]
         def base_offense(change, severity)
           {
             severity: severity || SEVERITY_MAP[change[:type]] || 'convention',
@@ -250,12 +254,19 @@ module Docscribe
           }
         end
 
+        # @private
+        # @param [Object] offense
+        # @param [Object] change
+        # @return [Object]
         def attach_source(offense, change)
           source = offense_source(change)
           offense[:source] = source if source
           offense
         end
 
+        # @private
+        # @param [Object] change
+        # @return [Object]
         def offense_source(change)
           change[:source] || change['source'] # steep:ignore
         end
