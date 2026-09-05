@@ -2040,10 +2040,12 @@ module Docscribe
         expected = ctx[:normal_type]
         return false unless yard && expected
         return false if expected == ctx[:config].fallback_type
+        return false if fallback_union?(expected, ctx[:config].fallback_type)
         return false if void_compatible?(yard, expected, ctx[:config].fallback_type)
         return false if yard_in_expected_union?(yard, expected)
         return false if generic_compatible?(yard, expected)
         return false if normalize_type(yard) == normalize_type(expected)
+        return false if normalize_type(yard).delete_suffix('?') == normalize_type(expected).delete_suffix('?')
 
         true
       end
@@ -2085,6 +2087,12 @@ module Docscribe
         return true if yard_in_expected_union?(expected, yard)
         return true if yard_in_expected_union?(yard, expected)
 
+        # Optional "?" vs non-optional: String vs String? should be considered compatible
+        return true if ny.delete_suffix('?') == ne.delete_suffix('?')
+
+        # FALLBACK_TYPE alias already normalized, but handle union fallback case
+        return true if fallback_union?(yard, 'Object') || fallback_union?(expected, 'Object')
+
         false
       end
 
@@ -2121,8 +2129,9 @@ module Docscribe
       def fallback_union?(type_str, fallback)
         return false if type_str.nil? || type_str.strip.empty?
 
-        parts = type_str.to_s.split(',').map { |p| p.strip.delete_suffix('?').strip }
-        parts.all? { |p| p == fallback || p.empty? }
+        fallback_norm = normalize_type(fallback)
+        parts = type_str.to_s.split(',').map { |p| normalize_type(p.strip.delete_suffix('?').strip) }
+        parts.all? { |p| p == fallback_norm || p.empty? }
       end
 
       # Normalize type string for comparison (unify RBS/YARD syntax).
@@ -2132,6 +2141,7 @@ module Docscribe
       # @return [String]
       def normalize_type(type_str)
         type_str.to_s.strip.squeeze(' ').gsub('[', '<').gsub(']', '>').gsub(/\buntyped\b/, 'Object')
+                .gsub(/\bFALLBACK_TYPE\b/, 'Object')
       end
 
       # Record missing return

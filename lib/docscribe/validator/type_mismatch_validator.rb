@@ -60,9 +60,11 @@ module Docscribe
         return false if yard_type.nil? || yard_type.strip.empty?
         return false if expected_type.nil? || expected_type.strip.empty?
         return false if normalize(expected_type) == @fallback_type # uncertain -> silence
+        return false if fallback_union?(expected_type) # fallback union -> silence for any yard
         return false if void_compatible?(yard_type, expected_type)
         return false if yard_in_expected_union?(yard_type, expected_type)
         return false if generic_compatible?(yard_type, expected_type)
+        return false if normalize(yard_type).delete_suffix('?') == normalize(expected_type).delete_suffix('?')
 
         normalize(yard_type) != normalize(expected_type)
       end
@@ -103,6 +105,12 @@ module Docscribe
         return true if yard_in_expected_union?(expected_type, yard_type)
         return true if yard_in_expected_union?(yard_type, expected_type)
 
+        # Optional "?" vs non-optional: String vs String? should be considered compatible
+        return true if normalize(yard_type).delete_suffix('?') == normalize(expected_type).delete_suffix('?')
+
+        # FALLBACK_TYPE alias already normalized, but handle union fallback case
+        return true if fallback_union?(yard_type) || fallback_union?(expected_type)
+
         false
       end
 
@@ -136,8 +144,9 @@ module Docscribe
       def fallback_union?(type_str)
         return false if type_str.nil? || type_str.strip.empty?
 
-        parts = type_str.to_s.split(',').map { |p| p.strip.delete_suffix('?').strip }
-        parts.all? { |p| p == @fallback_type || p.empty? }
+        fallback_norm = normalize(@fallback_type)
+        parts = type_str.to_s.split(',').map { |p| normalize(p.strip.delete_suffix('?').strip) }
+        parts.all? { |p| p == fallback_norm || p.empty? }
       end
 
       # Whether a YARD type string has invalid syntax (e.g. `Sym bol` leftover).
@@ -242,6 +251,7 @@ module Docscribe
       # @return [String]
       def normalize(type_str)
         type_str.to_s.strip.squeeze(' ').gsub('[', '<').gsub(']', '>').gsub(/\buntyped\b/, 'Object')
+                .gsub(/\bFALLBACK_TYPE\b/, 'Object')
       end
     end
   end

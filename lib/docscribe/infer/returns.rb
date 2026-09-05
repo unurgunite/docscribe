@@ -405,8 +405,30 @@ module Docscribe
       def handle_or_node(node, **opts)
         t = run_last_expr_type(node.children[0], **opts)
         e = run_last_expr_type(node.children[1], **opts)
-        unify_types(t, e, fallback_type: opts[:fallback_type] || 'untyped',
+        fallback = opts[:fallback_type] || 'untyped'
+        # If one side is the fallback alias (FALLBACK_TYPE / fallback_type) and the other is concrete, prefer the concrete
+        # This prevents `sig&.return_type || FALLBACK_TYPE` from becoming `String, Object` when String is known
+        if fallback_alias?(t, fallback) && !fallback_alias?(e, fallback)
+          return e
+        elsif fallback_alias?(e, fallback) && !fallback_alias?(t, fallback)
+          return t
+        end
+
+        unify_types(t, e, fallback_type: fallback,
                           nil_as_optional: opts.fetch(:nil_as_optional, true))
+      end
+
+      # Whether a type string is the fallback alias (FALLBACK_TYPE or the configured fallback type).
+      #
+      # @note module_function: defines #fallback_alias? (visibility: private)
+      # @param [String, nil] type_str the type string to check
+      # @param [String] fallback_type the configured fallback type
+      # @return [Boolean]
+      def fallback_alias?(type_str, fallback_type)
+        return false if type_str.nil?
+
+        s = type_str.to_s.strip.delete_suffix('?').strip
+        s == fallback_type || s == 'FALLBACK_TYPE' || (fallback_type == 'Object' && s == 'untyped')
       end
 
       # Handle `:and` node (`a && b`) for last_expr_type.
@@ -760,8 +782,22 @@ module Docscribe
       def receiver_rbs_type_name(recv, core_rbs_provider, local_var_types, param_types)
         return unless recv
         return LITERAL_RBS_TYPES[recv.type] if LITERAL_RBS_TYPES.key?(recv.type)
-        return lookup_lvar_type(recv.children.first, local_var_types, param_types) if %i[lvar ivar gvar
-                                                                                         cvar].include?(recv.type)
+
+        if %i[lvar ivar gvar cvar].include?(recv.type)
+          raw = lookup_lvar_type(recv.children.first, local_var_types, param_types)
+          return nil unless raw
+
+          # Handle union types like "Docscribe::Types::MethodSignature, nil" – pick non-nil part for RBS lookup
+          if raw.include?(',')
+            parts = raw.split(',').map { |p| p.strip.delete_suffix('?').strip }
+            non_nil = parts.reject { |p| %w[nil FALLBACK_TYPE].include?(p) }
+            raw = non_nil.first || parts.first
+            raw = raw.to_s.strip.delete_suffix('?').strip
+          end
+          return nil if raw.nil? || raw.empty? || raw == 'FALLBACK_TYPE'
+
+          return raw
+        end
         return unless recv.type == :send
 
         run_last_expr_type(recv, fallback_type: FALLBACK_TYPE, nil_as_optional: false,
@@ -834,19 +870,14 @@ module Docscribe
       # @param [Hash<String, String>?] local_var_types inferred local variable type map
       # @param [Hash<String, String>?] param_types parameter name to type map
       # @return [String, nil]
-      def lookup_lvar_type(lvar_name, local_var_types, param_types) # rubocop:disable Metrics/MethodLength
+      def lookup_lvar_type(lvar_name, local_var_types, param_types)
         if local_var_types&.key?(lvar_name.to_s)
           val = local_var_types[lvar_name.to_s]
           return nil if val == FALLBACK_TYPE
 
           return val
         end
-        if param_types&.key?(lvar_name.to_s)
-          val = param_types[lvar_name.to_s]
-          return nil if val == FALLBACK_TYPE
-
-          return val
-        end
+        return param_types[lvar_name.to_s] if param_types&.key?(lvar_name.to_s)
 
         nil
       end
@@ -916,6 +947,37 @@ module Docscribe
         Literals.type_from_literal(node.children.first, fallback_type: opts[:fallback_type])
       end
 
+      # @note module_function: defines #handle_const_node (visibility: private)
+      # @param [Parser::AST::Node] node the `:const` AST node
+      # @param [Hash] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_const_node(node, **opts)
+        fallback = opts[:fallback_type] || FALLBACK_TYPE
+        resolved = Literals.type_from_literal(node, fallback_type: fallback)
+        return fallback if fallback_alias?(resolved, fallback)
+
+        const_name = node.children.last.to_s
+        return fallback if fallback_alias?(const_name, fallback)
+
+        resolved
+      end
+
+      # @note module_function: defines #handle_csend_node (visibility: private)
+      # @param [Parser::AST::Node] node the `:csend` AST node (safe navigation)
+      # @param [Hash] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def handle_csend_node(node, **opts)
+        recv = node.children[0]
+        meth = node.children[1]
+        rbs_type = send_rbs_type(recv, meth, **opts) if opts[:core_rbs_provider] || opts[:signature_provider]
+        if rbs_type
+          unify_types(rbs_type, 'nil', fallback_type: opts[:fallback_type] || FALLBACK_TYPE,
+                                       nil_as_optional: opts.fetch(:nil_as_optional, true))
+        else
+          opts[:fallback_type] || FALLBACK_TYPE
+        end
+      end
+
       # Resolve an RBS return type for a method call.
       #
       # @note module_function: defines #resolve_rbs_return_type (visibility: private)
@@ -951,6 +1013,11 @@ module Docscribe
       def unify_types(type_a, type_b, fallback_type:, nil_as_optional:)
         type_a ||= fallback_type
         type_b ||= fallback_type
+        # Normalize FALLBACK_TYPE alias to the actual fallback type string for comparison
+        type_a = fallback_type if type_a == 'FALLBACK_TYPE'
+        type_b = fallback_type if type_b == 'FALLBACK_TYPE'
+        type_a = 'Object' if type_a == 'untyped' && fallback_type == 'Object'
+        type_b = 'Object' if type_b == 'untyped' && fallback_type == 'Object'
         return type_a if type_a == type_b
 
         unify_nil_types(type_a, type_b, nil_as_optional: nil_as_optional)
