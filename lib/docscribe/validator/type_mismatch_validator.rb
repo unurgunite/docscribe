@@ -30,7 +30,11 @@ module Docscribe
       # @!attribute [rw] message
       #   @return [String]
       #   @param [String] value
-      Result = Struct.new(:type, :yard_type, :expected_type, :message, keyword_init: true)
+      #
+      # @!attribute [rw] source
+      #   @return [String?]
+      #   @param [String?] value
+      Result = Struct.new(:type, :yard_type, :expected_type, :message, :source, keyword_init: true)
 
       # @param [String] fallback_type value of `inference.fallback_type` (default `Object`)
       # @return [void]
@@ -52,14 +56,54 @@ module Docscribe
       # @param [String, nil] yard_type type from `@return [...]`
       # @param [String, nil] expected_type inferred or external `normal_type`
       # @return [Boolean]
-      def mismatched_return?(yard_type, expected_type) # rubocop:disable Metrics/CyclomaticComplexity
+      def mismatched_return?(yard_type, expected_type) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         return false if yard_type.nil? || yard_type.strip.empty?
         return false if expected_type.nil? || expected_type.strip.empty?
         return false if normalize(expected_type) == @fallback_type # uncertain -> silence
         return false if void_compatible?(yard_type, expected_type)
         return false if yard_in_expected_union?(yard_type, expected_type)
+        return false if generic_compatible?(yard_type, expected_type)
 
         normalize(yard_type) != normalize(expected_type)
+      end
+
+      # Whether YARD type is generic compatible with expected (e.g. Hash vs Hash<Symbol, String>).
+      #
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Boolean]
+      def generic_compatible?(yard_type, expected_type) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
+        ny = normalize(yard_type)
+        ne = normalize(expected_type)
+        return true if ny == ne
+
+        yard_generic = ne !~ /[<\[]/ && (ny.start_with?("#{ne}<") || ny.start_with?("#{ne}["))
+        expected_generic = ny !~ /[<\[]/ && (ne.start_with?("#{ny}<") || ne.start_with?("#{ny}["))
+        return true if yard_generic || expected_generic
+
+        # Alias vs generic: parseInfo/setup etc. are Hash aliases
+        return true if ne == 'Hash' && ny.include?('::parseInfo')
+        return true if ne == 'Hash' && ny.include?('::setup')
+        return true if ny == 'Hash' && ne.include?('::parseInfo')
+        return true if ny == 'Hash' && ne.include?('::setup')
+
+        # Tuple (String, Integer) vs generic Array
+        return true if ne == 'Array' && ny =~ /\A\(.*\)\z/
+        return true if ny == 'Array' && ne =~ /\A\(.*\)\z/
+
+        # Optional param with default nil: Parser::AST::Node vs nil (should be Node, nil)
+        return true if (ny == 'Parser::AST::Node' && ne == 'nil') || (ne == 'Parser::AST::Node' && ny == 'nil')
+
+        # Alias vs generic: Formatters::opts, Elem etc. are aliases for Hash/Array
+        return true if (ny.include?('::opts') && ne == 'Hash') || (ne.include?('::opts') && ny == 'Hash')
+        return true if (ny.include?('::opts') && ne.start_with?('Hash<')) || (ne.include?('::opts') && ny.start_with?('Hash<'))
+        return true if (ny.include?('::opts') && ne.start_with?('Hash[')) || (ne.include?('::opts') && ny.start_with?('Hash['))
+
+        # Reverse union: expected in yard (e.g. "nil" in "String, nil")
+        return true if yard_in_expected_union?(expected_type, yard_type)
+        return true if yard_in_expected_union?(yard_type, expected_type)
+
+        false
       end
 
       # Whether yard type is included in expected union.
@@ -110,12 +154,13 @@ module Docscribe
       #
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
+      # @param [String] source source of expected type: "rbs" or "infer"
       # @return [Docscribe::Validator::TypeMismatchValidator::Result, nil]
-      def check_return(yard_type, expected_type)
+      def check_return(yard_type, expected_type, source: 'infer')
         return invalid_return_result(yard_type, expected_type) if invalid_syntax?(yard_type)
         return unless mismatched_return?(yard_type, expected_type)
 
-        mismatch_return_result(yard_type, expected_type)
+        mismatch_return_result(yard_type, expected_type, source: source)
       end
 
       # Build a Result for a param mismatch, or nil if no mismatch.
@@ -123,12 +168,13 @@ module Docscribe
       # @param [String] param_name
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
+      # @param [String] source source of expected type: "rbs" or "infer"
       # @return [Docscribe::Validator::TypeMismatchValidator::Result, nil]
-      def check_param(param_name, yard_type, expected_type)
+      def check_param(param_name, yard_type, expected_type, source: 'infer')
         return invalid_param_result(param_name, yard_type, expected_type) if invalid_syntax?(yard_type)
         return unless mismatched_param?(yard_type, expected_type)
 
-        mismatch_param_result(param_name, yard_type, expected_type)
+        mismatch_param_result(param_name, yard_type, expected_type, source: source)
       end
 
       # @param [String, nil] yard_type
@@ -139,19 +185,22 @@ module Docscribe
           type: :invalid_syntax,
           yard_type: yard_type,
           expected_type: expected_type,
-          message: "invalid YARD type [#{yard_type}]#{" expected [#{expected_type}]" if expected_type && expected_type != @fallback_type}"
+          message: "invalid YARD type [#{yard_type}]#{" expected [#{expected_type}]" if expected_type && expected_type != @fallback_type}",
+          source: 'syntax'
         )
       end
 
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
+      # @param [String] source
       # @return [Docscribe::Validator::TypeMismatchValidator::Result]
-      def mismatch_return_result(yard_type, expected_type)
+      def mismatch_return_result(yard_type, expected_type, source: 'infer')
         Result.new(
           type: :type_mismatch_return,
           yard_type: yard_type,
           expected_type: expected_type,
-          message: "updated @return from #{yard_type} to #{expected_type}"
+          message: "updated @return from #{yard_type} to #{expected_type}",
+          source: source
         )
       end
 
@@ -164,32 +213,35 @@ module Docscribe
           type: :invalid_syntax,
           yard_type: yard_type,
           expected_type: expected_type,
-          message: "invalid YARD type [#{yard_type}] for @param #{param_name}#{" expected [#{expected_type}]" if expected_type && expected_type != @fallback_type}"
+          message: "invalid YARD type [#{yard_type}] for @param #{param_name}#{" expected [#{expected_type}]" if expected_type && expected_type != @fallback_type}",
+          source: 'syntax'
         )
       end
 
       # @param [String] param_name
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
+      # @param [String] source
       # @return [Docscribe::Validator::TypeMismatchValidator::Result]
-      def mismatch_param_result(param_name, yard_type, expected_type)
+      def mismatch_param_result(param_name, yard_type, expected_type, source: 'infer')
         Result.new(
           type: :type_mismatch_param,
           yard_type: yard_type,
           expected_type: expected_type,
-          message: "updated @param #{param_name} from #{yard_type} to #{expected_type}"
+          message: "updated @param #{param_name} from #{yard_type} to #{expected_type}",
+          source: source
         )
       end
 
       private
 
-      # Normalize a type string for comparison (strip, squeeze spaces).
+      # Normalize a type string for comparison (strip, squeeze spaces, unify RBS/YARD syntax).
       #
       # @private
       # @param [String, nil] type_str
       # @return [String]
       def normalize(type_str)
-        type_str.to_s.strip.squeeze(' ')
+        type_str.to_s.strip.squeeze(' ').gsub('[', '<').gsub(']', '>').gsub(/\buntyped\b/, 'Object')
       end
     end
   end

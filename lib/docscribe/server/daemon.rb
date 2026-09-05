@@ -246,10 +246,11 @@ module Docscribe
       # @private
       # @param [String] file
       # @param [Symbol] strategy
-      # @return [Hash<String, String, Array<Hash<Symbol, Object>>>]
+      # @return [Hash<String, Object>]
       def run_rewrite(file, strategy)
         src, result = rewrite_file(file, strategy)
-        { 'file' => file, 'status' => result[:output] == src ? 'ok' : 'fail', 'changes' => result[:changes] }
+        changes = result[:changes].map { |c| c.transform_keys(&:to_s) }
+        { 'file' => file, 'status' => result[:output] == src ? 'ok' : 'fail', 'changes' => changes }
       end
 
       # @private
@@ -414,11 +415,11 @@ module Docscribe
       # @return [void]
       # @return [void] if StandardError
       def handle_update_types(client, id, params)
-        dir = update_types_dir(params)
+        target = update_types_dir(params)
         apply_cli_overrides(params['cli_overrides'])
-        exit_code = run_update_types(dir)
+        exit_code = run_update_types(target)
         @file_cache.clear
-        send_update_types_response(client, id, dir, exit_code)
+        send_update_types_response(client, id, target, exit_code)
       rescue StandardError => e
         @file_cache.clear
         code, message, data = classify_error(e, 'update_types', params)
@@ -429,15 +430,15 @@ module Docscribe
       # @param [Hash<String, Object>] params
       # @return [String]
       def update_types_dir(params)
-        params['dir'] || params['directory'] || '.'
+        params['file'] || params['dir'] || params['directory'] || '.'
       end
 
       # @private
-      # @param [String] dir
+      # @param [String] target
       # @return [Integer]
-      def run_update_types(dir)
+      def run_update_types(target)
         require 'docscribe/cli/update_types'
-        Docscribe::CLI::UpdateTypes.run([dir])
+        Docscribe::CLI::UpdateTypes.run([target])
       end
 
       # @private

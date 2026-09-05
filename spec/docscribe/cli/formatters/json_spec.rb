@@ -98,6 +98,20 @@ RSpec.describe Docscribe::CLI::Formatters::Json do
       end
     end
 
+    context 'with source field' do
+      before do
+        state.merge!(
+          checked_fail: 1,
+          fail_paths: ['test.rb'],
+          fail_changes: { 'test.rb' => [{ type: :updated_param, line: 5, method: 'Foo#bar', source: 'rbs' }] }
+        )
+      end
+
+      it 'includes source in offense' do
+        expect(parse_output['files'][0]['offenses'][0]['source']).to eq('rbs')
+      end
+    end
+
     context 'with nothing to report' do
       it 'outputs empty files array' do
         expect(parse_output['files']).to eq([])

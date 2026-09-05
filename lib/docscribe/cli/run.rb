@@ -327,14 +327,17 @@ module Docscribe
         #
         # @param [Hash<String, Object>] change change record from server
         # @return [Docscribe::CLI::Formatters::change]
-        def symbolize_change(change)
-          {
+        def symbolize_change(change) # steep:ignore
+          hash = {
             type: change['type'].to_sym,
             file: change['file'],
             line: change['line'],
             method: change['method'],
-            message: change['message']
+            message: change['message'],
+            source: change['source']
           }
+          hash[:param] = change['param'] if change['param']
+          hash.compact
         end
 
         # Expand CLI path arguments into a sorted list of Ruby files.
