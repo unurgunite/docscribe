@@ -41,6 +41,12 @@ RSpec.describe Docscribe::Validator::TypeMismatchValidator do
     it 'returns true when both detailed Hash types differ' do
       expect(validator.mismatched_return?('Hash<Symbol, String>', 'Hash<Symbol, Integer>')).to be true
     end
+
+    it 'normalizes RBS [] and untyped to YARD <> and Object for comparison', :aggregate_failures do
+      expect(validator.mismatched_return?('Hash[Symbol, untyped]', 'Hash<Symbol, Object>')).to be false
+      expect(validator.mismatched_return?('Hash<Symbol, Object>', 'Hash[Symbol, untyped]')).to be false
+      expect(validator.mismatched_return?('Array[Integer]', 'Array<Integer>')).to be false
+    end
   end
 
   describe '#invalid_syntax?' do

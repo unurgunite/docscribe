@@ -40,8 +40,7 @@ module Docscribe
       # @param [Symbol?] strategy :safe or :aggressive
       # @param [Boolean?] rewrite compatibility alias for aggressive strategy
       # @param [Boolean?] merge compatibility alias for safe strategy
-      # @param [Hash[Symbol, untyped]] options additional keyword arguments forwarded to rewrite_with_report
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options additional keyword arguments forwarded to rewrite_with_report
       # @return [String]
       def insert_comments(code, strategy: nil, rewrite: nil, merge: nil, **options)
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
@@ -55,8 +54,7 @@ module Docscribe
       # @param [Symbol?] strategy :safe or :aggressive
       # @param [Boolean?] rewrite compatibility alias for aggressive strategy
       # @param [Boolean?] merge compatibility alias for safe strategy
-      # @param [Hash[Symbol, untyped]] options additional keyword arguments forwarded to downstream helpers
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options additional keyword arguments forwarded to downstream helpers
       # @return [Hash<Symbol, String, Array<Docscribe::InlineRewriter::changeRecord>>]
       def rewrite_with_report(code, strategy: nil, rewrite: nil, merge: nil, **options)
         strategy = normalize_strategy(strategy: strategy, rewrite: rewrite, merge: merge)
@@ -91,8 +89,7 @@ module Docscribe
       #
       # @param [Docscribe::InlineRewriter::pipeline] pipeline the pipeline hash with rewriter, insertions, and tracking state
       # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
-      # @param [Hash[Symbol, untyped]] options additional kwargs (config, signature_provider, core_rbs_provider, strategy, file)
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options additional kwargs (config, signature_provider, core_rbs_provider, strategy, file)
       # @return [void]
       def dispatch_rewrite_insertions(pipeline, buffer, **options)
         pipeline[:all].sort_by { |(kind, ins)| plugin_insertion_pos(kind, ins) }
@@ -109,8 +106,7 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::Insertion] ins the attribute insertion object
       # @param [Docscribe::InlineRewriter::pipeline] pipeline the pipeline hash with rewriter, insertions, and tracking state
       # @param [Parser::Source::Buffer] buffer the source buffer
-      # @param [Hash[Symbol, untyped]] options the full keyword options hash
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options the full keyword options hash
       # @return [void]
       def dispatch_method_insertion(ins, pipeline, buffer, **options)
         pos = plugin_insertion_pos(:method, ins)
@@ -130,8 +126,7 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
       # @param [Docscribe::InlineRewriter::pipeline] pipeline the pipeline hash with rewriter, insertions, and tracking state
       # @param [Parser::Source::Buffer] buffer the source buffer
-      # @param [Hash[Symbol, untyped]] options the full keyword options hash
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options the full keyword options hash
       # @return [void]
       def dispatch_attr_insertion(ins, pipeline, buffer, **options)
         apply_attr_insertion!(
@@ -146,8 +141,7 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::pluginInsertion] ins the attribute insertion object
       # @param [Docscribe::InlineRewriter::pipeline] pipeline the pipeline hash with rewriter, insertions, and tracking state
       # @param [Parser::Source::Buffer] buffer the source buffer
-      # @param [Hash[Symbol, untyped]] options the full keyword options hash
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options the full keyword options hash
       # @return [void]
       def dispatch_plugin_insertion(ins, pipeline, buffer, **options)
         apply_plugin_insertion!(
@@ -731,8 +725,7 @@ module Docscribe
       # Apply method insertion
       #
       # @private
-      # @param [Hash[Symbol, untyped]] options kwargs with insertion, config, rewriter, buffer, strategy, changes, file, doc params
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options kwargs with insertion, config, rewriter, buffer, strategy, changes, file, doc params
       # @return [void]
       def apply_method_insertion!(**options)
         insertion = options[:insertion]
@@ -828,8 +821,7 @@ module Docscribe
       #
       # @private
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
-      # @param [Hash[Symbol, untyped]] options keyword options
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options keyword options
       # @return [Hash<Symbol, Hash<String, String>, nil, String, nil, Array<Docscribe::Plugin::Tag>>]
       def build_effective_params(insertion, **options)
         external_sig = resolve_external_signature(insertion, options[:signature_provider])
@@ -884,8 +876,7 @@ module Docscribe
       # Apply method insertion aggressive
       #
       # @private
-      # @param [Hash[Symbol, untyped]] options keyword options
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options keyword options
       # @return [void]
       def apply_method_insertion_aggressive!(**options)
         rewriter = options[:rewriter]
@@ -916,8 +907,7 @@ module Docscribe
       # Apply method insertion safe
       #
       # @private
-      # @param [Hash[Symbol, untyped]] options keyword options
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options keyword options
       # @return [void]
       def apply_method_insertion_safe!(**options)
         info = method_doc_comment_info(options[:buffer], options[:insertion])
@@ -932,8 +922,7 @@ module Docscribe
       # Apply method insertion safe with info
       #
       # @private
-      # @param [Hash[Symbol, untyped]] options keyword options
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options keyword options
       # @return [void]
       def apply_method_insertion_safe_with_info!(**options)
         i = options[:info]
@@ -954,8 +943,7 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
       # @param [Docscribe::InlineRewriter::docInfo] info hash containing existing doc comment block data
       # @param [String] new_block the newly constructed replacement doc block string
-      # @param [Hash[Symbol, untyped]] rest additional kwargs (old_block, merge_result,
-      # @param [Hash[Symbol, untyped]] rest
+      # @param [Hash] rest additional kwargs (old_block, merge_result,
       # @return [void]
       def commit_safe_doc_outcome(rewriter, buffer, info, new_block, **rest)
         handle_doc_replacement(rewriter, buffer, info, new_block,
@@ -983,8 +971,7 @@ module Docscribe
       # @param [Parser::Source::Buffer] buffer the source buffer being rewritten
       # @param [Docscribe::InlineRewriter::docInfo] info hash containing existing doc comment block data (start_pos, end_pos, lines)
       # @param [String] new_block the newly constructed replacement doc block string
-      # @param [Hash[Symbol, untyped]] log_opts additional keyword arguments for logging and recording changes
-      # @param [Hash[Symbol, untyped]] log_opts
+      # @param [Hash] log_opts additional keyword arguments for logging and recording changes
       # @return [void]
       def handle_doc_replacement(rewriter, buffer, info, new_block, **log_opts)
         range = Parser::Source::Range.new(buffer, info[:start_pos], info[:end_pos])
@@ -1002,8 +989,7 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::docInfo] info existing doc info
       # @param [Array<String>] missing_lines new doc lines to add
-      # @param [Hash[Symbol, untyped]] options keyword options
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options keyword options
       # @return [(Boolean, String, String)]
       def compute_doc_replacement(info, missing_lines, **options)
         dc = options[:config]
@@ -1078,8 +1064,7 @@ module Docscribe
       # @private
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
       # @param [Hash<Symbol, Object>] merge_result merge operation result
-      # @param [Hash[Symbol, untyped]] rest additional keyword arguments forwarded to add_change
-      # @param [Hash[Symbol, untyped]] rest
+      # @param [Hash] rest additional keyword arguments forwarded to add_change
       # @return [void]
       def log_method_doc_changes!(insertion:, merge_result:, **rest) # rubocop:disable Metrics/AbcSize,Metrics/CyclomaticComplexity
         reason_specs = merge_result[:reasons] || []
@@ -1098,8 +1083,7 @@ module Docscribe
       # Apply method insertion safe without info
       #
       # @private
-      # @param [Hash[Symbol, untyped]] options keyword options
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options keyword options
       # @return [void]
       def apply_method_insertion_safe_without_info!(**options)
         rewriter = options[:rewriter]
@@ -1123,8 +1107,7 @@ module Docscribe
       # Add change
       #
       # @private
-      # @param [Hash[Symbol, untyped]] options kwargs for change record (type, file, line, method, message, insertion, changes, extra)
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options kwargs for change record (type, file, line, method, message, insertion, changes, extra)
       # @return [void]
       def add_change(**options)
         changes = options[:changes]
@@ -1150,8 +1133,7 @@ module Docscribe
       # Apply attr insertion
       #
       # @private
-      # @param [Hash[Symbol, untyped]] options kwargs (insertion, config, rewriter, buffer, strategy,
-      # @param [Hash[Symbol, untyped]] options
+      # @param [Hash] options kwargs (insertion, config, rewriter, buffer, strategy,
       # @return [void]
       def apply_attr_insertion!(**options)
         config = options[:config]
@@ -1557,8 +1539,7 @@ module Docscribe
       # @param [Docscribe::InlineRewriter::Collector::AttrInsertion] ins the attribute insertion object
       # @param [Symbol] name_sym the attribute name as a Symbol
       # @param [String] indent whitespace indentation prefix
-      # @param [Hash[Symbol, untyped]] opts additional keyword arguments forwarded from build_attr_doc_lines
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword arguments forwarded from build_attr_doc_lines
       # @return [Array<String>]
       def build_single_attr_lines(ins, name_sym, indent:, **opts)
         cfg = opts[:config]

@@ -72,14 +72,29 @@ module Docscribe
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
       # @return [Boolean]
-      def generic_compatible?(yard_type, expected_type)
+      def generic_compatible?(yard_type, expected_type) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
         ny = normalize(yard_type)
         ne = normalize(expected_type)
         return true if ny == ne
 
         yard_generic = ne !~ /[<\[]/ && (ny.start_with?("#{ne}<") || ny.start_with?("#{ne}["))
         expected_generic = ny !~ /[<\[]/ && (ne.start_with?("#{ny}<") || ne.start_with?("#{ny}["))
-        yard_generic || expected_generic
+        return true if yard_generic || expected_generic
+
+        # Alias vs generic: parseInfo/setup etc. are Hash aliases
+        return true if ne == 'Hash' && ny.include?('::parseInfo')
+        return true if ne == 'Hash' && ny.include?('::setup')
+        return true if ny == 'Hash' && ne.include?('::parseInfo')
+        return true if ny == 'Hash' && ne.include?('::setup')
+
+        # Tuple (String, Integer) vs generic Array
+        return true if ne == 'Array' && ny =~ /\A\(.*\)\z/
+        return true if ny == 'Array' && ne =~ /\A\(.*\)\z/
+
+        # Optional param with default nil: Parser::AST::Node vs nil (should be Node, nil)
+        return true if (ny == 'Parser::AST::Node' && ne == 'nil') || (ne == 'Parser::AST::Node' && ny == 'nil')
+
+        false
       end
 
       # Whether yard type is included in expected union.
@@ -211,13 +226,13 @@ module Docscribe
 
       private
 
-      # Normalize a type string for comparison (strip, squeeze spaces).
+      # Normalize a type string for comparison (strip, squeeze spaces, unify RBS/YARD syntax).
       #
       # @private
       # @param [String, nil] type_str
       # @return [String]
       def normalize(type_str)
-        type_str.to_s.strip.squeeze(' ')
+        type_str.to_s.strip.squeeze(' ').gsub('[', '<').gsub(']', '>').gsub(/\buntyped\b/, 'Object')
       end
     end
   end

@@ -27,7 +27,7 @@ RSpec.describe Docscribe::InlineRewriter do
 
     it 'infers Array/Hash/Proc for splats and block', :aggregate_failures do
       expect(out).to include('@param [Array] args')
-      expect(out).to include('@param [Hash[Symbol, untyped]] kwargs')
+      expect(out).to include('@param [Hash] kwargs')
       expect(out).to include('@param [Proc] block')
     end
   end

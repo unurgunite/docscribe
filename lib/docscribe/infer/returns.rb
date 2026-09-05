@@ -101,8 +101,7 @@ module Docscribe
       # @param [Hash<Symbol, Object>] spec the return spec hash to populate
       # @param [Parser::AST::Node] body the method body AST node
       # @param [Hash<String, String>?] local_var_types inferred local variable type map
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [void]
       def populate_returns_spec(spec, body, local_var_types, **opts)
         if body.type == :rescue
@@ -116,8 +115,7 @@ module Docscribe
       #
       # @note module_function: defines #infer_normal_return_type (visibility: private)
       # @param [Parser::AST::Node] body the method body AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String]
       def infer_normal_return_type(body, **opts)
         run_last_expr_type(body, **opts) || FALLBACK_TYPE
@@ -128,8 +126,7 @@ module Docscribe
       # @note module_function: defines #process_rescue_body (visibility: private)
       # @param [Hash<Symbol, Object>] spec the return spec hash to populate
       # @param [Parser::AST::Node] body the :rescue AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [void]
       def process_rescue_body(spec, body, **opts)
         main_body = body.children[0]
@@ -146,8 +143,7 @@ module Docscribe
       # @note module_function: defines #process_rescue_branches (visibility: private)
       # @param [Hash<Symbol, Object>] spec the return spec hash to populate
       # @param [Parser::AST::Node] body the :rescue AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [void] the list of rescue type entries
       def process_rescue_branches(spec, body, **opts)
         body.children.each do |ch|
@@ -164,8 +160,7 @@ module Docscribe
       #
       # @note module_function: defines #build_local_variable_types (visibility: private)
       # @param [Parser::AST::Node] node AST node to walk
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to inference
       # @return [Hash<String, String>, nil]
       def build_local_variable_types(node, **opts)
         types = {} #: Hash[String, String]
@@ -184,8 +179,7 @@ module Docscribe
       # @note module_function: defines #collect_assignment_type (visibility: private)
       # @param [Parser::AST::Node] node an assignment AST node
       # @param [Hash<String, String>] types the accumulated local variable type map
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to inference
       # @return [void]
       def collect_assignment_type(node, types, **opts)
         name, value = assignment_name_and_value(node)
@@ -240,8 +234,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_lvar_node (visibility: private)
       # @param [Parser::AST::Node] node the `:lvar` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_lvar_node(node, **opts)
         name = node.children[0].to_s
@@ -252,8 +245,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_ivar_node (visibility: private)
       # @param [Parser::AST::Node] node the `:ivar` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_ivar_node(node, **opts)
         name = node.children[0].to_s
@@ -264,8 +256,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_gvar_node (visibility: private)
       # @param [Parser::AST::Node] node the `:gvar` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_gvar_node(node, **opts)
         name = node.children[0].to_s
@@ -276,8 +267,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_cvar_node (visibility: private)
       # @param [Parser::AST::Node] node the `:cvar` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_cvar_node(node, **opts)
         name = node.children[0].to_s
@@ -288,8 +278,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_lvasgn_node (visibility: private)
       # @param [Parser::AST::Node] node the `:lvasgn` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_lvasgn_node(node, **opts)
         name = node.children[0].to_s
@@ -302,8 +291,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_ivasgn_node (visibility: private)
       # @param [Parser::AST::Node] node the `:ivasgn` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_ivasgn_node(node, **opts)
         name = node.children[0].to_s
@@ -316,8 +304,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_gvasgn_node (visibility: private)
       # @param [Parser::AST::Node] node the `:gvasgn` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_gvasgn_node(node, **opts)
         name = node.children[0].to_s
@@ -330,8 +317,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_cvasgn_node (visibility: private)
       # @param [Parser::AST::Node] node the `:cvasgn` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_cvasgn_node(node, **opts)
         name = node.children[0].to_s
@@ -347,8 +333,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_op_asgn_node (visibility: private)
       # @param [Parser::AST::Node] node the `:op_asgn` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_op_asgn_node(node, **opts)
         meth = node.children[1]
@@ -367,8 +352,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_begin_node (visibility: private)
       # @param [Parser::AST::Node] node the `:return` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_begin_node(node, **opts)
         run_last_expr_type(node.children.last, **opts)
@@ -378,8 +362,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_if_node (visibility: private)
       # @param [Parser::AST::Node] node the `:return` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_if_node(node, **opts)
         t = run_last_expr_type(node.children[1], **opts)
@@ -396,8 +379,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_case_node (visibility: private)
       # @param [Parser::AST::Node] node the `:return` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_case_node(node, **opts)
         branches = process_case_branches(node, **opts)
@@ -418,8 +400,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_or_node (visibility: private)
       # @param [Parser::AST::Node] node the `:or` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_or_node(node, **opts)
         t = run_last_expr_type(node.children[0], **opts)
@@ -435,8 +416,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_and_node (visibility: private)
       # @param [Parser::AST::Node] node the `:and` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_and_node(node, **opts)
         t = run_last_expr_type(node.children[0], **opts)
@@ -452,8 +432,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_kwbegin_node (visibility: private)
       # @param [Parser::AST::Node] node the `:kwbegin` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_kwbegin_node(node, **opts)
         run_last_expr_type(node.children.first, **opts)
@@ -466,8 +445,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_rescue_node (visibility: private)
       # @param [Parser::AST::Node] node the `:rescue` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_rescue_node(node, **opts)
         branches = collect_rescue_branches(node, **opts)
@@ -484,8 +462,7 @@ module Docscribe
       #
       # @note module_function: defines #collect_rescue_branches (visibility: private)
       # @param [Parser::AST::Node] node the `:rescue` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [Array<String, nil>]
       def collect_rescue_branches(node, **opts)
         branches = [run_last_expr_type(node.children[0], **opts)]
@@ -506,8 +483,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_ensure_node (visibility: private)
       # @param [Parser::AST::Node] node the `:ensure` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_ensure_node(node, **opts)
         run_last_expr_type(node.children[0], **opts)
@@ -520,8 +496,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_defined_node (visibility: private)
       # @param [Parser::AST::Node] _node the `:defined?` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_defined_node(_node, **opts)
         nil_as_optional = opts.fetch(:nil_as_optional, true)
@@ -535,8 +510,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_zsuper_node (visibility: private)
       # @param [Parser::AST::Node] _node the `:zsuper` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_zsuper_node(_node, **opts)
         opts[:fallback_type]
@@ -549,8 +523,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_super_node (visibility: private)
       # @param [Parser::AST::Node] _node the `:super` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_super_node(_node, **opts)
         opts[:fallback_type]
@@ -563,8 +536,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_yield_node (visibility: private)
       # @param [Parser::AST::Node] _node the `:yield` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_yield_node(_node, **opts)
         opts[:fallback_type]
@@ -576,8 +548,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_case_match_node (visibility: private)
       # @param [Parser::AST::Node] node the `:case_match` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_case_match_node(node, **opts)
         branches = process_pattern_branches(node, **opts)
@@ -597,8 +568,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_in_pattern_node (visibility: private)
       # @param [Parser::AST::Node] node the `:in_pattern` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_in_pattern_node(node, **opts)
         run_last_expr_type(node.children[2], **opts)
@@ -608,8 +578,7 @@ module Docscribe
       #
       # @note module_function: defines #process_pattern_branches (visibility: private)
       # @param [Parser::AST::Node] node the :case_match AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [Array<String>] list of inferred types from each branch
       def process_pattern_branches(node, **opts)
         (node.children[1..] || []).compact.filter_map do |child|
@@ -621,8 +590,7 @@ module Docscribe
       #
       # @note module_function: defines #process_case_branches (visibility: private)
       # @param [Parser::AST::Node] node the :case AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [Array<String>] list of inferred types from each branch
       def process_case_branches(node, **opts)
         (node.children[1..] || []).compact.flat_map do |child|
@@ -638,8 +606,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_block_node (visibility: private)
       # @param [Parser::AST::Node] node the `:return` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_block_node(node, **opts)
         send_node = node.children[0]
@@ -655,8 +622,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_send_node (visibility: private)
       # @param [Parser::AST::Node] node the `:return` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_send_node(node, **opts)
         recv = node.children[0]
@@ -677,8 +643,7 @@ module Docscribe
       # @note module_function: defines #send_rbs_type (visibility: private)
       # @param [Parser::AST::Node, nil] recv the receiver node
       # @param [Symbol] meth the method name
-      # @param [Hash[Symbol, untyped]] opts additional keyword options
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options
       # @return [String, nil]
       def send_rbs_type(recv, meth, **opts)
         rbs_type = resolve_rbs_for_send(recv, meth, opts[:core_rbs_provider], opts[:local_var_types],
@@ -722,8 +687,7 @@ module Docscribe
       # @note module_function: defines #resolve_rbs_for_send_with_signature_provider (visibility: private)
       # @param [Parser::AST::Node, nil] recv the receiver node
       # @param [Symbol] meth the method name
-      # @param [Hash[Symbol, untyped]] opts additional keyword options
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options
       # @return [String, nil]
       def resolve_rbs_for_send_with_signature_provider(recv, meth, **opts)
         return nil unless opts[:signature_provider]
@@ -742,8 +706,7 @@ module Docscribe
       #
       # @note module_function: defines #container_rbs_return_type (visibility: private)
       # @param [Symbol] meth the method name being called
-      # @param [Hash[Symbol, untyped]] opts additional keyword options (must include :container and :core_rbs_provider)
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options (must include :container and :core_rbs_provider)
       # @return [String, nil] resolved type or nil if unresolvable
       def container_rbs_return_type(meth, **opts)
         return unless opts[:container]
@@ -806,8 +769,7 @@ module Docscribe
       #
       # @note module_function: defines #infer_from_compound_assign (visibility: private)
       # @param [Parser::AST::Node] node the `:send` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def infer_from_compound_assign(node, **opts)
         return nil unless opts[:core_rbs_provider]
@@ -901,8 +863,7 @@ module Docscribe
       #
       # @note module_function: defines #last_expr_type (visibility: private)
       # @param [Parser::AST::Node, nil] node expression node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def last_expr_type(node, **opts)
         run_last_expr_type(node, **opts)
@@ -912,8 +873,7 @@ module Docscribe
       #
       # @note module_function: defines #run_last_expr_type (visibility: private)
       # @param [Parser::AST::Node, nil] node the `:return` AST node
-      # @param [Hash[Symbol, untyped]] opts options passed through as keyword args
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts options passed through as keyword args
       # @return [String, nil]
       def run_last_expr_type(node, **opts)
         return unless node
@@ -931,8 +891,7 @@ module Docscribe
       #
       # @note module_function: defines #handle_return_node (visibility: private)
       # @param [Parser::AST::Node] node the `:return` AST node
-      # @param [Hash[Symbol, untyped]] opts additional keyword options forwarded to type inference
-      # @param [Hash[Symbol, untyped]] opts
+      # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_return_node(node, **opts)
         Literals.type_from_literal(node.children.first, fallback_type: opts[:fallback_type])

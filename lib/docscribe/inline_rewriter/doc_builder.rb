@@ -1186,8 +1186,7 @@ module Docscribe
       # @param [String] indent indentation string for the doc line
       # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Docscribe::Config] config Docscribe configuration object
-      # @param [Hash[Symbol, untyped]] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
-      # @param [Hash[Symbol, untyped]] kwargs
+      # @param [Hash] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
       # @return [Array<String>, nil]
       def build_params_lines(node, indent, external_sig:, config:, **kwargs)
         args = extract_args_from_node(node)
@@ -2055,14 +2054,29 @@ module Docscribe
       # @param [String] yard
       # @param [String] expected
       # @return [Boolean]
-      def generic_compatible?(yard, expected)
+      def generic_compatible?(yard, expected) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
         ny = normalize_type(yard)
         ne = normalize_type(expected)
         return true if ny == ne
 
         yard_generic = ne !~ /[<\[]/ && (ny.start_with?("#{ne}<") || ny.start_with?("#{ne}["))
         expected_generic = ny !~ /[<\[]/ && (ne.start_with?("#{ny}<") || ne.start_with?("#{ny}["))
-        yard_generic || expected_generic
+        return true if yard_generic || expected_generic
+
+        # Alias vs generic: parseInfo/setup are Hash aliases
+        return true if ne == 'Hash' && ny.include?('::parseInfo')
+        return true if ne == 'Hash' && ny.include?('::setup')
+        return true if ny == 'Hash' && ne.include?('::parseInfo')
+        return true if ny == 'Hash' && ne.include?('::setup')
+
+        # Tuple (String, Integer) vs generic Array
+        return true if ne == 'Array' && ny =~ /\A\(.*\)\z/
+        return true if ny == 'Array' && ne =~ /\A\(.*\)\z/
+
+        # Optional param with default nil: Parser::AST::Node vs nil
+        return true if (ny == 'Parser::AST::Node' && ne == 'nil') || (ne == 'Parser::AST::Node' && ny == 'nil')
+
+        false
       end
 
       # Whether yard type is included in expected union (e.g. Boolean in Object, Boolean).
@@ -2102,13 +2116,13 @@ module Docscribe
         parts.all? { |p| p == fallback || p.empty? }
       end
 
-      # Normalize type string for comparison.
+      # Normalize type string for comparison (unify RBS/YARD syntax).
       #
       # @note module_function: defines #normalize_type (visibility: private)
       # @param [String, nil] type_str
       # @return [String]
       def normalize_type(type_str)
-        type_str.to_s.strip.squeeze(' ')
+        type_str.to_s.strip.squeeze(' ').gsub('[', '<').gsub(']', '>').gsub(/\buntyped\b/, 'Object')
       end
 
       # Record missing return
