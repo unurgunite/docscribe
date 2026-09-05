@@ -1145,7 +1145,12 @@ module Docscribe
       # @param [Hash<Symbol, Object>] ctx
       # @return [Boolean]
       def param_type_changed?(pname, new_type, ctx)
-        new_type && ctx[:info][:param_types][pname] != new_type
+        yard = ctx[:info][:param_types][pname]
+        return false unless new_type && yard
+        return false if normalize_type(yard) == normalize_type(new_type)
+        return false if generic_compatible?(yard, new_type)
+
+        yard != new_type
       end
 
       # @note module_function: defines #fallback_skipped? (visibility: private)
@@ -1181,7 +1186,8 @@ module Docscribe
       # @param [String] indent indentation string for the doc line
       # @param [Docscribe::Types::MethodSignature, nil] external_sig external method signature for type overrides
       # @param [Docscribe::Config] config Docscribe configuration object
-      # @param [Hash] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
+      # @param [Hash[Symbol, untyped]] kwargs additional keyword args including insertion, params_lines, raise_types, override_tags
+      # @param [Hash[Symbol, untyped]] kwargs
       # @return [Array<String>, nil]
       def build_params_lines(node, indent, external_sig:, config:, **kwargs)
         args = extract_args_from_node(node)
@@ -2054,7 +2060,9 @@ module Docscribe
         ne = normalize_type(expected)
         return true if ny == ne
 
-        (ny.start_with?("#{ne}<") && ne !~ /[<\[]/) || (ne.start_with?("#{ny}<") && ny !~ /[<\[]/)
+        yard_generic = ne !~ /[<\[]/ && (ny.start_with?("#{ne}<") || ny.start_with?("#{ne}["))
+        expected_generic = ny !~ /[<\[]/ && (ne.start_with?("#{ny}<") || ne.start_with?("#{ny}["))
+        yard_generic || expected_generic
       end
 
       # Whether yard type is included in expected union (e.g. Boolean in Object, Boolean).

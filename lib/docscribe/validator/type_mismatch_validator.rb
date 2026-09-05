@@ -77,7 +77,9 @@ module Docscribe
         ne = normalize(expected_type)
         return true if ny == ne
 
-        (ny.start_with?("#{ne}<") && ne !~ /[<\[]/) || (ne.start_with?("#{ny}<") && ny !~ /[<\[]/)
+        yard_generic = ne !~ /[<\[]/ && (ny.start_with?("#{ne}<") || ny.start_with?("#{ne}["))
+        expected_generic = ny !~ /[<\[]/ && (ne.start_with?("#{ny}<") || ne.start_with?("#{ny}["))
+        yard_generic || expected_generic
       end
 
       # Whether yard type is included in expected union.
