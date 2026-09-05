@@ -12,21 +12,6 @@ RSpec.describe Docscribe::InlineRewriter do
     let(:config_validate) { Docscribe::Config.new('validate_types' => true) }
     let(:config_no_validate) { Docscribe::Config.new('validate_types' => false) }
 
-    def param_change_with_rbs(code, rbs_content)
-      result = rewrite_with_rbs(code, rbs_content)
-      result[:changes].find { |change| change[:type] == :updated_param }
-    end
-
-    def rewrite_with_rbs(code, rbs_content)
-      Dir.mktmpdir do |tmp_dir|
-        sig_dir = File.join(tmp_dir, 'sig')
-        FileUtils.mkdir_p(sig_dir)
-        File.write(File.join(sig_dir, 'foo.rbs'), rbs_content)
-        cfg = Docscribe::Config.new('validate_types' => true, 'rbs' => { 'enabled' => true, 'sig_dirs' => [sig_dir] })
-        described_class.rewrite_with_report(code, strategy: :safe, config: cfg, file: 'test.rb')
-      end
-    end
-
     context 'when YARD return type is invalid syntax' do
       subject(:rewrite_result) do
         described_class.rewrite_with_report(code, strategy: :safe, config: config_validate, file: 'test.rb')
@@ -237,39 +222,6 @@ RSpec.describe Docscribe::InlineRewriter do
     let(:sarif_options) { { verbose: false, quiet: false, explain: false, mode: :check, format: :sarif } }
     let(:formatter_sarif) { Docscribe::CLI::Formatters::Sarif.new }
 
-    def json_offense_for(source)
-      build_json_state_with_source(source)
-    end
-
-    def sarif_result_for(source)
-      build_sarif_state_with_source(source)
-    end
-
-    def build_json_state_with_source(source)
-      state = base_state(source)
-      options = { verbose: false, quiet: false, explain: false, mode: :check }
-      parsed = JSON.parse(capture_stdout { formatter_json.format_check_summary(state: state, options: options) })
-      parsed['files'][0]['offenses'][0]
-    end
-
-    def build_sarif_state_with_source(source)
-      state = base_state(source)
-      options = { verbose: false, quiet: false, explain: false, mode: :check, format: :sarif }
-      parsed = JSON.parse(capture_stdout { formatter_sarif.format_check_summary(state: state, options: options) })
-      parsed['runs'][0]['results'][0]
-    end
-
-    def base_state(source)
-      {
-        changed: false, had_errors: false, checked_ok: 0, checked_fail: 1,
-        corrected: 0, corrected_paths: [], corrected_changes: {},
-        fail_paths: ['test.rb'],
-        fail_changes: { 'test.rb' => [{ type: :updated_return, line: 5, method: 'Foo#bar', source: source, message: 'msg' }] },
-        error_paths: [], error_messages: {},
-        type_mismatch_paths: [], type_mismatch_changes: {}
-      }
-    end
-
     it 'JSON includes source when provided - syntax', :aggregate_failures do
       offense = json_offense_for('syntax')
       expect(offense['source']).to eq('syntax')
@@ -353,49 +305,38 @@ RSpec.describe Docscribe::InlineRewriter do
       { 'validate_types' => true, 'include' => [], 'exclude' => [], 'include_file' => [], 'exclude_file' => [], 'sig_dirs' => [], 'rbi_dirs' => [], 'no_boilerplate' => true }
     end
 
-    def infer_pair_sources
+    let(:infer_pair_sources) do
       require 'docscribe/server'
       Dir.mktmpdir do |tmp_dir|
         file = File.join(tmp_dir, 'test.rb')
         File.write(file, ruby_source_with_infer_mismatch)
-        daemon = build_daemon(File.join(tmp_dir, 'daemon.sock'))
-        extract_infer(daemon, file)
+        daemon_obj = Docscribe::Server::Daemon.new(socket_path: File.join(tmp_dir, 'daemon.sock'), idle_timeout: 60)
+        daemon_obj.send(:load_dependencies)
+        daemon_obj.send(:apply_cli_overrides, daemon_cli_overrides)
+        _source, result = daemon_obj.send(:rewrite_file, file, :safe)
+        change = result[:changes].find { |entry| entry[:type] == :updated_return }
+        rewrite = daemon_obj.send(:run_rewrite, file, :safe)
+        stringified = rewrite['changes'].find { |entry| entry['type'].to_s == 'updated_return' }
+        [change, stringified]
       end
     end
 
-    def batch_pair_sources
+    let(:batch_pair_sources) do
       require 'docscribe/server'
       Dir.mktmpdir do |tmp_dir|
         first = File.join(tmp_dir, 'a.rb')
         second = File.join(tmp_dir, 'b.rb')
         File.write(first, "class A\n# @return [Integer]\ndef foo\n\"hi\"\nend\nend\n")
         File.write(second, "class B\n# @return [Sym bol]\ndef bar\n:x\nend\nend\n")
-        daemon = build_daemon(File.join(tmp_dir, 'daemon2.sock'))
-        extract_batch(daemon, first, second)
+        daemon_obj = Docscribe::Server::Daemon.new(socket_path: File.join(tmp_dir, 'daemon2.sock'), idle_timeout: 60)
+        daemon_obj.send(:load_dependencies)
+        daemon_obj.send(:apply_cli_overrides, daemon_cli_overrides)
+        first_result = daemon_obj.send(:run_rewrite, first, :safe)
+        second_result = daemon_obj.send(:run_rewrite, second, :safe)
+        first_src = first_result['changes'].find { |entry| %w[updated_return invalid_type].include?(entry['type'].to_s) }['source']
+        second_src = second_result['changes'].find { |entry| entry['type'].to_s == 'invalid_type' }['source']
+        [first_src, second_src]
       end
-    end
-
-    def build_daemon(socket_path)
-      daemon = Docscribe::Server::Daemon.new(socket_path: socket_path, idle_timeout: 60)
-      daemon.send(:load_dependencies)
-      daemon.send(:apply_cli_overrides, daemon_cli_overrides)
-      daemon
-    end
-
-    def extract_infer(daemon, file)
-      _source, result = daemon.send(:rewrite_file, file, :safe)
-      change = result[:changes].find { |entry| entry[:type] == :updated_return }
-      rewrite = daemon.send(:run_rewrite, file, :safe)
-      stringified = rewrite['changes'].find { |entry| entry['type'].to_s == 'updated_return' }
-      [change, stringified]
-    end
-
-    def extract_batch(daemon, first_file, second_file)
-      first_result = daemon.send(:run_rewrite, first_file, :safe)
-      second_result = daemon.send(:run_rewrite, second_file, :safe)
-      first_src = first_result['changes'].find { |entry| %w[updated_return invalid_type].include?(entry['type'].to_s) }['source']
-      second_src = second_result['changes'].find { |entry| entry['type'].to_s == 'invalid_type' }['source']
-      [first_src, second_src]
     end
 
     it 'daemon check returns changes with stringified source', :aggregate_failures do

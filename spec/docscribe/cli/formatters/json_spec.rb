@@ -18,7 +18,7 @@ RSpec.describe Docscribe::CLI::Formatters::Json do
     }
   end
 
-  def parse_output
+  let(:parse_output) do
     JSON.parse(capture_stdout { formatter.format_check_summary(state: state, options: options) })
   end
 

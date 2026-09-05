@@ -5,21 +5,6 @@ $LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
 require 'docscribe'
 Dir['./spec/support/*.rb'].sort.each { |file| require file }
 
-module InlineHelper
-  # Run Docscribe's inline rewriter on +code+ with the given configuration and strategy.
-  #
-  # Defaults to safe mode and an empty config when no arguments are provided.
-  #
-  # @param [String] code Ruby source code to rewrite
-  # @param [Docscribe::Config, nil] config configuration (defaults to empty)
-  # @param [Symbol] strategy rewrite strategy (:safe or :aggressive)
-  # @param [String] file file with Ruby source code
-  # @return [String] rewritten source code
-  def inline(code, config: Docscribe::Config.new, strategy: :safe, file: nil)
-    Docscribe::InlineRewriter.insert_comments(code, strategy: strategy, config: config, file: file)
-  end
-end
-
 RSpec.configure do |config|
   config.include HeaderRegex
   config.include InlineHelper
@@ -35,6 +20,18 @@ RSpec.configure do |config|
   config.include DaemonSigHelper
   config.include DaemonRequestHelper
   config.include YardValidatorHelper
+  config.include AstHelper
+  config.include DaemonSourceHelper
+  config.include FormatterHelper
+  config.include PluginHelper
+  config.include RbsTypeFormatterHelper
+  config.include YardParserHelper
+  config.include SigsHelper
+  config.include RbsGenHelper
+  config.include CheckForCommentsHelper
+  config.include GenerateHelper
+  config.include CollectionLoaderHelper
+  config.include KeepDescriptionsHelper
   config.example_status_persistence_file_path = '.rspec_status'
   config.disable_monkey_patching!
   config.expect_with(:rspec) { |c| c.syntax = :expect }

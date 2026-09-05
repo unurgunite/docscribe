@@ -223,36 +223,6 @@ RSpec.describe Docscribe::Server::Daemon do
     context 'when RBS is available' do
       before { skip_unless_rbs_available! }
 
-      def sig_pair_after_change(dir)
-        daemon = build_sig_daemon(dir, rbs: DaemonSigHelper::DEMO_RBS_INTEGER)
-        write_ruby("#{dir}/a.rb")
-        r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
-        update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
-        r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
-        [r1, r2]
-      end
-
-      def sig_pair_new_file(dir)
-        daemon = build_sig_daemon(dir)
-        write_ruby("#{dir}/a.rb")
-        write_ruby("#{dir}/b.rb")
-        r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
-        update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
-        r2 = rbs_rewrite(daemon, "#{dir}/b.rb")
-        [r1, r2]
-      end
-
-      def sig_triple_cached(dir)
-        daemon = build_sig_daemon(dir)
-        write_ruby("#{dir}/a.rb")
-        r1 = rbs_rewrite(daemon, "#{dir}/a.rb")
-        update_sig('sig/demo.rbs', DaemonSigHelper::DEMO_RBS_STRING)
-        r2 = rbs_rewrite(daemon, "#{dir}/a.rb")
-        allow(Docscribe::InlineRewriter).to receive(:rewrite_with_report) { raise 'should be cached' }
-        r3 = rbs_rewrite(daemon, "#{dir}/a.rb")
-        [r1, r2, r3]
-      end
-
       it 'initially includes Integer param' do
         with_tmp_dir do |dir|
           r1, = sig_pair_after_change(dir)
@@ -304,33 +274,6 @@ RSpec.describe Docscribe::Server::Daemon do
     end
 
     context 'without RBS dependency' do
-      def cache_hit_for(dir)
-        prepare_sig_files('sig/a.rbs', "class A\nend\n")
-        write_ruby("#{dir}/x.rb", "class A\n  def foo; end\nend\n")
-        daemon = build_plain_daemon(dir)
-        daemon.send(:apply_cli_overrides, rbs_overrides)
-        daemon.send(:rewrite_file, "#{dir}/x.rb", :safe)
-        hit = daemon.instance_variable_get(:@file_cache)[["#{dir}/x.rb", :safe]]
-        config = daemon.instance_variable_get(:@effective_config) || daemon.instance_variable_get(:@config)
-        [hit, daemon, config]
-      end
-
-      def custom_vs_default_hashes(dir)
-        prepare_sig_files('custom_sig/b.rbs', "class B\nend\n", 'sig/a.rbs', "class A\nend\n")
-        daemon = build_plain_daemon(dir)
-        [sig_hash_for_config(daemon, ['custom_sig']), sig_hash_for_config(daemon, ['sig'])]
-      end
-
-      def sig_hash_pair(dir)
-        prepare_sig_files('sig/a.rbs', "class A\nend\n")
-        daemon = build_plain_daemon(dir)
-        config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => ['sig'] })
-        h1 = daemon.send(:sig_hash_for, config)
-        write_sig('sig/b.rbs', "class B\nend\n")
-        h2 = daemon.send(:sig_hash_for, config)
-        [h1, h2]
-      end
-
       it 'stores sig_hash in cache entry' do
         with_tmp_dir do |dir|
           hit, = cache_hit_for(dir)

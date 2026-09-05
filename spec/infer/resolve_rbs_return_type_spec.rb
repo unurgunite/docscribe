@@ -34,19 +34,6 @@ RSpec.describe Docscribe::Infer::Returns do
 
     let(:ast) { Parser::CurrentRuby.parse(code) }
 
-    def find_def(node, name)
-      return nil unless node.is_a?(Parser::AST::Node)
-      return node if node.type == :def && node.children[0] == name
-
-      node.children.each do |ch|
-        next unless ch.is_a?(Parser::AST::Node)
-
-        res = find_def(ch, name)
-        return res if res
-      end
-      nil
-    end
-
     context 'without RBS provider' do
       let(:fallback_node) { find_def(ast, :resolve_rbs_return_type) }
       let(:fallback_spec) do
