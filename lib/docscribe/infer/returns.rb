@@ -608,15 +608,23 @@ module Docscribe
       # @param [Parser::AST::Node] node the `:return` AST node
       # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
-      def handle_block_node(node, **opts)
+      def handle_block_node(node, **opts) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
         send_node = node.children[0]
         if send_node&.type == :send
-          type = send_rbs_type(send_node.children[0], send_node.children[1], **opts)
-          return type if type
+          rbs_type = send_rbs_type(send_node.children[0], send_node.children[1], **opts)
+          if rbs_type
+            inner = run_last_expr_type(node.children[2], **opts)
+            if inner && (rbs_type.include?('U') || rbs_type.include?('Elem'))
+              substituted = rbs_type.gsub(/\bU\b/, inner).gsub(/\bElem\b/, inner)
+              return substituted
+            end
+            return rbs_type
+          end
+
+          return run_last_expr_type(node.children[2], **opts)
         end
 
-        inner = run_last_expr_type(node.children[2], **opts)
-        inner ? "Array<#{inner}>" : nil
+        run_last_expr_type(node.children[2], **opts)
       end
 
       # Handle `:send` node for last_expr_type.
@@ -826,9 +834,19 @@ module Docscribe
       # @param [Hash<String, String>?] local_var_types inferred local variable type map
       # @param [Hash<String, String>?] param_types parameter name to type map
       # @return [String, nil]
-      def lookup_lvar_type(lvar_name, local_var_types, param_types)
-        return local_var_types[lvar_name.to_s] if local_var_types&.key?(lvar_name.to_s)
-        return param_types[lvar_name.to_s] if param_types&.key?(lvar_name.to_s)
+      def lookup_lvar_type(lvar_name, local_var_types, param_types) # rubocop:disable Metrics/MethodLength
+        if local_var_types&.key?(lvar_name.to_s)
+          val = local_var_types[lvar_name.to_s]
+          return nil if val == FALLBACK_TYPE
+
+          return val
+        end
+        if param_types&.key?(lvar_name.to_s)
+          val = param_types[lvar_name.to_s]
+          return nil if val == FALLBACK_TYPE
+
+          return val
+        end
 
         nil
       end
