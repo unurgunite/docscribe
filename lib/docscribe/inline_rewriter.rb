@@ -158,7 +158,7 @@ module Docscribe
       # @param [String] code the Ruby source code string to parse and rewrite
       # @param [Hash<Symbol, Object>] options hash containing :config, :file, and :core_rbs_provider
       # @raise [Docscribe::ParseError]
-      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node, Docscribe::Types::ProviderChain, nil, Docscribe::Types::RBS::Provider, nil>] rewrite environment with keys # rubocop:disable Layout/LineLength
+      # @return [Hash<Symbol, Docscribe::Config, String, Parser::Source::Buffer, Parser::AST::Node, Docscribe::Types::ProviderChain, nil, Docscribe::Types::RBS::Provider, nil>] rewrite environment with keys
       #   :config, :file, :buffer, :ast, :core_rbs_provider
       def setup_rewrite_env(code, options)
         config = options[:config] || Docscribe::Config.load
