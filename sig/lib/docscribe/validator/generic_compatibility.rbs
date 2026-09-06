@@ -1,0 +1,88 @@
+module Docscribe
+  module Validator
+    module GenericCompatibility
+      CHECKS: Hash[Symbol, Symbol]
+
+      def self.compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?fallback_type: String, ?method_name: (String | Symbol | nil)) -> bool
+      def compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?fallback_type: String, ?method_name: (String | Symbol | nil)) -> bool
+
+      def self.void_compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?String fallback_type, ?method_name: (String | Symbol | nil)) -> bool
+      def void_compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?String fallback_type, ?method_name: (String | Symbol | nil)) -> bool
+
+      def self.fallback_union_check?: ((String | nil) yard_type, (String | nil) expected_type, String fallback_type) -> bool
+      def fallback_union_check?: ((String | nil) yard_type, (String | nil) expected_type, String fallback_type) -> bool
+
+      def self.generic_base_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+      def generic_base_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+
+      def self.short_name_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+      def short_name_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+
+      def self.alias_hash_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+      def alias_hash_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+
+      def self.tuple_array_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+      def tuple_array_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+
+      def self.optional_nil_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+      def optional_nil_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+
+      def self.union_containment?: ((String | nil) yard, (String | nil) expected) -> bool
+      def union_containment?: ((String | nil) yard, (String | nil) expected) -> bool
+
+      def self.optional_suffix_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+      def optional_suffix_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+
+      def self.generic_inner_alias_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+      def generic_inner_alias_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
+
+      def self.union_vs_optional_compatible?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+      def union_vs_optional_compatible?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
+      def self.question_vs_comma_nil?: (String norm_yard, String norm_expected) -> bool
+      def question_vs_comma_nil?: (String norm_yard, String norm_expected) -> bool
+
+      def self.suffix_vs_union_first?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+      def suffix_vs_union_first?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
+      def self.generic_pair?: (String norm_yard, String norm_expected) -> bool
+      def generic_pair?: (String norm_yard, String norm_expected) -> bool
+
+      def self.extract_inner: (String normalized) -> (String | nil)
+      def extract_inner: (String normalized) -> (String | nil)
+
+      def self.inner_has_alias?: (String inner) -> bool
+      def inner_has_alias?: (String inner) -> bool
+
+      def self.alias_token?: (String token) -> bool
+      def alias_token?: (String token) -> bool
+
+      def self.question_nil_pair?: (String norm_yard, String norm_expected) -> bool
+      def question_nil_pair?: (String norm_yard, String norm_expected) -> bool
+
+      def self.comma_nil_pair?: (String norm_yard, String norm_expected) -> bool
+      def comma_nil_pair?: (String norm_yard, String norm_expected) -> bool
+
+      def self.node_nil_pair?: (String norm_yard, String norm_expected) -> bool
+      def node_nil_pair?: (String norm_yard, String norm_expected) -> bool
+
+      def self.generic_string?: (String normalized) -> bool
+      def generic_string?: (String normalized) -> bool
+
+      def self.short_compatible?: (String short_yard, String short_expected, String norm_yard, String norm_expected) -> bool
+      def short_compatible?: (String short_yard, String short_expected, String norm_yard, String norm_expected) -> bool
+
+      def self.fallback_union?: ((String | nil) type_str, String fallback) -> bool
+      def fallback_union?: ((String | nil) type_str, String fallback) -> bool
+
+      def self.short_name: (String type_str) -> String
+      def short_name: (String type_str) -> String
+
+      def self.base_name: (String type_str) -> String
+      def base_name: (String type_str) -> String
+
+      def self.normalize: ((String | nil) type_str) -> String
+      def normalize: ((String | nil) type_str) -> String
+    end
+  end
+end
