@@ -185,13 +185,34 @@ module Docscribe
         name, value = assignment_name_and_value(node)
         return unless name && value
 
-        inferred = if opts[:core_rbs_provider]
-                     run_last_expr_type(value, **opts, fallback_type: FALLBACK_TYPE,
-                                                       nil_as_optional: false, local_var_types: types)
+        inferred = if node.type == :op_asgn
+                     assignment_op_asgn_type(node, types, **opts)
                    else
-                     Literals.type_from_literal(value, fallback_type: FALLBACK_TYPE)
+                     assignment_inferred_type(value, types, **opts)
                    end
         types[name] = inferred if inferred && inferred != FALLBACK_TYPE
+      end
+
+      # @note module_function: defines #assignment_inferred_type (visibility: private)
+      # @param [Parser::AST::Node] value
+      # @param [Hash<String, String>] types
+      # @param [Hash] opts
+      # @return [String, nil]
+      def assignment_inferred_type(value, types, **opts)
+        run_last_expr_type(value, fallback_type: FALLBACK_TYPE, nil_as_optional: false, local_var_types: types,
+                                  core_rbs_provider: opts[:core_rbs_provider], param_types: opts[:param_types],
+                                  signature_provider: opts[:signature_provider], container: opts[:container])
+      end
+
+      # @note module_function: defines #assignment_op_asgn_type (visibility: private)
+      # @param [Parser::AST::Node] node
+      # @param [Hash<String, String>] types
+      # @param [Hash] opts
+      # @return [String, nil]
+      def assignment_op_asgn_type(node, types, **opts)
+        run_last_expr_type(node, fallback_type: FALLBACK_TYPE, nil_as_optional: false, local_var_types: types,
+                                 core_rbs_provider: opts[:core_rbs_provider], param_types: opts[:param_types],
+                                 signature_provider: opts[:signature_provider], container: opts[:container])
       end
 
       # Extract the variable name and value expression from an assignment node.
@@ -328,8 +349,8 @@ module Docscribe
 
       # Handle `:op_asgn` node (compound assignment: `x += 1`, `@var -= 2`, etc.).
       #
-      # Infers the result type from the operator and the right operand's type.
-      # Uses RBS to resolve when available (e.g., `Integer#+` -> `Integer`).
+      # RBS -> Infer: try RBS for meth on receiver type, else unify left/right
+      # keeping String? via nil_as_optional:true. No hardcoded operator list.
       #
       # @note module_function: defines #handle_op_asgn_node (visibility: private)
       # @param [Parser::AST::Node] node the `:op_asgn` AST node
@@ -337,15 +358,129 @@ module Docscribe
       # @return [String, nil]
       def handle_op_asgn_node(node, **opts)
         meth = node.children[1]
-        return nil unless %i[+ - * / % ** << | & ^].include?(meth)
-        return nil unless opts[:core_rbs_provider]
+        lhs = node.children[0]
+        rhs = node.children[2]
+        left = op_asgn_left_type(lhs, **opts)
+        right = op_asgn_right_type(rhs, **opts)
+        rbs = op_asgn_rbs_type(lhs, left, meth, **opts)
+        return rbs if rbs
 
-        arg = node.children[2]
-        arg_type = type_from_literal_safe(arg)
-        return nil unless arg_type
+        op_asgn_fallback_type(left, right, meth, **opts)
+      end
 
-        rbs = resolve_rbs_return_type(arg_type, meth, opts[:core_rbs_provider])
-        rbs unless rbs == FALLBACK_TYPE
+      # @note module_function: defines #op_asgn_left_type (visibility: private)
+      # @param [Parser::AST::Node, nil] lhs the lhs target node
+      # @param [Hash] opts
+      # @return [String, nil]
+      def op_asgn_left_type(lhs, **opts)
+        name = op_asgn_var_name(lhs)
+        if name
+          found = op_asgn_lookup_type(lhs, name, **opts)
+          return found if found
+        end
+        run_last_expr_type(lhs, **op_asgn_expr_opts(**opts))
+      end
+
+      # @note module_function: defines #op_asgn_var_name (visibility: private)
+      # @param [Parser::AST::Node, nil] lhs
+      # @return [String, nil]
+      def op_asgn_var_name(lhs)
+        return nil unless lhs.is_a?(Parser::AST::Node)
+
+        case lhs.type
+        when :lvasgn, :ivasgn, :gvasgn, :cvasgn then lhs.children[0].to_s
+        when :casgn then lhs.children[1].to_s
+        end
+      end
+
+      # @note module_function: defines #op_asgn_lookup_type (visibility: private)
+      # @param [Parser::AST::Node] lhs
+      # @param [String] name
+      # @param [Hash] opts
+      # @return [String, nil]
+      def op_asgn_lookup_type(lhs, name, **opts)
+        case lhs.type
+        when :lvasgn
+          lookup_lvar_type(name, opts[:local_var_types], opts[:param_types])
+        when :ivasgn, :gvasgn, :cvasgn, :casgn
+          opts[:local_var_types]&.fetch(name, nil)
+        end
+      end
+
+      # @note module_function: defines #op_asgn_right_type (visibility: private)
+      # @param [Parser::AST::Node, nil] rhs
+      # @param [Hash] opts
+      # @return [String, nil]
+      def op_asgn_right_type(rhs, **opts)
+        return nil unless rhs
+
+        run_last_expr_type(rhs, **op_asgn_expr_opts(**opts))
+      end
+
+      # @note module_function: defines #op_asgn_expr_opts (visibility: private)
+      # @param [Hash] opts
+      # @return [Hash<Symbol, Object>]
+      def op_asgn_expr_opts(**opts)
+        {
+          fallback_type: opts[:fallback_type] || FALLBACK_TYPE,
+          nil_as_optional: true,
+          local_var_types: opts[:local_var_types],
+          param_types: opts[:param_types],
+          core_rbs_provider: opts[:core_rbs_provider],
+          signature_provider: opts[:signature_provider],
+          container: opts[:container]
+        }
+      end
+
+      # @note module_function: defines #op_asgn_rbs_type (visibility: private)
+      # @param [Parser::AST::Node, nil] lhs
+      # @param [String, nil] left
+      # @param [Symbol] meth
+      # @param [Hash] opts
+      # @return [String, nil]
+      def op_asgn_rbs_type(lhs, left, meth, **opts)
+        recv = cleaned_recv_type(left) ||
+               receiver_rbs_type_name(lhs, opts[:core_rbs_provider],
+                                      opts[:local_var_types], opts[:param_types])
+        return nil unless recv && meth
+
+        resolve_op_asgn_rbs(recv, meth, **opts)
+      end
+
+      # @note module_function: defines #resolve_op_asgn_rbs (visibility: private)
+      # @param [String] recv_type
+      # @param [Symbol] meth
+      # @param [Hash] opts
+      # @return [String, nil]
+      def resolve_op_asgn_rbs(recv_type, meth, **opts)
+        if opts[:core_rbs_provider]
+          rbs = resolve_rbs_return_type(recv_type, meth, opts[:core_rbs_provider])
+          return substitute_rbs_type(rbs, recv_type) unless rbs == FALLBACK_TYPE
+        end
+        if opts[:signature_provider]
+          sig = opts[:signature_provider].signature_for(container: recv_type, scope: :instance, name: meth)
+          return substitute_rbs_type(sig.return_type, recv_type) if sig
+        end
+        nil
+      end
+
+      # @note module_function: defines #op_asgn_fallback_type (visibility: private)
+      # @param [String, nil] left
+      # @param [String, nil] right
+      # @param [Symbol] meth
+      # @param [Hash] opts
+      # @return [String, nil]
+      def op_asgn_fallback_type(left, right, meth, **opts) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize
+        fallback = (opts[:fallback_type] || FALLBACK_TYPE).to_s #: String
+        return synthesize_shovel_type(left, right, fallback: fallback) if meth == :<<
+
+        left_fallback = fallback_alias?(left, fallback) || left.nil?
+        right_fallback = fallback_alias?(right, fallback) || right.nil?
+        return right.to_s if left_fallback && !right_fallback && right
+        return left.to_s if right_fallback && !left_fallback && left
+        return fallback if left_fallback && right_fallback
+
+        unify_types(left, right, fallback_type: fallback, nil_as_optional: true)
       end
 
       # Handle `:begin` node for last_expr_type.
@@ -728,7 +863,7 @@ module Docscribe
 
         if core_rbs_provider
           rbs = resolve_rbs_return_type(recv_type, meth, core_rbs_provider)
-          return rbs unless rbs == FALLBACK_TYPE
+          return substitute_rbs_type(rbs, recv_type) unless rbs == FALLBACK_TYPE
         end
 
         nil
@@ -750,7 +885,8 @@ module Docscribe
                                            opts[:param_types])
         return nil unless recv_type
 
-        opts[:signature_provider].signature_for(container: recv_type, scope: :instance, name: meth)&.return_type
+        rbs = opts[:signature_provider].signature_for(container: recv_type, scope: :instance, name: meth)&.return_type
+        rbs ? substitute_rbs_type(rbs, recv_type) : nil
       end
 
       # Resolve return type from the current method's container via RBS.
@@ -767,12 +903,12 @@ module Docscribe
 
         if opts[:core_rbs_provider]
           rbs = resolve_rbs_return_type(opts[:container], meth, opts[:core_rbs_provider])
-          return rbs unless rbs == FALLBACK_TYPE
+          return substitute_rbs_type(rbs, opts[:container]) unless rbs == FALLBACK_TYPE
         end
 
         if opts[:signature_provider]
           sig = opts[:signature_provider].signature_for(container: opts[:container], scope: :instance, name: meth)
-          return sig.return_type if sig
+          return substitute_rbs_type(sig.return_type, opts[:container]) if sig
         end
 
         nil
@@ -793,6 +929,191 @@ module Docscribe
         false: 'Boolean', float: 'Float', array: 'Array', hash: 'Hash',
         nil: 'NilClass'
       }.freeze
+
+      # Infer return type from a compound-assignment-like `:send`.
+      #
+      # RBS -> Infer: no hardcoded operator list, always try left/right via Infer,
+      # then RBS for meth on receiver, else unify with String? handling.
+      #
+      # @note module_function: defines #infer_from_compound_assign (visibility: private)
+      # @param [Parser::AST::Node] node the `:send` AST node
+      # @param [Hash] opts additional keyword options forwarded to type inference
+      # @return [String, nil]
+      def infer_from_compound_assign(node, **opts)
+        meth = node.children[1]
+        recv = node.children[0]
+        arg = node.children[2]
+        left = compound_left_type(recv, **opts)
+        right = compound_right_type(arg, **opts)
+        rbs = compound_rbs_type(recv, left, meth, **opts)
+        return rbs if rbs
+
+        compound_fallback_type(left, right, meth, **opts)
+      end
+
+      # @note module_function: defines #compound_left_type (visibility: private)
+      # @param [Parser::AST::Node, nil] recv
+      # @param [Hash] opts
+      # @return [String, nil]
+      def compound_left_type(recv, **opts)
+        return nil unless recv
+
+        found = compound_var_lookup(recv, **opts)
+        return found if found
+
+        run_last_expr_type(recv, **compound_expr_opts(**opts))
+      end
+
+      # @note module_function: defines #compound_var_lookup (visibility: private)
+      # @param [Parser::AST::Node] recv
+      # @param [Hash] opts
+      # @return [String, nil]
+      def compound_var_lookup(recv, **opts)
+        return nil unless %i[lvar ivar gvar cvar].include?(recv.type)
+
+        name = recv.children[0].to_s
+        if recv.type == :lvar
+          lookup_lvar_type(name, opts[:local_var_types], opts[:param_types])
+        else
+          opts[:local_var_types]&.fetch(name, nil)
+        end
+      end
+
+      # @note module_function: defines #compound_right_type (visibility: private)
+      # @param [Parser::AST::Node, nil] arg
+      # @param [Hash] opts
+      # @return [String, nil]
+      def compound_right_type(arg, **opts)
+        return nil unless arg
+
+        run_last_expr_type(arg, **compound_expr_opts(**opts))
+      end
+
+      # @note module_function: defines #compound_expr_opts (visibility: private)
+      # @param [Hash] opts
+      # @return [Hash<Symbol, Object>]
+      def compound_expr_opts(**opts)
+        {
+          fallback_type: opts[:fallback_type] || FALLBACK_TYPE,
+          nil_as_optional: true,
+          local_var_types: opts[:local_var_types],
+          param_types: opts[:param_types],
+          core_rbs_provider: opts[:core_rbs_provider],
+          signature_provider: opts[:signature_provider],
+          container: opts[:container]
+        }
+      end
+
+      # @note module_function: defines #compound_rbs_type (visibility: private)
+      # @param [Parser::AST::Node, nil] recv
+      # @param [String, nil] left
+      # @param [Symbol] meth
+      # @param [Hash] opts
+      # @return [String, nil]
+      def compound_rbs_type(recv, left, meth, **opts)
+        recv_type = cleaned_recv_type(left) ||
+                    receiver_rbs_type_name(recv, opts[:core_rbs_provider],
+                                           opts[:local_var_types], opts[:param_types])
+        return nil unless recv_type && meth
+
+        resolve_compound_rbs(recv_type, meth, **opts)
+      end
+
+      # @note module_function: defines #resolve_compound_rbs (visibility: private)
+      # @param [String] recv_type
+      # @param [Symbol] meth
+      # @param [Hash] opts
+      # @return [String, nil]
+      def resolve_compound_rbs(recv_type, meth, **opts)
+        if opts[:core_rbs_provider]
+          rbs = resolve_rbs_return_type(recv_type, meth, opts[:core_rbs_provider])
+          return substitute_rbs_type(rbs, recv_type) unless rbs == FALLBACK_TYPE
+        end
+        if opts[:signature_provider]
+          sig = opts[:signature_provider].signature_for(container: recv_type, scope: :instance, name: meth)
+          return substitute_rbs_type(sig.return_type, recv_type) if sig
+        end
+        nil
+      end
+
+      # @note module_function: defines #compound_fallback_type (visibility: private)
+      # @param [String, nil] left
+      # @param [String, nil] right
+      # @param [Symbol] meth
+      # @param [Hash] opts
+      # @return [String, nil]
+      def compound_fallback_type(left, right, meth, **opts) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize
+        fallback = (opts[:fallback_type] || FALLBACK_TYPE).to_s #: String
+        return synthesize_shovel_type(left, right, fallback: fallback) if meth == :<<
+        return nil unless %i[+ - * / % ** | & ^ >>].include?(meth)
+
+        left_fallback = fallback_alias?(left, fallback) || left.nil?
+        right_fallback = fallback_alias?(right, fallback) || right.nil?
+        return right.to_s if left_fallback && !right_fallback && right
+        return left.to_s if right_fallback && !left_fallback && left
+        return fallback if left_fallback && right_fallback
+
+        unify_types(left, right, fallback_type: fallback, nil_as_optional: true)
+      end
+
+      # @note module_function: defines #cleaned_recv_type (visibility: private)
+      # @param [String, nil] raw
+      # @return [String, nil]
+      def cleaned_recv_type(raw)
+        return nil unless raw && raw != FALLBACK_TYPE
+
+        str = raw.to_s.strip
+        return nil if str.empty?
+
+        str = stripped_union_type(str) || str if str.include?(',')
+        cleaned = str.delete_suffix('?').strip
+        cleaned.empty? ? nil : cleaned
+      end
+
+      # @note module_function: defines #synthesize_shovel_type (visibility: private)
+      # @param [String, nil] left
+      # @param [String, nil] right
+      # @param [String] fallback
+      # @return [String]
+      def synthesize_shovel_type(left, right, fallback:)
+        l = left || fallback
+        r = right || fallback
+        base = l.split(/[<\[ ]/).first.to_s.strip.delete_suffix('?')
+        return shovel_array_type(l, r, base, fallback) if %w[Array Set Enumerable Enumerator].include?(base)
+
+        l
+      end
+
+      # @note module_function: defines #shovel_array_type (visibility: private)
+      # @param [String] left_str
+      # @param [String] right_str
+      # @param [String] base
+      # @param [String] fallback
+      # @return [String]
+      def shovel_array_type(left_str, right_str, base, fallback)
+        return left_str if shovel_left_generic?(left_str)
+        return left_str if shovel_right_invalid?(right_str, fallback)
+
+        cleaned = right_str.to_s.strip.delete_suffix('?').strip
+        return left_str if cleaned == 'nil' || cleaned.empty? || cleaned == FALLBACK_TYPE
+
+        "#{base}<#{cleaned}>"
+      end
+
+      # @note module_function: defines #shovel_left_generic? (visibility: private)
+      # @param [String] str
+      # @return [Boolean]
+      def shovel_left_generic?(str)
+        str.include?('<') || str.include?('[')
+      end
+
+      # @note module_function: defines #shovel_right_invalid? (visibility: private)
+      # @param [String] str
+      # @param [String] fallback
+      # @return [Boolean]
+      def shovel_right_invalid?(str, fallback)
+        str == fallback || %w[Object untyped].include?(str)
+      end
 
       # Map receiver AST node to RBS type name.
       #
@@ -848,9 +1169,23 @@ module Docscribe
       # @param [String, nil] raw
       # @return [String, nil]
       def stripped_union_type(raw)
-        parts = raw.split(',').map { |p| p.strip.delete_suffix('?').strip }
+        parts = split_top_level_commas(raw).map { |p| p.strip.delete_suffix('?').strip }
         non_nil = parts.reject { |p| %w[nil FALLBACK_TYPE].include?(p) }
         (non_nil.first || parts.first).to_s.strip.delete_suffix('?').strip
+      end
+
+      # Split a type string by top-level commas (outside any < > [ ] ( ) nesting).
+      #
+      # Used to distinguish union types (`String, nil`) from generic commas (`Hash<Integer, String>`).
+      #
+      # @note module_function: defines #split_top_level_commas (visibility: private)
+      # @param [String] str the type string to split
+      # @return [Array<String>]
+      def split_top_level_commas(str)
+        state = { parts: [], cur: +'', da: 0, db: 0, dp: 0 } #: Hash[Symbol, untyped]
+        str.each_char { |chr| split_process_char(chr, state, strip: false) }
+        state[:parts] << state[:cur] unless state[:cur].empty?
+        state[:parts]
       end
 
       # @note module_function: defines #receiver_send_type (visibility: private)
@@ -863,32 +1198,6 @@ module Docscribe
         run_last_expr_type(recv, fallback_type: FALLBACK_TYPE, nil_as_optional: false,
                                  core_rbs_provider: core_rbs_provider, param_types: param_types,
                                  local_var_types: local_var_types)
-      end
-
-      # Infer return type from a compound-assignment-like `:send` by reading the
-      # first literal argument's type — only fires when `core_rbs_provider` is
-      # present and the argument's RBS return type can be resolved.
-      #
-      # Enables `@var += 123` -> `Integer` (via `Integer#+`) and similar patterns.
-      #
-      # @note module_function: defines #infer_from_compound_assign (visibility: private)
-      # @param [Parser::AST::Node] node the `:send` AST node
-      # @param [Hash] opts additional keyword options forwarded to type inference
-      # @return [String, nil]
-      def infer_from_compound_assign(node, **opts)
-        return nil unless opts[:core_rbs_provider]
-
-        meth = node.children[1]
-        return nil unless %i[+ - * / % ** << | & ^].include?(meth)
-
-        first_arg = node.children[2]
-        return nil unless first_arg
-
-        arg_type = type_from_literal_safe(first_arg)
-        return nil unless arg_type
-
-        rbs = resolve_rbs_return_type(arg_type, meth, opts[:core_rbs_provider])
-        rbs unless rbs == FALLBACK_TYPE
       end
 
       # Safely get a type string from a literal node, returning nil if the node
@@ -1051,6 +1360,187 @@ module Docscribe
         )
 
         sig&.return_type || FALLBACK_TYPE
+      end
+
+      # Substitute `self` and generic type variables in an RBS return type with the concrete receiver type.
+      #
+      # Handles `Array#<<` (`self` -> `Array<Elem>`) and `Hash#[]` (`V` -> value type).
+      # For `self` returns the concrete receiver type; for `K`/`V`/`Elem` substitutes from generic args.
+      #
+      # @note module_function: defines #substitute_rbs_type (visibility: private)
+      # @param [String] rbs the raw RBS return type string
+      # @param [String] recv_type the concrete receiver type string
+      # @return [String]
+      def substitute_rbs_type(rbs, recv_type)
+        self_sub = substitute_self_type(rbs, recv_type)
+        return self_sub if self_sub
+
+        inner = extract_generic_inner(recv_type)
+        return rbs unless inner
+
+        args = split_generic_args(inner)
+        return rbs if args.empty?
+
+        substitute_with_mapping(rbs, recv_type, args)
+      end
+
+      # @note module_function: defines #substitute_self_type (visibility: private)
+      # @param [String] rbs
+      # @param [String] recv_type
+      # @return [String, nil]
+      def substitute_self_type(rbs, recv_type)
+        return recv_type if rbs == 'self'
+        return "#{recv_type}?" if rbs == 'self?'
+
+        nil
+      end
+
+      # @note module_function: defines #substitute_with_mapping (visibility: private)
+      # @param [String] rbs
+      # @param [String] recv_type
+      # @param [Array<String>] args
+      # @return [String]
+      def substitute_with_mapping(rbs, recv_type, args)
+        mapping = build_generic_mapping(recv_type, args)
+        return rbs if mapping.empty?
+
+        apply_generic_mapping(rbs, mapping, recv_type)
+      end
+
+      # @note module_function: defines #build_generic_mapping (visibility: private)
+      # @param [String] recv_type
+      # @param [Array<String>] args
+      # @return [Hash<String, String>]
+      def build_generic_mapping(recv_type, args)
+        base = recv_type.split(/[<\[ ]/).first.to_s.strip
+        mapping = {} #: Hash[String, String]
+        fill_mapping_for_base(mapping, base, args)
+        mapping
+      end
+
+      # @note module_function: defines #fill_mapping_for_base (visibility: private)
+      # @param [Hash<String, String>] mapping
+      # @param [String] base
+      # @param [Array<String>] args
+      # @return [void]
+      def fill_mapping_for_base(mapping, base, args)
+        case base
+        when 'Hash' then fill_hash_mapping(mapping, args)
+        when 'Array', 'Set', 'Enumerable', 'Enumerator' then fill_array_mapping(mapping, args)
+        else fill_other_mapping(mapping, args)
+        end
+      end
+
+      # @note module_function: defines #fill_hash_mapping (visibility: private)
+      # @param [Hash<String, String>] mapping
+      # @param [Array<String>] args
+      # @return [void]
+      def fill_hash_mapping(mapping, args)
+        mapping['K'] = args[0] if args[0]
+        mapping['V'] = args[1] if args[1]
+      end
+
+      # @note module_function: defines #fill_array_mapping (visibility: private)
+      # @param [Hash<String, String>] mapping
+      # @param [Array<String>] args
+      # @return [void]
+      def fill_array_mapping(mapping, args)
+        %w[Elem T U E].each { |key| mapping[key] = args[0] if args[0] }
+      end
+
+      # @note module_function: defines #fill_other_mapping (visibility: private)
+      # @param [Hash<String, String>] mapping
+      # @param [Array<String>] args
+      # @return [void]
+      def fill_other_mapping(mapping, args)
+        %w[Elem T U].each { |key| mapping[key] = args[0] if args[0] }
+      end
+
+      # @note module_function: defines #apply_generic_mapping (visibility: private)
+      # @param [String] rbs
+      # @param [Hash<String, String>] mapping
+      # @param [String] recv_type
+      # @return [String]
+      def apply_generic_mapping(rbs, mapping, recv_type)
+        stripped = rbs.delete_suffix('?').strip
+        optional = rbs.end_with?('?')
+        return optional ? "#{mapping[stripped]}?" : mapping[stripped] if mapping.key?(stripped)
+
+        new_rbs = rbs.dup
+        mapping.each { |var, val| new_rbs = new_rbs.gsub(/\b#{Regexp.escape(var)}\b/, val) }
+        new_rbs.include?('self') ? new_rbs.gsub(/\bself\b/, recv_type) : new_rbs
+      end
+
+      # Extract the inner generic args string from a receiver type like `Array<String>` or `Hash<Integer, String>`.
+      #
+      # @note module_function: defines #extract_generic_inner (visibility: private)
+      # @param [String] type the concrete type string
+      # @return [String, nil]
+      def extract_generic_inner(type)
+        return unless type =~ /\A(?:Array|Hash|Set|Enumerable)[<\[](.*)[>\]]\z/m || type =~ /\A[^<\[\]]+[<\[](.*)[>\]]\z/m
+
+        Regexp.last_match(1)
+      end
+
+      # Split a generic inner string like `Integer, Array<(Integer, String)>` by top-level commas.
+      #
+      # Respects nesting of `< > [ ] ( )` so tuples are not split.
+      #
+      # @note module_function: defines #split_generic_args (visibility: private)
+      # @param [String] inner the raw inner string
+      # @return [Array<String>]
+      def split_generic_args(inner)
+        state = { parts: [], cur: +'', da: 0, db: 0, dp: 0 } #: Hash[Symbol, untyped]
+        inner.each_char { |chr| split_process_char(chr, state, strip: true) }
+        last = state[:cur].strip
+        state[:parts] << last unless last.empty?
+        state[:parts]
+      end
+
+      # @note module_function: defines #split_process_char (visibility: private)
+      # @param [String] chr single character
+      # @param [Hash<Symbol, Object>] state mutable split state
+      # @param [Boolean] strip whether to strip parts on comma
+      # @return [void]
+      def split_process_char(chr, state, strip:)
+        case chr
+        when '<', '>', '[', ']', '(', ')'
+          split_handle_bracket(chr, state)
+        when ','
+          split_handle_comma(state, strip: strip)
+        else
+          state[:cur] << chr
+        end
+      end
+
+      # @note module_function: defines #split_handle_bracket (visibility: private)
+      # @param [String] chr bracket character
+      # @param [Hash<Symbol, Object>] state mutable split state
+      # @return [void]
+      def split_handle_bracket(chr, state)
+        case chr
+        when '<' then state[:da] += 1
+        when '>' then state[:da] -= 1
+        when '[' then state[:db] += 1
+        when ']' then state[:db] -= 1
+        when '(' then state[:dp] += 1
+        when ')' then state[:dp] -= 1
+        end
+        state[:cur] << chr
+      end
+
+      # @note module_function: defines #split_handle_comma (visibility: private)
+      # @param [Hash<Symbol, Object>] state mutable split state
+      # @param [Boolean] strip whether to strip
+      # @return [void]
+      def split_handle_comma(state, strip:)
+        if state[:da].zero? && state[:db].zero? && state[:dp].zero?
+          part = strip ? state[:cur].strip : state[:cur]
+          state[:parts] << part
+          state[:cur] = +''
+        else
+          state[:cur] << ','
+        end
       end
 
       # Unify two inferred types into a single type string.

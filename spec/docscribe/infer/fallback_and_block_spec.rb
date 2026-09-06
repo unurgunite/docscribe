@@ -19,6 +19,11 @@ RSpec.describe Docscribe::Infer::Returns do
     end
 
     context 'when method body is FALLBACK_TYPE constant' do
+      subject(:inferred) do
+        described_class.send(:run_last_expr_type, method_body, fallback_type: 'Object', nil_as_optional: true,
+                                                               core_rbs_provider: nil)
+      end
+
       let(:code) do
         <<~RUBY
           def foo
@@ -30,7 +35,6 @@ RSpec.describe Docscribe::Infer::Returns do
       let(:method_body) { described_class.extract_def_body(parsed_node) }
 
       it 'handles FALLBACK_TYPE constant node' do
-        inferred = described_class.send(:run_last_expr_type, method_body, fallback_type: 'Object', nil_as_optional: true, core_rbs_provider: nil)
         expect(inferred).to eq('Object')
       end
     end

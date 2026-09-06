@@ -142,6 +142,80 @@ module Docscribe
       def self?.coalesce_type: ((String | nil) type, String fallback_type) -> String
 
       def self?.unify_nil_types: (String type_a, String type_b, nil_as_optional: bool) -> String
+
+      def self?.assignment_inferred_type: (Parser::AST::Node value, Hash[String, String] types, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.assignment_op_asgn_type: (Parser::AST::Node node, Hash[String, String] types, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.op_asgn_left_type: ((Parser::AST::Node | nil) lhs, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.op_asgn_var_name: ((Parser::AST::Node | nil) lhs) -> (String | nil)
+
+      def self?.op_asgn_lookup_type: (Parser::AST::Node lhs, String name, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.op_asgn_right_type: ((Parser::AST::Node | nil) rhs, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.op_asgn_expr_opts: (?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> Hash[Symbol, untyped]
+
+      def self?.op_asgn_rbs_type: ((Parser::AST::Node | nil) lhs, (String | nil) left, Symbol meth, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.resolve_op_asgn_rbs: (String recv_type, Symbol meth, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.op_asgn_fallback_type: ((String | nil) left, (String | nil) right, Symbol meth, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.cleaned_recv_type: ((String | nil) raw) -> (String | nil)
+
+      def self?.synthesize_shovel_type: ((String | nil) left, (String | nil) right, fallback: String) -> String
+
+      def self?.shovel_array_type: (String left_str, String right_str, String base, String fallback) -> String
+
+      def self?.shovel_left_generic?: (String str) -> bool
+
+      def self?.shovel_right_invalid?: (String str, String fallback) -> bool
+
+      def self?.compound_left_type: ((Parser::AST::Node | nil) recv, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.compound_var_lookup: (Parser::AST::Node recv, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.compound_right_type: ((Parser::AST::Node | nil) arg, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.compound_expr_opts: (?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> Hash[Symbol, untyped]
+
+      def self?.compound_rbs_type: ((Parser::AST::Node | nil) recv, (String | nil) left, Symbol meth, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.resolve_compound_rbs: (String recv_type, Symbol meth, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.compound_fallback_type: ((String | nil) left, (String | nil) right, Symbol meth, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.split_top_level_commas: (String str) -> Array[String]
+
+      def self?.substitute_rbs_type: (String rbs, String recv_type) -> String
+
+      def self?.substitute_self_type: (String rbs, String recv_type) -> (String | nil)
+
+      def self?.substitute_with_mapping: (String rbs, String recv_type, Array[String] args) -> String
+
+      def self?.build_generic_mapping: (String recv_type, Array[String] args) -> Hash[String, String]
+
+      def self?.fill_mapping_for_base: (Hash[String, String] mapping, String base, Array[String] args) -> void
+
+      def self?.fill_hash_mapping: (Hash[String, String] mapping, Array[String] args) -> void
+
+      def self?.fill_array_mapping: (Hash[String, String] mapping, Array[String] args) -> void
+
+      def self?.fill_other_mapping: (Hash[String, String] mapping, Array[String] args) -> void
+
+      def self?.apply_generic_mapping: (String rbs, Hash[String, String] mapping, String recv_type) -> String
+
+      def self?.extract_generic_inner: (String `type`) -> (String | nil)
+
+      def self?.split_generic_args: (String inner) -> Array[String]
+
+      def self?.split_process_char: (String chr, Hash[Symbol, untyped] state, strip: bool) -> void
+
+      def self?.split_handle_bracket: (String chr, Hash[Symbol, untyped] state) -> void
+
+      def self?.split_handle_comma: (Hash[Symbol, untyped] state, strip: bool) -> void
     end
   end
 end

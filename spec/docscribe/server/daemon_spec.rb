@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups
+
 require 'docscribe/server'
 require 'docscribe/cli/update_types'
 require 'fileutils'
@@ -427,5 +429,298 @@ RSpec.describe Docscribe::Server::Daemon do
         expect(parsed['error']['code']).to eq(Docscribe::Server::Daemon::ERROR_CODES[:internal])
       end
     end
+
+    describe 'REQUEST_HANDLERS dispatch' do
+      let(:tmp_dir) { Dir.mktmpdir }
+      let(:dispatch_daemon) { described_class.new(socket_path: "#{tmp_dir}/dispatch.sock", idle_timeout: 60) }
+      let(:client_io) { StringIO.new }
+      let(:request_id) { 42 }
+
+      after { FileUtils.remove_entry(tmp_dir) }
+
+      describe '#dispatch_request' do
+        context 'when method is check' do
+          let(:method) { 'check' }
+          let(:params) { { 'file' => '/tmp/a.rb' } }
+          let(:request) { { 'id' => request_id, 'method' => method, 'params' => params } }
+
+          it 'dispatches to handle_check' do
+            allow(dispatch_daemon).to receive(:handle_check)
+            dispatch_daemon.send(:dispatch_request, client_io, request, method, params)
+            expect(dispatch_daemon).to have_received(:handle_check).with(client_io, request_id, params)
+          end
+        end
+
+        context 'when method is fix' do
+          let(:method) { 'fix' }
+          let(:params) { { 'file' => '/tmp/b.rb' } }
+          let(:request) { { 'id' => request_id, 'method' => method, 'params' => params } }
+
+          it 'dispatches to handle_fix' do
+            allow(dispatch_daemon).to receive(:handle_fix)
+            dispatch_daemon.send(:dispatch_request, client_io, request, method, params)
+            expect(dispatch_daemon).to have_received(:handle_fix).with(client_io, request_id, params)
+          end
+        end
+
+        context 'when method is check_batch' do
+          let(:method) { 'check_batch' }
+          let(:params) { { 'files' => ['/tmp/a.rb'] } }
+          let(:request) { { 'id' => request_id, 'method' => method, 'params' => params } }
+
+          it 'dispatches to handle_check_batch' do
+            allow(dispatch_daemon).to receive(:handle_check_batch)
+            dispatch_daemon.send(:dispatch_request, client_io, request, method, params)
+            expect(dispatch_daemon).to have_received(:handle_check_batch).with(client_io, request_id, params)
+          end
+        end
+
+        context 'when method is update_types' do
+          let(:method) { 'update_types' }
+          let(:params) { { 'dir' => '.' } }
+          let(:request) { { 'id' => request_id, 'method' => method, 'params' => params } }
+
+          it 'dispatches to handle_update_types' do
+            allow(dispatch_daemon).to receive(:handle_update_types)
+            dispatch_daemon.send(:dispatch_request, client_io, request, method, params)
+            expect(dispatch_daemon).to have_received(:handle_update_types).with(client_io, request_id, params)
+          end
+        end
+
+        context 'when method is unknown and falls to control' do
+          let(:method) { 'unknown_method' }
+          let(:params) { {} }
+          let(:request) { { 'id' => request_id, 'method' => method, 'params' => params } }
+
+          it 'dispatches to dispatch_control_request' do
+            allow(dispatch_daemon).to receive(:dispatch_control_request)
+            dispatch_daemon.send(:dispatch_request, client_io, request, method, params)
+            expect(dispatch_daemon).to have_received(:dispatch_control_request).with(client_io, request, method)
+          end
+        end
+      end
+
+      describe '#dispatch_control_request' do
+        context 'when method is shutdown' do
+          let(:method) { 'shutdown' }
+          let(:request) { { 'id' => request_id } }
+
+          it 'dispatches to handle_shutdown' do
+            allow(dispatch_daemon).to receive(:handle_shutdown)
+            dispatch_daemon.send(:dispatch_control_request, client_io, request, method)
+            expect(dispatch_daemon).to have_received(:handle_shutdown).with(client_io, request_id)
+          end
+        end
+
+        context 'when method is ping' do
+          let(:method) { 'ping' }
+          let(:request) { { 'id' => request_id } }
+
+          it 'dispatches to handle_ping' do
+            allow(dispatch_daemon).to receive(:handle_ping)
+            dispatch_daemon.send(:dispatch_control_request, client_io, request, method)
+            expect(dispatch_daemon).to have_received(:handle_ping).with(client_io, request_id)
+          end
+        end
+
+        context 'when method is unknown' do
+          subject(:response) do
+            dispatch_daemon.send(:dispatch_control_request, client_io, request, method)
+            JSON.parse(client_io.string)
+          end
+
+          let(:method) { 'foobar' }
+          let(:request) { { 'id' => request_id } }
+
+          it 'returns unknown method error with code -32601' do
+            expect(response['error']['code']).to eq(-32_601)
+          end
+
+          it 'includes method name in message' do
+            expect(response['error']['message']).to include('Unknown method')
+            expect(response['error']['message']).to include(method)
+          end
+        end
+      end
+
+      describe '#handle_request routing' do
+        let(:method) { 'check' }
+        let(:params) { { 'file' => '/tmp/a.rb' } }
+        let(:request) { { 'method' => method, 'params' => params, 'id' => request_id } }
+
+        it 'delegates to dispatch_request' do
+          allow(dispatch_daemon).to receive(:dispatch_request)
+          dispatch_daemon.send(:handle_request, client_io, request)
+          expect(dispatch_daemon).to have_received(:dispatch_request).with(client_io, request, method, params)
+        end
+
+        context 'when params missing' do
+          let(:request) { { 'method' => method, 'id' => request_id } }
+
+          it 'defaults params to empty hash' do
+            allow(dispatch_daemon).to receive(:dispatch_request)
+            dispatch_daemon.send(:handle_request, client_io, request)
+            expect(dispatch_daemon).to have_received(:dispatch_request).with(client_io, request, method, {})
+          end
+        end
+      end
+    end
+
+    describe 'run_rewrite transform_keys stringification' do
+      let(:tmp_dir2) { Dir.mktmpdir }
+      let(:validate_overrides) do
+        {
+          'validate_types' => true, 'include' => [], 'exclude' => [],
+          'include_file' => [], 'exclude_file' => [], 'sig_dirs' => [],
+          'rbi_dirs' => [], 'no_boilerplate' => true
+        }
+      end
+      let(:rw_daemon) { described_class.new(socket_path: "#{tmp_dir2}/rw.sock", idle_timeout: 60) }
+
+      before do
+        rw_daemon.send(:load_dependencies)
+      end
+
+      after { FileUtils.remove_entry(tmp_dir2) }
+
+      context 'with infer source mismatch' do
+        subject(:result) do
+          rw_daemon.send(:apply_cli_overrides, validate_overrides)
+          rw_daemon.send(:run_rewrite, file_path, :safe)
+        end
+
+        let(:ruby_source) do
+          <<~RUBY
+            class Foo
+              # @return [Integer]
+              def bar
+                "hello"
+              end
+            end
+          RUBY
+        end
+        let(:file_path) do
+          path = File.join(tmp_dir2, 'a.rb')
+          File.write(path, ruby_source)
+          path
+        end
+
+        it 'has string keys type and source', :aggregate_failures do
+          expect(result['changes'].first).to have_key('type')
+          expect(result['changes'].first).to have_key('source')
+          expect(result['changes'].first.keys).to all(be_a(String))
+        end
+
+        it 'has no symbol keys', :aggregate_failures do
+          expect(result['changes'].first).not_to have_key(:type)
+          expect(result['changes'].first).not_to have_key(:source)
+        end
+
+        it 'has source infer as string' do
+          expect(result['changes'].first['source']).to eq('infer')
+        end
+
+        it 'has type as updated_return stringified' do
+          expect(result['changes'].first['type'].to_s).to eq('updated_return')
+        end
+      end
+
+      context 'with syntax source invalid YARD' do
+        subject(:result) do
+          rw_daemon.send(:apply_cli_overrides, validate_overrides)
+          rw_daemon.send(:run_rewrite, file_path, :safe)
+        end
+
+        let(:ruby_source) do
+          <<~RUBY
+            class Foo
+              # @return [Sym bol]
+              def bar
+                :x
+              end
+            end
+          RUBY
+        end
+        let(:file_path) do
+          path = File.join(tmp_dir2, 'b.rb')
+          File.write(path, ruby_source)
+          path
+        end
+
+        it 'has source syntax stringified' do
+          expect(result['changes'].first['source']).to eq('syntax')
+        end
+
+        it 'has type invalid_type' do
+          expect(result['changes'].first['type'].to_s).to eq('invalid_type')
+        end
+
+        it 'has string keys' do
+          expect(result['changes'].first.keys).to include('type', 'source')
+        end
+      end
+
+      context 'when dispatched via check_batch' do
+        subject(:batch_response) do
+          first = File.join(tmp_dir2, 'c.rb')
+          second = File.join(tmp_dir2, 'd.rb')
+          File.write(first, <<~RUBY)
+            class A
+              # @return [Integer]
+              def foo
+                "hi"
+              end
+            end
+          RUBY
+          File.write(second, <<~RUBY)
+            class B
+              # @return [Sym bol]
+              def bar
+                :x
+              end
+            end
+          RUBY
+          rw_daemon.send(:apply_cli_overrides, validate_overrides)
+          io = StringIO.new
+          rw_daemon.send(:handle_check_batch, io, 1, { 'files' => [first, second] })
+          JSON.parse(io.string)['result']['results']
+        end
+
+        it 'returns batch results with stringified changes', :aggregate_failures do
+          expect(batch_response.size).to eq(2)
+          expect(batch_response[0]['changes'].first['source']).to eq('infer')
+          expect(batch_response[1]['changes'].first['source']).to eq('syntax')
+          expect(batch_response[0]['changes'].first.keys).to include('type', 'source')
+          expect(batch_response[1]['changes'].first.keys).to include('type', 'source')
+        end
+
+        it 'has type stringified via to_s' do
+          expect(batch_response[0]['changes'].first['type'].to_s).to eq('updated_return')
+          expect(batch_response[1]['changes'].first['type'].to_s).to eq('invalid_type')
+        end
+      end
+    end
+
+    describe 'REQUEST_HANDLERS constant' do
+      subject(:handlers) { described_class::REQUEST_HANDLERS }
+
+      it 'includes check handler' do
+        expect(handlers['check']).to eq(:handle_check)
+      end
+
+      it 'includes fix handler' do
+        expect(handlers['fix']).to eq(:handle_fix)
+      end
+
+      it 'includes check_batch handler' do
+        expect(handlers['check_batch']).to eq(:handle_check_batch)
+      end
+
+      it 'includes update_types handler' do
+        expect(handlers['update_types']).to eq(:handle_update_types)
+      end
+    end
   end
 end
+
+# rubocop:enable RSpec/MultipleMemoizedHelpers, RSpec/NestedGroups

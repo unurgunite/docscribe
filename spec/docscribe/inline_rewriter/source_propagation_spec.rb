@@ -6,6 +6,7 @@ require 'json'
 require 'docscribe/inline_rewriter'
 require 'docscribe/config'
 require 'docscribe/cli/formatters'
+require 'docscribe/server'
 
 RSpec.describe Docscribe::InlineRewriter do
   describe 'source field propagation (442)' do
@@ -27,13 +28,22 @@ RSpec.describe Docscribe::InlineRewriter do
           end
         RUBY
       end
+      let(:first_change) { rewrite_result[:changes].first }
 
-      it 'reports source syntax for invalid YARD', :aggregate_failures do
+      it 'reports one change for invalid YARD syntax' do
         expect(rewrite_result[:changes].size).to eq(1)
-        change = rewrite_result[:changes].first
-        expect(change[:type]).to eq(:invalid_type)
-        expect(change[:source]).to eq('syntax')
-        expect(change[:message]).to include('Sym bol')
+      end
+
+      it 'reports invalid_type type for invalid syntax' do
+        expect(first_change[:type]).to eq(:invalid_type)
+      end
+
+      it 'reports source syntax for invalid YARD' do
+        expect(first_change[:source]).to eq('syntax')
+      end
+
+      it 'includes invalid token in message' do
+        expect(first_change[:message]).to include('Sym bol')
       end
     end
 
@@ -52,15 +62,24 @@ RSpec.describe Docscribe::InlineRewriter do
           end
         RUBY
       end
+      let(:first_change) { rewrite_result[:changes].first }
 
-      it 'reports source infer for YARD mismatch', :aggregate_failures do
+      it 'reports one change for YARD mismatch' do
         expect(rewrite_result[:changes].size).to eq(1)
-        expect(rewrite_result[:changes].first[:source]).to eq('infer')
-        expect(rewrite_result[:changes].first[:type]).to eq(:updated_return)
+      end
+
+      it 'reports source infer for YARD mismatch' do
+        expect(first_change[:source]).to eq('infer')
+      end
+
+      it 'reports updated_return type for YARD mismatch' do
+        expect(first_change[:type]).to eq(:updated_return)
       end
     end
 
     context 'when external RBS signature differs from YARD' do
+      subject(:rbs_result) { rewrite_with_rbs(code, rbs_content) }
+
       let(:code) do
         <<~RUBY
           class Foo
@@ -71,14 +90,17 @@ RSpec.describe Docscribe::InlineRewriter do
           end
         RUBY
       end
+      let(:rbs_change) { rbs_result[:changes].first }
       let(:rbs_content) { "class Foo\n  def bar: () -> String\nend\n" }
 
       before { skip_unless_rbs_available! }
 
-      it 'reports source rbs when external_sig differs', :aggregate_failures do
-        result = rewrite_with_rbs(code, rbs_content)
-        expect(result[:changes].first[:source]).to eq('rbs')
-        expect(result[:changes].first[:type]).to eq(:updated_return)
+      it 'reports source rbs when external_sig differs' do
+        expect(rbs_change[:source]).to eq('rbs')
+      end
+
+      it 'reports updated_return type when external_sig differs' do
+        expect(rbs_change[:type]).to eq(:updated_return)
       end
     end
 
@@ -98,10 +120,13 @@ RSpec.describe Docscribe::InlineRewriter do
           end
         RUBY
       end
+      let(:param_change) { rewrite_result[:changes].find { |entry| entry[:type] == :invalid_type } }
 
-      it 'reports source syntax for param invalid', :aggregate_failures do
-        param_change = rewrite_result[:changes].find { |change| change[:type] == :invalid_type }
+      it 'reports invalid_type change for param invalid syntax' do
         expect(param_change).not_to be_nil
+      end
+
+      it 'reports source syntax for param invalid' do
         expect(param_change[:source]).to eq('syntax')
       end
     end
@@ -122,16 +147,24 @@ RSpec.describe Docscribe::InlineRewriter do
           end
         RUBY
       end
+      let(:param_change) { rewrite_result[:changes].find { |entry| entry[:type] == :updated_param } }
 
-      it 'reports source infer for param mismatch', :aggregate_failures do
-        param_change = rewrite_result[:changes].find { |change| change[:type] == :updated_param }
+      it 'reports updated_param change for param mismatch' do
         expect(param_change).not_to be_nil
+      end
+
+      it 'reports source infer for param mismatch' do
         expect(param_change[:source]).to eq('infer')
+      end
+
+      it 'reports param name x for param mismatch' do
         expect(param_change[:param]).to eq('x')
       end
     end
 
     context 'when RBS provides param type differing from YARD' do
+      subject(:rbs_param_change) { param_change_with_rbs(code, rbs_content) }
+
       let(:code) do
         <<~RUBY
           class Foo
@@ -148,13 +181,11 @@ RSpec.describe Docscribe::InlineRewriter do
       before { skip_unless_rbs_available! }
 
       it 'reports param change present for rbs mismatch' do
-        change = param_change_with_rbs(code, rbs_content)
-        expect(change).not_to be_nil
+        expect(rbs_param_change).not_to be_nil
       end
 
       it 'reports source rbs for param mismatch' do
-        change = param_change_with_rbs(code, rbs_content)
-        expect(change[:source]).to eq('rbs')
+        expect(rbs_param_change[:source]).to eq('rbs')
       end
     end
 
@@ -174,8 +205,8 @@ RSpec.describe Docscribe::InlineRewriter do
         RUBY
       end
 
-      it 'does not report source' do
-        expect(rewrite_result[:changes].any? { |change| change[:type] == :updated_return }).to be false
+      it 'does not report updated_return without validation' do
+        expect(rewrite_result[:changes].any? { |entry| entry[:type] == :updated_return }).to be false
       end
     end
 
@@ -197,10 +228,17 @@ RSpec.describe Docscribe::InlineRewriter do
       let(:aggressive_result) do
         described_class.rewrite_with_report(code, strategy: :aggressive, config: config_validate, file: 'test.rb')
       end
+      let(:safe_change) { safe_result[:changes].first }
 
-      it 'preserves source in safe mode and generates corrected output in aggressive', :aggregate_failures do
-        expect(safe_result[:changes].first[:source]).to eq('infer')
-        expect(safe_result[:changes].first[:type]).to eq(:updated_return)
+      it 'preserves source infer in safe mode' do
+        expect(safe_change[:source]).to eq('infer')
+      end
+
+      it 'preserves updated_return type in safe mode' do
+        expect(safe_change[:type]).to eq(:updated_return)
+      end
+
+      it 'generates corrected output in aggressive mode' do
         expect(aggressive_result[:output]).to include('@return [String]')
       end
     end
@@ -208,58 +246,89 @@ RSpec.describe Docscribe::InlineRewriter do
 
   describe 'formatters source propagation' do
     let(:formatter_json) { Docscribe::CLI::Formatters::Json.new }
-    let(:state_without_source) do
-      {
-        changed: false, had_errors: false, checked_ok: 0, checked_fail: 1,
-        corrected: 0, corrected_paths: [], corrected_changes: {},
-        fail_paths: ['test.rb'],
-        fail_changes: { 'test.rb' => [{ type: :missing_return, line: 5, method: 'Foo#bar', message: 'msg' }] },
-        error_paths: [], error_messages: {},
-        type_mismatch_paths: [], type_mismatch_changes: {}
-      }
-    end
-    let(:check_options) { { verbose: false, quiet: false, explain: false, mode: :check } }
-    let(:sarif_options) { { verbose: false, quiet: false, explain: false, mode: :check, format: :sarif } }
     let(:formatter_sarif) { Docscribe::CLI::Formatters::Sarif.new }
 
-    it 'JSON includes source when provided - syntax', :aggregate_failures do
-      offense = json_offense_for('syntax')
-      expect(offense['source']).to eq('syntax')
+    context 'when JSON source provided' do
+      let(:syntax_offense) { json_offense_for('syntax') }
+      let(:rbs_offense) { json_offense_for('rbs') }
+      let(:infer_offense) { json_offense_for('infer') }
+
+      it 'includes source syntax in JSON' do
+        expect(syntax_offense['source']).to eq('syntax')
+      end
+
+      it 'includes source rbs in JSON' do
+        expect(rbs_offense['source']).to eq('rbs')
+      end
+
+      it 'includes source infer in JSON' do
+        expect(infer_offense['source']).to eq('infer')
+      end
     end
 
-    it 'JSON includes source rbs', :aggregate_failures do
-      expect(json_offense_for('rbs')['source']).to eq('rbs')
+    context 'when JSON source not provided' do
+      let(:check_options) { { verbose: false, quiet: false, explain: false, mode: :check } }
+      let(:state_without_source) do
+        {
+          changed: false, had_errors: false, checked_ok: 0, checked_fail: 1,
+          corrected: 0, corrected_paths: [], corrected_changes: {},
+          fail_paths: ['test.rb'],
+          fail_changes: { 'test.rb' => [{ type: :missing_return, line: 5, method: 'Foo#bar', message: 'msg' }] },
+          error_paths: [], error_messages: {},
+          type_mismatch_paths: [], type_mismatch_changes: {}
+        }
+      end
+      let(:parsed_json_without_source) do
+        JSON.parse(capture_stdout { formatter_json.format_check_summary(state: state_without_source, options: check_options) })
+      end
+      let(:offense_without_source) { parsed_json_without_source['files'][0]['offenses'][0] }
+
+      it 'omits source when not provided in JSON' do
+        expect(offense_without_source).not_to have_key('source')
+      end
     end
 
-    it 'JSON includes source infer', :aggregate_failures do
-      expect(json_offense_for('infer')['source']).to eq('infer')
+    context 'when SARIF source provided' do
+      let(:syntax_result) { sarif_result_for('syntax') }
+      let(:rbs_result) { sarif_result_for('rbs') }
+      let(:infer_result) { sarif_result_for('infer') }
+
+      it 'includes source syntax in SARIF properties' do
+        expect(syntax_result['properties']['source']).to eq('syntax')
+      end
+
+      it 'includes source rbs in SARIF properties' do
+        expect(rbs_result['properties']['source']).to eq('rbs')
+      end
+
+      it 'includes source infer in SARIF properties' do
+        expect(infer_result['properties']['source']).to eq('infer')
+      end
     end
 
-    it 'JSON omits source when not provided' do
-      json = JSON.parse(capture_stdout { formatter_json.format_check_summary(state: state_without_source, options: check_options) })
-      expect(json['files'][0]['offenses'][0]).not_to have_key('source')
+    context 'when SARIF source not provided' do
+      let(:sarif_options) { { verbose: false, quiet: false, explain: false, mode: :check, format: :sarif } }
+      let(:state_without_source) do
+        {
+          changed: false, had_errors: false, checked_ok: 0, checked_fail: 1,
+          corrected: 0, corrected_paths: [], corrected_changes: {},
+          fail_paths: ['test.rb'],
+          fail_changes: { 'test.rb' => [{ type: :missing_return, line: 5, method: 'Foo#bar', message: 'msg' }] },
+          error_paths: [], error_messages: {},
+          type_mismatch_paths: [], type_mismatch_changes: {}
+        }
+      end
+      let(:parsed_sarif_without_source) do
+        JSON.parse(capture_stdout { formatter_sarif.format_check_summary(state: state_without_source, options: sarif_options) })
+      end
+      let(:sarif_result_without_source) { parsed_sarif_without_source['runs'][0]['results'][0] }
+
+      it 'omits properties when no source in SARIF' do
+        expect(sarif_result_without_source).not_to have_key('properties')
+      end
     end
 
-    it 'SARIF includes source in properties - syntax', :aggregate_failures do
-      result = sarif_result_for('syntax')
-      expect(result['properties']['source']).to eq('syntax')
-    end
-
-    it 'SARIF includes source rbs', :aggregate_failures do
-      expect(sarif_result_for('rbs')['properties']['source']).to eq('rbs')
-    end
-
-    it 'SARIF includes source infer', :aggregate_failures do
-      expect(sarif_result_for('infer')['properties']['source']).to eq('infer')
-    end
-
-    it 'SARIF omits properties when no source' do
-      json = JSON.parse(capture_stdout { formatter_sarif.format_check_summary(state: state_without_source, options: sarif_options) })
-      result = json['runs'][0]['results'][0]
-      expect(result).not_to have_key('properties')
-    end
-
-    context 'when change type is invalid_type' do
+    context 'when change type is invalid_type with JSON' do
       let(:invalid_state) do
         {
           changed: false, had_errors: false, checked_ok: 0, checked_fail: 1,
@@ -270,21 +339,52 @@ RSpec.describe Docscribe::InlineRewriter do
           type_mismatch_paths: [], type_mismatch_changes: {}
         }
       end
+      let(:check_options) { { verbose: false, quiet: false, explain: false, mode: :check } }
+      let(:parsed_invalid_json) do
+        JSON.parse(capture_stdout { formatter_json.format_check_summary(state: invalid_state, options: check_options) })
+      end
+      let(:invalid_offense) { parsed_invalid_json['files'][0]['offenses'][0] }
 
-      it 'JSON maps invalid_type to warning and Docscribe/InvalidType', :aggregate_failures do
-        json = JSON.parse(capture_stdout { formatter_json.format_check_summary(state: invalid_state, options: check_options) })
-        offense = json['files'][0]['offenses'][0]
-        expect(offense['severity']).to eq('warning')
-        expect(offense['cop_name']).to eq('Docscribe/InvalidType')
-        expect(offense['source']).to eq('syntax')
+      it 'maps invalid_type to warning severity in JSON' do
+        expect(invalid_offense['severity']).to eq('warning')
       end
 
-      it 'SARIF maps invalid_type to warning and Docscribe/InvalidType', :aggregate_failures do
-        json = JSON.parse(capture_stdout { formatter_sarif.format_check_summary(state: invalid_state, options: sarif_options) })
-        result = json['runs'][0]['results'][0]
-        expect(result['level']).to eq('warning')
-        expect(result['ruleId']).to eq('Docscribe/InvalidType')
-        expect(result['properties']['source']).to eq('syntax')
+      it 'maps invalid_type to Docscribe/InvalidType cop in JSON' do
+        expect(invalid_offense['cop_name']).to eq('Docscribe/InvalidType')
+      end
+
+      it 'includes syntax source for invalid_type in JSON' do
+        expect(invalid_offense['source']).to eq('syntax')
+      end
+    end
+
+    context 'when change type is invalid_type with SARIF' do
+      let(:invalid_state) do
+        {
+          changed: false, had_errors: false, checked_ok: 0, checked_fail: 1,
+          corrected: 0, corrected_paths: [], corrected_changes: {},
+          fail_paths: ['test.rb'],
+          fail_changes: { 'test.rb' => [{ type: :invalid_type, line: 5, method: 'Foo#bar', source: 'syntax', message: 'invalid' }] },
+          error_paths: [], error_messages: {},
+          type_mismatch_paths: [], type_mismatch_changes: {}
+        }
+      end
+      let(:sarif_options) { { verbose: false, quiet: false, explain: false, mode: :check, format: :sarif } }
+      let(:parsed_invalid_sarif) do
+        JSON.parse(capture_stdout { formatter_sarif.format_check_summary(state: invalid_state, options: sarif_options) })
+      end
+      let(:invalid_sarif_result) { parsed_invalid_sarif['runs'][0]['results'][0] }
+
+      it 'maps invalid_type to warning level in SARIF' do
+        expect(invalid_sarif_result['level']).to eq('warning')
+      end
+
+      it 'maps invalid_type to Docscribe/InvalidType rule in SARIF' do
+        expect(invalid_sarif_result['ruleId']).to eq('Docscribe/InvalidType')
+      end
+
+      it 'includes syntax source for invalid_type in SARIF' do
+        expect(invalid_sarif_result['properties']['source']).to eq('syntax')
       end
     end
   end
@@ -300,57 +400,85 @@ RSpec.describe Docscribe::InlineRewriter do
         end
       RUBY
     end
-
     let(:daemon_cli_overrides) do
-      { 'validate_types' => true, 'include' => [], 'exclude' => [], 'include_file' => [], 'exclude_file' => [], 'sig_dirs' => [], 'rbi_dirs' => [], 'no_boilerplate' => true }
+      {
+        'validate_types' => true, 'include' => [], 'exclude' => [], 'include_file' => [], 'exclude_file' => [],
+        'sig_dirs' => [], 'rbi_dirs' => [], 'no_boilerplate' => true
+      }
     end
 
-    let(:infer_pair_sources) do
-      require 'docscribe/server'
-      Dir.mktmpdir do |tmp_dir|
-        file = File.join(tmp_dir, 'test.rb')
-        File.write(file, ruby_source_with_infer_mismatch)
-        daemon_obj = Docscribe::Server::Daemon.new(socket_path: File.join(tmp_dir, 'daemon.sock'), idle_timeout: 60)
-        daemon_obj.send(:load_dependencies)
-        daemon_obj.send(:apply_cli_overrides, daemon_cli_overrides)
-        _source, result = daemon_obj.send(:rewrite_file, file, :safe)
-        change = result[:changes].find { |entry| entry[:type] == :updated_return }
-        rewrite = daemon_obj.send(:run_rewrite, file, :safe)
-        stringified = rewrite['changes'].find { |entry| entry['type'].to_s == 'updated_return' }
-        [change, stringified]
+    context 'when daemon rewrites file with infer mismatch' do
+      let!(:tmp_dir) { Dir.mktmpdir }
+      let(:infer_file) do
+        File.write(File.join(tmp_dir, 'test.rb'), ruby_source_with_infer_mismatch)
+        File.join(tmp_dir, 'test.rb')
+      end
+      let(:infer_daemon) do
+        Docscribe::Server::Daemon.new(socket_path: File.join(tmp_dir, 'daemon.sock'), idle_timeout: 60).tap do |daemon|
+          daemon.send(:load_dependencies)
+          daemon.send(:apply_cli_overrides, daemon_cli_overrides)
+        end
+      end
+      let(:infer_pair) do
+        [
+          infer_daemon.send(:rewrite_file, infer_file, :safe).last[:changes].find { |entry| entry[:type] == :updated_return },
+          infer_daemon.send(:run_rewrite, infer_file, :safe)['changes'].find { |entry| entry['type'].to_s == 'updated_return' }
+        ]
+      end
+      let(:infer_change) { infer_pair[0] }
+      let(:infer_stringified) { infer_pair[1] }
+
+      after { FileUtils.remove_entry(tmp_dir) }
+
+      it 'returns infer change via daemon rewrite_file' do
+        expect(infer_change).not_to be_nil
+      end
+
+      it 'returns infer source via daemon rewrite_file' do
+        expect(infer_change[:source]).to eq('infer')
+      end
+
+      it 'returns stringified change via daemon run_rewrite' do
+        expect(infer_stringified).not_to be_nil
+      end
+
+      it 'stringifies source as infer via daemon run_rewrite' do
+        expect(infer_stringified['source']).to eq('infer')
       end
     end
 
-    let(:batch_pair_sources) do
-      require 'docscribe/server'
-      Dir.mktmpdir do |tmp_dir|
-        first = File.join(tmp_dir, 'a.rb')
-        second = File.join(tmp_dir, 'b.rb')
-        File.write(first, "class A\n# @return [Integer]\ndef foo\n\"hi\"\nend\nend\n")
-        File.write(second, "class B\n# @return [Sym bol]\ndef bar\n:x\nend\nend\n")
-        daemon_obj = Docscribe::Server::Daemon.new(socket_path: File.join(tmp_dir, 'daemon2.sock'), idle_timeout: 60)
-        daemon_obj.send(:load_dependencies)
-        daemon_obj.send(:apply_cli_overrides, daemon_cli_overrides)
-        first_result = daemon_obj.send(:run_rewrite, first, :safe)
-        second_result = daemon_obj.send(:run_rewrite, second, :safe)
-        first_src = first_result['changes'].find { |entry| %w[updated_return invalid_type].include?(entry['type'].to_s) }['source']
-        second_src = second_result['changes'].find { |entry| entry['type'].to_s == 'invalid_type' }['source']
-        [first_src, second_src]
+    context 'when daemon handles batch with mixed sources' do
+      let!(:tmp_dir) { Dir.mktmpdir }
+      let(:batch_first_file) do
+        File.write(File.join(tmp_dir, 'a.rb'), "class A\n# @return [Integer]\ndef foo\n\"hi\"\nend\nend\n")
+        File.join(tmp_dir, 'a.rb')
       end
-    end
+      let(:batch_second_file) do
+        File.write(File.join(tmp_dir, 'b.rb'), "class B\n# @return [Sym bol]\ndef bar\n:x\nend\nend\n")
+        File.join(tmp_dir, 'b.rb')
+      end
+      let(:batch_daemon) do
+        Docscribe::Server::Daemon.new(socket_path: File.join(tmp_dir, 'daemon2.sock'), idle_timeout: 60).tap do |daemon|
+          daemon.send(:load_dependencies)
+          daemon.send(:apply_cli_overrides, daemon_cli_overrides)
+        end
+      end
+      let(:batch_first_src) do
+        batch_daemon.send(:run_rewrite, batch_first_file, :safe)['changes'].find { |item| %w[updated_return invalid_type].include?(item['type'].to_s) }['source']
+      end
+      let(:batch_second_src) do
+        batch_daemon.send(:run_rewrite, batch_second_file, :safe)['changes'].find { |item| item['type'].to_s == 'invalid_type' }['source']
+      end
 
-    it 'daemon check returns changes with stringified source', :aggregate_failures do
-      change, stringified = infer_pair_sources
-      expect(change).not_to be_nil
-      expect(change[:source]).to eq('infer')
-      expect(stringified).not_to be_nil
-      expect(stringified['source']).to eq('infer')
-    end
+      after { FileUtils.remove_entry(tmp_dir) }
 
-    it 'daemon handles check_batch with source propagation', :aggregate_failures do
-      first_src, second_src = batch_pair_sources
-      expect(first_src).to eq('infer')
-      expect(second_src).to eq('syntax')
+      it 'returns infer source for first file in batch' do
+        expect(batch_first_src).to eq('infer')
+      end
+
+      it 'returns syntax source for second file in batch' do
+        expect(batch_second_src).to eq('syntax')
+      end
     end
   end
 end

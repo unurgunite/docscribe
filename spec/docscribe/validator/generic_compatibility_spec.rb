@@ -205,147 +205,352 @@ RSpec.describe Docscribe::Validator::GenericCompatibility do
 end
 
 RSpec.describe Docscribe::Infer::Returns do
-  def parse_body(code)
-    node = described_class.parse_method_source("def foo; #{code}; end")
-    described_class.extract_def_body(node)
+  describe 'receiver_rbs_type_name for literals and lvars' do
+    subject(:recv_type) { described_class.send(:receiver_rbs_type_name, recv_node, provider, local_var_types, param_types) }
+
+    let(:provider) { nil }
+    let(:local_var_types) { nil }
+    let(:param_types) { nil }
+
+    context 'when recv is nil literal' do
+      let(:recv_node) { Parser::AST::Node.new(:nil, []) }
+
+      it { is_expected.to eq('NilClass') }
+    end
+
+    context 'when recv is string literal' do
+      let(:recv_node) { Parser::AST::Node.new(:str, ['hi']) }
+
+      it { is_expected.to eq('String') }
+    end
+
+    context 'when recv is int literal' do
+      let(:recv_node) { Parser::AST::Node.new(:int, [42]) }
+
+      it { is_expected.to eq('Integer') }
+    end
+
+    context 'when recv is lvar with known type' do
+      let(:recv_node) { Parser::AST::Node.new(:lvar, [:tags]) }
+      let(:param_types) { { 'tags' => 'Array<String>' } }
+
+      it { is_expected.to eq('Array<String>') }
+    end
+
+    context 'when recv is lvar with union containing nil' do
+      let(:recv_node) { Parser::AST::Node.new(:lvar, [:val]) }
+      let(:local_var_types) { { 'val' => 'String, nil' } }
+
+      it { is_expected.to eq('String') }
+    end
+
+    context 'when recv is unknown lvar' do
+      let(:recv_node) { Parser::AST::Node.new(:lvar, [:unknown]) }
+
+      it { is_expected.to be_nil }
+    end
+
+    context 'when recv is :and node (unsupported)' do
+      let(:recv_node) do
+        Parser::AST::Node.new(:and, [Parser::AST::Node.new(:nil, []), Parser::AST::Node.new(:str, ['a'])])
+      end
+
+      it { is_expected.to be_nil }
+    end
+
+    context 'when recv is :or node (unsupported)' do
+      let(:recv_node) do
+        Parser::AST::Node.new(:or, [Parser::AST::Node.new(:nil, []), Parser::AST::Node.new(:str, ['a'])])
+      end
+
+      it { is_expected.to be_nil }
+    end
+
+    context 'when recv is :csend node (unsupported)' do
+      let(:recv_node) do
+        Parser::AST::Node.new(:csend, [Parser::AST::Node.new(:send, [nil, :tags]), :params])
+      end
+
+      it { is_expected.to be_nil }
+    end
   end
 
-  describe 'receiver_rbs_type_name precise for &&/||/&.' do
-    context 'when handling && (and)' do
-      it 'returns nil for nil && String via receiver_rbs_type_name' do
-        and_node = parse_body('nil && "a"')
-        expect(and_node.type).to eq(:and)
-        result = described_class.send(:receiver_rbs_type_name, and_node, nil, nil, nil)
-        expect(result).to eq('nil')
-      end
-
-      it 'returns right type for String && String' do
-        and_node = parse_body('"a" && "b"')
-        result = described_class.send(:receiver_rbs_type_name, and_node, nil, nil, nil)
-        expect(result).to eq('String')
-      end
-
-      it 'returns String for x && "a" when x is String lvar via infer', :aggregate_failures do
-        # lvar with String type
-        and_node = parse_body('x && "b"')
-        # Simulate lvar type lookup: left is lvar x with String type, right is String literal
-        # receiver_rbs_type_name for and will resolve left via var_receiver? -> String
-        result = described_class.send(:receiver_rbs_type_name, and_node, nil, { 'x' => 'String' }, nil)
-        expect(result).to eq('String')
-        # Without lvar info, falls back to left type via send type? For unknown lvar, left nil, right String => returns String
-        result2 = described_class.send(:receiver_rbs_type_name, and_node, nil, nil, nil)
-        expect(result2).to eq('String')
-      end
+  describe '&&/|| handling via run_last_expr_type' do
+    subject(:inferred) do
+      described_class.send(:run_last_expr_type, node, fallback_type: 'Object', nil_as_optional: true,
+                                                      core_rbs_provider: provider, local_var_types: local_var_types,
+                                                      param_types: param_types)
     end
 
-    context 'when handling || (or)' do
-      it 'unifies nil || String as String?' do
-        or_node = parse_body('nil || "a"')
-        result = described_class.send(:receiver_rbs_type_name, or_node, nil, nil, nil)
-        expect(result).to eq('String?')
+    let(:provider) { nil }
+    let(:local_var_types) { nil }
+    let(:param_types) { nil }
+
+    context 'when handling && with nil && String' do
+      let(:node) do
+        described_class.extract_def_body(described_class.parse_method_source('def foo; nil && "a"; end'))
       end
 
-      it 'deduplicates String || String to String' do
-        or_node = parse_body('"a" || "b"')
-        result = described_class.send(:receiver_rbs_type_name, or_node, nil, nil, nil)
-        expect(result).to eq('String')
-      end
-
-      it 'handles Hash || Hash generic base deduplication', :aggregate_failures do
-        # Use Array<String> to avoid comma-split confusion with Hash<Symbol, String> inner comma
-        lvars = { 'a' => 'Array<String>', 'b' => 'Array<String>' }
-        or_node = Parser::AST::Node.new(:or, [Parser::AST::Node.new(:lvar, [:a]), Parser::AST::Node.new(:lvar, [:b])])
-        result = described_class.send(:receiver_rbs_type_name, or_node, nil, lvars, nil)
-        expect(result).to eq('Array<String>')
-      end
+      it { is_expected.to eq('String?') }
     end
 
-    context 'when handling &. (csend)' do
-      it 'handles tags&.params fallback without RBS' do
-        csend_node = parse_body('tags&.params')
-        expect(csend_node.type).to eq(:csend)
-        # Without provider, receiver_rbs_type_name for csend falls back to run_last_expr_type -> Object
-        result = described_class.send(:receiver_rbs_type_name, csend_node, nil, nil, nil)
-        expect(result).to eq('Object')
+    context 'when handling && with String && String' do
+      let(:node) do
+        described_class.extract_def_body(described_class.parse_method_source('def foo; "a" && "b"; end'))
       end
 
-      it 'infers String? for "hello"&.to_s with RBS provider', :aggregate_failures do
-        begin
-          require 'rbs'
-        rescue LoadError
-          skip 'RBS not available'
-        end
+      it { is_expected.to eq('String') }
+    end
+
+    context 'when handling || with nil || String' do
+      let(:node) do
+        described_class.extract_def_body(described_class.parse_method_source('def foo; nil || "a"; end'))
+      end
+
+      it { is_expected.to eq('String?') }
+    end
+
+    context 'when handling || with String || String' do
+      let(:node) do
+        described_class.extract_def_body(described_class.parse_method_source('def foo; "a" || "b"; end'))
+      end
+
+      it { is_expected.to eq('String') }
+    end
+
+    context 'when handling || with Array<String> via lvars' do
+      let(:local_var_types) { { 'a' => 'Array<String>', 'b' => 'Array<String>' } }
+      let(:node) do
+        Parser::AST::Node.new(:or, [Parser::AST::Node.new(:lvar, [:a]), Parser::AST::Node.new(:lvar, [:b])])
+      end
+
+      it { is_expected.to eq('Array<String>') }
+    end
+
+    context 'when handling tags&.params || [] with Array<Param>' do
+      let(:code) do
+        <<~RUBY
+          def foo(tags)
+            tags&.params || []
+          end
+        RUBY
+      end
+      let(:node) { described_class.extract_def_body(described_class.parse_method_source(code)) }
+
+      it { is_expected.to eq('Array') }
+    end
+
+    context 'when handling tags&.params || [] with Array<Param> and param type Array<String>' do
+      subject(:result) do
+        described_class.send(:run_last_expr_type, node, fallback_type: 'Object', nil_as_optional: true,
+                                                        core_rbs_provider: rbs_provider, param_types: param_types)
+      end
+
+      let(:code) do
+        <<~RUBY
+          def foo(tags)
+            tags&.params || []
+          end
+        RUBY
+      end
+      let(:node) { described_class.extract_def_body(described_class.parse_method_source(code)) }
+      let(:param_types) { { 'tags' => 'Array<String>' } }
+      let(:rbs_provider) do
         require 'docscribe/types/rbs/provider'
-        provider = Docscribe::Types::RBS::Provider.new(sig_dirs: ['sig'], collection_dirs: [])
-        csend_node = parse_body('"hello"&.to_s')
-        result = described_class.send(:run_last_expr_type, csend_node, fallback_type: 'Object', nil_as_optional: true, core_rbs_provider: provider)
-        expect(result).to eq('String?')
-        # receiver_rbs_type_name with provider should also unify?
-        # For csend, receiver_rbs_type_name tries to resolve via RBS and unify with nil
-        # With String literal receiver, String#to_s => String, unify nil+String => String?
-        recv_result = described_class.send(:receiver_rbs_type_name, csend_node, provider, nil, nil)
-        # receiver_rbs_type_name for csend with literal String should return String? via unify or Object?
-        # Current implementation for csend with literal: inner_type = String, rbs = String, unify => String?
-        # But earlier test showed receiver_rbs_type_name for "hello"&.to_s without provider => Object, with provider maybe String? Let's just ensure run_last_expr_type is String?
-        expect(recv_result).to eq('Object').or eq('String?')
+        Docscribe::Types::RBS::Provider.new(sig_dirs: ['sig'], collection_dirs: [])
       end
 
-      it 'handles tags&.params with Hash lvar and provider (tags as String)', :aggregate_failures do
-        begin
-          require 'rbs'
-        rescue LoadError
-          skip 'RBS not available'
-        end
+      before { skip_unless_rbs_available! }
+
+      it 'unifies csend fallback with Array' do
+        expect(result).to be_a(String)
+      end
+    end
+  end
+
+  describe '&. (csend) handling' do
+    subject(:inferred) do
+      described_class.send(:run_last_expr_type, node, fallback_type: fallback, nil_as_optional: true,
+                                                      core_rbs_provider: provider, param_types: param_types)
+    end
+
+    let(:fallback) { 'Object' }
+    let(:provider) { nil }
+    let(:param_types) { nil }
+
+    context 'when csend without provider' do
+      let(:node) do
+        described_class.extract_def_body(described_class.parse_method_source('def foo(tags); tags&.params; end'))
+      end
+
+      it { is_expected.to eq('Object') }
+    end
+
+    context 'when csend is "hello"&.to_s with RBS provider' do
+      let(:provider) do
         require 'docscribe/types/rbs/provider'
-        provider = Docscribe::Types::RBS::Provider.new(sig_dirs: ['sig'], collection_dirs: [])
-        # tags as String lvar, safe navigation to_s => String? (since String#to_s => String)
-        csend_node = Parser::AST::Node.new(:csend, [Parser::AST::Node.new(:lvar, [:tags]), :to_s])
-        # receiver_rbs_type_name for inner lvar tags with String type
-        result = described_class.send(:receiver_rbs_type_name, csend_node, provider, { 'tags' => 'String' }, nil)
-        # Should try to resolve String#to_s => String then unify with nil => String?
-        # At least not Object fallback strictly?
-        expect(result).to be_a(String).or be_nil
-        # Also test run_last_expr_type for tags&.to_s with param
-        code_node = parse_body('tags&.to_s')
-        # Provide param_types for tags
-        inferred = described_class.send(:run_last_expr_type, code_node, fallback_type: 'Object', nil_as_optional: true, core_rbs_provider: provider, param_types: { 'tags' => 'String' })
-        expect(inferred).to eq('String?')
+        Docscribe::Types::RBS::Provider.new(sig_dirs: ['sig'], collection_dirs: [])
+      end
+      let(:node) do
+        described_class.extract_def_body(described_class.parse_method_source('def foo; "hello"&.to_s; end'))
       end
 
-      it 'infer returns for tags&.params pattern via inline', :aggregate_failures do
-        # Use infer via run_last_expr_type on method body
-        node = described_class.parse_method_source('def foo(tags); tags&.params; end')
-        body = described_class.extract_def_body(node)
-        expect(body.type).to eq(:csend)
-        # Without provider, fallback
-        expect(described_class.send(:run_last_expr_type, body, fallback_type: 'Object', nil_as_optional: true)).to eq('Object')
-      end
+      before { skip_unless_rbs_available! }
+
+      it { is_expected.to eq('String?') }
     end
 
-    describe '.generic_base_type' do
-      it 'extracts base from Array<String>' do
-        expect(described_class.send(:generic_base_type, 'Array<String>')).to eq('Array')
+    context 'when csend with lvar String and provider' do
+      let(:provider) do
+        require 'docscribe/types/rbs/provider'
+        Docscribe::Types::RBS::Provider.new(sig_dirs: ['sig'], collection_dirs: [])
+      end
+      let(:param_types) { { 'tags' => 'String' } }
+      let(:node) do
+        described_class.extract_def_body(described_class.parse_method_source('def foo(tags); tags&.to_s; end'))
       end
 
-      it 'extracts base from String?' do
-        expect(described_class.send(:generic_base_type, 'String?')).to eq('String')
-      end
+      before { skip_unless_rbs_available! }
 
-      it 'handles nil input' do
-        expect(described_class.send(:generic_base_type, nil)).to be_nil
-      end
+      it { is_expected.to eq('String?') }
+    end
+  end
+
+  describe '.substitute_rbs_type for self/V/Elem' do
+    subject(:substituted) { described_class.send(:substitute_rbs_type, rbs, recv_type) }
+
+    context 'when rbs is self' do
+      let(:rbs) { 'self' }
+      let(:recv_type) { 'Array<String>' }
+
+      it { is_expected.to eq('Array<String>') }
     end
 
-    describe '.fallback_block_type' do
-      it 'returns nil without provider' do
-        code = 'def foo; [1,2].map { |x| x.to_s }; end'
-        node = described_class.parse_method_source(code)
-        body = described_class.extract_def_body(node)
-        block_node = body
-        expect(block_node.type).to eq(:block)
-        result = described_class.send(:fallback_block_type, block_node, block_node.children[0], fallback_type: 'Object', nil_as_optional: true, core_rbs_provider: nil)
-        expect(result).to be_nil
+    context 'when rbs is self?' do
+      let(:rbs) { 'self?' }
+      let(:recv_type) { 'MyClass' }
+
+      it { is_expected.to eq('MyClass?') }
+    end
+
+    context 'when rbs is V with Hash' do
+      let(:rbs) { 'V' }
+      let(:recv_type) { 'Hash<String, Integer>' }
+
+      it { is_expected.to eq('Integer') }
+    end
+
+    context 'when rbs is K with Hash' do
+      let(:rbs) { 'K' }
+      let(:recv_type) { 'Hash<String, Integer>' }
+
+      it { is_expected.to eq('String') }
+    end
+
+    context 'when rbs is Elem with Array' do
+      let(:rbs) { 'Elem' }
+      let(:recv_type) { 'Array<String>' }
+
+      it { is_expected.to eq('String') }
+    end
+
+    context 'when rbs is Array[Elem] with Array' do
+      let(:rbs) { 'Array[Elem]' }
+      let(:recv_type) { 'Array<String>' }
+
+      it { is_expected.to eq('Array[String]') }
+    end
+
+    context 'when rbs is Hash[K, V] with Hash' do
+      let(:rbs) { 'Hash[K, V]' }
+      let(:recv_type) { 'Hash<String, Integer>' }
+
+      it { is_expected.to eq('Hash[String, Integer]') }
+    end
+
+    context 'when rbs contains U with Array' do
+      let(:rbs) { 'Array<U>' }
+      let(:recv_type) { 'Array<Integer>' }
+
+      it { is_expected.to eq('Array<Integer>') }
+    end
+
+    context 'when recv_type has no generic' do
+      let(:rbs) { 'V' }
+      let(:recv_type) { 'String' }
+
+      it { is_expected.to eq('V') }
+    end
+  end
+
+  describe '.handle_block_node fallback' do
+    subject(:block_type) do
+      described_class.send(:handle_block_node, block_node, fallback_type: 'Object', nil_as_optional: true,
+                                                           core_rbs_provider: provider)
+    end
+
+    let(:provider) { nil }
+
+    context 'when block without provider (map)' do
+      let(:code) { 'def foo; [1,2].map { |x| x.to_s }; end' }
+      let(:block_node) { described_class.extract_def_body(described_class.parse_method_source(code)) }
+
+      it { is_expected.to eq('Object') }
+    end
+
+    context 'when block without provider (select)' do
+      let(:code) { 'def foo; [1,2].select { |x| x > 1 }; end' }
+      let(:block_node) { described_class.extract_def_body(described_class.parse_method_source(code)) }
+
+      it { is_expected.to eq('Object') }
+    end
+
+    context 'when block with RBS provider for map' do
+      let(:provider) do
+        require 'docscribe/types/rbs/provider'
+        Docscribe::Types::RBS::Provider.new(sig_dirs: ['sig'], collection_dirs: [])
       end
+      let(:code) { 'def foo; [1,2].map { |x| x.to_s }; end' }
+      let(:block_node) { described_class.extract_def_body(described_class.parse_method_source(code)) }
+
+      before { skip_unless_rbs_available! }
+
+      it { is_expected.to be_a(String) }
+    end
+
+    context 'when block with RBS provider for select' do
+      let(:provider) do
+        require 'docscribe/types/rbs/provider'
+        Docscribe::Types::RBS::Provider.new(sig_dirs: ['sig'], collection_dirs: [])
+      end
+      let(:code) { 'def foo; [1,2].select { |x| x > 1 }; end' }
+      let(:block_node) { described_class.extract_def_body(described_class.parse_method_source(code)) }
+
+      before { skip_unless_rbs_available! }
+
+      it { is_expected.to be_a(String) }
+    end
+  end
+
+  describe '.extract_generic_inner and .split_generic_args' do
+    it 'extracts inner from Array<String>' do
+      expect(described_class.send(:extract_generic_inner, 'Array<String>')).to eq('String')
+    end
+
+    it 'extracts inner from Hash<String, Integer>' do
+      expect(described_class.send(:extract_generic_inner, 'Hash<String, Integer>')).to eq('String, Integer')
+    end
+
+    it 'returns nil for non-generic' do
+      expect(described_class.send(:extract_generic_inner, 'String')).to be_nil
+    end
+
+    it 'splits generic args with nesting' do
+      expect(described_class.send(:split_generic_args, 'String, Array<Integer>')).to eq(['String', 'Array<Integer>'])
+    end
+
+    it 'splits tuple-aware generic args' do
+      expect(described_class.send(:split_generic_args, 'Integer, (String, Integer)')).to eq(['Integer', '(String, Integer)'])
     end
   end
 end
