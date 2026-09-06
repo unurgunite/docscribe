@@ -5,9 +5,11 @@ module DaemonSigHelper
   DEMO_RBS_STRING = "class Demo\n  def foo: (String x) -> String\nend\n"
   DEMO_RUBY = "class Demo\n  def foo(x)\n    x\n  end\nend\n"
 
-  # Method documentation.
+  # Creates a temporary directory, changes into it, and yields its path.
   #
-  # @return [Object]
+  # @yieldparam [String] dir temporary directory path
+  # @yieldreturn [Object] block result
+  # @return [Object] block result
   def with_tmp_dir
     Dir.mktmpdir do |dir|
       Dir.chdir(dir) { yield dir }
@@ -53,11 +55,11 @@ module DaemonSigHelper
     [r1, r2, r3]
   end
 
-  # Method documentation.
+  # Builds a daemon with RBS signatures loaded for sig cache tests.
   #
-  # @param [Object] dir Param documentation.
-  # @param [DEMO_RBS_INTEGER] rbs Param documentation.
-  # @return [Object]
+  # @param [String] dir temporary directory for socket and sig files
+  # @param [String, nil] rbs RBS content for sig/demo.rbs, nil skips file
+  # @return [Docscribe::Server::Daemon] configured daemon instance
   def build_sig_daemon(dir, rbs: DEMO_RBS_INTEGER)
     FileUtils.mkdir_p('sig')
     File.write('sig/demo.rbs', rbs) if rbs
@@ -100,61 +102,61 @@ module DaemonSigHelper
     [h1, h2]
   end
 
-  # Method documentation.
+  # Writes multiple signature files from alternating path/content pairs.
   #
-  # @param [Array] paths_and_contents Param documentation.
-  # @return [Object]
+  # @param [Array<String>] paths_and_contents alternating file paths and RBS/RBI contents
+  # @return [void]
   def prepare_sig_files(*paths_and_contents)
     paths_and_contents.each_slice(2) do |path, content|
       write_sig(path, content)
     end
   end
 
-  # Method documentation.
+  # Writes Ruby source to a file.
   #
-  # @param [Object] path Param documentation.
-  # @param [DEMO_RUBY] content Param documentation.
-  # @return [Object]
+  # @param [String] path file path
+  # @param [String] content Ruby source content
+  # @return [Integer] bytes written
   def write_ruby(path, content = DEMO_RUBY)
     File.write(path, content)
   end
 
-  # Method documentation.
+  # Rewrites a file via daemon and returns the generated output.
   #
-  # @param [Object] daemon Param documentation.
-  # @param [Object] file Param documentation.
-  # @param [Symbol] strategy Param documentation.
-  # @return [Object]
+  # @param [Docscribe::Server::Daemon] daemon daemon instance
+  # @param [String] file path to Ruby file
+  # @param [Symbol] strategy rewrite strategy (:safe or :aggressive)
+  # @return [String] rewritten file content
   def rbs_rewrite(daemon, file, strategy: :safe)
     _src, result = daemon.send(:rewrite_file, file, strategy)
     result[:output]
   end
 
-  # Method documentation.
+  # Updates a signature file after a short delay to ensure mtime change.
   #
-  # @param [Object] path Param documentation.
-  # @param [Object] content Param documentation.
-  # @param [Float] delay Param documentation.
-  # @return [Object]
+  # @param [String] path signature file path
+  # @param [String] content new file content
+  # @param [Float] delay seconds to sleep before writing
+  # @return [Integer] bytes written
   def update_sig(path, content, delay: 0.05)
     sleep delay
     write_sig(path, content)
   end
 
-  # Method documentation.
+  # Builds a plain daemon without RBS sig files for cache tests.
   #
-  # @param [Object] dir Param documentation.
-  # @param [String] socket Param documentation.
-  # @return [Object]
+  # @param [String] dir temporary directory for socket
+  # @param [String] socket socket file name
+  # @return [Docscribe::Server::Daemon] daemon instance
   def build_plain_daemon(dir, socket: 's.sock')
     daemon = described_class.new(socket_path: "#{dir}/#{socket}", idle_timeout: 60)
     daemon.send(:load_dependencies)
     daemon
   end
 
-  # Method documentation.
+  # Returns default RBS CLI overrides hash for daemon sig tests.
   #
-  # @return [Hash]
+  # @return [Hash<String, Object>] RBS overrides
   def rbs_overrides
     {
       'rbs' => true,
@@ -168,21 +170,21 @@ module DaemonSigHelper
     }
   end
 
-  # Method documentation.
+  # Computes sig hash for a config with given sig directories.
   #
-  # @param [Object] daemon Param documentation.
-  # @param [Object] sig_dirs Param documentation.
-  # @return [Object]
+  # @param [Docscribe::Server::Daemon] daemon daemon instance
+  # @param [Array<String>] sig_dirs signature directories
+  # @return [String] sig hash
   def sig_hash_for_config(daemon, sig_dirs)
     config = Docscribe::Config.new('rbs' => { 'enabled' => true, 'sig_dirs' => sig_dirs })
     daemon.send(:sig_hash_for, config)
   end
 
-  # Method documentation.
+  # Writes signature content to a file, creating parent directories.
   #
-  # @param [Object] path Param documentation.
-  # @param [Object] content Param documentation.
-  # @return [Object]
+  # @param [String] path signature file path
+  # @param [String] content RBS/RBI content
+  # @return [Integer] bytes written
   def write_sig(path, content)
     FileUtils.mkdir_p(File.dirname(path))
     File.write(path, content)
