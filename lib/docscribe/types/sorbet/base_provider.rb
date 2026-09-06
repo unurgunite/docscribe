@@ -19,7 +19,7 @@ module Docscribe
         #
         # @param [Boolean] collapse_generics whether generic container details
         # @param [Boolean] collapse_object_generics collapse Object generics
-        # @return [void]
+        # @return [Boolean]
         def initialize(collapse_generics: false, collapse_object_generics: false)
           require 'rbs'
           @collapse_generics = !!collapse_generics

@@ -99,7 +99,7 @@ module Docscribe
       # @note module_function: defines #apply_file_filters (visibility: private)
       # @param [Hash<String, Object>] raw raw config hash
       # @param [Hash<Symbol, Object>] options parsed CLI options
-      # @return [void]
+      # @return [Hash<String, Object>]
       def apply_file_filters(raw, options)
         files = raw['filter']['files']
         if files.nil?

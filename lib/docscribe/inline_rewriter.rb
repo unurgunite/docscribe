@@ -1268,7 +1268,7 @@ module Docscribe
       # @param [Hash<Integer, Array<(Integer, String)>>] merge_inserts deferred merge inserts
       # @param [Docscribe::Config] config the active Docscribe::Config
       # @param [Docscribe::Types::ProviderChain, nil] signature_provider external RBS signature provider
-      # @return [void]
+      # @return [self]
       def merge_attr_additions!(insertion:, info:, merge_inserts:, config:, signature_provider:)
         additions = build_attr_merge_additions(ins: insertion, existing_lines: info[:lines],
                                                config: config, signature_provider: signature_provider)
@@ -1602,7 +1602,7 @@ module Docscribe
       # @param [String] indent whitespace indentation prefix
       # @param [String] attr_type the resolved type string for the attribute
       # @param [Symbol] access the access level (:r, :w, or :rw)
-      # @return [void]
+      # @return [self]
       def append_attr_return_tag(lines, indent, attr_type, access)
         lines << "#{indent}#   @return [#{attr_type}]" if %i[r rw].include?(access)
       end

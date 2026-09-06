@@ -144,7 +144,7 @@ module Docscribe
       # @param [Hash<Symbol, Object>] spec the return spec hash to populate
       # @param [Parser::AST::Node] body the :rescue AST node
       # @param [Hash] opts additional keyword options forwarded to type inference
-      # @return [void] the list of rescue type entries
+      # @return [self]
       def process_rescue_branches(spec, body, **opts)
         body.children.each do |ch|
           next unless ch.is_a?(Parser::AST::Node) && ch.type == :resbody

@@ -33,6 +33,15 @@ module Docscribe
       def self.generic_inner_alias_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
       def generic_inner_alias_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
 
+      def self.union_vs_optional_compatible?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+      def union_vs_optional_compatible?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
+      def self.question_vs_comma_nil?: (String norm_yard, String norm_expected) -> bool
+      def question_vs_comma_nil?: (String norm_yard, String norm_expected) -> bool
+
+      def self.suffix_vs_union_first?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+      def suffix_vs_union_first?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
       def self.generic_pair?: (String norm_yard, String norm_expected) -> bool
       def generic_pair?: (String norm_yard, String norm_expected) -> bool
 

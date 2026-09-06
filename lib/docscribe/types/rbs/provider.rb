@@ -21,7 +21,7 @@ module Docscribe
         # @param [Array<String>] collection_dirs RBS collection directories
         # @param [Boolean] collapse_generics whether generic container types
         # @param [Boolean] collapse_object_generics collapse Object generics flag
-        # @return [void]
+        # @return [Boolean]
         def initialize(sig_dirs:, collection_dirs: [], collapse_generics: false, collapse_object_generics: false)
           require 'rbs'
           @sig_dirs = Array(sig_dirs).map(&:to_s)

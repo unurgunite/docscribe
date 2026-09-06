@@ -19,6 +19,7 @@ module Docscribe
         union_containment: :union_containment?,
         optional_suffix: :optional_suffix_compatible?,
         generic_inner_alias: :generic_inner_alias_compatible?,
+        union_optional: :union_vs_optional_compatible?,
         fallback_union: :fallback_union_check?
       }.freeze
 
@@ -271,17 +272,6 @@ module Docscribe
           inner_has_alias?(inner_yard) || inner_has_alias?(inner_expected)
         end
 
-        # Normalizes type string for comparison.
-        #
-        # Strips, squeezes spaces, converts "["/"]" to "<"/">", replaces "untyped"/"FALLBACK_TYPE" with "Object".
-        #
-        # @param [String, nil] type_str raw type string, may be nil
-        # @return [String] normalized type string
-        def normalize(type_str)
-          type_str.to_s.strip.squeeze(' ').gsub('[', '<').gsub(']', '>').gsub(/\buntyped\b/, 'Object')
-                  .gsub(/\bFALLBACK_TYPE\b/, 'Object')
-        end
-
         # Whether both normalized types are Array or Hash generics.
         #
         # @param [String] norm_yard normalized YARD type
@@ -309,12 +299,65 @@ module Docscribe
           inner.split(',').any? { |part| alias_token?(part.strip) }
         end
 
-        # Whether token looks like an alias (lowercase start or namespaced).
+        # Whether token looks like an alias (dynamic, not hardcoded Elem/U).
         #
-        # @param [String] token single type token (trimmed inner part)
-        # @return [Boolean] true if token starts with lowercase or contains "::"
+        # Any token that is not a known Ruby/YARD primitive is considered alias.
+        # E.g., `Elem`, `U`, `my_alias`, `Foo::Bar`, `change` vs `String`, `Integer`, `Hash`.
+        #
+        # @param [String] token single type token (trimmed inner part, may include ?)
+        # @return [Boolean] true if token is alias (unknown primitive or namespaced/lowercase)
         def alias_token?(token)
-          token =~ /\A[a-z]/ || token.include?('::')
+          base = token.split('<').first.split('[').first.strip.delete_suffix('?').strip
+          # Known primitives that are not aliases — anything else (capitalized Elem, U, etc.) is alias
+          primitives = %w[String Integer Float Numeric Boolean Symbol nil void Object Array Hash Range Regexp Proc Method Untyped NilClass TrueClass FalseClass BasicObject Kernel]
+          return false if primitives.include?(base)
+          return true if base =~ /\A[a-z]/ || base.include?('::')
+
+          # Capitalized single word not in primitives (Elem, U, Optional, etc.) is alias
+          base =~ /\A[A-Z][A-Za-z0-9_]+\z/
+        end
+
+        # Whether union `?, nil` forms are compatible: `Object?` vs `Object, nil`.
+        #
+        # @param [String, nil] yard_type YARD type string
+        # @param [String, nil] expected_type inferred/RBS type string
+        # @return [Boolean] true if one is `Type?` and other is `Type, nil`
+        def union_vs_optional_compatible?(yard_type, expected_type)
+          norm_yard = normalize(yard_type)
+          norm_expected = normalize(expected_type)
+          question_vs_comma_nil?(norm_yard, norm_expected) ||
+            suffix_vs_union_first?(yard_type, expected_type)
+        end
+
+        # Method documentation.
+        #
+        # @param [Object] norm_yard Param documentation.
+        # @param [Object] norm_expected Param documentation.
+        # @return [Boolean]
+        def question_vs_comma_nil?(norm_yard, norm_expected)
+          norm_yard.delete(' ') == "#{norm_expected.delete(' ').delete_suffix('?')},nil" ||
+            norm_expected.delete(' ') == "#{norm_yard.delete(' ').delete_suffix('?')},nil"
+        end
+
+        # Method documentation.
+        #
+        # @param [Object] yard_type Param documentation.
+        # @param [Object] expected_type Param documentation.
+        # @return [Boolean]
+        def suffix_vs_union_first?(yard_type, expected_type)
+          normalize(yard_type).delete_suffix('?') == normalize(expected_type).split(',').first&.strip ||
+            normalize(expected_type).delete_suffix('?') == normalize(yard_type).split(',').first&.strip
+        end
+
+        # Normalizes type string for comparison.
+        #
+        # Strips, squeezes spaces, converts "["/"]" to "<"/">", replaces "untyped"/"FALLBACK_TYPE" with "Object".
+        #
+        # @param [String, nil] type_str raw type string, may be nil
+        # @return [String] normalized type string
+        def normalize(type_str)
+          type_str.to_s.strip.squeeze(' ').gsub('[', '<').gsub(']', '>').gsub(/\buntyped\b/, 'Object')
+                  .gsub(/\bFALLBACK_TYPE\b/, 'Object')
         end
       end
     end
