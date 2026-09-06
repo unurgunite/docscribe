@@ -123,6 +123,10 @@ module Docscribe
 
       def self?.extract_raise_types_from_line: (String line) -> Array[(String | nil)]
 
+      def self?.bracketed_raise_types: (String line) -> (Array[String] | nil)
+
+      def self?.bare_raise_type: (String line) -> (String | nil)
+
       def self?.parse_raise_bracket_list: (String str) -> Array[String]
 
       def self?.build_param_types_from_node: (Parser::AST::Node node, external_sig: (Types::MethodSignature | nil), config: Config) -> (Hash[String, String] | nil)
@@ -328,6 +332,18 @@ module Docscribe
       def self?.should_validate_return?: (Hash[Symbol, untyped] ctx) -> bool
 
       def self?.mismatched_return?: (Hash[Symbol, untyped] ctx) -> bool
+
+      def self?.mismatched_return_types: (Hash[Symbol, untyped] ctx) -> [ String?, String?, String ]
+
+      def self?.expected_suppressed?: (String? expected, String fallback) -> bool
+
+      def self?.yard_compatible?: (String? yard, String? expected, String fallback) -> bool
+
+      def self?.types_normalized_equal?: (String? yard, String? expected) -> bool
+
+      def self?.normalized_equal?: (String? yard, String? expected) -> bool
+
+      def self?.optional_normalized_equal?: (String? yard, String? expected) -> bool
 
       def self?.yard_in_expected_union?: (String yard, String expected) -> bool
 

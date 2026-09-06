@@ -84,6 +84,22 @@ module Docscribe
 
       def self.handle_check_result: (String path, src: String, out: String, file_changes: Array[Formatters::change], **untyped ctx) -> void
 
+      def self.real_changes?: (Array[Formatters::change] file_changes) -> bool
+
+      def self.validated_mismatch?: (Hash[Symbol, untyped] ctx, Array[Formatters::change] type_mismatches, String out, String src, bool has_real_changes) -> bool
+
+      def self.validate_types_enabled?: (Hash[Symbol, untyped] ctx) -> bool
+
+      def self.no_real_changes?: (String out, String src, bool has_real_changes) -> bool
+
+      def self.handle_validated_type_mismatch: (String path, Array[Formatters::change] file_changes, Array[Formatters::change] type_mismatches, Hash[Symbol, untyped] ctx) -> void
+
+      def self.track_validated_mismatch: (Array[Formatters::change] type_mismatches, Hash[Symbol, untyped] ctx) -> void
+
+      def self.handle_no_changes: (String path, Array[Formatters::change] type_mismatches, Hash[Symbol, untyped] ctx) -> void
+
+      def self.handle_failed_check: (String path, Array[Formatters::change] file_changes, Hash[Symbol, untyped] ctx) -> void
+
       def self.type_mismatch_changes: (Array[Formatters::change] file_changes) -> Array[Formatters::change]
 
       def self.handle_check_no_changes: (String path, type_mismatches: Array[Formatters::change], display_path: String, options: Formatters::opts, state: Formatters::state) -> void

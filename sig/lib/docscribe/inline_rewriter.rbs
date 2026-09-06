@@ -141,9 +141,21 @@ module Docscribe
 
     def self.extract_param_name_for_filter: (String line) -> (String | nil)
 
-    def self.log_method_doc_changes!: (insertion: Collector::Insertion, merge_result: Hash[Symbol, untyped], new_block: String, old_block: String, changes: Array[changeRecord], file: String) -> void
+      def self.log_method_doc_changes!: (insertion: Collector::Insertion, merge_result: Hash[Symbol, untyped], new_block: String, old_block: String, changes: Array[changeRecord], file: String) -> void
 
-    def self.apply_method_insertion_safe_without_info!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, insertion: Collector::Insertion, anchor_bol_range: Parser::Source::Range, strategy: Symbol, config: Config, signature_provider: (Types::ProviderChain | nil), core_rbs_provider: (Types::RBS::Provider | nil), param_types: (Hash[String, String] | nil), return_type_override: (String | nil), override_tags: Array[::Docscribe::Plugin::Tag], changes: Array[changeRecord], file: String) -> void
+      def self.doc_changed?: (Hash[Symbol, untyped] rest, Array[Hash[Symbol, untyped]] reason_specs) -> bool
+
+      def self.type_mismatch_reasons?: (Array[Hash[Symbol, untyped]] reason_specs) -> bool
+
+      def self.type_mismatch_type?: (Symbol `type`) -> bool
+
+      def self.log_reasons: (Array[Hash[Symbol, untyped]] reason_specs, Collector::Insertion insertion, Hash[Symbol, untyped] rest) -> void
+
+      def self.log_single_reason: (Hash[Symbol, untyped] reason, Collector::Insertion insertion, Hash[Symbol, untyped] rest) -> void
+
+      def self.extra_for_reason: (Hash[Symbol, untyped] reason) -> Hash[Symbol, untyped]
+
+      def self.apply_method_insertion_safe_without_info!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, insertion: Collector::Insertion, anchor_bol_range: Parser::Source::Range, strategy: Symbol, config: Config, signature_provider: (Types::ProviderChain | nil), core_rbs_provider: (Types::RBS::Provider | nil), param_types: (Hash[String, String] | nil), return_type_override: (String | nil), override_tags: Array[::Docscribe::Plugin::Tag], changes: Array[changeRecord], file: String) -> void
 
     def self.extract_existing_descriptions!: (Parser::Source::Buffer buffer, Collector::Insertion insertion, Hash[Symbol, untyped] params, Symbol strategy, Config config) -> void
 

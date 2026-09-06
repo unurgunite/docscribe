@@ -244,7 +244,7 @@ module Docscribe
       # Whether type string blank (nil or whitespace).
       #
       # @private
-      # @param [Object] type_str
+      # @param [String, nil] type_str
       # @return [Boolean]
       def blank_type?(type_str)
         type_str.nil? || type_str.strip.empty?
@@ -253,7 +253,7 @@ module Docscribe
       # Whether expected suppressed as fallback (uncertain).
       #
       # @private
-      # @param [Object] expected_type
+      # @param [String, nil] expected_type
       # @return [Boolean]
       def expected_suppressed?(expected_type)
         normalize(expected_type) == @fallback_type || fallback_union?(expected_type)
@@ -262,8 +262,8 @@ module Docscribe
       # Whether yard compatible with expected via void/union/generic.
       #
       # @private
-      # @param [Object] yard_type
-      # @param [Object] expected_type
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
       # @return [Boolean]
       def yard_compatible?(yard_type, expected_type)
         void_compatible?(yard_type, expected_type) ||
@@ -274,9 +274,9 @@ module Docscribe
       # Whether types equal after normalization (including optional "?").
       #
       # @private
-      # @param [Object] yard_type
-      # @param [Object] expected_type
-      # @return [Object]
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
+      # @return [Boolean]
       def types_normalized_equal?(yard_type, expected_type)
         normalized_equal?(yard_type, expected_type) || optional_normalized_equal?(yard_type, expected_type)
       end
@@ -284,8 +284,8 @@ module Docscribe
       # Whether normalized types equal.
       #
       # @private
-      # @param [Object] yard_type
-      # @param [Object] expected_type
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
       # @return [Boolean]
       def normalized_equal?(yard_type, expected_type)
         normalize(yard_type) == normalize(expected_type)
@@ -294,8 +294,8 @@ module Docscribe
       # Whether optional-normalized types equal.
       #
       # @private
-      # @param [Object] yard_type
-      # @param [Object] expected_type
+      # @param [String, nil] yard_type
+      # @param [String, nil] expected_type
       # @return [Boolean]
       def optional_normalized_equal?(yard_type, expected_type)
         normalize(yard_type).delete_suffix('?') == normalize(expected_type).delete_suffix('?')

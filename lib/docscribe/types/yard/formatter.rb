@@ -20,14 +20,14 @@ module Docscribe
 
           # @private
           # @param [Object] node
-          # @return [Object]
+          # @return [String, nil]
           def rbs_for_node(node)
             simple_type(node) || composite_type(node) || collection_type(node)
           end
 
           # @private
           # @param [Object] node
-          # @return [Object]
+          # @return [String, nil]
           def simple_type(node)
             case node
             when Named then format_named(node)
@@ -37,7 +37,7 @@ module Docscribe
 
           # @private
           # @param [Object] node
-          # @return [Object]
+          # @return [String, nil]
           def composite_type(node)
             case node
             when Union then format_union(node)
@@ -48,7 +48,7 @@ module Docscribe
 
           # @private
           # @param [Object] node
-          # @return [Object]
+          # @return [String, nil]
           def collection_type(node)
             case node
             when Generic then format_generic(node)

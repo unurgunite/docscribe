@@ -240,9 +240,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] change
-        # @param [Object] severity
-        # @return [Hash]
+        # @param [Docscribe::CLI::Formatters::change] change
+        # @param [String?] severity
+        # @return [Hash<Symbol, Object>]
         def base_offense(change, severity)
           {
             severity: severity || SEVERITY_MAP[change[:type]] || 'convention',
@@ -255,9 +255,9 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] offense
-        # @param [Object] change
-        # @return [Object]
+        # @param [Hash<Symbol, Object>] offense
+        # @param [Docscribe::CLI::Formatters::change] change
+        # @return [void]
         def attach_source(offense, change)
           source = offense_source(change)
           offense[:source] = source if source
@@ -265,10 +265,10 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] change
-        # @return [Object]
+        # @param [Docscribe::CLI::Formatters::change] change
+        # @return [String, nil]
         def offense_source(change)
-          change[:source] || change['source'] # steep:ignore
+          change[:source] || change['source']
         end
 
         # Build location hash from change.

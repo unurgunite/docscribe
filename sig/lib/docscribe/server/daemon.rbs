@@ -57,6 +57,11 @@ module Docscribe
       def check_idle_timeout: () -> void
       def accept_client: () -> void
       def handle_client: (UNIXSocket) -> void
+      def setup_socket_config: (String? socket_path, String? config_path, Integer idle_timeout) -> void
+      def setup_runtime_state: () -> void
+      def setup_caches: () -> void
+      def dispatch_request: (UNIXSocket client, Hash[String, untyped] request, String method, Hash[String, untyped] params) -> void
+      def dispatch_control_request: (UNIXSocket client, Hash[String, untyped] request, String method) -> void
       def handle_request: (UNIXSocket, Hash[String, untyped]) -> void
       def handle_check: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void
       def handle_fix: (UNIXSocket, (String | Integer), Hash[String, untyped]) -> void

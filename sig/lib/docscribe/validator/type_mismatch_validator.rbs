@@ -35,6 +35,18 @@ module Docscribe
 
       private
 
+      def blank_type?: ((String | nil) type_str) -> bool
+
+      def expected_suppressed?: ((String | nil) expected_type) -> bool
+
+      def yard_compatible?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
+      def types_normalized_equal?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
+      def normalized_equal?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
+      def optional_normalized_equal?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
+
       def void_compatible?: ((String | nil) yard_type, (String | nil) expected_type) -> bool
 
       def fallback_union?: ((String | nil) type_str) -> bool

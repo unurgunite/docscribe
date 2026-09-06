@@ -626,10 +626,10 @@ module Docscribe
       end
 
       # @note module_function: defines #block_send_rbs_type (visibility: private)
-      # @param [Object] node
-      # @param [Object] send_node
+      # @param [Parser::AST::Node] node
+      # @param [Parser::AST::Node] send_node
       # @param [Hash] opts
-      # @return [Object]
+      # @return [String, nil]
       def block_send_rbs_type(node, send_node, **opts)
         rbs_type = send_rbs_type(send_node.children[0], send_node.children[1], **opts)
         return nil unless rbs_type
@@ -638,10 +638,10 @@ module Docscribe
       end
 
       # @note module_function: defines #block_rbs_with_inner (visibility: private)
-      # @param [Object] rbs_type
-      # @param [Object] block_body
+      # @param [String, nil] rbs_type
+      # @param [Parser::AST::Node] block_body
       # @param [Hash] opts
-      # @return [Object]
+      # @return [String, nil]
       def block_rbs_with_inner(rbs_type, block_body, **opts)
         inner = run_last_expr_type(block_body, **opts)
         return nil unless inner && generic_placeholder?(rbs_type)
@@ -650,8 +650,8 @@ module Docscribe
       end
 
       # @note module_function: defines #generic_placeholder? (visibility: private)
-      # @param [Object] rbs_type
-      # @return [Object]
+      # @param [String, nil] rbs_type
+      # @return [Boolean]
       def generic_placeholder?(rbs_type)
         rbs_type.include?('U') || rbs_type.include?('Elem')
       end
@@ -815,24 +815,24 @@ module Docscribe
       end
 
       # @note module_function: defines #receiver_literal_type (visibility: private)
-      # @param [Object] recv
-      # @return [Object?]
+      # @param [Parser::AST::Node, nil] recv
+      # @return [String, nil]
       def receiver_literal_type(recv)
         LITERAL_RBS_TYPES[recv.type] if LITERAL_RBS_TYPES.key?(recv.type)
       end
 
       # @note module_function: defines #var_receiver? (visibility: private)
-      # @param [Object] recv
+      # @param [Parser::AST::Node, nil] recv
       # @return [Boolean]
       def var_receiver?(recv)
         %i[lvar ivar gvar cvar].include?(recv.type)
       end
 
       # @note module_function: defines #receiver_var_type (visibility: private)
-      # @param [Object] recv
-      # @param [Object] local_var_types
-      # @param [Object] param_types
-      # @return [Object]
+      # @param [Parser::AST::Node, nil] recv
+      # @param [Hash<String, String>?] local_var_types
+      # @param [Hash<String, String>?] param_types
+      # @return [String, nil]
       def receiver_var_type(recv, local_var_types, param_types)
         raw = lookup_lvar_type(recv.children.first, local_var_types, param_types)
         return nil unless raw
@@ -845,8 +845,8 @@ module Docscribe
       end
 
       # @note module_function: defines #stripped_union_type (visibility: private)
-      # @param [Object] raw
-      # @return [Object]
+      # @param [String, nil] raw
+      # @return [String, nil]
       def stripped_union_type(raw)
         parts = raw.split(',').map { |p| p.strip.delete_suffix('?').strip }
         non_nil = parts.reject { |p| %w[nil FALLBACK_TYPE].include?(p) }
@@ -854,10 +854,10 @@ module Docscribe
       end
 
       # @note module_function: defines #receiver_send_type (visibility: private)
-      # @param [Object] recv
-      # @param [Object] core_rbs_provider
-      # @param [Object] local_var_types
-      # @param [Object] param_types
+      # @param [Parser::AST::Node, nil] recv
+      # @param [Docscribe::Types::RBS::Provider?] core_rbs_provider
+      # @param [Hash<String, String>?] local_var_types
+      # @param [Hash<String, String>?] param_types
       # @return [String, nil]
       def receiver_send_type(recv, core_rbs_provider, local_var_types, param_types)
         run_last_expr_type(recv, fallback_type: FALLBACK_TYPE, nil_as_optional: false,
@@ -1011,11 +1011,11 @@ module Docscribe
       # @param [Hash] opts additional keyword options forwarded to type inference
       # @return [String, nil]
       def handle_const_node(node, **opts)
-        fallback = opts[:fallback_type] || FALLBACK_TYPE
+        fallback = (opts[:fallback_type] || FALLBACK_TYPE).to_s #: String
         resolved = Literals.type_from_literal(node, fallback_type: fallback)
         return fallback if fallback_alias?(resolved, fallback)
 
-        const_name = node.children.last.to_s
+        const_name = node.children.last.to_s #: String
         return fallback if fallback_alias?(const_name, fallback)
 
         resolved
@@ -1075,8 +1075,8 @@ module Docscribe
       end
 
       # @note module_function: defines #coalesce_type (visibility: private)
-      # @param [Object] type
-      # @param [Object] fallback_type
+      # @param [String, nil] type
+      # @param [String] fallback_type
       # @return [String]
       def coalesce_type(type, fallback_type)
         normalized = type || fallback_type

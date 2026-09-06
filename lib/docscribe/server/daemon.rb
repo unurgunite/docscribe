@@ -37,17 +37,17 @@ module Docscribe
         setup_caches
       end
 
-      # @param [Object] socket_path
-      # @param [Object] config_path
-      # @param [Object] idle_timeout
-      # @return [Object]
+      # @param [String?] socket_path
+      # @param [String?] config_path
+      # @param [Integer] idle_timeout
+      # @return [void]
       def setup_socket_config(socket_path, config_path, idle_timeout)
         @socket_path = socket_path || Server.socket_path(config_path)
         @config_path = config_path
         @idle_timeout = idle_timeout
       end
 
-      # @return [nil]
+      # @return [void]
       def setup_runtime_state
         @last_request_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @running = false
@@ -56,7 +56,7 @@ module Docscribe
         @last_sig_hash = nil
       end
 
-      # @return [Mutex]
+      # @return [void]
       def setup_caches
         @file_cache = LRUCache.new
         @cache_mutex = Mutex.new
@@ -175,11 +175,11 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] client
-      # @param [Object] request
-      # @param [Object] method
-      # @param [Object] params
-      # @return [Object]
+      # @param [UNIXSocket] client
+      # @param [Hash<String, Object>] request
+      # @param [String] method
+      # @param [Hash<String, Object>] params
+      # @return [void]
       def dispatch_request(client, request, method, params)
         handler = REQUEST_HANDLERS[method]
         return send(handler, client, request['id'], params) if handler
@@ -188,9 +188,9 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] client
-      # @param [Object] request
-      # @param [Object] method
+      # @param [UNIXSocket] client
+      # @param [Hash<String, Object>] request
+      # @param [String] method
       # @return [void]
       def dispatch_control_request(client, request, method)
         case method

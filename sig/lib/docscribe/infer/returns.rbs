@@ -85,6 +85,12 @@ module Docscribe
 
       def self?.handle_block_node: (Parser::AST::Node node, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
 
+      def self?.block_send_rbs_type: (Parser::AST::Node node, Parser::AST::Node send_node, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.block_rbs_with_inner: ((String | nil) rbs_type, Parser::AST::Node block_body, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
+      def self?.generic_placeholder?: ((String | nil) rbs_type) -> bool
+
       def self?.handle_send_node: (Parser::AST::Node node, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
 
       def self?.resolve_rbs_for_send: ((Parser::AST::Node | nil) recv, Symbol meth, Types::RBS::Provider? core_rbs_provider, Hash[String, String]? local_var_types, Hash[String, String]? param_types) -> (String | nil)
@@ -92,6 +98,16 @@ module Docscribe
       def self?.resolve_rbs_for_send_with_signature_provider: ((Parser::AST::Node | nil) recv, Symbol meth, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?, ?fallback_type: String?, ?nil_as_optional: bool) -> (String | nil)
 
       def self?.receiver_rbs_type_name: ((Parser::AST::Node | nil) recv, Types::RBS::Provider? core_rbs_provider, Hash[String, String]? local_var_types, Hash[String, String]? param_types) -> (String | nil)
+
+      def self?.receiver_literal_type: ((Parser::AST::Node | nil) recv) -> (String | nil)
+
+      def self?.var_receiver?: ((Parser::AST::Node | nil) recv) -> bool
+
+      def self?.receiver_var_type: ((Parser::AST::Node | nil) recv, Hash[String, String]? local_var_types, Hash[String, String]? param_types) -> (String | nil)
+
+      def self?.stripped_union_type: ((String | nil) raw) -> (String | nil)
+
+      def self?.receiver_send_type: ((Parser::AST::Node | nil) recv, Types::RBS::Provider? core_rbs_provider, Hash[String, String]? local_var_types, Hash[String, String]? param_types) -> (String | nil)
 
       def self?.resolve_lvar_rbs: (Parser::AST::Node? recv, Symbol meth, Types::RBS::Provider? core_rbs_provider, Hash[String, String]? local_var_types, Hash[String, String]? param_types) -> (String | nil)
 
@@ -122,6 +138,8 @@ module Docscribe
       def self?.resolve_rbs_return_type: (String container_type, (String | Symbol) method_name, Types::RBS::Provider? core_rbs_provider) -> String
 
       def self?.unify_types: ((String | nil) type_a, (String | nil) type_b, fallback_type: String, nil_as_optional: bool) -> String
+
+      def self?.coalesce_type: ((String | nil) type, String fallback_type) -> String
 
       def self?.unify_nil_types: (String type_a, String type_b, nil_as_optional: bool) -> String
     end

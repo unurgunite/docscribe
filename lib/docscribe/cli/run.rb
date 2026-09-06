@@ -749,55 +749,55 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] file_changes
-        # @return [Object]
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes
+        # @return [Boolean]
         def real_changes?(file_changes)
           file_changes.any? { |c| !%i[updated_param updated_return invalid_type].include?(c[:type]) }
         end
 
         # @private
-        # @param [Object] ctx
-        # @param [Object] type_mismatches
-        # @param [Object] out
-        # @param [Object] src
-        # @param [Object] has_real_changes
-        # @return [Object, Boolean, Boolean]
+        # @param [Hash<Symbol, Object>] ctx
+        # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches
+        # @param [String] out
+        # @param [String] src
+        # @param [Boolean] has_real_changes
+        # @return [Boolean]
         def validated_mismatch?(ctx, type_mismatches, out, src, has_real_changes)
           validate_types_enabled?(ctx) && type_mismatches.any? && out == src && !has_real_changes
         end
 
         # @private
-        # @param [Object] ctx
-        # @return [Boolean, Object]
+        # @param [Hash<Symbol, Object>] ctx
+        # @return [Boolean]
         def validate_types_enabled?(ctx)
           ctx[:options][:validate_types] ||
             (ctx[:conf].respond_to?(:validate_types?) && ctx[:conf].validate_types?)
         end
 
         # @private
-        # @param [Object] out
-        # @param [Object] src
-        # @param [Object] has_real_changes
+        # @param [String] out
+        # @param [String] src
+        # @param [Boolean] has_real_changes
         # @return [Boolean]
         def no_real_changes?(out, src, has_real_changes)
           out == src && !has_real_changes
         end
 
         # @private
-        # @param [Object] path
-        # @param [Object] file_changes
-        # @param [Object] type_mismatches
-        # @param [Object] ctx
-        # @return [Object]
+        # @param [String] path
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes
+        # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches
+        # @param [Hash<Symbol, Object>] ctx
+        # @return [void]
         def handle_validated_type_mismatch(path, file_changes, type_mismatches, ctx)
           handle_failed_check(path, file_changes, ctx)
           track_validated_mismatch(type_mismatches, ctx)
         end
 
         # @private
-        # @param [Object] type_mismatches
-        # @param [Object] ctx
-        # @return [Object]
+        # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches
+        # @param [Hash<Symbol, Object>] ctx
+        # @return [void]
         def track_validated_mismatch(type_mismatches, ctx)
           state = ctx[:state]
           display_path = ctx[:display_path]
@@ -806,20 +806,20 @@ module Docscribe
         end
 
         # @private
-        # @param [Object] path
-        # @param [Object] type_mismatches
-        # @param [Object] ctx
-        # @return [Object]
+        # @param [String] path
+        # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches
+        # @param [Hash<Symbol, Object>] ctx
+        # @return [void]
         def handle_no_changes(path, type_mismatches, ctx)
           handle_check_no_changes(path, type_mismatches: type_mismatches, display_path: ctx[:display_path],
                                         options: ctx[:options], state: ctx[:state])
         end
 
         # @private
-        # @param [Object] path
-        # @param [Object] file_changes
-        # @param [Object] ctx
-        # @return [Object]
+        # @param [String] path
+        # @param [Array<Docscribe::CLI::Formatters::change>] file_changes
+        # @param [Hash<Symbol, Object>] ctx
+        # @return [void]
         def handle_failed_check(path, file_changes, ctx)
           handle_check_failed(path, file_changes: file_changes, display_path: ctx[:display_path],
                                     options: ctx[:options], state: ctx[:state])

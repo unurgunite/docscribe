@@ -43,6 +43,12 @@ module Docscribe
 
         def build_offense: (change change, String? severity) -> Hash[Symbol, untyped]
 
+        def base_offense: (change change, String? severity) -> Hash[Symbol, untyped]
+
+        def attach_source: (Hash[Symbol, untyped] offense, change change) -> void
+
+        def offense_source: (change change) -> (String | nil)
+
         def location_for: (change change) -> Hash[Symbol, Integer]
 
         def cop_name_fallback: (change change) -> String

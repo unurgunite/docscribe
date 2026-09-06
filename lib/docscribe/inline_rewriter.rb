@@ -1074,49 +1074,49 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] rest
-      # @param [Object] reason_specs
+      # @param [Hash<Symbol, Object>] rest
+      # @param [Array<Hash<Symbol, Object>>] reason_specs
       # @return [Boolean]
       def doc_changed?(rest, reason_specs)
         rest[:new_block] != rest[:old_block] || type_mismatch_reasons?(reason_specs)
       end
 
       # @private
-      # @param [Object] reason_specs
-      # @return [Object]
+      # @param [Array<Hash<Symbol, Object>>] reason_specs
+      # @return [Boolean]
       def type_mismatch_reasons?(reason_specs)
         reason_specs.any? { |r| type_mismatch_type?(r[:type]) }
       end
 
       # @private
-      # @param [Object] type
+      # @param [Symbol] type
       # @return [Boolean]
       def type_mismatch_type?(type)
         %i[updated_param updated_return invalid_type].include?(type)
       end
 
       # @private
-      # @param [Object] reason_specs
-      # @param [Object] insertion
-      # @param [Object] rest
-      # @return [Object]
+      # @param [Array<Hash<Symbol, Object>>] reason_specs
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [Hash<Symbol, Object>] rest
+      # @return [void]
       def log_reasons(reason_specs, insertion, rest)
         reason_specs.each { |reason| log_single_reason(reason, insertion, rest) }
       end
 
       # @private
-      # @param [Object] reason
-      # @param [Object] insertion
-      # @param [Object] rest
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] reason
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion
+      # @param [Hash<Symbol, Object>] rest
+      # @return [void]
       def log_single_reason(reason, insertion, rest)
         add_change(changes: rest[:changes], type: reason[:type], insertion: insertion,
                    file: rest[:file], message: reason[:message], extra: extra_for_reason(reason))
       end
 
       # @private
-      # @param [Object] reason
-      # @return [Object]
+      # @param [Hash<Symbol, Object>] reason
+      # @return [Hash<Symbol, Object>]
       def extra_for_reason(reason)
         extra = (reason[:extra] || {}).dup
         extra[:source] = reason[:source] if reason[:source]
