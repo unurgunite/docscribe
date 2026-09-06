@@ -9,19 +9,45 @@ module Docscribe
     # Dynamically decides if two type strings are compatible via generics/aliases.
     # Uses hash dispatch to avoid long if/else chains and to allow easy extension.
     module GenericCompatibility
+      # Check registry: name => checker method symbol
+      CHECKS = {
+        generic_base: :generic_base_compatible?,
+        short_name: :short_name_compatible?,
+        alias_hash: :alias_hash_compatible?,
+        tuple_array: :tuple_array_compatible?,
+        optional_nil: :optional_nil_compatible?,
+        union_containment: :union_containment?,
+        optional_suffix: :optional_suffix_compatible?,
+        generic_inner_alias: :generic_inner_alias_compatible?,
+        fallback_union: :fallback_union_check?
+      }.freeze
+
       class << self
-        # Check registry: name => proc(yard, expected, fallback) -> bool
-        CHECKS = {
-          generic_base: ->(yard, expected, _fallback) { generic_base_compatible?(yard, expected) },
-          short_name: ->(yard, expected, _fallback) { short_name_compatible?(yard, expected) },
-          alias_hash: ->(yard, expected, _fallback) { alias_hash_compatible?(yard, expected) },
-          tuple_array: ->(yard, expected, _fallback) { tuple_array_compatible?(yard, expected) },
-          optional_nil: ->(yard, expected, _fallback) { optional_nil_compatible?(yard, expected) },
-          union_containment: ->(yard, expected, _fallback) { union_containment?(yard, expected) },
-          optional_suffix: ->(yard, expected, _fallback) { optional_suffix_compatible?(yard, expected) },
-          generic_inner_alias: ->(yard, expected, _fallback) { generic_inner_alias_compatible?(yard, expected) },
-          fallback_union: ->(yard, expected, fallback) { fallback_union?(yard, fallback) || fallback_union?(expected, fallback) }
-        }.freeze
+        # Whether two type strings are generic compatible (any checker true).
+        #
+        # @param [String, nil] yard_type
+        # @param [String, nil] expected_type
+        # @param [String] fallback_type
+        # @return [Boolean]
+        def compatible?(yard_type, expected_type, fallback_type: 'Object')
+          CHECKS.any? do |name, method_name|
+            if name == :fallback_union
+              send(method_name, yard_type, expected_type, fallback_type)
+            else
+              send(method_name, yard_type, expected_type)
+            end
+          end
+        end
+
+        # Method documentation.
+        #
+        # @param [String, nil] yard_type Param documentation.
+        # @param [String, nil] expected_type Param documentation.
+        # @param [String] fallback_type Param documentation.
+        # @return [Boolean]
+        def fallback_union_check?(yard_type, expected_type, fallback_type)
+          fallback_union?(yard_type, fallback_type) || fallback_union?(expected_type, fallback_type)
+        end
 
         # Method documentation.
         #
@@ -34,16 +60,6 @@ module Docscribe
           fallback_norm = normalize(fallback)
           parts = type_str.to_s.split(',').map { |part| normalize(part.strip.delete_suffix('?').strip) }
           parts.all? { |part| part == fallback_norm || part.empty? }
-        end
-
-        # Whether two type strings are generic compatible (any checker true).
-        #
-        # @param [String, nil] yard_type
-        # @param [String, nil] expected_type
-        # @param [String] fallback_type
-        # @return [Boolean]
-        def compatible?(yard_type, expected_type, fallback_type: 'Object')
-          CHECKS.any? { |_name, checker| checker.call(yard_type, expected_type, fallback_type) }
         end
 
         # Whether generic base matches: Hash vs Hash<Symbol,String> or Array vs Array<String>

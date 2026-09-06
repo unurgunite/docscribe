@@ -306,7 +306,9 @@ RSpec.describe Docscribe::CLI::UpdateTypes do
         File.write(first_file, first_file_content)
         File.write(second_file, second_file_content)
         FileUtils.rm_f(File.join(tmp_dir, 'rbs_collection.lock.yaml'))
-        FileUtils.rm_f('rbs_collection.lock.yaml')
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(false)
+        allow(File).to receive(:exist?).with(File.join(tmp_dir, 'rbs_collection.lock.yaml')).and_return(false)
         Dir.chdir(tmp_dir) { described_class.run([first_file]) }
       end
 

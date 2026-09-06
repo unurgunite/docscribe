@@ -1,10 +1,13 @@
 module Docscribe
   module Validator
     module GenericCompatibility
-      CHECKS: Hash[Symbol, ^((String | nil), (String | nil), String) -> bool]
+      CHECKS: Hash[Symbol, Symbol]
 
       def self.compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?fallback_type: String) -> bool
       def compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?fallback_type: String) -> bool
+
+      def self.fallback_union_check?: ((String | nil) yard_type, (String | nil) expected_type, String fallback_type) -> bool
+      def fallback_union_check?: ((String | nil) yard_type, (String | nil) expected_type, String fallback_type) -> bool
 
       def self.generic_base_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
       def generic_base_compatible?: ((String | nil) yard, (String | nil) expected) -> bool
