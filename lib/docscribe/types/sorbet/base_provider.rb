@@ -19,7 +19,7 @@ module Docscribe
         #
         # @param [Boolean] collapse_generics whether generic container details
         # @param [Boolean] collapse_object_generics collapse Object generics
-        # @return [Boolean]
+        # @return [void]
         def initialize(collapse_generics: false, collapse_object_generics: false)
           require 'rbs'
           @collapse_generics = !!collapse_generics
@@ -46,12 +46,12 @@ module Docscribe
         # other providers or plain inference.
         #
         # @private
-        # @param [String] source source text to parse
-        # @param [String] label file label used in debug warnings
         # @raise [LoadError]
         # @raise [::RBS::BaseError]
         # @raise [SyntaxError]
         # @raise [StandardError]
+        # @param [String] source source text to parse
+        # @param [String] label file label used in debug warnings
         # @return [void]
         # @return [nil] if LoadError
         # @return [nil] if ::RBS::BaseError, SyntaxError, StandardError

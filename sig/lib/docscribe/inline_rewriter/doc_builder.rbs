@@ -337,7 +337,7 @@ module Docscribe
 
       def self?.expected_suppressed?: (String? expected, String fallback) -> bool
 
-      def self?.yard_compatible?: (String? yard, String? expected, String fallback) -> bool
+      def self?.yard_compatible?: (String? yard, String? expected, String fallback, ?method_name: (String | Symbol | nil)) -> bool
 
       def self?.types_normalized_equal?: (String? yard, String? expected) -> bool
 
@@ -347,9 +347,11 @@ module Docscribe
 
       def self?.yard_in_expected_union?: (String yard, String expected) -> bool
 
-      def self?.generic_compatible?: (String yard, String expected) -> bool
+      def self?.generic_compatible?: (String yard, String expected, ?method_name: (String | Symbol | nil)) -> bool
 
-      def self?.void_compatible?: ((String | nil) yard, (String | nil) expected, String fallback) -> bool
+      def self?.void_compatible?: ((String | nil) yard, (String | nil) expected, String fallback, ?method_name: (String | Symbol | nil)) -> bool
+
+      def self?.extract_method_name: (Hash[Symbol, untyped] ctx) -> (Symbol | nil)
 
       def self?.fallback_union?: ((String | nil) type_str, String fallback) -> bool
 

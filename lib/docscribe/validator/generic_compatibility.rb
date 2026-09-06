@@ -29,16 +29,50 @@ module Docscribe
         # @param [String, nil] yard_type YARD type string
         # @param [String, nil] expected_type inferred/RBS type string
         # @param [String] fallback_type fallback type for union checks (default "Object")
+        # @param [String, Symbol, nil] method_name method name for void compatibility (e.g., "initialize")
         # @return [Boolean] true if any compatibility checker matches
-        def compatible?(yard_type, expected_type, fallback_type: 'Object')
-          CHECKS.any? do |name, method_name|
+        def compatible?(yard_type, expected_type, fallback_type: 'Object', method_name: nil)
+          return true if void_compatible?(yard_type, expected_type, fallback_type, method_name: method_name)
+
+          CHECKS.any? do |name, checker|
             if name == :fallback_union
-              send(method_name, yard_type, expected_type, fallback_type)
+              send(checker, yard_type, expected_type, fallback_type)
             else
-              send(method_name, yard_type, expected_type)
+              send(checker, yard_type, expected_type)
             end
           end
         end
+
+        # Whether void YARD type is compatible with expected type.
+        #
+        # Handles fallback unions and dynamic `initialize`/`setup` compatibility
+        # where `void` is treated as compatible with `Hash`, `self`, or `Boolean`
+        # for initializers per Ruby idiom.
+        #
+        # @param [String, nil] yard_type YARD type string
+        # @param [String, nil] expected_type inferred/RBS type string
+        # @param [String] fallback_type fallback type for union checks
+        # @param [String, Symbol, nil] method_name method name for dynamic check
+        # @return [Boolean] true if void compatibility holds
+        def void_compatible?(yard_type, expected_type, fallback_type = 'Object', method_name: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/AbcSize
+          return false unless normalize(yard_type) == 'void'
+
+          return true if fallback_union?(expected_type, fallback_type) ||
+                         %w[nil void].include?(normalize(expected_type))
+
+          if method_name.to_s =~ /initialize|setup/
+            norm = normalize(expected_type).delete_suffix('?').strip
+            return true if norm == 'Hash' || norm.start_with?('Hash<') || norm.start_with?('Hash[')
+            return true if %w[self Boolean].include?(norm)
+          end
+
+          if method_name.to_s.end_with?('?')
+            norm = normalize(expected_type).delete_suffix('?').strip
+            return true if norm == 'Boolean'
+          end
+
+          false
+        end # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
         # Whether either type is a fallback-only union for the given fallback type.
         #
@@ -331,8 +365,8 @@ module Docscribe
 
         # Method documentation.
         #
-        # @param [Object] norm_yard Param documentation.
-        # @param [Object] norm_expected Param documentation.
+        # @param [String] norm_yard Param documentation.
+        # @param [String] norm_expected Param documentation.
         # @return [Boolean]
         def question_vs_comma_nil?(norm_yard, norm_expected)
           norm_yard.delete(' ') == "#{norm_expected.delete(' ').delete_suffix('?')},nil" ||
@@ -341,8 +375,8 @@ module Docscribe
 
         # Method documentation.
         #
-        # @param [Object] yard_type Param documentation.
-        # @param [Object] expected_type Param documentation.
+        # @param [String, nil] yard_type Param documentation.
+        # @param [String, nil] expected_type Param documentation.
         # @return [Boolean]
         def suffix_vs_union_first?(yard_type, expected_type)
           normalize(yard_type).delete_suffix('?') == normalize(expected_type).split(',').first&.strip ||

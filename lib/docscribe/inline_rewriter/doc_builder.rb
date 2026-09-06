@@ -66,10 +66,10 @@ module Docscribe
       # Build
       #
       # @note module_function: defines #build (visibility: private)
+      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion object
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] opts additional keyword options forwarded to doc_setup
-      # @raise [StandardError]
       # @return [String, nil]
       # @return [nil] if StandardError
       def build(insertion, config:, **opts)
@@ -85,11 +85,11 @@ module Docscribe
       # Build merge additions
       #
       # @note module_function: defines #build_merge_additions (visibility: private)
+      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion object
       # @param [Array<String>] existing_lines existing doc comment lines being merged
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] options additional keyword options forwarded to downstream methods
-      # @raise [StandardError]
       # @return [String, nil]
       # @return [nil] if StandardError
       def build_merge_additions(insertion, existing_lines:, config:, **options)
@@ -108,11 +108,11 @@ module Docscribe
       # Build missing merge result
       #
       # @note module_function: defines #build_missing_merge_result (visibility: private)
+      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion object
       # @param [Array<String>] existing_lines existing doc comment lines being merged
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] options additional keyword options forwarded to downstream methods
-      # @raise [StandardError]
       # @return [Docscribe::InlineRewriter::DocBuilder::missingMergeResult]
       # @return [Hash] if StandardError
       def build_missing_merge_result(insertion, existing_lines:, config:, **options)
@@ -714,8 +714,8 @@ module Docscribe
       # Extract raise types from line
       #
       # @note module_function: defines #extract_raise_types_from_line (visibility: private)
-      # @param [String] line a `@raise` doc line
       # @raise [StandardError]
+      # @param [String] line a `@raise` doc line
       # @return [Array<String, nil>]
       # @return [Array] if StandardError
       def extract_raise_types_from_line(line)
@@ -2055,10 +2055,29 @@ module Docscribe
         yard, expected, fallback = mismatched_return_types(ctx)
         return false unless yard && expected
         return false if expected_suppressed?(expected, fallback)
-        return false if yard_compatible?(yard, expected, fallback)
+
+        method_name = extract_method_name(ctx)
+        return false if yard_compatible?(yard, expected, fallback, method_name: method_name)
         return false if types_normalized_equal?(yard, expected)
 
         true
+      end
+
+      # Extract method name for void compatibility dynamic check.
+      #
+      # @note module_function: defines #extract_method_name (visibility: private)
+      # @raise [StandardError]
+      # @param [Hash<Symbol, Object>] ctx context hash with insertion or node
+      # @return [Symbol, nil]
+      # @return [nil] if StandardError
+      def extract_method_name(ctx)
+        insertion = ctx[:insertion]
+        node = insertion&.node || ctx[:node]
+        return nil unless node
+
+        SourceHelpers.node_name(node)
+      rescue StandardError
+        nil
       end
 
       # Extract yard/expected/fallback triple for return mismatch check.
@@ -2086,11 +2105,12 @@ module Docscribe
       # @param [String?] yard
       # @param [String?] expected
       # @param [String] fallback
+      # @param [String, Symbol, nil] method_name method name for void compatibility
       # @return [Boolean]
-      def yard_compatible?(yard, expected, fallback)
-        void_compatible?(yard, expected, fallback) ||
+      def yard_compatible?(yard, expected, fallback, method_name: nil)
+        void_compatible?(yard, expected, fallback, method_name: method_name) ||
           yard_in_expected_union?(yard, expected) ||
-          generic_compatible?(yard, expected)
+          generic_compatible?(yard, expected, method_name: method_name)
       end
 
       # Whether types are equal after normalization (including optional "?").
@@ -2128,9 +2148,10 @@ module Docscribe
       # @note module_function: defines #generic_compatible? (visibility: private)
       # @param [String] yard
       # @param [String] expected
+      # @param [String, Symbol, nil] method_name method name for void compatibility threading
       # @return [Boolean]
-      def generic_compatible?(yard, expected)
-        Docscribe::Validator::GenericCompatibility.compatible?(yard, expected, fallback_type: 'Object')
+      def generic_compatible?(yard, expected, method_name: nil)
+        Docscribe::Validator::GenericCompatibility.compatible?(yard, expected, fallback_type: 'Object', method_name: method_name)
       end
 
       # Whether yard type is included in expected union (e.g. Boolean in Object, Boolean).
@@ -2144,18 +2165,33 @@ module Docscribe
         expected.split(',').any? { |part| normalize_type(part) == normalized_yard }
       end
 
-      # Whether void YARD type is compatible with fallback union.
+      # Whether void YARD type is compatible with fallback union or initialize/setup dynamic.
       #
       # @note module_function: defines #void_compatible? (visibility: private)
       # @param [String, nil] yard
       # @param [String, nil] expected
       # @param [String] fallback
+      # @param [String, Symbol, nil] method_name method name for dynamic check
       # @return [Boolean]
-      def void_compatible?(yard, expected, fallback)
+      def void_compatible?(yard, expected, fallback, method_name: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength, Metrics/AbcSize
         return false unless normalize_type(yard) == 'void'
 
-        fallback_union?(expected, fallback) || normalize_type(expected) == 'nil' || normalize_type(expected) == 'void'
-      end
+        return true if fallback_union?(expected, fallback) ||
+                       %w[nil void].include?(normalize_type(expected))
+
+        if method_name.to_s =~ /initialize|setup/
+          norm = normalize_type(expected).delete_suffix('?').strip
+          return true if norm == 'Hash' || norm.start_with?('Hash<') || norm.start_with?('Hash[')
+          return true if %w[self Boolean].include?(norm)
+        end
+
+        if method_name.to_s.end_with?('?')
+          norm = normalize_type(expected).delete_suffix('?').strip
+          return true if norm == 'Boolean'
+        end
+
+        false
+      end # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
       # Whether a type string is a union of only fallback types (with optional `?`).
       #
@@ -2342,8 +2378,8 @@ module Docscribe
       # Safe node source
       #
       # @note module_function: defines #safe_node_source (visibility: private)
-      # @param [Parser::AST::Node] node AST node whose source text to extract
       # @raise [StandardError]
+      # @param [Parser::AST::Node] node AST node whose source text to extract
       # @return [String]
       # @return [String] if StandardError
       def safe_node_source(node)

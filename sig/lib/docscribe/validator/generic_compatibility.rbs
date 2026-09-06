@@ -3,8 +3,11 @@ module Docscribe
     module GenericCompatibility
       CHECKS: Hash[Symbol, Symbol]
 
-      def self.compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?fallback_type: String) -> bool
-      def compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?fallback_type: String) -> bool
+      def self.compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?fallback_type: String, ?method_name: (String | Symbol | nil)) -> bool
+      def compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?fallback_type: String, ?method_name: (String | Symbol | nil)) -> bool
+
+      def self.void_compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?String fallback_type, ?method_name: (String | Symbol | nil)) -> bool
+      def void_compatible?: ((String | nil) yard_type, (String | nil) expected_type, ?String fallback_type, ?method_name: (String | Symbol | nil)) -> bool
 
       def self.fallback_union_check?: ((String | nil) yard_type, (String | nil) expected_type, String fallback_type) -> bool
       def fallback_union_check?: ((String | nil) yard_type, (String | nil) expected_type, String fallback_type) -> bool

@@ -47,21 +47,23 @@ module Docscribe
       #
       # @param [String, nil] yard_type type from `@param [...]`
       # @param [String, nil] expected_type type from `external_sig` or `Infer`
+      # @param [String, Symbol, nil] method_name method name for void compatibility
       # @return [Boolean]
-      def mismatched_param?(yard_type, expected_type)
-        mismatched_return?(yard_type, expected_type)
+      def mismatched_param?(yard_type, expected_type, method_name: nil)
+        mismatched_return?(yard_type, expected_type, method_name: method_name)
       end
 
       # Whether a documented return type mismatches the expected one.
       #
       # @param [String, nil] yard_type type from `@return [...]`
       # @param [String, nil] expected_type inferred or external `normal_type`
+      # @param [String, Symbol, nil] method_name method name for void compatibility
       # @return [Boolean]
-      def mismatched_return?(yard_type, expected_type)
+      def mismatched_return?(yard_type, expected_type, method_name: nil)
         return false if blank_type?(yard_type)
         return false if blank_type?(expected_type)
         return false if expected_suppressed?(expected_type)
-        return false if yard_compatible?(yard_type, expected_type)
+        return false if yard_compatible?(yard_type, expected_type, method_name: method_name)
         return false if types_normalized_equal?(yard_type, expected_type)
 
         !normalized_equal?(yard_type, expected_type)
@@ -72,9 +74,10 @@ module Docscribe
       #
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
+      # @param [String, Symbol, nil] method_name method name for void compatibility threading
       # @return [Boolean]
-      def generic_compatible?(yard_type, expected_type)
-        GenericCompatibility.compatible?(yard_type, expected_type, fallback_type: @fallback_type)
+      def generic_compatible?(yard_type, expected_type, method_name: nil)
+        GenericCompatibility.compatible?(yard_type, expected_type, fallback_type: @fallback_type, method_name: method_name)
       end
 
       # Whether yard type is included in expected union.
@@ -89,15 +92,14 @@ module Docscribe
         expected_type.split(',').any? { |part| normalize(part) == normalized_yard }
       end
 
-      # Whether void YARD type is compatible with fallback union.
+      # Whether void YARD type is compatible with fallback union or initialize/setup dynamic.
       #
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
+      # @param [String, Symbol, nil] method_name method name for dynamic check
       # @return [Boolean]
-      def void_compatible?(yard_type, expected_type)
-        return false unless normalize(yard_type) == 'void'
-
-        fallback_union?(expected_type) || normalize(expected_type) == 'nil' || normalize(expected_type) == 'void'
+      def void_compatible?(yard_type, expected_type, method_name: nil)
+        GenericCompatibility.void_compatible?(yard_type, expected_type, @fallback_type, method_name: method_name)
       end
 
       # Whether a type string is a union of only fallback types (with optional `?`).
@@ -127,10 +129,11 @@ module Docscribe
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
       # @param [String] source source of expected type: "rbs" or "infer"
+      # @param [String, Symbol, nil] method_name method name for void compatibility
       # @return [Docscribe::Validator::TypeMismatchValidator::Result, nil]
-      def check_return(yard_type, expected_type, source: 'infer')
+      def check_return(yard_type, expected_type, source: 'infer', method_name: nil)
         return invalid_return_result(yard_type, expected_type) if invalid_syntax?(yard_type)
-        return unless mismatched_return?(yard_type, expected_type)
+        return unless mismatched_return?(yard_type, expected_type, method_name: method_name)
 
         mismatch_return_result(yard_type, expected_type, source: source)
       end
@@ -141,10 +144,11 @@ module Docscribe
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
       # @param [String] source source of expected type: "rbs" or "infer"
+      # @param [String, Symbol, nil] method_name method name for void compatibility
       # @return [Docscribe::Validator::TypeMismatchValidator::Result, nil]
-      def check_param(param_name, yard_type, expected_type, source: 'infer')
+      def check_param(param_name, yard_type, expected_type, source: 'infer', method_name: nil)
         return invalid_param_result(param_name, yard_type, expected_type) if invalid_syntax?(yard_type)
-        return unless mismatched_param?(yard_type, expected_type)
+        return unless mismatched_param?(yard_type, expected_type, method_name: method_name)
 
         mismatch_param_result(param_name, yard_type, expected_type, source: source)
       end
@@ -230,11 +234,12 @@ module Docscribe
       # @private
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
+      # @param [String, Symbol, nil] method_name method name for void compatibility
       # @return [Boolean]
-      def yard_compatible?(yard_type, expected_type)
-        void_compatible?(yard_type, expected_type) ||
+      def yard_compatible?(yard_type, expected_type, method_name: nil)
+        void_compatible?(yard_type, expected_type, method_name: method_name) ||
           yard_in_expected_union?(yard_type, expected_type) ||
-          generic_compatible?(yard_type, expected_type)
+          generic_compatible?(yard_type, expected_type, method_name: method_name)
       end
 
       # Whether types equal after normalization (including optional "?").

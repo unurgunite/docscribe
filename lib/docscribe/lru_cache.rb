@@ -5,7 +5,7 @@ module Docscribe
   # Used by Server::Daemon for file rewrite caching.
   class LRUCache
     # @param [Integer] max_size
-    # @return [Hash]
+    # @return [void]
     def initialize(max_size = 1000)
       @max_size = max_size
       @data = {}

@@ -132,7 +132,7 @@ module Docscribe
 
         # Create a fresh visibility context with Ruby-like defaults.
         #
-        # @return [Boolean]
+        # @return [void]
         def initialize
           @default_instance_vis = :public
           @default_class_vis = :public
@@ -206,7 +206,7 @@ module Docscribe
       # Create a collector for the given source buffer.
       #
       # @param [Parser::Source::Buffer] buffer source buffer for anchor location lookups
-      # @return [Hash]
+      # @return [void]
       def initialize(buffer)
         super()
         @buffer = buffer
