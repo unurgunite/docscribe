@@ -268,7 +268,7 @@ module Docscribe
       # @param [Integer, Float?] timeout
       # @raise [Timeout::Error]
       # @raise [StandardError]
-      # @return [Hash<String, String, Array<Hash<Symbol, Object>>>]
+      # @return [Hash<String, Object>]
       # @return [Hash] if Timeout::Error
       # @return [Hash] if StandardError
       def process_file_in_batch(file, strategy, timeout = nil)
@@ -571,7 +571,7 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] exception
+      # @param [Exception] exception
       # @return [(Integer, String, Hash<Symbol, String, nil>)]
       def classify_gem_error(exception)
         data = { gem: nil }
@@ -580,7 +580,7 @@ module Docscribe
       end
 
       # @private
-      # @param [Object] exception
+      # @param [Exception] exception
       # @param [Hash<String, Object>] params
       # @return [(Integer, String, Hash<Symbol, Object>)]
       def classify_syntax_err(exception, params)
@@ -616,7 +616,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client
       # @param [String, Integer] id
-      # @param [Object] exception
+      # @param [Exception] exception
       # @param [String] file
       # @raise [StandardError]
       # @return [void]
@@ -632,7 +632,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client
       # @param [String, Integer] id
-      # @param [Object] exception
+      # @param [Exception] exception
       # @param [String] file
       # @return [void]
       def send_syntax_error(client, id, exception, file)
@@ -650,7 +650,7 @@ module Docscribe
       # @param [String, Integer, nil] id
       # @param [Integer] code
       # @param [String] message
-      # @param [Object?] data optional structured error data
+      # @param [Hash<Symbol, Object>?] data optional structured error data
       # @return [void]
       def send_error(client, id, code, message, data = nil)
         error = { code: code, message: message }

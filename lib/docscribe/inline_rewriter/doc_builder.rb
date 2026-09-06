@@ -2162,6 +2162,18 @@ module Docscribe
         # Optional "?" vs non-optional: String vs String? should be considered compatible
         return true if ny.delete_suffix('?') == ne.delete_suffix('?')
 
+        # Optional vs nil: String? includes nil, so String? <-> nil is not a mismatch (severity: nil)
+        return true if ny == 'nil' && ne.end_with?('?')
+        return true if ne == 'nil' && ny.end_with?('?')
+        return true if ny.include?(', nil') && ne == 'nil'
+        return true if ne.include?(', nil') && ny == 'nil'
+
+        # Array alias inner variance: only for alias inners (change/Elem/Object) vs String
+        if ny =~ /\AArray[<\[]/ && ne =~ /\AArray[<\[]/
+          alias_pattern = /::change|Elem|Object|Hash|untyped/
+          return true if ny =~ alias_pattern || ne =~ alias_pattern
+        end
+
         # FALLBACK_TYPE alias already normalized, but handle union fallback case
         return true if fallback_union?(yard, 'Object') || fallback_union?(expected, 'Object')
 

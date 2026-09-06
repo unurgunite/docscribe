@@ -146,7 +146,7 @@ module Docscribe
         #
         # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
         # @param [Docscribe::Config] conf effective config
-        # @return [Hash<Symbol, Object>] rewrite result with :output key
+        # @return [Docscribe::CLI::Run::rewrite_result] rewrite result with :output key
         def stdin_rewrite_result(options, conf)
           Docscribe::InlineRewriter.rewrite_with_report(
             $stdin.read,
@@ -244,7 +244,7 @@ module Docscribe
         # @param [Hash<String, Object>] result server result with :changed and :changes keys
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes change records
         # @param [String] path file path
-        # @param [Object] ctx context hash with :display_path, :options, :state keys
+        # @param [Docscribe::CLI::Run::run_ctx] ctx context hash with :display_path, :options, :state keys
         # @return [void]
         def dispatch_server_result(result, file_changes, path, **ctx)
           if ctx[:options][:mode] == :check
@@ -420,8 +420,8 @@ module Docscribe
           run_exit_code(options, state)
         end
 
-        # @param [Object] options
-        # @param [Object] conf
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @param [Docscribe::Config] conf
         # @param [Array<String>] paths
         # @param [Docscribe::CLI::Formatters::state] state
         # @return [void]
@@ -434,7 +434,7 @@ module Docscribe
           thread_count.times.map { parallel_worker(pool) }.each(&:join)
         end
 
-        # @param [Hash<Symbol, Object>] pool
+        # @param [Docscribe::CLI::Run::pool] pool
         # @return [Thread]
         def parallel_worker(pool)
           Thread.new do
@@ -455,7 +455,7 @@ module Docscribe
         end
 
         # @param [String] path
-        # @param [Hash<Symbol, Object>] pool
+        # @param [Docscribe::CLI::Run::pool] pool
         # @raise [StandardError]
         # @return [void]
         # @return [Object] if StandardError
@@ -633,7 +633,7 @@ module Docscribe
         # @param [String] src original source code
         # @param [String] out rewritten source code
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes structured change records
-        # @param [Object] ctx context hash with :options, :state, :display_path, :conf
+        # @param [Docscribe::CLI::Run::run_ctx] ctx context hash with :options, :state, :display_path, :conf
         # @return [void]
         def dispatch_file_result(path, src:, out:, file_changes:, **ctx)
           if ctx[:options][:mode] == :check
@@ -691,9 +691,9 @@ module Docscribe
         # @private
         # @param [String] path file path
         # @param [String] src source code
-        # @param [Hash<Symbol, Object>] ctx context hash with :conf, :display_path, :options, :state keys
+        # @param [Docscribe::CLI::Run::run_ctx] ctx context hash with :conf, :display_path, :options, :state keys
         # @raise [StandardError]
-        # @return [Hash<Symbol, Object>, nil]
+        # @return [Docscribe::CLI::Run::rewrite_result, nil]
         # @return [nil] if StandardError
         def rewrite_result_for_path(path, src:, ctx:)
           conf = ctx[:conf]
@@ -714,7 +714,7 @@ module Docscribe
         # @private
         # @param [String] path file path that caused the error
         # @param [StandardError] error the exception raised during rewriting
-        # @param [Hash<Symbol, Object>] ctx context hash with :state, :options, :display_path
+        # @param [Docscribe::CLI::Run::run_ctx] ctx context hash with :state, :options, :display_path
         # @return [void]
         def record_rewrite_error(path, error, ctx)
           state = ctx[:state]
@@ -737,7 +737,7 @@ module Docscribe
         # @param [String] src original source code
         # @param [String] out rewritten source code
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes structured change records
-        # @param [Object] ctx context hash with :display_path, :options, :state keys
+        # @param [Docscribe::CLI::Run::run_ctx] ctx context hash with :display_path, :options, :state keys
         # @return [void]
         def handle_check_result(path, src:, out:, file_changes:, **ctx)
           type_mismatches = type_mismatch_changes(file_changes)
@@ -756,7 +756,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Hash<Symbol, Object>] ctx
+        # @param [Docscribe::CLI::Run::run_ctx] ctx
         # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches
         # @param [String] out
         # @param [String] src
@@ -767,7 +767,7 @@ module Docscribe
         end
 
         # @private
-        # @param [Hash<Symbol, Object>] ctx
+        # @param [Docscribe::CLI::Run::run_ctx] ctx
         # @return [Boolean]
         def validate_types_enabled?(ctx)
           ctx[:options][:validate_types] ||
@@ -787,7 +787,7 @@ module Docscribe
         # @param [String] path
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes
         # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches
-        # @param [Hash<Symbol, Object>] ctx
+        # @param [Docscribe::CLI::Run::run_ctx] ctx
         # @return [void]
         def handle_validated_type_mismatch(path, file_changes, type_mismatches, ctx)
           handle_failed_check(path, file_changes, ctx)
@@ -796,7 +796,7 @@ module Docscribe
 
         # @private
         # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches
-        # @param [Hash<Symbol, Object>] ctx
+        # @param [Docscribe::CLI::Run::run_ctx] ctx
         # @return [void]
         def track_validated_mismatch(type_mismatches, ctx)
           state = ctx[:state]
@@ -808,7 +808,7 @@ module Docscribe
         # @private
         # @param [String] path
         # @param [Array<Docscribe::CLI::Formatters::change>] type_mismatches
-        # @param [Hash<Symbol, Object>] ctx
+        # @param [Docscribe::CLI::Run::run_ctx] ctx
         # @return [void]
         def handle_no_changes(path, type_mismatches, ctx)
           handle_check_no_changes(path, type_mismatches: type_mismatches, display_path: ctx[:display_path],
@@ -818,7 +818,7 @@ module Docscribe
         # @private
         # @param [String] path
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes
-        # @param [Hash<Symbol, Object>] ctx
+        # @param [Docscribe::CLI::Run::run_ctx] ctx
         # @return [void]
         def handle_failed_check(path, file_changes, ctx)
           handle_check_failed(path, file_changes: file_changes, display_path: ctx[:display_path],
@@ -885,7 +885,7 @@ module Docscribe
         # @param [String] src original source code
         # @param [String] out rewritten source code
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes structured change records
-        # @param [Object] ctx context hash with :display_path, :options, :state keys
+        # @param [Docscribe::CLI::Run::run_ctx] ctx context hash with :display_path, :options, :state keys
         # @raise [StandardError]
         # @return [void]
         # @return [Object] if StandardError
@@ -903,7 +903,7 @@ module Docscribe
         # @param [String] path file path
         # @param [String] out rewritten source code
         # @param [Array<Docscribe::CLI::Formatters::change>] file_changes structured change records
-        # @param [Hash<Symbol, Object>] ctx context hash with :display_path, :options, :state keys
+        # @param [Docscribe::CLI::Run::run_ctx] ctx context hash with :display_path, :options, :state keys
         # @return [void]
         def apply_correction(path, out, file_changes, ctx)
           File.write(path, out)

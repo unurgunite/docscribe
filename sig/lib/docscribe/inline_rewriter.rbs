@@ -1,16 +1,16 @@
 module Docscribe
   class ParseError < StandardError
     def line: () -> Integer?
-    def diagnostic: () -> untyped
+    def diagnostic: () -> Parser::Source::Diagnostic
   end
 
   module InlineRewriter
     type insertionPair = [ Symbol, (Collector::Insertion | Collector::AttrInsertion | Hash[Symbol, untyped]) ]
     type pluginInsertion = Hash[Symbol, untyped]
-    type pipeline = Hash[Symbol, untyped]
-    type changeRecord = Hash[Symbol, untyped]
-    type docInfo = Hash[Symbol, untyped]
-    type methodOverride = Hash[Symbol, untyped]
+    type pipeline = { all: Array[insertionPair], method_overrides_by_pos: Hash[Integer, methodOverride], rewriter: Parser::Source::TreeRewriter, merge_inserts: Hash[Integer, Array[[Integer, String]]], changes: Array[changeRecord] }
+    type changeRecord = Hash[Symbol, Object]
+    type docInfo = Hash[Symbol, Object]
+    type methodOverride = Hash[Symbol, Object]
 
     def self.insert_comments: (String code, ?strategy: Symbol?, ?rewrite: bool?, ?merge: bool?, ?config: Config, ?file: String, ?core_rbs_provider: Types::RBS::Provider?, ?signature_provider: Types::ProviderChain?) -> String
 
@@ -28,7 +28,7 @@ module Docscribe
 
     private
 
-    def self.setup_rewrite_env: (String code, Hash[Symbol, untyped] options) -> { config: Config, file: String, buffer: Parser::Source::Buffer, ast: Parser::AST::Node, signature_provider: (Types::ProviderChain | nil), core_rbs_provider: (Types::RBS::Provider | nil) }
+    def self.setup_rewrite_env: (String code, Hash[Symbol, Object] options) -> { config: Config, file: String, buffer: Parser::Source::Buffer, ast: Parser::AST::Node, signature_provider: (Types::ProviderChain | nil), core_rbs_provider: (Types::RBS::Provider | nil) }
 
     def self.load_core_rbs_provider: (Config config, (Types::RBS::Provider | nil) core_rbs_provider) -> (Types::RBS::Provider | nil)
 
@@ -105,11 +105,11 @@ module Docscribe
 
     def self.apply_method_insertion!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, insertion: Collector::Insertion, config: Config, signature_provider: (Types::ProviderChain | nil), core_rbs_provider: (Types::RBS::Provider | nil), strategy: Symbol, changes: Array[changeRecord], file: String, ?method_override: methodOverride?) -> void
 
-    def self.dispatch_method_insertion_by_strategy!: (Parser::Source::Range anchor_bol_range, Hash[Symbol, untyped] options, Hash[Symbol, untyped] params, (String | nil) doc) -> void
+    def self.dispatch_method_insertion_by_strategy!: (Parser::Source::Range anchor_bol_range, Hash[Symbol, Object] options, Hash[Symbol, Object] params, (String | nil) doc) -> void
 
     def self.method_insertion_allowed?: (Collector::Insertion insertion, Config config) -> bool
 
-    def self.build_method_insertion_params: (Collector::Insertion insertion, Config config, (Types::ProviderChain | nil) signature_provider, (Types::RBS::Provider | nil) core_rbs_provider, (methodOverride | nil) method_override) -> Hash[Symbol, untyped]
+    def self.build_method_insertion_params: (Collector::Insertion insertion, Config config, (Types::ProviderChain | nil) signature_provider, (Types::RBS::Provider | nil) core_rbs_provider, (methodOverride | nil) method_override) -> Hash[Symbol, Object]
 
     def self.build_effective_params: (Collector::Insertion insertion, config: Config, signature_provider: (Types::ProviderChain | nil), core_rbs_provider: (Types::RBS::Provider | nil), override: methodOverride) -> { param_types: (Hash[String, String] | nil), return_type_override: (String | nil), override_tags: Array[::Docscribe::Plugin::Tag] }
 
@@ -125,15 +125,15 @@ module Docscribe
 
     def self.apply_method_insertion_safe_with_info!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, insertion: Collector::Insertion, anchor_bol_range: Parser::Source::Range, strategy: Symbol, config: Config, signature_provider: (Types::ProviderChain | nil), core_rbs_provider: (Types::RBS::Provider | nil), param_types: (Hash[String, String] | nil), return_type_override: (String | nil), override_tags: Array[::Docscribe::Plugin::Tag], changes: Array[changeRecord], file: String, info: docInfo) -> void
 
-    def self.commit_safe_doc_outcome: (Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer, docInfo info, String new_block, old_block: String, merge_result: Hash[Symbol, untyped], existing_order_changed: bool, insertion: Collector::Insertion, changes: Array[changeRecord], file: String) -> void
+    def self.commit_safe_doc_outcome: (Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer, docInfo info, String new_block, old_block: String, merge_result: Hash[Symbol, Object], existing_order_changed: bool, insertion: Collector::Insertion, changes: Array[changeRecord], file: String) -> void
 
-    def self.filter_doc_params: (Hash[Symbol, untyped] options) -> Hash[Symbol, untyped]
+    def self.filter_doc_params: (Hash[Symbol, Object] options) -> Hash[Symbol, Object]
 
     def self.handle_doc_replacement: (Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer, docInfo info, String new_block, insertion: Collector::Insertion, changes: Array[changeRecord], file: String, existing_order_changed: bool) -> void
 
     def self.compute_doc_replacement: (docInfo info, Array[String] missing_lines, config: Config, ?strategy: Symbol?, ?signature_provider: Types::ProviderChain?, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?return_type_override: String?, ?override_tags: Array[::Docscribe::Plugin::Tag]?) -> [ bool, String, String ]
 
-    def self.filter_for_missing: (docInfo info, Array[String] missing_lines) -> Hash[Symbol, untyped]
+    def self.filter_for_missing: (docInfo info, Array[String] missing_lines) -> Hash[Symbol, Object]
 
     def self.return_filter_needed?: (Array[String] doc_lines, Array[String] missing_lines) -> bool
 
@@ -141,27 +141,27 @@ module Docscribe
 
     def self.extract_param_name_for_filter: (String line) -> (String | nil)
 
-      def self.log_method_doc_changes!: (insertion: Collector::Insertion, merge_result: Hash[Symbol, untyped], new_block: String, old_block: String, changes: Array[changeRecord], file: String) -> void
+      def self.log_method_doc_changes!: (insertion: Collector::Insertion, merge_result: Hash[Symbol, Object], new_block: String, old_block: String, changes: Array[changeRecord], file: String) -> void
 
-      def self.doc_changed?: (Hash[Symbol, untyped] rest, Array[Hash[Symbol, untyped]] reason_specs) -> bool
+      def self.doc_changed?: (Hash[Symbol, Object] rest, Array[Hash[Symbol, Object]] reason_specs) -> bool
 
-      def self.type_mismatch_reasons?: (Array[Hash[Symbol, untyped]] reason_specs) -> bool
+      def self.type_mismatch_reasons?: (Array[Hash[Symbol, Object]] reason_specs) -> bool
 
       def self.type_mismatch_type?: (Symbol `type`) -> bool
 
-      def self.log_reasons: (Array[Hash[Symbol, untyped]] reason_specs, Collector::Insertion insertion, Hash[Symbol, untyped] rest) -> void
+      def self.log_reasons: (Array[Hash[Symbol, Object]] reason_specs, Collector::Insertion insertion, Hash[Symbol, Object] rest) -> void
 
-      def self.log_single_reason: (Hash[Symbol, untyped] reason, Collector::Insertion insertion, Hash[Symbol, untyped] rest) -> void
+      def self.log_single_reason: (Hash[Symbol, Object] reason, Collector::Insertion insertion, Hash[Symbol, Object] rest) -> void
 
-      def self.extra_for_reason: (Hash[Symbol, untyped] reason) -> Hash[Symbol, untyped]
+      def self.extra_for_reason: (Hash[Symbol, Object] reason) -> Hash[Symbol, Object]
 
       def self.apply_method_insertion_safe_without_info!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, insertion: Collector::Insertion, anchor_bol_range: Parser::Source::Range, strategy: Symbol, config: Config, signature_provider: (Types::ProviderChain | nil), core_rbs_provider: (Types::RBS::Provider | nil), param_types: (Hash[String, String] | nil), return_type_override: (String | nil), override_tags: Array[::Docscribe::Plugin::Tag], changes: Array[changeRecord], file: String) -> void
 
-    def self.extract_existing_descriptions!: (Parser::Source::Buffer buffer, Collector::Insertion insertion, Hash[Symbol, untyped] params, Symbol strategy, Config config) -> void
+    def self.extract_existing_descriptions!: (Parser::Source::Buffer buffer, Collector::Insertion insertion, Hash[Symbol, Object] params, Symbol strategy, Config config) -> void
 
-    def self.add_change: (changes: Array[changeRecord], type: Symbol, insertion: Collector::Insertion, file: String, message: String, ?line: Integer?, ?method: String?, ?extra: Hash[Symbol, untyped]?) -> void
+    def self.add_change: (changes: Array[changeRecord], type: Symbol, insertion: Collector::Insertion, file: String, message: String, ?line: Integer?, ?method: String?, ?extra: Hash[Symbol, Object]?) -> void
 
-    def self.merge_existing_descriptions!: (Hash[Symbol, untyped] params, Hash[Symbol, untyped] parsed) -> void
+    def self.merge_existing_descriptions!: (Hash[Symbol, Object] params, Hash[Symbol, Object] parsed) -> void
 
     def self.method_id_for: (Collector::Insertion insertion) -> String
 
@@ -169,13 +169,13 @@ module Docscribe
 
     def self.attr_insertion_params: (Collector::AttrInsertion insertion, Config config, (Types::ProviderChain | nil) signature_provider, Parser::Source::Range bol_range) -> { insertion: Collector::AttrInsertion, config: Config, signature_provider: (Types::ProviderChain | nil), bol_range: Parser::Source::Range }
 
-    def self.dispatch_attr_strategy: (Hash[Symbol, untyped] params, Hash[Symbol, untyped] options) -> void
+    def self.dispatch_attr_strategy: (Hash[Symbol, Object] params, Hash[Symbol, Object] options) -> void
 
-    def self.apply_attr_aggressive!: (Hash[Symbol, untyped] params, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
+    def self.apply_attr_aggressive!: (Hash[Symbol, Object] params, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
 
-    def self.apply_attr_safe!: (Hash[Symbol, untyped] params, Hash[Integer, Array[[Integer, String]]] merge_inserts, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
+    def self.apply_attr_safe!: (Hash[Symbol, Object] params, Hash[Integer, Array[[Integer, String]]] merge_inserts, Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer) -> void
 
-    def self.merge_attr_additions!: (insertion: Collector::AttrInsertion, info: Hash[Symbol, untyped], merge_inserts: Hash[Integer, Array[[Integer, String]]], config: Config, signature_provider: (Types::ProviderChain | nil)) -> void
+    def self.merge_attr_additions!: (insertion: Collector::AttrInsertion, info: Hash[Symbol, Object], merge_inserts: Hash[Integer, Array[[Integer, String]]], config: Config, signature_provider: (Types::ProviderChain | nil)) -> void
 
     def self.apply_merge_inserts!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, merge_inserts: Hash[Integer, Array[[Integer, String]]]) -> void
 
@@ -229,7 +229,7 @@ module Docscribe
 
     def self.extract_method_override!: ((methodOverride | nil) method_override) -> methodOverride
 
-    def self.normalize_override_tags: (Array[untyped] tags) -> Array[::Docscribe::Plugin::Tag]
+    def self.normalize_override_tags: (Array[Object] tags) -> Array[::Docscribe::Plugin::Tag]
 
     def self.extract_param_info: (Collector::Insertion insertion) -> [ Integer?, Array[String] ]
 

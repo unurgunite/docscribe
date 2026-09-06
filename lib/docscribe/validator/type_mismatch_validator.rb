@@ -105,6 +105,19 @@ module Docscribe
         # Optional "?" vs non-optional: String vs String? should be considered compatible
         return true if normalize(yard_type).delete_suffix('?') == normalize(expected_type).delete_suffix('?')
 
+        # Optional vs nil: String? (String, nil) includes nil, so String? <-> nil is not a mismatch (e.g. severity: nil)
+        return true if normalize(yard_type) == 'nil' && normalize(expected_type).end_with?('?')
+        return true if normalize(expected_type) == 'nil' && normalize(yard_type).end_with?('?')
+        return true if normalize(yard_type).include?(', nil') && normalize(expected_type) == 'nil'
+        return true if normalize(expected_type).include?(', nil') && normalize(yard_type) == 'nil'
+
+        # Array alias inner variance: Array<change/Elem/Object> (Hash alias) vs Array<String> — treat as compatible only for alias inners
+        if normalize(yard_type) =~ /\AArray[<\[]/ && normalize(expected_type) =~ /\AArray[<\[]/
+          # If either inner contains known alias (change, Elem, Object, Hash, untyped), consider compatible
+          alias_pattern = /::change|Elem|Object|Hash|untyped/
+          return true if normalize(yard_type) =~ alias_pattern || normalize(expected_type) =~ alias_pattern
+        end
+
         # FALLBACK_TYPE alias already normalized, but handle union fallback case
         return true if fallback_union?(yard_type) || fallback_union?(expected_type)
 
