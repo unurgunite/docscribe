@@ -118,6 +118,18 @@ module Docscribe
           return true if normalize(yard_type) =~ alias_pattern || normalize(expected_type) =~ alias_pattern
         end
 
+        # Hash alias vs generic Hash: json_document, run_ctx, pipeline etc. are Hash[Symbol, ...] aliases
+        if (ne == 'Hash' || ne.start_with?('Hash<') || ne.start_with?('Hash[')) || (ny == 'Hash' || ny.start_with?('Hash<') || ny.start_with?('Hash['))
+          short_yard = yard_type.to_s.split('::').last.to_s
+          short_expected = expected_type.to_s.split('::').last.to_s
+          if short_yard =~ /\A[a-z]/ && (ne == 'Hash' || ne.start_with?('Hash'))
+            return true
+          end
+          if short_expected =~ /\A[a-z]/ && (ny == 'Hash' || ny.start_with?('Hash'))
+            return true
+          end
+        end
+
         # FALLBACK_TYPE alias already normalized, but handle union fallback case
         return true if fallback_union?(yard_type) || fallback_union?(expected_type)
 
