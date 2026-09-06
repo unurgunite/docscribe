@@ -62,7 +62,8 @@ module Docscribe
     #
     # @private
     # @raise [LoadError]
-    # @return [Docscribe::Types::RBS::Provider]
+    # @return [Docscribe::Types::RBS::Provider, nil]
+    # @return [nil] if LoadError
     def build_rbs_provider
       require 'docscribe/types/rbs/provider'
       Docscribe::Types::RBS::Provider.new(
@@ -80,7 +81,8 @@ module Docscribe
     #
     # @private
     # @raise [LoadError]
-    # @return [Docscribe::Types::RBS::Provider]
+    # @return [Docscribe::Types::RBS::Provider, nil]
+    # @return [nil] if LoadError
     def build_core_rbs_provider
       require 'docscribe/types/rbs/provider'
       Docscribe::Types::RBS::Provider.new(

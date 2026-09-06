@@ -277,8 +277,8 @@ module Docscribe
       # @param [Hash<Symbol, Object>] options mutable parsed options hash
       # @return [void]
       def define_validate_types_option(opts, options)
-        opts.on('--validate-types', 'Validate YARD types against inferred/RBS types and report mismatches') do
-          options[:validate_types] = true
+        opts.on('--[no-]validate-types', 'Validate YARD types against inferred/RBS types and report mismatches') do |value|
+          options[:validate_types] = value
         end
       end
 

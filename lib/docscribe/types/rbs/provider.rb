@@ -38,11 +38,11 @@ module Docscribe
         #
         # Returns nil when the method cannot be resolved or when RBS lookup fails.
         #
-        # @raise [::RBS::BaseError]
-        # @raise [StandardError]
         # @param [String] container e.g. "MyModule::MyClass"
         # @param [Symbol] scope :instance or :class
         # @param [Symbol, String] name method name
+        # @raise [::RBS::BaseError]
+        # @raise [StandardError]
         # @return [Docscribe::Types::MethodSignature, nil]
         # @return [nil] if ::RBS::BaseError
         # @return [nil] if StandardError
@@ -102,10 +102,10 @@ module Docscribe
         # user-only dirs on failure when collection dirs are present.
         #
         # @private
-        # @raise [::RBS::BaseError]
-        # @raise [StandardError]
         # @param [Array<String>] all_dirs combined sig and collection dirs
         # @param [Array<String>] collection_dirs RBS collection directories
+        # @raise [::RBS::BaseError]
+        # @raise [StandardError]
         # @return [RBS::Environment]
         # @return [RBS::Environment] if ::RBS::BaseError
         def try_with_fallback_build_env(all_dirs, collection_dirs)
@@ -218,8 +218,8 @@ module Docscribe
         # type lookups to silently fall back to inference.
         #
         # @private
-        # @raise [StandardError]
         # @param [RBS::EnvironmentLoader] loader
+        # @raise [StandardError]
         # @return [void]
         # @return [nil] if StandardError
         def load_stdlib_libraries!(loader)
@@ -235,9 +235,9 @@ module Docscribe
         # Add a single stdlib gem from the lock file to the loader.
         #
         # @private
-        # @raise [StandardError]
         # @param [RBS::EnvironmentLoader] loader
         # @param [Object] gem gem entry from rbs_collection.lock.yaml
+        # @raise [StandardError]
         # @return [void]
         # @return [nil] if StandardError
         def add_stdlib_gem(loader, gem)

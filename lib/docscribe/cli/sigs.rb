@@ -281,7 +281,9 @@ module Docscribe
         # @param [Hash<Symbol, Object>] options
         # @raise [LoadError]
         # @raise [StandardError]
-        # @return [Docscribe::Types::RBS::Provider]
+        # @return [Docscribe::Types::RBS::Provider?]
+        # @return [nil] if LoadError
+        # @return [nil] if StandardError
         def build_provider(options)
           dirs = options[:rbs_collection] ? load_collection_dirs : [] #: Array[String]
           Docscribe::Types::RBS::Provider.new(sig_dirs: options[:sig_dirs], collection_dirs: dirs)

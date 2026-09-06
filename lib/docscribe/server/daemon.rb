@@ -124,7 +124,7 @@ module Docscribe
       # Check whether the idle timeout has been exceeded.
       #
       # @private
-      # @return [Boolean, nil]
+      # @return [void]
       def check_idle_timeout
         elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - @last_request_time
         @running = false if elapsed > @idle_timeout
@@ -503,7 +503,7 @@ module Docscribe
       # @private
       # @param [UNIXSocket] client connected client socket
       # @param [String, Integer] id request ID
-      # @return [Boolean]
+      # @return [void]
       def handle_shutdown(client, id)
         send_result(client, id, { 'status' => 'shutting_down' })
         @running = false

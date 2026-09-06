@@ -18,7 +18,7 @@ module Docscribe
     #   using RBS collection signatures.
     module UpdateTypes
       BANNER = <<~TEXT
-        Usage: docscribe update_types [directory|file]
+        Usage: docscribe update_types [directory|file] [options]
 
         Two-pass type-aware documentation update.
 
@@ -28,6 +28,8 @@ module Docscribe
         Pass 2 (safe):        docscribe -aB --rbs-collection <dir>
           safe merge cleanup, no boilerplate
 
+        See `docscribe --help` for type options (--rbs, --sig-dir, --rbs-collection, --[no-]validate-types).
+
       TEXT
 
       class << self
@@ -36,6 +38,7 @@ module Docscribe
         def run(argv)
           options = parse_options(argv)
           target = options[:dir]
+          @extra_argv = options[:extra_argv]
 
           announce_start
 
@@ -54,13 +57,28 @@ module Docscribe
         # @private
         # @param [Array<String>] argv
         # @return [Hash<Symbol, Object>]
-        def parse_options(argv)
-          options = { dir: '.' }
+        def parse_options(argv) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize
+          options = { dir: '.', extra_argv: [] }
+          extra_argv = []
           OptionParser.new(BANNER) do |opts|
             opts.on('-h', '--help', 'Show this help') { puts opts or exit 0 }
+            opts.on('--[no-]rbs', 'Use RBS signatures when available') do |v|
+              extra_argv << (v ? '--rbs' : '--no-rbs')
+            end
+            opts.on('--sig-dir DIR', 'Add an RBS signature directory (repeatable). Implies --rbs.') do |v|
+              extra_argv << '--sig-dir' << v
+            end
+            opts.on('--rbs-collection', 'Auto-discover RBS collection from rbs_collection.lock.yaml. Implies --rbs.') do
+              extra_argv << '--rbs-collection'
+            end
+            opts.on('--[no-]validate-types', 'Validate YARD types against inferred/RBS types (optional, default: off)') do |v|
+              extra_argv << (v ? '--validate-types' : '--no-validate-types')
+            end
             opts.parse!(argv)
           end
           options[:dir] = argv.first if argv.any?
+          options[:extra_argv] = extra_argv
+          @extra_argv = extra_argv
           options
         end
 
@@ -74,12 +92,22 @@ module Docscribe
         # @private
         # @param [String] target
         # @return [Integer]
-        def run_first_pass(target)
+        def run_first_pass(target) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
           dir_for_flag = File.file?(target) ? File.dirname(target) : target
           has_collection = File.exist?(File.join(dir_for_flag, 'rbs_collection.lock.yaml')) || File.exist?('rbs_collection.lock.yaml')
           flag = has_collection ? '--rbs-collection' : '--rbs'
-          puts "Pass 1: Aggressive rebuild with #{has_collection ? 'RBS collection' : 'RBS'}..."
-          argv1 = ['-AkB', flag, dir_for_flag]
+          extra = @extra_argv || []
+          filtered = extra.reject { |a| %w[--no-rbs --no-validate-types].include?(a) }
+          has_rbs_flag = extra.any? { |a| %w[--rbs --rbs-collection --no-rbs].include?(a) }
+          has_no_rbs = extra.include?('--no-rbs')
+          argv1 = ['-AkB']
+          argv1.concat(filtered)
+          if has_rbs_flag
+            argv1 << dir_for_flag unless has_no_rbs || argv1.include?(dir_for_flag)
+          else
+            argv1 << flag << dir_for_flag
+          end
+          puts "Pass 1: Aggressive rebuild with #{has_collection ? 'RBS collection' : 'RBS'}#{' + validate-types' if extra.include?('--validate-types')}..."
           options1 = Docscribe::CLI::Options.parse!(argv1)
           Docscribe::CLI::Run.run(options: options1, argv: [target])
         end
@@ -87,12 +115,22 @@ module Docscribe
         # @private
         # @param [String] target
         # @return [Integer]
-        def run_second_pass(target)
+        def run_second_pass(target) # rubocop:disable Metrics/MethodLength,Metrics/AbcSize,Metrics/CyclomaticComplexity,Metrics/PerceivedComplexity
           dir_for_flag = File.file?(target) ? File.dirname(target) : target
           has_collection = File.exist?(File.join(dir_for_flag, 'rbs_collection.lock.yaml')) || File.exist?('rbs_collection.lock.yaml')
           flag = has_collection ? '--rbs-collection' : '--rbs'
-          puts "Pass 2: Safe merge with #{has_collection ? 'RBS collection' : 'RBS'}..."
-          argv2 = ['-aB', flag, dir_for_flag]
+          extra = @extra_argv || []
+          filtered = extra.reject { |a| %w[--no-rbs --no-validate-types].include?(a) }
+          has_rbs_flag = extra.any? { |a| %w[--rbs --rbs-collection --no-rbs].include?(a) }
+          has_no_rbs = extra.include?('--no-rbs')
+          argv2 = ['-aB']
+          argv2.concat(filtered)
+          if has_rbs_flag
+            argv2 << dir_for_flag unless has_no_rbs || argv2.include?(dir_for_flag)
+          else
+            argv2 << flag << dir_for_flag
+          end
+          puts "Pass 2: Safe merge with #{has_collection ? 'RBS collection' : 'RBS'}#{' + validate-types' if extra.include?('--validate-types')}..."
           options2 = Docscribe::CLI::Options.parse!(argv2)
           Docscribe::CLI::Run.run(options: options2, argv: [target])
         end

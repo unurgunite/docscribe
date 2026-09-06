@@ -66,10 +66,10 @@ module Docscribe
       # Build
       #
       # @note module_function: defines #build (visibility: private)
-      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion object
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] opts additional keyword options forwarded to doc_setup
+      # @raise [StandardError]
       # @return [String, nil]
       # @return [nil] if StandardError
       def build(insertion, config:, **opts)
@@ -85,11 +85,11 @@ module Docscribe
       # Build merge additions
       #
       # @note module_function: defines #build_merge_additions (visibility: private)
-      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion object
       # @param [Array<String>] existing_lines existing doc comment lines being merged
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] options additional keyword options forwarded to downstream methods
+      # @raise [StandardError]
       # @return [String, nil]
       # @return [nil] if StandardError
       def build_merge_additions(insertion, existing_lines:, config:, **options)
@@ -108,11 +108,11 @@ module Docscribe
       # Build missing merge result
       #
       # @note module_function: defines #build_missing_merge_result (visibility: private)
-      # @raise [StandardError]
       # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion object
       # @param [Array<String>] existing_lines existing doc comment lines being merged
       # @param [Docscribe::Config] config Docscribe configuration object
       # @param [Hash<Symbol, Object>] options additional keyword options forwarded to downstream methods
+      # @raise [StandardError]
       # @return [Docscribe::InlineRewriter::DocBuilder::missingMergeResult]
       # @return [Hash] if StandardError
       def build_missing_merge_result(insertion, existing_lines:, config:, **options)
@@ -714,8 +714,8 @@ module Docscribe
       # Extract raise types from line
       #
       # @note module_function: defines #extract_raise_types_from_line (visibility: private)
-      # @raise [StandardError]
       # @param [String] line a `@raise` doc line
+      # @raise [StandardError]
       # @return [Array<String, nil>]
       # @return [Array] if StandardError
       def extract_raise_types_from_line(line)
@@ -2066,8 +2066,8 @@ module Docscribe
       # Extract method name for void compatibility dynamic check.
       #
       # @note module_function: defines #extract_method_name (visibility: private)
-      # @raise [StandardError]
       # @param [Hash<Symbol, Object>] ctx context hash with insertion or node
+      # @raise [StandardError]
       # @return [Symbol, nil]
       # @return [nil] if StandardError
       def extract_method_name(ctx)
@@ -2378,8 +2378,8 @@ module Docscribe
       # Safe node source
       #
       # @note module_function: defines #safe_node_source (visibility: private)
-      # @raise [StandardError]
       # @param [Parser::AST::Node] node AST node whose source text to extract
+      # @raise [StandardError]
       # @return [String]
       # @return [String] if StandardError
       def safe_node_source(node)
