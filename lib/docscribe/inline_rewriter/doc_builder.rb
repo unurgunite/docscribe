@@ -5,6 +5,7 @@ require 'docscribe/infer'
 require 'docscribe/inline_rewriter/source_helpers'
 require 'docscribe/types/yard/validator'
 require 'docscribe/validator/type_mismatch_validator'
+require 'docscribe/validator/generic_compatibility'
 
 module Docscribe
   module InlineRewriter
@@ -2122,70 +2123,14 @@ module Docscribe
         normalize_type(yard).delete_suffix('?') == normalize_type(expected).delete_suffix('?')
       end
 
-      # Whether YARD type is generic compatible (Hash vs Hash<Symbol, String>).
+      # Delegates to GenericCompatibility service (dynamic, map-dispatched, no hardcodes).
       #
       # @note module_function: defines #generic_compatible? (visibility: private)
       # @param [String] yard
       # @param [String] expected
       # @return [Boolean]
-      def generic_compatible?(yard, expected) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
-        ny = normalize_type(yard)
-        ne = normalize_type(expected)
-        return true if ny == ne
-
-        yard_generic = ne !~ /[<\[]/ && (ny.start_with?("#{ne}<") || ny.start_with?("#{ne}["))
-        expected_generic = ny !~ /[<\[]/ && (ne.start_with?("#{ny}<") || ne.start_with?("#{ny}["))
-        return true if yard_generic || expected_generic
-
-        # Alias vs generic: parseInfo/setup are Hash aliases
-        return true if ne == 'Hash' && ny.include?('::parseInfo')
-        return true if ne == 'Hash' && ny.include?('::setup')
-        return true if ny == 'Hash' && ne.include?('::parseInfo')
-        return true if ny == 'Hash' && ne.include?('::setup')
-
-        # Tuple (String, Integer) vs generic Array
-        return true if ne == 'Array' && ny =~ /\A\(.*\)\z/
-        return true if ny == 'Array' && ne =~ /\A\(.*\)\z/
-
-        # Optional param with default nil: Parser::AST::Node vs nil
-        return true if (ny == 'Parser::AST::Node' && ne == 'nil') || (ne == 'Parser::AST::Node' && ny == 'nil')
-
-        # Alias vs generic: Formatters::opts etc. are aliases for Hash
-        return true if (ny.include?('::opts') && ne == 'Hash') || (ne.include?('::opts') && ny == 'Hash')
-        return true if (ny.include?('::opts') && ne.start_with?('Hash<')) || (ne.include?('::opts') && ny.start_with?('Hash<'))
-        return true if (ny.include?('::opts') && ne.start_with?('Hash[')) || (ne.include?('::opts') && ny.start_with?('Hash['))
-
-        # Reverse union: expected in yard
-        return true if yard_in_expected_union?(expected, yard)
-        return true if yard_in_expected_union?(yard, expected)
-
-        # Optional "?" vs non-optional: String vs String? should be considered compatible
-        return true if ny.delete_suffix('?') == ne.delete_suffix('?')
-
-        # Optional vs nil: String? includes nil, so String? <-> nil is not a mismatch (severity: nil)
-        return true if ny == 'nil' && ne.end_with?('?')
-        return true if ne == 'nil' && ny.end_with?('?')
-        return true if ny.include?(', nil') && ne == 'nil'
-        return true if ne.include?(', nil') && ny == 'nil'
-
-        # Array alias inner variance: only for alias inners (change/Elem/Object) vs String
-        if ny =~ /\AArray[<\[]/ && ne =~ /\AArray[<\[]/
-          alias_pattern = /::change|Elem|Object|Hash|untyped/
-          return true if ny =~ alias_pattern || ne =~ alias_pattern
-        end
-
-        # Hash alias vs generic Hash: json_document, run_ctx, pipeline etc.
-        if (ne == 'Hash' || ne.start_with?('Hash<') || ne.start_with?('Hash[')) || (ny == 'Hash' || ny.start_with?('Hash<') || ny.start_with?('Hash['))
-          short_yard = yard.to_s.split('::').last.to_s
-          short_expected = expected.to_s.split('::').last.to_s
-          return true if short_yard =~ /\A[a-z]/ && (ne == 'Hash' || ne.start_with?('Hash'))
-          return true if short_expected =~ /\A[a-z]/ && (ny == 'Hash' || ny.start_with?('Hash'))
-        end
-
-        # FALLBACK_TYPE alias already normalized, but handle union fallback case
-        return true if fallback_union?(yard, 'Object') || fallback_union?(expected, 'Object')
-
-        false
+      def generic_compatible?(yard, expected)
+        Docscribe::Validator::GenericCompatibility.compatible?(yard, expected, fallback_type: 'Object')
       end
 
       # Whether yard type is included in expected union (e.g. Boolean in Object, Boolean).

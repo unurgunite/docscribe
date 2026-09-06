@@ -2,6 +2,7 @@
 
 require 'docscribe/types/yard/validator'
 require 'docscribe/infer/constants'
+require 'docscribe/validator/generic_compatibility'
 
 module Docscribe
   module Validator
@@ -67,73 +68,13 @@ module Docscribe
       end
 
       # Whether YARD type is generic compatible with expected (e.g. Hash vs Hash<Symbol, String>).
+      # Delegates to GenericCompatibility service for dynamic, map-dispatched checks.
       #
       # @param [String, nil] yard_type
       # @param [String, nil] expected_type
       # @return [Boolean]
-      def generic_compatible?(yard_type, expected_type) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
-        ny = normalize(yard_type)
-        ne = normalize(expected_type)
-        return true if ny == ne
-
-        yard_generic = ne !~ /[<\[]/ && (ny.start_with?("#{ne}<") || ny.start_with?("#{ne}["))
-        expected_generic = ny !~ /[<\[]/ && (ne.start_with?("#{ny}<") || ne.start_with?("#{ny}["))
-        return true if yard_generic || expected_generic
-
-        # Alias vs generic: parseInfo/setup etc. are Hash aliases
-        return true if ne == 'Hash' && ny.include?('::parseInfo')
-        return true if ne == 'Hash' && ny.include?('::setup')
-        return true if ny == 'Hash' && ne.include?('::parseInfo')
-        return true if ny == 'Hash' && ne.include?('::setup')
-
-        # Tuple (String, Integer) vs generic Array
-        return true if ne == 'Array' && ny =~ /\A\(.*\)\z/
-        return true if ny == 'Array' && ne =~ /\A\(.*\)\z/
-
-        # Optional param with default nil: Parser::AST::Node vs nil (should be Node, nil)
-        return true if (ny == 'Parser::AST::Node' && ne == 'nil') || (ne == 'Parser::AST::Node' && ny == 'nil')
-
-        # Alias vs generic: Formatters::opts, Elem etc. are aliases for Hash/Array
-        return true if (ny.include?('::opts') && ne == 'Hash') || (ne.include?('::opts') && ny == 'Hash')
-        return true if (ny.include?('::opts') && ne.start_with?('Hash<')) || (ne.include?('::opts') && ny.start_with?('Hash<'))
-        return true if (ny.include?('::opts') && ne.start_with?('Hash[')) || (ne.include?('::opts') && ny.start_with?('Hash['))
-
-        # Reverse union: expected in yard (e.g. "nil" in "String, nil")
-        return true if yard_in_expected_union?(expected_type, yard_type)
-        return true if yard_in_expected_union?(yard_type, expected_type)
-
-        # Optional "?" vs non-optional: String vs String? should be considered compatible
-        return true if normalize(yard_type).delete_suffix('?') == normalize(expected_type).delete_suffix('?')
-
-        # Optional vs nil: String? (String, nil) includes nil, so String? <-> nil is not a mismatch (e.g. severity: nil)
-        return true if normalize(yard_type) == 'nil' && normalize(expected_type).end_with?('?')
-        return true if normalize(expected_type) == 'nil' && normalize(yard_type).end_with?('?')
-        return true if normalize(yard_type).include?(', nil') && normalize(expected_type) == 'nil'
-        return true if normalize(expected_type).include?(', nil') && normalize(yard_type) == 'nil'
-
-        # Array alias inner variance: Array<change/Elem/Object> (Hash alias) vs Array<String> — treat as compatible only for alias inners
-        if normalize(yard_type) =~ /\AArray[<\[]/ && normalize(expected_type) =~ /\AArray[<\[]/
-          # If either inner contains known alias (change, Elem, Object, Hash, untyped), consider compatible
-          alias_pattern = /::change|Elem|Object|Hash|untyped/
-          return true if normalize(yard_type) =~ alias_pattern || normalize(expected_type) =~ alias_pattern
-        end
-
-        # Hash alias vs generic Hash: json_document, run_ctx, pipeline etc. are Hash[Symbol, ...] aliases
-        if (ne == 'Hash' || ne.start_with?('Hash<') || ne.start_with?('Hash[')) || (ny == 'Hash' || ny.start_with?('Hash<') || ny.start_with?('Hash['))
-          short_yard = yard_type.to_s.split('::').last.to_s
-          short_expected = expected_type.to_s.split('::').last.to_s
-          if short_yard =~ /\A[a-z]/ && (ne == 'Hash' || ne.start_with?('Hash'))
-            return true
-          end
-          if short_expected =~ /\A[a-z]/ && (ny == 'Hash' || ny.start_with?('Hash'))
-            return true
-          end
-        end
-
-        # FALLBACK_TYPE alias already normalized, but handle union fallback case
-        return true if fallback_union?(yard_type) || fallback_union?(expected_type)
-
-        false
+      def generic_compatible?(yard_type, expected_type)
+        GenericCompatibility.compatible?(yard_type, expected_type, fallback_type: @fallback_type)
       end
 
       # Whether yard type is included in expected union.
