@@ -1,0 +1,1016 @@
+{
+ "checklist": "docscribe gem 1.6.2 / vscode 0.1.3 / rubymine 0.1.7",
+ "exported_at": "2026-09-11 manual 1F (83/63/1); 2A-2C merged; 2026-09-12 2D merged (9 items, framework 233 + driver 25/25); 2026-09-13 2E merged (5 items, framework 248 + driver 30/30); 2026-09-14 keys re-keyed to itemKey() (52 fixed, import 202/202); 2026-09-14 2F merged (3 items, framework 254 + driver 33/33), 2G merged (6 items, framework 257 + driver 39/39), 2H merged (7 items) + 2I done (7 ok + 1 skip), framework 266 + driver 46/46",
+ "items": [
+  {
+   "key": "1A. Установка и базовые команды :: Действие: 1) Подготовка не нужна, открой папку гема. 2) Запусти bundle exec docscribe --version. 3) Номер смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1A. Установка и базовые команды :: Действие: 1) Подготовка не нужна. 2) Запусти bundle exec docscribe --help. 3) Список команд смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1A. Установка и базовые команды :: Действие: 1) Подготовка не нужна. 2) Запусти bundle exec docscribe init --stdout. 3) Шаблон смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1A. Установка и базовые команды :: Действие: 1) Создай пустую папку /tmp/q-config и в ней файл custom.yml:emit: header: true 2) Запусти bundle exec docscribe config в пустой папке, затем в папке с файлом. 3) Результат смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1A. Установка и базовые команды :: Действие: 1) Создай файл t.rb:# @return [Integer] def foo 42 end 2) Запусти bundle exec docscribe coverage t.rb и bundle exec docscribe coverage t.rb --format json. 3) Отчёт смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1A. Установка и базовые команды :: Действие: 1) Создай ok.rb и bad.rb:# Real documentation def foo; end # Method documentation. 2) Запусти bundle exec docscribe check_for_comments ok.rb; echo $? и то же для bad.rb. 3) Текст и код смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1A. Установка и базовые команды :: Действие: 1) Подготовка не нужна. RBS здесь = система типов Ruby. 2) Запусти по очереди bundle exec rspec, bundle exec rubocop, bundle exec rbs validate, bundle exec steep check. 3) Итог смотри в конце вывода каждой команды.",
+   "status": "ok",
+   "note": "rspec 2057/0, rubocop 0, rbs + steep чисто"
+  },
+  {
+   "key": "1B. check: exit codes, stdout/stderr :: Действие: 1) Создай пустую папку и файл foo.rb:class Foo def greet(name) \"hi #{name}\" end def bar 1 end end 2) Запусти bundle exec docscribe foo.rb >out.txt 2>err.txt; echo $?. 3) Код смотри на экране, текст — в файлах out.txt и err.txt.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1B. check: exit codes, stdout/stderr :: Действие: 1) Возьми тот же foo.rb из прошлого пункта. 2) Запусти bundle exec docscribe --verbose foo.rb >out.txt 2>err.txt; echo $?. 3) Код на экране, детали в err.txt.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1B. check: exit codes, stdout/stderr :: Действие: 1) Тот же foo.rb. 2) Запусти 4 раза: bundle exec docscribe --progress foo.rb, bundle exec docscribe --progress --quiet foo.rb, bundle exec docscribe --quiet foo.rb, bundle exec docscribe --explain foo.rb (каждый с >out.txt 2>err.txt; echo $",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1B. check: exit codes, stdout/stderr :: Действие: 1) Создай чистый файл clean.rb:# documentation class Foo; end 2) Запусти bundle exec docscribe clean.rb >out.txt 2>err.txt; echo $?. 3) Код на экране, точку в err.txt, текст в out.txt.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1B. check: exit codes, stdout/stderr :: Действие: 1) Возьми недокументированный foo.rb из пункта 1. 2) Запусти bundle exec docscribe --format json foo.rb >out.txt 2>err.txt; echo $?. 3) JSON смотри в out.txt, букву — в err.txt, код — на экране.",
+   "status": "ok",
+   "note": "JSON валиден; offense несёт cop_name+type"
+  },
+  {
+   "key": "1B. check: exit codes, stdout/stderr :: Действие: 1) Возьми foo.rb с методом greet(name) без документов. 2) Запусти bundle exec docscribe -a foo.rb; echo $?, затем повторы с --verbose и --quiet. 3) Код на экране, текст на экране и в самом файле foo.rb.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1B. check: exit codes, stdout/stderr :: Действие: 1) Тот же недокументированный foo.rb. 2) Запусти bundle exec docscribe --format sarif foo.rb >out.txt; echo $?. 3) Поля смотри в файле out.txt.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1B. check: exit codes, stdout/stderr :: Действие: 1) Подготовка не нужна. 2) Запусти bundle exec docscribe /nonexistent-xyz; echo $?. 3) Код на экране, подсказки в тексте ошибки.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1C. --validate-types / validate_types :: Действие: 1) Создай файл bar.rb:# @return [Integer] def bar \"hello\" end 2) Запусти bundle exec docscribe --validate-types bar.rb >out.txt 2>err.txt; echo $?. 3) Код на экране, текст в out.txt, букву в err.txt.",
+   "status": "ok",
+   "note": "JSON single file offense_count 1, без дабл-каунта"
+  },
+  {
+   "key": "1C. --validate-types / validate_types :: Действие: 1) Тот же bar.rb, конфига нет. 2) Запусти bundle exec docscribe bar.rb >out.txt 2>err.txt; echo $? без флага, затем с --verbose. 3) Итоговую строку смотри в out.txt обоих прогонов.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1C. --validate-types / validate_types :: Действие: 1) Рядом с bar.rb создай docscribe.yml:validate_types: true 2) Запусти bundle exec docscribe bar.rb >out.txt 2>err.txt; echo $?, затем bundle exec docscribe --no-validate-types bar.rb >out.txt 2>err.txt; echo $?. 3) Сравни оба запуска.",
+   "status": "ok",
+   "note": "yml→exit 1; --no-validate-types→exit 0 (карта 474 работает)"
+  },
+  {
+   "key": "1C. --validate-types / validate_types :: Действие: 1) Создай файл typo.rb:# @return [Sym bol] def bar :x end 2) Запусти bundle exec docscribe -a typo.rb; echo $?. 3) Исправленный текст смотри в самом файле typo.rb.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1D. Поле source (rbs | infer | syntax) :: Действие: 1) Создай папку proj/ с тремя файлами: тип из RBS (RBS = система типов Ruby), тип из вывода кода, тип с опечаткой. Пример содержимого:# proj/a.rb — под RBS-сигнал # proj/b.rb — # @return [Integer] + def bar; \"hello\"; end # proj/c.rb — # @re",
+   "status": "ok",
+   "note": "источники rbs/infer/syntax по порядку, файлы мержатся"
+  },
+  {
+   "key": "1D. Поле source (rbs | infer | syntax) :: Действие: 1) Создай файл bar.rb:# @return [Integer] def bar \"hello\" end 2) Запусти bundle exec docscribe --format json --validate-types bar.rb >out.json; echo $?. 3) Поля source и cop_name смотри в out.json (раздел files → offenses). Учти: поля type ",
+   "status": "ok",
+   "note": "source infer + cop + type; дубль bar.rb ушёл"
+  },
+  {
+   "key": "1D. Поле source (rbs | infer | syntax) :: Действие: 1) Создай файл bad.rb:# @return [Sym bol] def bar :x end 2) Запусти bundle exec docscribe --format json --validate-types bar.rb bad.rb >out.json; echo $?. 3) Поля source и cop_name по каждому файлу смотри в out.json. Учти: поля type в CLI J",
+   "status": "ok",
+   "note": "bad syntax/InvalidType/invalid_type; bar infer"
+  },
+  {
+   "key": "1D. Поле source (rbs | infer | syntax) :: Действие: 1) Создай файл m.rb без описания возврата:def foo 1 end 2) Запусти bundle exec docscribe --format json m.rb >out.json. 3) Поля изменения смотри в out.json.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1E. update_types: dir-scope и file-scope :: Действие: 1) Создай папку с файлами a.rb и b.rb:# a.rb class A def foo 1 end end # b.rb class B def bar 2 end end 2) Запусти bundle exec docscribe update_types a.rb. 3) Текст смотри в самих файлах: a.rb и b.rb.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1E. update_types: dir-scope и file-scope :: Действие: 1) Подготовь папку lib с Ruby-файлами. RBS здесь = система типов Ruby. 2) Запусти bundle exec docscribe update_types --rbs --validate-types lib >out.txt 2>err.txt. 3) Строки проходов смотри в out.txt.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1E. update_types: dir-scope и file-scope :: Действие: 1) Создай папку /tmp/d и файл /tmp/d/foo.rb:class A def foo 1 end end 2) Запусти bundle exec docscribe update_types /tmp/d/foo.rb >out.txt 2>err.txt; echo $?. 3) Код на экране, изменения — в файле /tmp/d/foo.rb.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1E. update_types: dir-scope и file-scope :: Действие: 1) Та же папка lib. 2) Запусти bundle exec docscribe update_types --no-rbs --no-validate-types lib >out.txt 2>err.txt. 3) Проверь вывод: запусти grep validate-types out.txt err.txt; echo $? — совпадений быть не должно.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1E. update_types: dir-scope и file-scope :: Действие: 1) Создай пустую папку без файла-списка коллекции и без папки коллекции. 2) Запусти bundle exec docscribe update_types --rbs-collection lib >out.txt 2>err.txt; echo $?. 3) Текст ошибки смотри в err.txt.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1E. update_types: dir-scope и file-scope :: Действие: 1) Создай папку с Gemfile без гема rbs, выполни bundle install. 2) Запусти bundle exec docscribe --rbs lib >out.txt 2>err.txt; echo $?. 3) Подсказку смотри в err.txt.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1E. update_types: dir-scope и file-scope :: Действие: 1) Запусти daemon (фоновый процесс docscribe server): bundle exec docscribe server start. Подготовь файлы a.rb, папки b и c. 2) По очереди проверь через сервер: один файл, одну папку, пустой запрос (эквивалент трёх вызовов из заголовка). 3)",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1F. RBS collection autodiscovery :: Действие: 1) В том же стенде задай явный путь в docscribe.yml:rbs: collection: true collection_dirs: - custom 2) Запусти bundle exec docscribe config. 3) Путь смотри на экране.",
+   "status": "ok",
+   "note": "Явный collection_dirs: [custom] в дампе (autodiscovery не добавлен) / Ручной прогон 11.09"
+  },
+  {
+   "key": "1F. RBS collection autodiscovery :: Действие: 1) Оставь файл-список rbs_collection.lock.yaml, а в docscribe.yml убери collection: true. 2) Запусти bundle exec docscribe lib >out.txt 2>err.txt без флага. 3) Предупреждение смотри в err.txt. Повтори с warn_missing_collection: false в конф",
+   "status": "ok",
+   "note": "Точный nudge в stderr, exit 1; с warn_missing_collection:false тихо (только F) / Ручной прогон 11.09"
+  },
+  {
+   "key": "1F. RBS collection autodiscovery :: Действие: 1) Создай sig-файл (sig/ = папка с .rbs-сигнатурами) sig/a.rbs и файл a.rb:# sig/a.rbs class A def foo: () -> UNIXSocket end # a.rb class A def foo UNIXSocket.new end end 2) Запусти bundle exec docscribe --rbs a.rb >out.txt 2>err.txt; echo ",
+   "status": "ok",
+   "note": "После rbs collection install (11 gems): `# @return [UNIXSocket]`, не Object / Ручной прогон 11.09, Ruby 3.4.5"
+  },
+  {
+   "key": "1G. GenericCompatibility: Hash/generics/void/union (PR #95) :: Действие: 1) Подготовка не нужна. 2) Запусти три мини-проверки:bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.compatible?('Hash','Hash<Symbol,String>')\" bundle exec ruby -e \"require 'docscribe'; puts Docscri",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1G. GenericCompatibility: Hash/generics/void/union (PR #95) :: Действие: 1) Подготовка не нужна. 2) Запусти bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.normalize('Hash[Symbol, untyped]')\", затем проверь файл с именованными аргументами kwargs типа Hash:# @param [Hash]",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1G. GenericCompatibility: Hash/generics/void/union (PR #95) :: Действие: 1) Подготовка не нужна. 2) Запусти мини-проверки void-совместимости:bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.compatible?('void','Hash', method_name: :initialize)\"Повтори для пар void/String, ",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1G. GenericCompatibility: Hash/generics/void/union (PR #95) :: Действие: 1) Подготовка не нужна. 2) Запусти мини-проверки пустых и объединённых типов:bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.compatible?('String?','nil')\"Повтори для пар из заголовка (String, nil пр",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1G. GenericCompatibility: Hash/generics/void/union (PR #95) :: Действие: 1) Подготовка не нужна. 2) Запусти:bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.compatible?('Parser::Source::Range','Range')\"Повтори для Docscribe::Config против Config и против String. 3) Ответы",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1G. GenericCompatibility: Hash/generics/void/union (PR #95) :: Действие: 1) Подготовка не нужна. 2) Запусти:bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.compatible?('(String, Integer)','Array')\"Повтори наоборот и против Hash. 3) Ответы смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1G. GenericCompatibility: Hash/generics/void/union (PR #95) :: Действие: 1) Подготовка не нужна. 2) Запусти bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.compatible?('Array<String>','Array<Object>')\". 3) Ответ смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1G. GenericCompatibility: Hash/generics/void/union (PR #95) :: Действие: 1) Подготовка не нужна. 2) Запусти мини-проверки с переменными-заглушками:bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.compatible?('Array<String>','Array<DEFAULT_ERROR>')\"Повтори для Elem, V и об",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1G. GenericCompatibility: Hash/generics/void/union (PR #95) :: Действие: 1) Подготовка не нужна. 2) Запусти:bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.compatible?('String','Object')\"Повтори для остальных пар из заголовка (String, nil, Array<String>, Enumerator, алиа",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1H. Conditional @return стабильность (PR #95) :: Действие: 1) Создай файл get.rb:# @param [String] key # @return [String] # @return [Integer] if StandardError def get(key) \"value\" rescue StandardError 0 end 2) Запусти bundle exec docscribe --format json get.rb >out.json. 3) Сообщения смотри в out.j",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1H. Conditional @return стабильность (PR #95) :: Действие: 1) Создай файл r.rb с условным возвратом:# @return [Integer] if RuntimeError def foo 1 rescue RuntimeError 2 end 2) Запусти bundle exec docscribe -a --keep-descriptions r.rb, затем bundle exec docscribe r.rb; bundle exec docscribe update_ty",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1H. Conditional @return стабильность (PR #95) :: Действие: 1) Подготовка не нужна (поведение bare-Object покрыто пунктами выше). 2) Запусти bundle exec rspec spec/docscribe/inline_rewriter/conditional_return_spec.rb; echo $?. 3) Итог смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1I. Rescue / константы / изоляция (PR #95) :: Действие: 1) Создай файл c.rb:FALLBACK_TYPE = \"x\" def foo 1 rescue StandardError FALLBACK_TYPE end 2) Запусти bundle exec docscribe -a c.rb; echo $?. 3) Выведенный тип смотри в файле c.rb.",
+   "status": "fail",
+   "note": "Ожидали [String] if StandardError / Получили [Object] if StandardError — runtime-видимости нет (карта 480); main Integer ok / Окружение: Ruby 3.4.5 -a"
+  },
+  {
+   "key": "1I. Rescue / константы / изоляция (PR #95) :: Действие: 1) Создай файл cl.rb:def count_lines(text = '') text.lines.size rescue StandardError text end 2) Запусти bundle exec docscribe -a cl.rb. 3) Строку возврата смотри в файле cl.rb.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1I. Rescue / константы / изоляция (PR #95) :: Действие: 1) Подготовка не нужна — изоляция проверяется юнит-тестом (уронить инлайн-переписчик обычным файлом нельзя: анализ статический, raise в коде — норма). 2) Запусти bundle exec rspec spec/docscribe/inline_rewriter/per_method_rescue_spec.rb. 3)",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1J. Block/operator inference (PR #95) :: Действие: 1) Создай файл op.rb с добавлением в коллекцию (RBS = система типов Ruby):def foo(a) a << 1 end 2) Запусти bundle exec docscribe --rbs -a op.rb. Повтори для push, concat, +, -. 3) Типы смотри в файле op.rb и на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1J. Block/operator inference (PR #95) :: Действие: 1) Создай файл s.rb:def foo(tags) tags&.params end def bar \"hello\"&.to_s end def baz nil && \"a\" end 2) Запусти bundle exec docscribe -a s.rb без RBS, затем bundle exec docscribe --rbs -a s.rb. 3) Типы смотри в файле s.rb.",
+   "status": "ok",
+   "note": "Object/String?/String? оба режима; @ivar+=123→Integer; @ivar||=Hash.new→Hash (карта 478 работает)"
+  },
+  {
+   "key": "1K. YARD-парсер edge cases :: Действие: 1) Подготовка не нужна. 2) Запусти нормализацию через мини-команду:bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.normalize('Hash<Object,Object> # foobar')\"Повтори для остальных строк из заголовка.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1K. YARD-парсер edge cases :: Действие: 1) Подготовка не нужна. 2) Запусти bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.normalize('#foo')\" и проверки совместимости для пар из заголовка. 3) Ответы смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1K. YARD-парсер edge cases :: Действие: 1) Подготовка не нужна. 2) Запусти разбор пустых и битых строк:bundle exec ruby -e \"require 'docscribe'; p Docscribe::Types::Yard.parse(''); p Docscribe::Types::Yard.parse('Array<')\"Повтори для остальных строк из заголовка. 3) Убедись на эк",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1K. YARD-парсер edge cases :: Действие: 1) Подготовка не нужна. 2) Запусти bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Validator::GenericCompatibility.compatible?('...::Yard::node','Array|Integer|Symbol|String')\". 3) Ответ смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1L. Окружение без rbs гема / старые Ruby :: Действие: 1) Создай папку с docscribe.yml (RBS = система типов Ruby):rbs: enabled: true 2) Запусти проверку с заглушкой отсутствия гема:bundle exec ruby -e \"require 'docscribe'; c = Docscribe::Config.new('rbs' => {'enabled' => true}); p c.rbs_provide",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1L. Окружение без rbs гема / старые Ruby :: Действие: 1) Подготовь тот же стенд. 2) Запусти RUBY_VERSION=2.7.8 bundle exec ruby -e \"require 'docscribe'; p Docscribe::Config.new.core_rbs_provider\" 2>err.txt, затем bundle exec docscribe --rbs lib >out.txt 2>err.txt; echo $?. 3) Текст смотри в er",
+   "status": "ok",
+   "note": "RBENV_VERSION+bundle _x_: 2.7/3.0 fallback без краша"
+  },
+  {
+   "key": "1L. Окружение без rbs гема / старые Ruby :: Действие: 1) Создай два варианта docscribe.yml:rbs: enabled: true # и второй: enabled: false 2) Запусти bundle exec docscribe config с каждым. 3) Кто победил — смотри на экране.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1M. Daemon / server mode :: Действие: 1) Убедись, что daemon (фоновый процесс docscribe server) остановлен: bundle exec docscribe server stop. 2) По очереди запусти: bundle exec docscribe server status; echo $?, bundle exec docscribe server start; echo $?, снова start, status, ",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1M. Daemon / server mode :: Действие: 1) Запусти сервер bundle exec docscribe server start. Создай файл hello.rb:def hello 1 end 2) Запусти exe/docscribe-client --socket-path, exe/docscribe-client --ping, exe/docscribe-client --status, exe/docscribe-client --check hello.rb. 3) ",
+   "status": "ok",
+   "note": "ping/socket/check ok; --status running/not_running корректно (карта 477 работает)"
+  },
+  {
+   "key": "1M. Daemon / server mode :: Действие: 1) Сервер запущен. Создай чистый ok.rb и hello.rb с def hello без документов. 2) Проверь через клиент: чистый файл, несуществующий файл, чини hello.rb, пакет без списка файлов, пакет [ok.rb, /nonexistent.rb]. 3) JSON-ответы смотри на экране",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1M. Daemon / server mode :: Действие: 1) Сервер запущен. cli_overrides здесь = параметры из IDE в демон. 2) Отправь через мини-команду сначала параметры, затем пусто:bundle exec ruby -e \"require 'docscribe'; d = Docscribe::Server::Daemon.new; d.apply_cli_overrides({}); d.apply_",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1M. Daemon / server mode :: Действие: 1) Запиши путь сокета: bundle exec ruby -e \"require 'docscribe'; puts Docscribe::Server.socket_path\" >before.txt. Создай папку sig/ (папка с .rbs-сигнатурами) и файл sig/a.rbs с любым содержимым. 2) Подожди секунду, снова запиши путь в afte",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1M. Daemon / server mode :: Действие: 1) Подготовка не нужна: ключа server.idle_timeout в docscribe.yml нет (только параметр конструктора демона) — отдельной карточки не заводим. 2) Запусти bundle exec rspec spec/docscribe/server/daemon_spec.rb; echo $? (покрывает idle-логику и",
+   "status": "ok",
+   "note": "daemon_spec 79/0; REQUEST_HANDLERS совпадает"
+  },
+  {
+   "key": "1M. Daemon / server mode :: Действие: 1) Запиши путь сокета в before.txt (см. выше). 2) Тронь время файлов: touch Gemfile.lock rbs_collection.lock.yaml. 3) Снова узнай путь сокета и сравни; на macOS с длинным путём просто убедись, что нет падения.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1N. Прочее CLI и доки :: Действие: 1) Создай папку с 2+ недокументированными файлами. 2) Запусти bundle exec docscribe a.rb b.rb >seq.txt 2>seq_err.txt; echo $?, затем bundle exec docscribe --parallel a.rb b.rb >par.txt 2>par_err.txt; echo $? и DOCSCRIBE_THREADS=1 bundle exe",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1N. Прочее CLI и доки :: Действие: 1) Создай пустую папку /tmp/q-init. 2) Запусти там bundle exec docscribe init; echo $?, затем снова bundle exec docscribe init; echo $?, затем bundle exec docscribe init --force; echo $?. 3) Наличие файла docscribe.yml и коды смотри на экра",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1N. Прочее CLI и доки :: Действие: 1) Создай пустую папку без .git. 2) Запусти bundle exec docscribe init --pre-commit; echo $?. Повтори в папке с git (git init). 3) Код на экране, хук смотри в .git/hooks/pre-commit.",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1N. Прочее CLI и доки :: Действие: 1) Подготовка не нужна. 2) Запусти 4 команды: bundle exec docscribe generate tag MyPlugin --stdout, bundle exec docscribe generate collector MyCollector --stdout, bundle exec docscribe generate unknown MyPlugin; echo $?, bundle exec docscri",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1N. Прочее CLI и доки :: Действие: 1) Открой README.md. daemon здесь = фоновый процесс docscribe server. 2) Найди поиском: update_types path/to/file.rb, --[no-]validate-types, validate_types, update_types демона, поле source, rbs.collection: true, generics/void/block-типы, у",
+   "status": "ok",
+   "note": "README: всё на месте включая новые разделы (type/sarif)"
+  },
+  {
+   "key": "2A. Установка, активация, статус-бар :: Действие: Стенд: чистый VSCode. Открой Extensions → меню «…» → Install from VSIX, выбери файл плагина 0.1.3, перезагрузи окно. Смотри: нет ошибок установки; низ окна (статус-бар), панель Output.",
+   "status": "ok",
+   "note": "Чистая установка из VSIX по GUI. Ошибок и варнингов %...%/engines нет. Gatekeeper-диалог (xattr снят), Workspace Trust. Installed=1, статус-бар DocScribe."
+  },
+  {
+   "key": "2A. Установка, активация, статус-бар :: Действие: Стенд: пустая папка без Gemfile (Doctor = команда «DocScribe: Doctor»). Нажми Ctrl+Shift+P → введи DocScribe: Doctor → Enter.Смотри результат в панели Doctor (текстовый отчёт).",
+   "status": "ok",
+   "note": "Doctor в пустой доверенной папке: Project root Not found (no Gemfile), тихо, ошибок нет. Нюанс: в Restricted Mode команд палитры нет — папку доверяли через Manage."
+  },
+  {
+   "key": "2A. Установка, активация, статус-бар :: Действие: Стенд: проект с Gemfile (есть gem \"docscribe\"). Просто открой любой .rb файл. Смотри: низ окна (статус-бар) — появился значок DocScribe; проверка запустилась сама.",
+   "status": "ok",
+   "note": "Открытие calc.rb в qa-stand: активация onLanguage:ruby, статус-бар issues found, автопроверка при открытии."
+  },
+  {
+   "key": "2A. Установка, активация, статус-бар :: Действие: Стенд: тот же проект. Открой файл .rake. Смотри: статус-бар и панель Problems (меню View → Problems).",
+   "status": "ok",
+   "note": "tasks.rake: язык Ruby, checkDocument работает (issues found при открытии и после save). Problems пуст — наблюдение для 2G."
+  },
+  {
+   "key": "2A. Установка, активация, статус-бар :: Действие: Стенд: из Gemfile удали строку gem \"docscribe\". Перезагрузи окно (палитра → Reload Window). Смотри: всплывающее уведомление (balloon = всплывающее уведомление) справа внизу, нажми кнопку в нём. Затем палитра → DocScribe: Check current file.",
+   "status": "fail",
+   "note": "FAIL card 495: gem-missing gate dead. execCommand success=exitCode<2 (docscribeRunner.ts:716-736); bundle exec docscribe --version без гема = exit 1 (not currently included) -> checkGemInstalled true. Quit+relaunch+reload: warning balloon нет, Check уходит в bundler Gem::Exception trace, статус issues found, error-тоста нет. 2a5-r1/r2/r3, 2a5-chk. Фикс в feature/vscode-qa-tests (карта 495)."
+  },
+  {
+   "key": "2A. Установка, активация, статус-бар :: Действие: Стенд: три файла — чистый .rb, .rb без документации, любой .rb при сломанном запуске. Открывай по очереди. Смотри: низ окна (статус-бар). Кликни по значку DocScribe в статус-баре.",
+   "status": "ok",
+   "note": "clean.rb -> статус OK (2a6-ok); calc.rb -> сквигглы x2, таб calc.rb 2, статус issues found, Output JSON offense_count:2 (2a6-click). Error-состояние покрыто 2A.8."
+  },
+  {
+   "key": "2A. Установка, активация, статус-бар :: Действие: Стенд: открой любой .js или .md файл. Ничего не нажимай. Смотри: статус-бар и уведомления — должна быть тишина.",
+   "status": "ok",
+   "note": "notes.md открыт: статус-бар чист, уведомлений нет. Тишина."
+  },
+  {
+   "key": "2A. Установка, активация, статус-бар :: Действие: Стенд: открой Settings (шестерёнка → Settings) → Extensions → DocScribe → в поле Command Path впиши несуществующий путь. Открой .rb, палитра Ctrl+Shift+P → DocScribe: Check current file. Смотри: панель Output (меню View → Output → справа вы",
+   "status": "ok",
+   "note": "PASS run3: commandPath=/nonexistent/xyz + useServer=false. Output DocScribe: bundler command not found /nonexistent/xyz + bundle install; тост DocScribe: see output for details; статус DocScribe: error. 2a8-clean/pal2/run3."
+  },
+  {
+   "key": "2B. Команды, кейбиндинги, меню :: Действие: Стенд: открой .rb с методом без документации. Нажми палитру Ctrl+Shift+P → DocScribe: Check current file. Смотри: всплывающее уведомление (balloon = всплывающее уведомление) и панель Output → выбрать «DocScribe». Нюанс: голый Ctrl+Shift+D (",
+   "status": "ok",
+   "note": "Драйвер 17/17: голый аккорд = chord-хинт by design, палитра ок (JSON offense_count 2, issues found). Чеклист переформулирован, карта 496 закрыта."
+  },
+  {
+   "key": "2B. Команды, кейбиндинги, меню :: Действие: Стенд: открой .js файл (или закрой все редакторы). Нажми Ctrl+Shift+P → DocScribe: Check current file.Смотри уведомление-предупреждение.",
+   "status": "ok",
+   "note": "Тост Open a Ruby or Rake file first на .js, проверка не запускалась (лог без изменений). OCR/текст, ~/qa-vm/2b2-warn2.png"
+  },
+  {
+   "key": "2B. Команды, кейбиндинги, меню :: Действие: Стенд: проект примерно с 65 .rb файлами. Нажми Ctrl+Shift+D, отпусти, нажми W (или палитра → DocScribe: Check entire workspace). Во время проверки нажми крестик на прогресс-баре. Смотри: всплывающий прогресс-бар с крестиком.",
+   "status": "fail",
+   "note": "Workspace: 68 файлов/67 замечаний, затем 468/467 за ~2с — ок. Отмены нет: cancellable:false (карта 497; фикс в feature/vscode-qa-tests). OCR/текст, ~/qa-vm/2b3-progress/cancel.png"
+  },
+  {
+   "key": "2B. Команды, кейбиндинги, меню :: Действие: Стенд: .rb без части документации. Нажми Ctrl+Shift+D, затем S (или палитра → DocScribe: Apply safe fixes to current file). Смотри: прогресс-бар, затем сам файл и статус-бар.",
+   "status": "ok",
+   "note": "Safe fix: -A -k при RBS, partial.rb обновлён, лог updated 1 file(s). Статус fix applied — 3с флеш, затирается перепроверкой (by design)."
+  },
+  {
+   "key": "2B. Команды, кейбиндинги, меню :: Действие: Стенд: тот же файл. Нажми Ctrl+Shift+D, затем A (или палитра → DocScribe: Apply aggressive fixes to current file). Смотри: прогресс-бар, затем текст файла (старые описания на месте).",
+   "status": "ok",
+   "note": "Aggressive: -A -k, описания kept, типы перестроены (String/Integer inferred), лог updated 1 file(s)."
+  },
+  {
+   "key": "2B. Команды, кейбиндинги, меню :: Действие: Стенд: открой .rb с жёлтым подчёркиванием. Поставь курсор на подчёркнутую строку, нажми Ctrl+. (лампочка быстрых исправлений).Смотри список предложенных исправлений.",
+   "status": "ok",
+   "note": "Quick Fix через палитру (Ctrl+. в госте не стреляет — лимит харнеса): per-method fix + fix all safe/aggressive; add задокументирован, sub остался, Problems 5->4. Побочка trailing-WS (карта 498; фикс в feature/vscode-qa-tests). OCR/текст, ~/qa-vm/2b6-fix8/fix9/fix10.png"
+  },
+  {
+   "key": "2B. Команды, кейбиндинги, меню :: Действие: Стенд: тот же файл. Поставь курсор на строку БЕЗ подсветки, вызови Quick Fix (палитра → Quick Fix...; Ctrl+. — тот же путь).Смотри уведомление; проверь, что файл не изменился.",
+   "status": "ok",
+   "note": "Драйвер 17/17: системный No code actions available, md5 совпал. Чеклист переформулирован (конвенция VSCode, ноль кода), карта 500 закрыта."
+  },
+  {
+   "key": "2B. Команды, кейбиндинги, меню :: Действие: Стенд: открой .rb. Клик правой кнопкой в тексте — изучи меню. Затем Ctrl+Shift+P → введи DocScribe — посчитай команды. Смотри: контекстное меню и список палитры.",
+   "status": "ok",
+   "note": "Контекстное меню: Check, Safe, Aggressive, Update types. Палитра: 8 команд; updateTypesForFile только в коде (by design). OCR/текст, ~/qa-vm/2b8-menu2/palette.png"
+  },
+  {
+   "key": "2B. Команды, кейбиндинги, меню :: Действие: Стенд: открой .rb. Шаг 1: Ctrl+Shift+D, затем U (обновить типы; RBS = типы Ruby из файлов sig/*.rbs). Шаг 2: палитра → DocScribe: Toggle fold YARD comments. Шаг 3: палитра → Doctor (Doctor = команда «DocScribe: Doctor»; daemon = фоновый про",
+   "status": "ok",
+   "note": "Аккорд U: update_types ok, статус OK. Toggle fold сворачивает оба блока. Doctor открывает свой канал с конфигом. OCR/текст, ~/qa-vm/2b9-chordu/fold4/doctor.png"
+  },
+  {
+   "key": "2C. Диагностика и QuickFix (source routing, severity) :: Действие: Стенд: .rb файл с методом без YARD-комментария. Просто открой его. Смотри: подчёркнутую строку в редакторе и панель Problems (меню View → Problems).",
+   "status": "ok",
+   "note": "Framework: diagnostic spans full def line (start col 0 → line length), source docscribe, cop code, Warning. Driver: Problems view lists Missing YARD entries. Evidence: ~/qa-vm/2c1.png"
+  },
+  {
+   "key": "2C. Диагностика и QuickFix (source routing, severity) :: Действие: Стенд: тот же файл. Быстро нажми Ctrl+S два раза подряд. Затем открой Settings → Extensions → DocScribe → выключи Run On Save и сохрани файл ещё раз.Смотри панель Problems (мигает или нет).",
+   "status": "ok",
+   "note": "Framework: double save collapses to a single debounced check (~300ms). runOnSave:false covered by pre-existing tests."
+  },
+  {
+   "key": "2C. Диагностика и QuickFix (source routing, severity) :: Действие: Стенд: .rb, где у всех методов есть документация. Открой и сохрани (Ctrl+S). Смотри: панель Problems (пусто) и низ окна (статус-бар).",
+   "status": "ok",
+   "note": "Framework: clean file yields empty diagnostics + status OK."
+  },
+  {
+   "key": "2C. Диагностика и QuickFix (source routing, severity) :: Действие: Стенд: Settings → Extensions → DocScribe → в поле Ignore Patterns впиши **/vendor/**. Открой .rb из папки vendor.Смотри панель Problems — проверка должна пропуститься.",
+   "status": "ok",
+   "note": "Covered by pre-existing ignorePatterns gate tests (workspaceFilters)."
+  },
+  {
+   "key": "2C. Диагностика и QuickFix (source routing, severity) :: Действие: Стенд: три маленьких файла — с мелким замечанием, с грубой ошибкой и с битым типом в комментарии. Открывай по очереди.Смотри цвет записей в панели Problems (жёлтый Warning, красный Error).",
+   "status": "ok",
+   "note": "Framework: error severity maps to Error, InvalidType code preserved. Driver: Problems lists the badtype entry (severity colors: framework-only). Evidence: ~/qa-vm/2c5.png"
+  },
+  {
+   "key": "2C. Диагностика и QuickFix (source routing, severity) :: Действие: Стенд: файл с несовпадением типов из RBS (RBS = типы Ruby, файлы sig/*.rbs). Поставь курсор на подсветку, нажми Ctrl+. (лампочка). Сравни с файлом, проверенным старым гемом без этих данных.Смотри меню лампочки.",
+   "status": "ok",
+   "note": "Covered by pre-existing rbs-routing test (Update Types, no direct fix). Widget visual = 2b6 pattern."
+  },
+  {
+   "key": "2C. Диагностика и QuickFix (source routing, severity) :: Действие: Стенд: файл, где тип выведен из кода (а не из RBS). Поставь курсор на подсветку, нажми Ctrl+..Смотри меню лампочки (должен быть прямой фикс, без лишнего пункта).",
+   "status": "ok",
+   "note": "Covered by pre-existing infer-routing test (direct fix, no Update Types)."
+  },
+  {
+   "key": "2C. Диагностика и QuickFix (source routing, severity) :: Действие: Стенд: проект, где один файл даёт ошибку проверки. Нажми Ctrl+Shift+P → DocScribe: Check entire workspace.Смотри панель Problems и счётчики. Daemon = фоновый процесс проверки (server-режим); Doctor = команда «DocScribe: Doctor» для его пров",
+   "status": "ok",
+   "note": "Driver: workspace check surfaces broken file, Problems lists it; counters in log. Evidence: ~/qa-vm/2c8.png"
+  },
+  {
+   "key": "2D. Server mode и capability gates :: Действие: Стенд: в Gemfile версия docscribe 1.6.2; Settings → Extensions → DocScribe → Use Server включён (daemon = фоновый процесс docscribe). Открой .rb, палитра → DocScribe: Check current file, затем палитра → Doctor (Doctor = команда «DocScribe: ",
+   "status": "ok",
+   "note": "Driver: Doctor reports Backend: server on gem 1.6.2. Evidence: ~/qa-vm/2d1.png"
+  },
+  {
+   "key": "2D. Server mode и capability gates :: Действие: Стенд: понизь версию гема ниже 1.5.1 (bundle install). Перезагрузи окно (палитра → Reload Window).Смотри уведомление и панель Doctor (строка Backend).",
+   "status": "ok",
+   "note": "Framework: parse matrix (1.4.0 no server) + serverModeWarning text. Driver skipped (gem downgrade too heavy)."
+  },
+  {
+   "key": "2D. Server mode и capability gates :: Действие: Стенд: гем 1.5.1 + Ruby 4. Перезагрузи окно.Смотри уведомление-предупреждение.",
+   "status": "ok",
+   "note": "Framework: 1.5.1 + ruby 4 triggers check_batch warning; ruby 3 falls through to validate-types warning."
+  },
+  {
+   "key": "2D. Server mode и capability gates :: Действие: Стенд: поставь гем версии 1.5.2–1.6.1. Перезагрузи окно, затем открой Doctor.Смотри уведомление и строки возможностей в Doctor.",
+   "status": "ok",
+   "note": "Framework: 1.6.0/1.5.x matrix (no validate/updateRpc) + warning text. Doctor flags line covered by report shape."
+  },
+  {
+   "key": "2D. Server mode и capability gates :: Действие: Стенд: Settings → Extensions → DocScribe → выключи Use Server. Выполни проверку файла, открой Doctor.Смотри панель Doctor (строка Backend).",
+   "status": "ok",
+   "note": "Driver: useServer=false gives Backend: CLI (disabled in settings). Evidence: ~/qa-vm/2d5.png"
+  },
+  {
+   "key": "2D. Server mode и capability gates :: Действие: Стенд: живой проект. В терминале выполни обновление гема, затем палитра → DocScribe: Doctor.Смотри версию гема в отчёте Doctor.",
+   "status": "ok",
+   "note": "Framework: ensureFreshCapabilities re-probes on Gemfile.lock mtime change (fake-bundle versions 1.6.2 - 1.6.3)."
+  },
+  {
+   "key": "2D. Server mode и capability gates :: Действие: Стенд: из Doctor спиши номер процесса демона. В терминале заверши его, и СРАЗУ палитра → DocScribe: Check current file. Смотри: проверка не висит, результат появляется быстро; смотри Output → DocScribe.",
+   "status": "ok",
+   "note": "Driver: kill -9 daemon recovers in ~10-11s (status flips to OK). Log-size/hash oracles lie on identical reruns; flip oracle used."
+  },
+  {
+   "key": "2D. Server mode и capability gates :: Действие: Стенд: демон запущен (сделай Check файла). Полностью закрой VSCode. В терминале проверь список процессов. Смотри: процесса демона больше нет.",
+   "status": "ok",
+   "note": "Driver: quit removes daemon process. Found + fixed race 522 (deactivate now awaits bounded shutdown)."
+  },
+  {
+   "key": "2D. Server mode и capability gates :: Действие: Стенд: Settings → Extensions → DocScribe → заполни Ruby Path и Bundle Path своими путями. Перезагрузи, выполни Check, открой Doctor. Второй проход: запусти VSCode с пустой переменной окружения LANG. Смотри: Output → DocScribe и строки про я",
+   "status": "ok",
+   "note": "Driver: custom bundlePath wrapper exec proven by probe; Doctor Locale shows en_US.UTF-8. Literally-unset LANG unreachable (LaunchServices injects); unset rendering + fallback covered by framework. Evidence: ~/qa-vm/2d9.png"
+  },
+  {
+   "key": "2I. Настройки, i18n, LM-инструменты, кейбиндинги, ошибки :: Действие: Стенд: ничего готовить не нужно. Открой Settings (Ctrl+,) → Extensions → DocScribe.Смотри список настроек, сверь значения по умолчанию.",
+   "status": "ok",
+   "note": "11 дефолтов совпали с package.json (статика, без GUI)"
+  },
+  {
+   "key": "2I. Настройки, i18n, LM-инструменты, кейбиндинги, ошибки :: Действие: Стенд: в Settings → DocScribe включи Omit Boilerplate. Открой .rb без документации. Палитра → DocScribe: Apply safe fixes to current file, затем → DocScribe: Check current file.Смотри текст в файле и Output → DocScribe.",
+   "status": "ok",
+   "note": "Driver 2i2 ok: omitBoilerplate on -> safe-fix writes bare tags (no prose); toggle off -> prose back (A/B observable oracle; CLI never echoes argv). Found + fixed bug 557: daemon fix path ignored omitBoilerplate (no no_boilerplate override) — now threaded via buildRbsCliOverrides. Framework: -B argv suites + no_boilerplate override test. Driver 46/46."
+  },
+  {
+   "key": "2I. Настройки, i18n, LM-инструменты, кейбиндинги, ошибки :: Действие: Стенд: переключи язык интерфейса VSCode на русский, перезагрузи окно. Открой палитру (Ctrl+Shift+P → введи DocScribe) и Settings → DocScribe.Смотри названия команд и настроек. Затем верни английский и проверь снова.",
+   "status": "ok",
+   "note": "Driver 2i3 ok (переписан): EN titles intact, no %placeholders%. Deviation: RU-палитра GUI-недостижима — MS-CEINTL pack localizes shell only, extension strings render EN in Code 1.137 (4 switch paths probed: settings locale, --locale argv, picker+Restart, locale.json). nls.ru parity pinned by framework (keys mirror en, no placeholders)."
+  },
+  {
+   "key": "2I. Настройки, i18n, LM-инструменты, кейбиндинги, ошибки :: Действие: Стенд: нужен чат Copilot с доступом к инструментам. Попроси агента перечислить доступные инструменты. Затем попроси проверить файл и показать диагностику окружения. Отдельно вызови проверку без пути к файлу. RBS = типы Ruby, daemon = фоновы",
+   "status": "ok",
+   "note": "Статика: 6 тулз, JSON-лимиты 4000/1000, truncation-маркер, Missing filePath, doctor=панели"
+  },
+  {
+   "key": "2I. Настройки, i18n, LM-инструменты, кейбиндинги, ошибки :: Действие: Стенд: открой .rb редактор. Нажимай: Ctrl+Shift+D, отпусти, затем W / S / A / U (на Mac с Cmd). Затем палитра → Preferences: Open Keyboard Shortcuts → найди DocScribe.Смотри реакцию каждой связки и таблицу хоткеев.",
+   "status": "ok",
+   "note": "Статика: 5 кейбиндингов when ruby, 3 команды без хоткеев"
+  },
+  {
+   "key": "2I. Настройки, i18n, LM-инструменты, кейбиндинги, ошибки :: Действие: Стенд (открытый вопрос): открой файл .rake. Попробуй те же хоткеи из прошлого пункта и клик правой кнопкой. Смотри: срабатывают или нет; зафиксируй факт для бага (Doctor = команда «DocScribe: Doctor» здесь не нужна).",
+   "status": "ok",
+   "note": "Статика: кейбиндинги и меню только editorLangId==ruby — открытый вопрос подтверждён кодом"
+  },
+  {
+   "key": "2I. Настройки, i18n, LM-инструменты, кейбиндинги, ошибки :: Действие: Стенд: создай .rb файл с одной строкой def foo( (битый синтаксис). Сохрани (Ctrl+S). Смотри: панель Problems, уведомление, Output → DocScribe.",
+   "status": "ok",
+   "note": "Driver 2i7 ok: broken syntax file diagnosed loudly in Problems (no silence/crash). Framework pins fatal mapping; driver proves end-to-end. Driver 46/46."
+  },
+  {
+   "key": "2I. Настройки, i18n, LM-инструменты, кейбиндинги, ошибки :: Действие: Стенд: после всей сессии открой меню Help → Toggle Developer Tools → вкладка Console. Отдельно в терминале проекта выполни сборку и тесты. Смотри: красные ошибки расширения в Console; результат команд в терминале.",
+   "status": "skip",
+   "note": "compile/lint/test зелёные (266 passing, 0 failing); DevTools Console без GUI не проверена (нужен живой человек за экраном)"
+  },
+  {
+   "key": "3A. Установка, меню, хоткеи :: Действие: Стенд: RubyMine 2026.1–2026.2 (термины: RBS — типы Ruby, то есть файлы описаний типов; sig/ — папка .rbs-сигнатур в проекте; Doctor — действие DocScribe Doctor, проверка настроек). Сделать: Settings → Plugins → шестерёнка → Install Plugin f",
+   "status": "ok",
+   "note": "zip собран, версия 0.1.7 совпадает; установка через GUI не выполнялась"
+  },
+  {
+   "key": "3A. Установка, меню, хоткеи :: Действие: Стенд: проект с Ruby SDK и Gemfile (строка gem \"docscribe\", \"1.6.2\", выполнен bundle install), открыть файл calc.rb: class Calc def add(a, b) a + b end end Сделать: правый клик в редакторе → раскрыть группу DocScribe. Смотреть: пункты меню ",
+   "status": "ok",
+   "note": "GUI: порядок подменю Check/Safe/Aggressive/Workspace/Update/Doctor совпал (y-order OCR)"
+  },
+  {
+   "key": "3A. Установка, меню, хоткеи :: Действие: Стенд: тот же проект, курсор в открытом .rb-файле. Сделать: нажать Ctrl+Shift+D, отпустить, затем C (повторить для W, S, A). Смотреть: всплывающее уведомление справа внизу и фоновая задача в статус-баре; пункты Update Types и Doctor хоткея ",
+   "status": "ok",
+   "note": "шорткаты C/W/S/A только у 4 экшенов, у UpdateTypes/Doctor нет; notificationGroup DocScribe BALLOON зарегистрирован"
+  },
+  {
+   "key": "3A. Установка, меню, хоткеи :: Действие: Стенд: в проекте лежат notes.txt, task.rake и файл Rakefile без расширения. Сделать: правый клик по notes.txt → проверить меню; затем открыть task.rake и Rakefile → правый клик → группа DocScribe. Смотреть: какие пункты видны в каждом случа",
+   "status": "ok",
+   "note": "GUI: notes.txt скрывает Check/Safe/Aggressive (Workspace/Update/Doctor видны); task.rake и bare Rakefile показывают все 6"
+  },
+  {
+   "key": "3A. Установка, меню, хоткеи :: Действие: Стенд: отдельная пустая папка без Gemfile, открытая как проект; внутри файл foo.rb: def hello(name) \"hi\" end Сделать: правый клик → DocScribe → Check Current File. Смотреть: красное уведомление balloon справа внизу.",
+   "status": "ok",
+   "note": "GUI: папка без Gemfile -> ERROR balloon No Gemfile found in project tree"
+  },
+  {
+   "key": "3A. Установка, меню, хоткеи :: Действие: Стенд: проект, где File → Project Structure → Project → SDK указывает на rbenv Ruby. Сделать: открыть .rb → правый клик → DocScribe → любое действие; затем Help → Show Log → открыть idea.log. Смотреть: в логе строки с путём к ruby и перемен",
+   "status": "ok",
+   "note": "GUI+лог: gem check env ruby=rbenv 3.4.5/bin/ruby, BUNDLE_GEMFILE=qa-stand/Gemfile; bundle абсолютный (bundleCommand)"
+  },
+  {
+   "key": "3A. Установка, меню, хоткеи :: Действие: Стенд: проект с Gemfile без строки docscribe: source \"https://rubygems.org\" gem \"rake\" (выполнить bundle install). Сделать: открыть .rb → правый клик → DocScribe → Check Current File, дважды подряд. Смотреть: уведомление balloon; второй выз",
+   "status": "ok",
+   "note": "GUI: проект без гема -> ERROR error running docscribe дважды; version check 1 раз (MISSING кеш)"
+  },
+  {
+   "key": "3B. Actions: Check File / Workspace / Safe / Aggressive :: Действие: Стенд: файл calc.rb с двумя недокументированными методами (здесь и ниже RBS — типы Ruby): class Calc def add(a, b) a + b end def sub(a, b) a - b end end Сохранить. Сделать: правый клик → DocScribe → Check Current File; затем то же на полнос",
+   "status": "ok",
+   "note": "GUI: WARNING checked 1 file(s) — 2 issue(s) found; чистый без OK-суффикса; лог offenses=2"
+  },
+  {
+   "key": "3B. Actions: Check File / Workspace / Safe / Aggressive :: Действие: Стенд: сломанная установка гема — в Gemfile несуществующая версия gem \"docscribe\", \"9.9.9\" (выполнить bundle install). Сделать: открыть .rb → правый клик → DocScribe → Check Current File. Смотреть: красное уведомление balloon справа внизу.",
+   "status": "ok",
+   "note": "GUI: Gemfile 9.9.9 -> ERROR error running docscribe (fresh daemon после рестарта IDE)"
+  },
+  {
+   "key": "3B. Actions: Check File / Workspace / Safe / Aggressive :: Действие: Стенд: открыть calc.rb, допечатать новый метод, но не сохранять (точка на вкладке). Сделать: правый клик → DocScribe → Check Current File. Смотреть: уведомление учитывает только что напечатанный текст (файл был тихо сохранён перед проверкой",
+   "status": "ok",
+   "note": "GUI: грязный буфер (paste def mul) -> лог offenses=3, диск с методом; saveDocument до проверки"
+  },
+  {
+   "key": "3B. Actions: Check File / Workspace / Safe / Aggressive :: Действие: Стенд: два проекта — (а) обычный, без папки sig/; (б) с RBS: папка sig/ и файл sig/calc.rbs: class Calc def add: (Integer a, Integer b) -> Integer end Настройки Settings → Tools → DocScribe — по умолчанию. Сделать: открыть calc.rb без доков",
+   "status": "ok",
+   "note": "GUI: Apply Safe Fixes -> INFORMATION safe fix applied, YARD @param на диске"
+  },
+  {
+   "key": "3B. Actions: Check File / Workspace / Safe / Aggressive :: Действие: Стенд: тот же calc.rb без доков. Сделать: правый клик → DocScribe → Apply Aggressive Fixes; затем повторить на проекте, где команда падает (сломанный Gemfile). Смотреть: уведомление balloon в обоих случаях; текст ошибки у пункта меню отлича",
+   "status": "ok",
+   "note": "GUI: Apply Aggressive Fixes -> INFORMATION aggressive fix applied, YARD на диске"
+  },
+  {
+   "key": "3B. Actions: Check File / Workspace / Safe / Aggressive :: Действие: Стенд: calc.rb с жёлтой подсветкой (см. раздел 3C). Сделать: поставить курсор на подчёркнутую строку → Alt+Enter; попробовать каждый пункт; повторить в task.rake, в Rakefile и в notes.txt. Смотреть: список быстрых исправлений, уведомление п",
+   "status": "ok",
+   "note": "GUI: Alt+Enter ряды Apply safe/aggressive fix + Check current file (familyName DocScribe)"
+  },
+  {
+   "key": "3B. Actions: Check File / Workspace / Safe / Aggressive :: Действие: Стенд: испортить Gemfile (стереть половину строк, оставить мусор). Сделать: открыть calc.rb → Alt+Enter на варнинге → применить safe fix. Смотреть: уведомление об ошибке; содержимое calc.rb не изменилось (сверить через git status / git diff",
+   "status": "ok",
+   "note": "GUI: мусорный Gemfile + Down+Enter на safe fix -> ERROR failed to apply fix; calc.rb md5 цел"
+  },
+  {
+   "key": "3B. Actions: Check File / Workspace / Safe / Aggressive :: Действие: Стенд: пустой проект — только Gemfile с docscribe, ни одного .rb-файла. Сделать: правый клик в дереве проекта → DocScribe → Check Entire Workspace (или хоткей Ctrl+Shift+D, W). Смотреть: уведомление balloon.",
+   "status": "ok",
+   "note": "GUI: пустой проект -> INFORMATION no Ruby files found in workspace"
+  },
+  {
+   "key": "3B. Actions: Check File / Workspace / Safe / Aggressive :: Действие: Стенд: обычный рабочий проект. Сделать: правый клик → DocScribe → DocScribe Doctor. Смотреть: отчёт Doctor (подробности — раздел 3G ниже).",
+   "status": "ok",
+   "note": "GUI: Doctor вызван из меню (см. 3G; отчёт построчно в 3g1)"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: calc.rb с недокументированными методами из 3B.1 (здесь и ниже: RBS — типы Ruby; sig/ — папка .rbs-сигнатур). Сделать: просто открыть файл в редакторе. Смотреть: жёлтые подчёркивания в редакторе; затем дописать доки, сохранить — подсв",
+   "status": "ok",
+   "note": "GUI+лог: offenses=2 на 2-undoc, offenses=0 после safe fix (WARNING-путь аннотатора)"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: (а) проект без sig/; (б) проект с файлом sig/calc.rbs из 3B.4. Сделать: открыть calc.rb, напечатать новый метод без документации и не сохранять, подождать пару секунд. Смотреть: в проекте (а) подсветки нового метода нет, пока не сохр",
+   "status": "ok",
+   "note": "GUI+лог: non-RBS грязный буфер не чекается (первый offenses=2), RBS с bg-save даёт offenses=3"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: calc.rb с подсветкой из пункта 1. Сделать: нажать Ctrl+S / Cmd+S три раза подряд быстро. Смотреть: редактор не зависает, итоговая подсветка соответствует последнему тексту.",
+   "status": "ok",
+   "note": "GUI+лог: 3 быстрых правки -> >=2 стартов, все завершены (apply pairs), финал offenses=2"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: RBS-проект. Файл calc.rb: class Calc # @param [Object] x def show(x) x.to_s end end и sig/calc.rbs: class Calc def show: (Integer x) -> String end Сделать: открыть calc.rb. Смотреть: подчёркнута строка комментария # @param, а не стро",
+   "status": "ok",
+   "note": "CLI+лог: String-vs-Integer -> UpdatedParam source=rbs; apply offenses=1 (сквигл на YARD-строке, findYardTagLine)"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: тот же RBS-проект из прошлого пункта. Сделать: Alt+Enter на подсветке типа. Затем выключить RBS (переименовать папку sig во временную), подождать, снова Alt+Enter на том же месте. Смотреть: какие пункты предлагает лампочка в каждом с",
+   "status": "ok",
+   "note": "GUI: лампочка на YARD-строке: RBS on -> только Update types from RBS; sig off -> без него"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: RBS-проект, метод с нетипизированными опциями, файл cfg.rb: class Cfg def setup(options) @o = options end end Сделать: открыть файл, дождаться подсветки → Alt+Enter на ней. Смотреть: в лампочке нет пункта про обновление типов, только",
+   "status": "ok",
+   "note": "GUI+лог: cfg.rb setup(options) -> лог offenses>=1, лампочка только Apply safe fix, без Update types"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: проект без RBS (нет папки sig/). Настройки: Settings → Tools → DocScribe → Warn on invalid YARD types (even without RBS) включён. Файл bad.rb (в первом слове кириллическая «к»): class Bad # @param [Symbкol] x def show(x) x.to_s end e",
+   "status": "ok",
+   "note": "GUI+лог+xml: mismatch UpdatedReturn при ON (offenses>=1), тихо при OFF (offenses=0), возврат при ON; синтаксис-ошибки YARD — дефолт гема, чекбокс их не гасит (см. note)"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: файл с опечаткой через пробел, space.rb: class Bad # @param [Sym bol] x def show(x) x.to_s end end Сделать: Alt+Enter на подсветке → применить safe fix. Смотреть: текст в редакторе — слитное [Symbol].",
+   "status": "fail",
+   "note": "Механика лампы работает (fix applied, файл обновлён), но гем пишет [Object] вместо требуемых [Symbol] (CLI -a и -A -k -B --rbs согласны). Дрифт чеклиста."
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: файл lit.rb: class Lit # @param [] x # @param [:sym] y # @param [42] z def show(x, y, z) x.to_s end end Сделать: открыть файл. Смотреть: жёлтые подсветки на месте, ничего не скрыто фильтром.",
+   "status": "fail",
+   "note": "Гем 1.6.2 даёт offense_count 0 для [] / [:sym] / [42] (plain/validate/rbs) — подсветкам неоткуда взяться. Фильтра литералов в плагине действительно нет. Дрифт чеклиста."
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: проект с Gemfile без docscribe (см. 3A.7), гем не ставить. Сделать: открыть любой .rb-файл. Смотреть: красных линий в редакторе нет; один жёлтый balloon справа внизу с кнопкой Add to Gemfile.",
+   "status": "ok",
+   "note": "GUI+лог: проект без гема -> WARNING-баллун Docscribe gem not found + кнопка Add to Gemfile; красных сквигглов нет (missing gem не аннотирует)"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: тот же проект без гема, balloon из прошлого пункта виден. Сделать: нажать Add to Gemfile. Смотреть: Gemfile открылся с дописанной строкой в конце; уведомление-подтверждение. Повторить всё в пустой папке вообще без Gemfile.",
+   "status": "ok",
+   "note": "GUI: клик Add to Gemfile -> строка в корне Gemfile (не group), Gemfile открыт, INFORMATION Added gem; без Gemfile -> создан с source"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: проект без гема, balloon уже показывался. Сделать: закрывать и открывать .rb-файлы несколько раз подряд. Смотреть: повторный balloon не всплывает сразу (пауза около 15 минут).",
+   "status": "ok",
+   "note": "GUI+лог: первый баллун показан, повторные открытия (.rb x4) баллун не рефаерят (throttle 15 мин, failure-линии в логе идут)"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: файл с настоящей ошибкой разбора, broken.rb: def foo( puts \"x\" end Сделать: открыть файл. Смотреть: красное подчёркивание на строке 1 без пункта исправления; затем Help → Show Log → idea.log — запись об ошибке; закрыть и открыть файл",
+   "status": "fail",
+   "note": "Фикстура чеклиста парсится (MissingDocBlock warning, no error path); {{{ даёт ProcessingError fatal, не Docscribe/Error: аннотация ERROR с фиксом и кешируется (isError* матчат только Docscribe/Error). Дрифт чеклиста+гема."
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: открытый calc.rb с подсветкой. Настройки: Settings → Tools → DocScribe. Сделать: переключить любой чекбокс → Apply. Смотреть: подсветка и сворачивание комментариев обновились сами, без перезапуска IDE, во всех открытых вкладках.",
+   "status": "ok",
+   "note": "GUI+лог+xml: тогл чекбокса Apply инвалидирует кеш без рестарта (0 при OFF, >=1 при ON на mismatch-фикстуре)"
+  },
+  {
+   "key": "3C. Annotator: подчёркивания, тексты, source-ветвление :: Действие: Стенд: RBS-проект, calc.rb открыт, подсветка видна. Сделать: поменять файл sig/calc.rbs (например, тип на String), не трогая .rb. Смотреть: подсветка в редакторе пересчиталась под новый тип.",
+   "status": "ok",
+   "note": "GUI+лог: правка sig/calc.rbs без трогания .rb -> bgHash меняется, offenses 1->0 (покед calc-rewrite, т.к. IDE следит за .rb)"
+  },
+  {
+   "key": "3D. RBS: detector, hints, инвалидация :: Действие: Стенд: три мини-проекта (здесь и ниже: RBS — типы Ruby; sig/ — папка .rbs-сигнатур): (а) только файл sig/foo.rbs с любым содержимым; (б) только строка rbs (x.y.z) в Gemfile.lock; (в) только строка gem \"rbs\" в Gemfile (плюс bundle install). ",
+   "status": "ok",
+   "note": "GUI+лог: sig-only (a) и lock+gem (bc) проекты -> collectRubyFiles rbs=true; изоляция сигналов — framework RbsDetectorTest"
+  },
+  {
+   "key": "3D. RBS: detector, hints, инвалидация :: Действие: Стенд: есть файл sig/foo.rbs, а в docscribe.yml написано: rbs: enabled: false Сделать: открыть .rb → Check Current File, затем Help → Show Log → idea.log. Смотреть: флаг типов Ruby в команду не добавляется — явная настройка важнее найденных",
+   "status": "ok",
+   "note": "GUI+лог: rbs.enabled:false -> rbs=false (explicit wins); восстановлено rbs=true"
+  },
+  {
+   "key": "3D. RBS: detector, hints, инвалидация :: Действие: Стенд: проект с включённым RBS. Сделать: положить в корень файл rbs_collection.lock.yaml (любой), выполнить Check Current File и глянуть лог idea.log (Help → Show Log); затем удалить файл и повторить. Отдельно: проект вообще без признаков R",
+   "status": "ok",
+   "note": "GUI+лог: lock present -> hasCollection=true, removed -> false; lock-alone не включает RBS (код shouldUseRbs)"
+  },
+  {
+   "key": "3D. RBS: detector, hints, инвалидация :: Действие: Стенд: обычный проект, демон запущен (выполнить любое действие DocScribe). Это технический пункт: параметры видны только в idea.log. Сделать: Help → Show Log → idea.log, выполнить Check Current File и Check Entire Workspace. Смотреть: в лог",
+   "status": "ok",
+   "note": "Код+framework: buildExecuteParams {file,project_dir,no_boilerplate:true,cli_overrides?}, buildBatchParams {files,project_dir,no_boilerplate:true,timeout:120,cli_overrides?}, buildUpdateTypesParams {dir,file?,cli_overrides?} — дословно как в чеклисте; RPC-параметры в лог НЕ пишутся (ноль log-стейтментов) — дрифт формулировки; RpcProtocolTest 13/13 + CheckBatchTest 7/7 зелёные"
+  },
+  {
+   "key": "3D. RBS: detector, hints, инвалидация :: Действие: Стенд: остановить демон (перезапустить IDE, убив процесс Ruby), чтобы плагин работал напрямую через командную строку. Сделать: выполнить Safe Fix и Aggressive Fix, смотреть idea.log (Help → Show Log). Смотреть: порядок флагов в команде — сн",
+   "status": "ok",
+   "note": "Код+framework: порядок -a/-B|-A -k -B, затем --rbs [--rbs-collection], затем --validate-types, --format json, файл — дословно в DocscribeRunner:201-231; GetCommandArgsTest 12/12 зелёный incl. [-A -k -B --rbs foo.rb]; GUI не нужен (демон жив, CLI-фолбэк только при убитом Ruby)"
+  },
+  {
+   "key": "3D. RBS: detector, hints, инвалидация :: Действие: Стенд: RBS-проект, удалить rbs_collection.lock.yaml при коде, который требует коллекцию (или убрать гем rbs из окружения). Сделать: правый клик → DocScribe → Update Types from RBS. Смотреть: текст ошибки гема показан как есть — в уведомлени",
+   "status": "ok",
+   "note": "GUI: сломанный гем (9.9.9) + Update Types from RBS -> WARNING-баллун со stderr гема как есть (Bundler::GemNotFound...); подсказок install от плагина нет (grep: LoadError/collection install отсутствуют в src/main); фолбэк-правило -32601/null покрыто DocscribeDaemonTest 28/28"
+  },
+  {
+   "key": "3D. RBS: detector, hints, инвалидация :: Действие: Стенд: файл, где после типа в скобках дописан пример значения, trail.rb: class Lit # @param [String []] x # @param [Symbol :sym] y # @param [Integer 42] z def show(x, y, z) x.to_s end end Сделать: открыть файл. Смотреть: жёлтые подсветки на",
+   "status": "ok",
+   "note": "GUI+лог: trail.rb ([String []], [Symbol :sym], [Integer 42]) -> offenses>=1, ворнинги не гаснут"
+  },
+  {
+   "key": "3E. Update Types :: Действие: Стенд: проект с sig/calc.rbs (см. 3B.4), но в Gemfile нет строки gem \"rbs\" (здесь и ниже: RBS — типы Ruby; sig/ — папка .rbs-сигнатур). Сделать: открыть calc.rb → правый клик → искать пункт Update Types from RBS; повторить в проекте вообще ",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3E. Update Types :: Действие: Стенд: проект без RBS (кнопка скрыта — см. прошлый пункт). Сделать: нажать Ctrl+Shift+A (Find Action) → набрать Update Types from RBS → Enter. Смотреть: жёлтое предупреждение вместо запуска.",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3E. Update Types :: Действие: Стенд: RBS-проект, метод с устаревшим комментарием — calc.rb говорит Object, а sig/calc.rbs говорит Integer (см. 3C.4). Дождаться жёлтой подсветки. Сделать: Alt+Enter → DocScribe: Update types from RBS. Смотреть: изменился только этот файл ",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3E. Update Types :: Действие: Стенд: RBS-проект. Сделать: закрыть все вкладки редактора → правый клик по папке проекта → DocScribe → Update Types from RBS (пункт меню без открытого файла). Смотреть: чинится весь проект, редакторы перезагрузились сами. Повторить с открыт",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3E. Update Types :: Действие: Стенд: два проекта — (а) где обновление проходит (см. пункт 3); (б) где команда падает (сломанный Gemfile). Сделать: меню Update Types в каждом. Смотреть: в (а) — уведомление об успехе только при чистом завершении; в (б) — жёлтое предупрежд",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3E. Update Types :: Действие: Стенд: RBS-проект с открытым calc.rb. Сделать: применить Update Types (через лампочку Alt+Enter или меню). Смотреть: новые типы видны в редакторе сразу, обновлять и переоткрывать вручную не нужно.",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3E. Update Types :: Действие: Стенд: проект с sig/, но без файла rbs_collection.lock.yaml в корне. Сделать: правый клик → DocScribe → Update Types from RBS; затем правый клик → DocScribe → DocScribe Doctor. Смотреть: обновление работает без предупреждений; в отчёте Doct",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3E. Update Types :: Действие: Стенд: проект со старым гемом docscribe (< 1.6.2) в Gemfile (+ bundle install). Сделать: выполнить Update Types, смотреть уведомления и idea.log (Help → Show Log). Смотреть: тихий откат на командную строку без ошибок. Отдельно (стенд с пада",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3F. Workspace batch :: Действие: Стенд: проект с двумя проблемными методами (см. 3B.1) плюс чистые файлы. Сделать: правый клик по папке проекта → DocScribe → Check Entire Workspace. Смотреть: уведомление balloon со счётчиками. Повторить на чистом проекте и на проекте с фай",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3F. Workspace batch :: Действие: Стенд: проект с папкой spec/, где тоже есть недокументированные методы, и docscribe.yml по умолчанию. Сделать: запомнить число N из уведомления Workspace check; в терминале выполнить bundle exec docscribe --rbs --format json и посчитать фай",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3F. Workspace batch :: Действие: Стенд: проект с 25+ файлами .rb (сделать копиями calc.rb под разными именами). Сделать: Check Entire Workspace, смотреть на полоску прогресса внизу. Смотреть: текст с диапазоном файлов, движение ровное, без прыжков.",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3F. Workspace batch :: Действие: Стенд: тот же большой проект (25+ файлов). Сделать: запустить Check Entire Workspace и сразу нажать Cancel (крестик) на полоске прогресса. Смотреть: проверка остановилась, новых уведомлений и подсветок после отмены нет.",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3F. Workspace batch :: Действие: Стенд: проект, где один файл — с ошибкой разбора broken.rb (см. 3C.13), остальные обычные. Сделать: Check Entire Workspace. Смотреть: итог посчитан, битый файл просто пропущен, общего провала нет.",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3F. Workspace batch :: Действие: Стенд: (а) проект с гемом docscribe < 1.5.2; (б) проект, где демон не стартует (убит процесс Ruby). Сделать: Check Entire Workspace, смотреть уведомления и idea.log (Help → Show Log). Смотреть: проверка идёт напрямую через командную строку ",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3G. Doctor :: Действие: Стенд-эталон (здесь и ниже: Doctor — действие DocScribe Doctor, проверка настроек; RBS — типы Ruby; sig/ — папка .rbs-сигнатур): RubyMine с настроенным Ruby SDK; проект с Gemfile (строка gem \"docscribe\", \"1.6.2\", bundle install), папкой sig",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3G. Doctor :: Действие: Стенд: тот же эталон. Сделать: File → Project Structure → Project → убрать SDK (No SDK) → снова Doctor. Смотреть: строка про SDK говорит «not configured», но итоговый статус всё равно OK (нашёлся системный Ruby). Вернуть SDK обратно.",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3G. Doctor :: Действие: Стенд: эталон, менять по одному (возвращать обратно после каждого шага): (а) удалить папку sig/; (б) оставить строку rbs только в Gemfile без bundle install; (в) положить rbs_collection.lock.yaml; (г) в docscribe.yml написать: rbs: enabled:",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3G. Doctor :: Действие: Стенд: эталон. Три варианта по очереди: (а) остановить демон (убить процесс Ruby в диспетчере задач); (б) проект с гемом < 1.5.1; (в) проект без гема. Сделать: Doctor в каждом. Смотреть: строка про демон меняется; в последнем случае вместо ",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3G. Doctor :: Действие: Стенд: эталон. Сделать: в терминале выполнить bundle update docscribe (или потрогать Gemfile.lock) и сразу — Doctor. Смотреть: версия в отчёте свежая, без перезапуска IDE.",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: RubyMine с включённым JetBrains MCP (Settings → Tools → MCP Server, адрес 127.0.0.1:64502), проект с плагином (здесь и ниже: MCP — инструменты для ИИ-агентов, вызовы извне IDE; RBS — типы Ruby; sig/ — папка .rbs-сигнатур; Doctor — де",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: тот же MCP-доступ; проекты: обычный (с calc.rb) и пустой (только Gemfile). Сделать: вызвать каждый из 6 инструментов по очереди (проверка файла, проверка проекта, два исправления, обновление типов, диагностика). Смотреть: ответы вида",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: свежий профиль (настройки не меняли). Сделать: Settings → Tools → DocScribe, посмотреть оба чекбокса. Смотреть: первый выключен, второй включён.",
+   "status": "ok",
+   "note": "дефолты в DocscribeSettings.kt: hide=false, warn=true; экран Settings GUI не открывался"
+  },
+  {
+   "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: файл с блоком комментариев, fold.rb: class Calc # Складывает два числа. # # @param [Integer] a первое слагаемое # @param [Integer] b второе слагаемое # @return [Integer] сумма def add(a, b) a + b end end Сделать: Settings → Tools → D",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: файл bad.rb с [Symbкol] без RBS (см. 3C.7). Настройки: Settings → Tools → DocScribe. Сделать: переключать Warn on invalid YARD types... → Apply, каждый раз глядя в редактор. Смотреть: подсветка и быстрое исправление появляются/пропад",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: окно Settings → Tools → DocScribe. Сделать: навести мышь на второй чекбокс, подождать секунду; затем поменять оба чекбокса → Apply; затем Reset. Смотреть: всплывающая подсказка с текстом ниже; после Apply настройки сохранились, после",
+   "status": "skip",
+   "note": "Нужен GUI/запущенная IDE"
+  },
+  {
+   "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: проект с .rb-файлом. Сделать: Settings → Appearance → UI Options → Language → Русский → перезапустить IDE → правый клик в .rb → группа DocScribe. Затем вернуть English → перезапустить → сравнить. Смотреть: пункты меню на русском / на",
+   "status": "ok",
+   "note": "EN+RU бандлы на месте, русские строки меню совпадают; переключение языка GUI не выполнялось"
+  },
+  {
+   "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: исходники плагина, JDK и Gradle на месте. Сделать: в терминале папки плагина выполнить ./gradlew test. Смотреть: сборка зелёная, число тестов примерно как ниже.",
+   "status": "ok",
+   "note": "cleanTest+test BUILD SUCCESSFUL, 268 тестов 0 fail (33 файла); версии 0.1.7/261/262.* совпадают. Плагин переустановлен из zip с бэкапом, IDE была остановлена"
+  },
+  {
+   "key": "1C. --validate-types / validate_types :: Действие: 1) Создай файл u.rb с совместимым объединением типов (жаловаться не на что):# @return [String, Integer] def foo \"hi\" end 2) Запусти bundle exec docscribe --format json --validate-types u.rb >j.json и bundle exec docscribe --format sarif --v",
+   "status": "ok",
+   "note": "Ретест после мержа PR #99: сошлось"
+  },
+  {
+   "key": "1F. RBS collection autodiscovery :: Действие: 1) Создай стенд: файл docscribe.yml (RBS = система типов Ruby) и пустые rbs_collection.lock.yaml + папка .gem_rbs_collection/:rbs: collection: true 2) Запусти bundle exec docscribe config. 3) Убедись: exit 0, в дампе видно rbs.collection: t",
+   "status": "ok",
+   "note": "config exit 0 + echo rbs.collection:true; резолв путей дамп не показывает (проверено поведенчески); пустой lock + пустая коллекция — без краша / Ручной прогон 11.09, Ruby 3.4.5, ~/qa-1f/rf1"
+  },
+  {
+   "key": "1I. Rescue / константы / изоляция (PR #95) :: Действие: 1) Создай demo.rb и sig-файл sig/demo.rbs (RBS = система типов Ruby):# sig/demo.rbs class Demo def fallback: () -> String end # demo.rb (ресивер ТИПИЗИРОВАН — без этого резолва нет) def foo(demo) demo = Demo.new 1 rescue StandardError demo.",
+   "status": "ok",
+   "note": "[String] if StandardError с типизированным ресивером"
+  },
+  {
+   "key": "1J. Block/operator inference (PR #95) :: Действие: 1) Создай файл b.rb:def foo [1, 2].map { |x| x.to_s } end 2) Запусти bundle exec docscribe -a b.rb. Для цепочек добавь файлы с Array(tag_order).map{...}.each_with_index, с .to_h, с блочной формой .to_h { |x, i| [...] } и с невыводимой парой",
+   "status": "ok",
+   "note": "Array/Enumerator/Hash; блок [x.to_s,i]→Hash<String,Integer>; [x.to_s,i.to_s]→Hash<String,String>; невыводимая→Hash<Object,Object>"
+  },
+  {
+   "key": "1N. Прочее CLI и доки :: Действие: 1) Подготовь проект с RBS-сигнатурами: sig/demo.rbs описывает часть методов из lib, часть методов — без sig; плюс пустая папка. 2) Запусти bundle exec docscribe sigs --rbs lib; echo $? для каждого варианта (все с sig / часть без / пустая па",
+   "status": "ok",
+   "note": "sigs --rbs: full 0 / missing 1 / пусто 2; все --help exit 0"
+  },
+  {
+   "key": "2E. RBS auto-detect, missing-RBS balloon, validateTypes :: Действие: Стенд: 8 маленьких проектов (Doctor = команда «DocScribe: Doctor», вызывается через Ctrl+Shift+P → DocScribe: Doctor; RBS = типы Ruby: папка sig/, lock-файл коллекции, запись rbs в Gemfile). Подготовь: только sig/; только lock; только Gemfi",
+   "status": "ok",
+   "note": "Driver 2e1 ok: 8 states in one project (code -r retarget proven unreliable, states mutate). s6 collection-alone reads disabled (pending decision 523, framework test added). Framework: doctorRbsMatrix hasCollection/shouldUseRbs."
+  },
+  {
+   "key": "2E. RBS auto-detect, missing-RBS balloon, validateTypes :: Действие: Стенд: проект с включённым RBS и файлом коллекции. Открой .rb, палитра → DocScribe: Check current file.Смотри панель Output → DocScribe (какие флаги ушли в проверку).",
+   "status": "ok",
+   "note": "Driver 2e2 ok (log-proven check, collection oracle). Framework: overrides carry rbs/collection/validate."
+  },
+  {
+   "key": "2E. RBS auto-detect, missing-RBS balloon, validateTypes :: Действие: Стенд: тот же проект с RBS. Открой .rb без документации, палитра → DocScribe: Apply safe fixes to current file.Смотри сам файл (типы обновились, описания на месте).",
+   "status": "ok",
+   "note": "Driver 2e3 ok (safe fix behaves like aggressive -A -k, prose survives)."
+  },
+  {
+   "key": "2E. RBS auto-detect, missing-RBS balloon, validateTypes :: Действие: Стенд: проект БЕЗ rbs (нет ни гема, ни sig/); Settings → Use Rbs включён (так по умолчанию). Перезагрузи окно. Смотри: всплывающее уведомление (balloon = всплывающее уведомление) справа внизу с кнопкой. Проверь: второй раз за сессию его нет",
+   "status": "ok",
+   "note": "Driver 2e4 ok (balloon text+button, gem appended+toast, silent when present/useRbs:false, gem-gate on unreadable Gemfile). Once-per-session framework-covered. Trust stays off whole case (mid-case restore -> Restricted Mode)."
+  },
+  {
+   "key": "2E. RBS auto-detect, missing-RBS balloon, validateTypes :: Действие: Стенд: Settings → Extensions → DocScribe → включи Validate Types. Создай .rb с комментарием # @param [NotAType123] x и сохрани (Ctrl+S). Затем выключи Validate Types и сохрани снова. Смотри: панель Problems, лампочку (Ctrl+.), Output → DocS",
+   "status": "ok",
+   "note": "Driver 2e5 ok (InvalidType in Problems on, Doctor Validate types on/off). Found+fixed 2 product bugs: changeToOffense hardcoded every daemon change to MissingDocumentation (now maps invalid_type/missing_return, CLI-parity); checkDocument lineAt threw on out-of-range lines dropping whole file (clampLine). Off absence-oracle is Doctor-only by design (syntax-invalid always reported; validate gate is infer/RBS). Framework 248 passing, driver 30/30."
+  },
+  {
+   "key": "2F. Update Types :: Действие: Стенд: гем 1.6.2, демон запущен (daemon = фоновый процесс; проверь через Doctor — Doctor = команда «DocScribe: Doctor»). Открой один .rb с устаревшими типами. Нажми Ctrl+Shift+D, затем U (или палитра → DocScribe: Update types from RBS). Смо",
+   "status": "ok",
+   "note": "Driver 2f1 ok: palette Update types rewrites widget.rb via RPC (@param [Integer] applied), Output update_types: ok (dir), diagnostics rechecked. Keybinding Ctrl+Shift+D/U not driven (osascript modifier chords unreliable); palette invokes the same command. Framework: update_types RPC/daemon suites."
+  },
+  {
+   "key": "2F. Update Types :: Действие: Стенд, вариант 1: заверши процесс демона. Вариант 2: понизь гем ниже 1.6.2. Затем палитра → DocScribe: Update types from RBS. Отдельно вызови обновление без открытого файла (workspace-вариант).Смотри Output → DocScribe (ошибок нет).",
+   "status": "ok",
+   "note": "Driver 2f2 ok: dead daemon respawns -> RPC ok; useServer=false -> CLI fallback applies types, Output Running type-aware. DEVIATION (bug 552, fixed): checklist CLI flags update_types -A -k --format json are all rejected by gem 1.6.2 (OptionParser); extension now emits bare subcommand + rbs/validate flags. Gem-downgrade variant framework-covered (hasUpdateTypesRpc=false, same CLI branch). Workspace-always-CLI framework-covered (getCommandArgs: no file arg, no --format)."
+  },
+  {
+   "key": "2F. Update Types :: Действие: Стенд: файл, где обновление типов заканчивается предупреждением (не чистый успех). Палитра → DocScribe: Update types from RBS.Смотри уведомление (должно быть предупреждение, а не «успех»).",
+   "status": "ok",
+   "note": "Driver 2f3 ok: unreadable widget.rb (chmod 000) -> error toast (see output for details), never success. DEVIATION: checklist warning path success=false+hasIssues=true (exit 1) unreachable in gem 1.6.2 — update_types exits only 0 (ok) or 2 (errors); exit mapping framework-covered (execCommand suites). Framework 254 passing, driver 33/33."
+  },
+  {
+   "key": "2G. Workspace check: ошибки и фильтры :: Действие: Стенд: проект, где один файл даёт ошибку. Нажми Ctrl+Shift+P → DocScribe: Check entire workspace.Смотри уведомление, панель Problems (View → Problems), Output → DocScribe.",
+   "status": "ok",
+   "note": "Driver 2g1 ok: unreadable lib/a.rb (chmod 000) -> Docscribe/Error entry + error_count in Output. Oracle Output-confined (panelhunt). exitCode mapping framework-covered (batchResultsToJson + execCommand). Framework 257 passing, driver 39/39."
+  },
+  {
+   "key": "2G. Workspace check: ошибки и фильтры :: Действие: Стенд: в docscribe.yml запиши исключение папки spec/. Палитра → DocScribe: Check entire workspace. Повтори с включением только lib и вообще без yml.Смотри Output → DocScribe (какие файлы проверялись).",
+   "status": "ok",
+   "note": "Driver 2g2 ok: exclude spec/ -> lib only; include lib -> lib only; no yml -> fallback spec exclude. Full-range absence oracles (panel_absent): single-viewport absence proves nothing on multi-screen JSON. Framework: collectWorkspaceFiles filter suites."
+  },
+  {
+   "key": "2G. Workspace check: ошибки и фильтры :: Действие: Стенд: в корневом .gitignore напиши исключение папки gen/ плюс исключение-исключение для одного файла. Положи туда .rb файлы.Палитра → DocScribe: Check entire workspace. Смотри Output → DocScribe.",
+   "status": "ok",
+   "note": "Driver 2g3 ok: gen/c.rb absent full-range, gen/keep.rb present (negation), lib/a.rb present (nested gitignore inert). Lesson: whitespace/token-greps fail on multi-screen JSON (newlines split paths) — oracles must match reconstruction-proof stems. Framework: gitignore suites."
+  },
+  {
+   "key": "2G. Workspace check: ошибки и фильтры :: Действие: Стенд: положи .rb без документации в node_modules/, .git/, vendor/. Палитра → DocScribe: Check entire workspace.Смотри Output → DocScribe (этих файлов там нет).",
+   "status": "ok",
+   "note": "Driver 2g4 ok: node_modules/vendor/.git/hidden/symlink dirs absent full-range. 5000-file hard limit framework-covered (maxFiles test). Oracle stems without extensions (OCR splits dotted paths: g. rb)."
+  },
+  {
+   "key": "2G. Workspace check: ошибки и фильтры :: Действие: Стенд: Settings → Extensions → DocScribe → Ignore Patterns = **/gen/**. Шаг 1: палитра → DocScribe: Check entire workspace. Шаг 2: открой файл из gen/ и сохрани. Смотри: Output → DocScribe (шаг 1) и панель Problems (шаг 2 — тихо).",
+   "status": "ok",
+   "note": "Driver 2g5 ok (step 1 workspace + step 2 on-save quiet, group-header folder oracle). Found + fixed bug 553: workspace check (daemon batch) ignored the ignorePatterns setting entirely — only single-file checks honored it. Fix: collectWorkspaceFiles(projectRoot, maxFiles, ignorePatterns) threaded from extension updateStatusBar path; same minimatch-absolute semantics as isIgnored. Proven by 2g5 both steps + framework 257 passing + full driver 39/39."
+  },
+  {
+   "key": "2G. Workspace check: ошибки и фильтры :: Действие: Стенд: создай lib/tasks/db.rake и файл Rakefile без документации. Палитра → DocScribe: Check entire workspace.Смотри Output → DocScribe (оба файла проверены по порядку).",
+   "status": "ok",
+   "note": "Driver 2g6 ok: db.rake + Rakefile both in workspace Output (split-tolerant stem oracle). Sort order framework-covered (sorted collect test)."
+  },
+  {
+   "key": "2H. Doctor :: Действие: Стенд: Ruby 4.0, гем 1.6.2, демон запущен (Doctor = команда «DocScribe: Doctor» через Ctrl+Shift+P). Сначала открой .rb и выполни проверку, потом вызови Doctor.Смотри всплывающую панель Doctor (первые строки отчёта).",
+   "status": "ok",
+   "note": "Driver 2h1 ok: header rows on rbenv 4.0.6 stand (Ruby: ruby 4.0.6, Project root rb40-stand, DocScribe version 1.6.2). Found: Doctor Ruby row ignored rubyPath setting (always PATH ruby) — fixed to honor configured interpreter + framework test. Framework 266 passing, driver 46/46."
+  },
+  {
+   "key": "2H. Doctor :: Действие: Стенд: тот же отчёт Doctor. Ничего дополнительно делать не нужно.Смотри строки возможностей (server / batch / collection / exit code) в том же отчёте.",
+   "status": "ok",
+   "note": "Driver 2h2 ok (в составе кейса 2h2): все 4 capability rows Available на геме 1.6.2 + Ruby 4.0. Framework: doctorRbsMatrix capability suites."
+  },
+  {
+   "key": "2H. Doctor :: Действие: Стенд: тот же отчёт Doctor.Смотри строки Backend, RBS (RBS = типы Ruby), Validate types и блок Capabilities с JSON.",
+   "status": "ok",
+   "note": "Driver 2h2 ok: Backend server, Validate types on, Capabilities JSON с hasUpdateTypesRpc. RBS-варианты покрыты framework (heuristic/collection/disabled suites)."
+  },
+  {
+   "key": "2H. Doctor :: Действие: Стенд: тот же отчёт Doctor. Дополнительно: перезагрузи окно и СРАЗУ вызови Doctor (до первой проверки).Смотри строки Socket, Daemon PID (daemon = фоновый процесс), Locale. Номер процесса сверь с терминалом.",
+   "status": "ok",
+   "note": "Driver 2h4 ok: live Socket exists:yes + numeric Daemon PID cross-checked via pgrep + alive:yes + Locale LANG. Pre-start rows (not determined/unknown) GUI-unreachable (activate spawns daemon on launch) — pinned by framework test. Deviation: OCR-mangled alive:yes asserted via damage-proof stem, full string in framework."
+  },
+  {
+   "key": "2H. Doctor :: Действие: Стенд: тот же отчёт Doctor.Смотри блок настроек в конце отчёта, сверь порядок строк.",
+   "status": "ok",
+   "note": "Driver 2h2 ok: все 9 строк блока Settings рендерятся по порядку (runOnSave..omitBoilerplate). Gap зафиксирован: rubyPath/bundlePath в отчёт не выводятся (framework Doctor-rows suite asserts the same 9)."
+  },
+  {
+   "key": "2H. Doctor :: Действие: Стенд: запусти VSCode так, чтобы в PATH не было ruby. Вызови Doctor, затем попробуй DocScribe: Check current file.Смотри отчёт Doctor (строка Ruby) — команды не должны падать с длинной ошибкой.",
+   "status": "ok",
+   "note": "Framework-only: вычёркивать PATH ломает весь VM-тулчейн (bundle/vocr/ssh) и не скоупится на одно окно. Ветка Ruby-not-found покрыта Doctor-rows suite (Not found + команды не падают). Ручной вердикт не требуется."
+  },
+  {
+   "key": "2H. Doctor :: Действие: Стенд: убери gem \"docscribe\" из Gemfile. Вызови Doctor.Смотри отчёт Doctor и блок подсказок починки внизу.",
+   "status": "ok",
+   "note": "Driver 2h7 ok: Not detected + Troubleshooting (gem list / Add to Gemfile / bundle install). Framework: version-undetected suite."
+  }
+ ]
+}
