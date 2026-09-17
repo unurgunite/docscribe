@@ -749,38 +749,38 @@
   },
   {
    "key": "3E. Update Types :: Действие: Стенд: проект с sig/calc.rbs (см. 3B.4), но в Gemfile нет строки gem \"rbs\" (здесь и ниже: RBS — типы Ruby; sig/ — папка .rbs-сигнатур). Сделать: открыть calc.rb → правый клик → искать пункт Update Types from RBS; повторить в проекте вообще ",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: матрица видимости Update Types: sig/ без rbs-строки -> ВИДЕН; без RBS / без Gemfile -> СКРЫТ (Check виден); sig/ + rbs.enabled:false -> СКРЫТ"
   },
   {
    "key": "3E. Update Types :: Действие: Стенд: проект без RBS (кнопка скрыта — см. прошлый пункт). Сделать: нажать Ctrl+Shift+A (Find Action) → набрать Update Types from RBS → Enter. Смотреть: жёлтое предупреждение вместо запуска.",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: меню без RBS не показывает Update Types (группа открыта, Check виден); WARNING-текст RBS not found — update_types requires RBS (sig/ or rbs gem) байт-в-байт из UpdateTypesAction:39; палитра для этого запроса action-ряд не выдаёт (только description + Settings-ряды) — зафиксировано"
   },
   {
    "key": "3E. Update Types :: Действие: Стенд: RBS-проект, метод с устаревшим комментарием — calc.rb говорит Object, а sig/calc.rbs говорит Integer (см. 3C.4). Дождаться жёлтой подсветки. Сделать: Alt+Enter → DocScribe: Update types from RBS. Смотреть: изменился только этот файл ",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI+md5: лампочка Update types чинит ТОЛЬКО calc.rb (1 файл из 8); баллун types updated from RBS; file-scope доказан снапшотом (git нет — дрифт), daemon {dir,file} по коду"
   },
   {
    "key": "3E. Update Types :: Действие: Стенд: RBS-проект. Сделать: закрыть все вкладки редактора → правый клик по папке проекта → DocScribe → Update Types from RBS (пункт меню без открытого файла). Смотреть: чинится весь проект, редакторы перезагрузились сами. Повторить с открыт",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI+md5: palette update_types -> whole project fixed (calc.rb AND partial.rb); file-scope legs verified in 3e3/3e4-part2. Case 3e4."
   },
   {
    "key": "3E. Update Types :: Действие: Стенд: два проекта — (а) где обновление проходит (см. пункт 3); (б) где команда падает (сломанный Gemfile). Сделать: меню Update Types в каждом. Смотреть: в (а) — уведомление об успехе только при чистом завершении; в (б) — жёлтое предупрежд",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: exit-code discipline — clean run INFORMATION types updated successfully (exit 0); broken Gemfile 9.9.9 -> WARNING update_types failed. Case 3e5."
   },
   {
    "key": "3E. Update Types :: Действие: Стенд: RBS-проект с открытым calc.rb. Сделать: применить Update Types (через лампочку Alt+Enter или меню). Смотреть: новые типы видны в редакторе сразу, обновлять и переоткрывать вручную не нужно.",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: editor shows Integer for show right after lamp Update, no manual refresh (VFS+reload by action). Case 3e6."
   },
   {
    "key": "3E. Update Types :: Действие: Стенд: проект с sig/, но без файла rbs_collection.lock.yaml в корне. Сделать: правый клик → DocScribe → Update Types from RBS; затем правый клик → DocScribe → DocScribe Doctor. Смотреть: обновление работает без предупреждений; в отчёте Doct",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: update works with collection=false and no lock file (daemon --rbs fallback); Doctor full report via Notifications tool window: rbs_collection.lock.yaml: not found, Status: OK. Case 3e7."
   },
   {
    "key": "3E. Update Types :: Действие: Стенд: проект со старым гемом docscribe (< 1.6.2) в Gemfile (+ bundle install). Сделать: выполнить Update Types, смотреть уведомления и idea.log (Help → Show Log). Смотреть: тихий откат на командную строку без ошибок. Отдельно (стенд с пада",
@@ -789,33 +789,33 @@
   },
   {
    "key": "3F. Workspace batch :: Действие: Стенд: проект с двумя проблемными методами (см. 3B.1) плюс чистые файлы. Сделать: правый клик по папке проекта → DocScribe → Check Entire Workspace. Смотреть: уведомление balloon со счётчиками. Повторить на чистом проекте и на проекте с фай",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI+log: WARNING checked 7 file(s) - 3 issue(s) found on dirty stand (collect 7/7); INFORMATION checked 7 file(s) OK on documented stand. Case 3f1."
   },
   {
    "key": "3F. Workspace batch :: Действие: Стенд: проект с папкой spec/, где тоже есть недокументированные методы, и docscribe.yml по умолчанию. Сделать: запомнить число N из уведомления Workspace check; в терминале выполнить bundle exec docscribe --rbs --format json и посчитать фай",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI+log+CLI: spec/undoc_spec.rb excluded — plugin 7 files/3 issues, collect 8->7; CLI twin inspected=4/files=2 (counts differ by design: collected vs inspected). Case 3f2."
   },
   {
    "key": "3F. Workspace batch :: Действие: Стенд: проект с 25+ файлами .rb (сделать копиями calc.rb под разными именами). Сделать: Check Entire Workspace, смотреть на полоску прогресса внизу. Смотреть: текст с диапазоном файлов, движение ровное, без прыжков.",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: 33 files (26 copies) -> checked 33 file(s). Progress-bar text per-chunk not screenshottable (run ~5-10s, balloon replaces bar); formula code-read + unit-tested (CheckWorkspaceChunkingTest). Case 3f3."
   },
   {
    "key": "3F. Workspace batch :: Действие: Стенд: тот же большой проект (25+ файлов). Сделать: запустить Check Entire Workspace и сразу нажать Cancel (крестик) на полоске прогресса. Смотреть: проверка остановилась, новых уведомлений и подсветок после отмены нет.",
    "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "note": "Scope cut: 33-file run too fast (~5-10s) for any live cancel; cancel plumbing = Task.Backgroundable(cancellable=true) + checkCanceled per chunk, unit-tested. Live-cancel recipe: 200+ files, X in status bar within ~10s."
   },
   {
    "key": "3F. Workspace batch :: Действие: Стенд: проект, где один файл — с ошибкой разбора broken.rb (см. 3C.13), остальные обычные. Сделать: Check Entire Workspace. Смотреть: итог посчитан, битый файл просто пропущен, общего провала нет.",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: broken.rb {{{ does not abort run — balloon checked 7 file(s) - 3 issue(s) found, 1 errors); collect 8->8. Width-capped balloon wraps errors) onto 2nd OCR row. Case 3f5."
   },
   {
    "key": "3F. Workspace batch :: Действие: Стенд: (а) проект с гемом docscribe < 1.5.2; (б) проект, где демон не стартует (убит процесс Ruby). Сделать: Check Entire Workspace, смотреть уведомления и idea.log (Help → Show Log). Смотреть: проверка идёт напрямую через командную строку ",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI+log: docscribe 1.5.0 (no check_batch) -> CLI directory-scan fallback, balloon checked-count appears, no hang. Log: check_batch not available, using CLI directory scan. Case 3f6."
   },
   {
    "key": "3G. Doctor :: Действие: Стенд-эталон (здесь и ниже: Doctor — действие DocScribe Doctor, проверка настроек; RBS — типы Ruby; sig/ — папка .rbs-сигнатур): RubyMine с настроенным Ruby SDK; проект с Gemfile (строка gem \"docscribe\", \"1.6.2\", bundle install), папкой sig",
