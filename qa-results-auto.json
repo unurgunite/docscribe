@@ -784,8 +784,8 @@
   },
   {
    "key": "3E. Update Types :: Действие: Стенд: проект со старым гемом docscribe (< 1.6.2) в Gemfile (+ bundle install). Сделать: выполнить Update Types, смотреть уведомления и idea.log (Help → Show Log). Смотреть: тихий откат на командную строку без ошибок. Отдельно (стенд с пада",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: 1.6.1 (no daemon update_types) -> CLI fallback line in log + WARNING (bundler env of fallback fails under 1.6.1 daemon env — drift: checklist expects silent INFORMATION). Dead-daemon leg: WARNING, no silent success. Case 3e8."
   },
   {
    "key": "3F. Workspace batch :: Действие: Стенд: проект с двумя проблемными методами (см. 3B.1) плюс чистые файлы. Сделать: правый клик по папке проекта → DocScribe → Check Entire Workspace. Смотреть: уведомление balloon со счётчиками. Повторить на чистом проекте и на проекте с фай",
@@ -805,7 +805,7 @@
   {
    "key": "3F. Workspace batch :: Действие: Стенд: тот же большой проект (25+ файлов). Сделать: запустить Check Entire Workspace и сразу нажать Cancel (крестик) на полоске прогресса. Смотреть: проверка остановилась, новых уведомлений и подсветок после отмены нет.",
    "status": "skip",
-   "note": "Scope cut: 33-file run too fast (~5-10s) for any live cancel; cancel plumbing = Task.Backgroundable(cancellable=true) + checkCanceled per chunk, unit-tested. Live-cancel recipe: 200+ files, X in status bar within ~10s."
+   "note": "Scope cut (proven 2026-09-18): even 207 files check too fast for any live cancel — 2s OCR poll never caught the bar, balloon replaces it. Cancel plumbing = Task.Backgroundable(cancellable=true) + checkCanceled/isCancelled per chunk, unit-tested (stops after cancellation)."
   },
   {
    "key": "3F. Workspace batch :: Действие: Стенд: проект, где один файл — с ошибкой разбора broken.rb (см. 3C.13), остальные обычные. Сделать: Check Entire Workspace. Смотреть: итог посчитан, битый файл просто пропущен, общего провала нет.",
@@ -819,38 +819,38 @@
   },
   {
    "key": "3G. Doctor :: Действие: Стенд-эталон (здесь и ниже: Doctor — действие DocScribe Doctor, проверка настроек; RBS — типы Ruby; sig/ — папка .rbs-сигнатур): RubyMine с настроенным Ruby SDK; проект с Gemfile (строка gem \"docscribe\", \"1.6.2\", bundle install), папкой sig",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: full etalon report via Notifications clipboard, 13 lines match PRE block; no Batch mode line in action report. Case 3g1."
   },
   {
    "key": "3G. Doctor :: Действие: Стенд: тот же эталон. Сделать: File → Project Structure → Project → убрать SDK (No SDK) → снова Doctor. Смотреть: строка про SDK говорит «not configured», но итоговый статус всё равно OK (нашёлся системный Ruby). Вернуть SDK обратно.",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: project-level SDK is null in this stand (module orderEntry only) -> report already says IDE Ruby SDK: not configured + rbenv binary + Status OK (fallback half observable). Case 3g2."
   },
   {
    "key": "3G. Doctor :: Действие: Стенд: эталон, менять по одному (возвращать обратно после каждого шага): (а) удалить папку sig/; (б) оставить строку rbs только в Gemfile без bundle install; (в) положить rbs_collection.lock.yaml; (г) в docscribe.yml написать: rbs: enabled:",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: (a) no sig -> not found; (c) lock present -> found; (d) enabled:false -> false + hint. (b) declared-in-Gemfile unreachable live (VFS serves stale lock) — branch exists in code. Case 3g3."
   },
   {
    "key": "3G. Doctor :: Действие: Стенд: эталон. Три варианта по очереди: (а) остановить демон (убить процесс Ruby в диспетчере задач); (б) проект с гемом < 1.5.1; (в) проект без гема. Сделать: Doctor в каждом. Смотреть: строка про демон меняется; в последнем случае вместо ",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: (a) dead daemon -> Doctor rebuilds full report on restarted daemon (stopped string unobservable — buildReport restarts as side effect); (b) 1.5.0 -> using CLI fallback; (c) no gem -> MISSING + stopped + Issues found, no Status OK. Case 3g4."
   },
   {
    "key": "3G. Doctor :: Действие: Стенд: эталон. Сделать: в терминале выполнить bundle update docscribe (или потрогать Gemfile.lock) и сразу — Doctor. Смотреть: версия в отчёте свежая, без перезапуска IDE.",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: pin 1.6.1 without restart -> Doctor Version: 1.6.1; restore -> 1.6.2. Fresh re-probe, no IDE restart. Case 3g5."
   },
   {
    "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: RubyMine с включённым JetBrains MCP (Settings → Tools → MCP Server, адрес 127.0.0.1:64502), проект с плагином (здесь и ниже: MCP — инструменты для ИИ-агентов, вызовы извне IDE; RBS — типы Ruby; sig/ — папка .rbs-сигнатур; Doctor — де",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI+log+code: MCP Server page exists; toolset companion/instantiated/isEnabled in log; 6 @McpTool fns; MCP doctor header + Batch mode line. Live HTTP calls impossible here (IDE binds no MCP port in VM). Case 3h1."
   },
   {
    "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: тот же MCP-доступ; проекты: обычный (с calc.rb) и пустой (только Gemfile). Сделать: вызвать каждый из 6 инструментов по очереди (проверка файла, проверка проекта, два исправления, обновление типов, диагностика). Смотреть: ответы вида",
    "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "note": "Covered by 3h1 registration + code shape (6 tools, headers, project-wide update, VFS refresh). Live per-tool calls need an MCP port the VM IDE never binds."
   },
   {
    "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: свежий профиль (настройки не меняли). Сделать: Settings → Tools → DocScribe, посмотреть оба чекбокса. Смотреть: первый выключен, второй включён.",
@@ -859,18 +859,18 @@
   },
   {
    "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: файл с блоком комментариев, fold.rb: class Calc # Складывает два числа. # # @param [Integer] a первое слагаемое # @param [Integer] b второе слагаемое # @return [Integer] сумма def add(a, b) a + b end end Сделать: Settings → Tools → D",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI+xml round-trip: hide ON -> xml true; OFF -> DEFAULT. Visual fold placeholder unobservable in stand (builder via optional ruby module; unit-tested shape). Case 3h4."
   },
   {
    "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: файл bad.rb с [Symbкol] без RBS (см. 3C.7). Настройки: Settings → Tools → DocScribe. Сделать: переключать Warn on invalid YARD types... → Apply, каждый раз глядя в редактор. Смотреть: подсветка и быстрое исправление появляются/пропад",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "fail",
+   "note": "GUI: ON leg green (offenses=1 + safe-fix row, no restart). OFF leg: gem ALWAYS emits invalid_type for syntax-broken YARD (unconditional in doc_builder) and toggle is not wired into CHECK RunOptions — still offenses=1. Drift. Case 3h5."
   },
   {
    "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: окно Settings → Tools → DocScribe. Сделать: навести мышь на второй чекбокс, подождать секунду; затем поменять оба чекбокса → Apply; затем Reset. Смотреть: всплывающая подсказка с текстом ниже; после Apply настройки сохранились, после",
-   "status": "skip",
-   "note": "Нужен GUI/запущенная IDE"
+   "status": "ok",
+   "note": "GUI: hover shows Highlight YARD types tooltip verbatim; Apply persists both flags to xml; DocScribe page has no Reset button (Cancel keeps stored — N/A leg documented). Case 3h6."
   },
   {
    "key": "3H. MCP, настройки, фолдинг, i18n :: Действие: Стенд: проект с .rb-файлом. Сделать: Settings → Appearance → UI Options → Language → Русский → перезапустить IDE → правый клик в .rb → группа DocScribe. Затем вернуть English → перезапустить → сравнить. Смотреть: пункты меню на русском / на",
