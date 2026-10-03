@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocScribe - YARD docs from Ruby AST</title>
+<style>
+:root{--font-head:'Space Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;--font-body:system-ui,-apple-system,'Segoe UI',sans-serif;--font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;--c-bg:#F8FAFC;--c-ink:#0F172A;--c-accent:#BE123C;--c-accent-sm:#BE123C;--c-line:#E2E8F0;--c-code:#0F172A;--c-code-ink:#F1F5F9;--c-mut:#475569;--c-surface:#FFFFFF;--c-tint:#FDF2F4;--c-ok:#15803D;--sp-1:4px;--sp-2:8px;--sp-3:16px;--sp-4:24px;--sp-5:32px;--r-sm:2px;--r-md:4px}
+html[data-theme="dark"]{--c-bg:#0F172A;--c-ink:#F1F5F9;--c-line:#334155;--c-code:#020617;--c-code-ink:#F1F5F9;--c-mut:#CBD5E1;--c-surface:#1E293B;--c-tint:#3B0A14;--c-accent-sm:#FB7185;--c-ok:#4ADE80}
+html[data-theme="dark"] body{background:var(--c-bg);color:var(--c-ink)}
+html[data-theme="dark"] .topbar{background:var(--c-bg)}
+html[data-theme="dark"] .badge{background:var(--c-surface);color:var(--c-ink)}
+html[data-theme="dark"] .btn.ghost{background:var(--c-surface);color:var(--c-ink);border-color:var(--c-line)}
+html[data-theme="dark"] .stickybar{background:var(--c-tint)}
+html[data-theme="dark"] .stickybar code{background:var(--c-surface);color:var(--c-ink);border-color:var(--c-line)}
+html[data-theme="dark"] .stickybar .x{background:var(--c-surface);color:var(--c-ink);border-color:var(--c-line)}
+html[data-theme="dark"] .eco-side,html[data-theme="dark"] .codebox,html[data-theme="dark"] .flag,html[data-theme="dark"] .step,html[data-theme="dark"] .sock{background:var(--c-surface);color:var(--c-ink)}
+html[data-theme="dark"] .eco-side code{background:var(--c-bg);color:var(--c-ink)}
+html[data-theme="dark"] .mtab{background:var(--c-surface);color:var(--c-ink)}
+html[data-theme="dark"] .mtab[aria-selected="true"]{color:var(--c-accent-sm)}
+html[data-theme="dark"] .feat-list{background:var(--c-surface)}
+html[data-theme="dark"] .feat{background:var(--c-surface)}
+html[data-theme="dark"] table{background:var(--c-surface)}
+html[data-theme="dark"] th{background:var(--c-bg)}
+html[data-theme="dark"] .exit-chip{background:var(--c-surface);color:var(--c-ink)}
+html[data-theme="dark"] .exit-chip.dirty{border-color:var(--c-accent-sm);color:var(--c-accent-sm)}
+html[data-theme="dark"] .exit-chip.clean{border-color:var(--c-ok);color:var(--c-ok)}
+html[data-theme="dark"] .copybtn{background:var(--c-surface);color:var(--c-ink)}
+html[data-theme="dark"] .fullbleed th,html[data-theme="dark"] .fullbleed td{border-color:var(--c-mut)}
+html[data-theme="dark"] tr[data-rpc]:hover td{background:var(--c-bg)}
+html[data-theme="dark"] tr[data-rpc].active td{background:var(--c-bg)}
+.arch-card{background:#FFFFFF;color:#0F172A;border-color:#E2E8F0}
+.arch-card figcaption{color:#475569}
+.arch-card .arch-scroll{background:#FFFFFF;border-color:#E2E8F0}
+.arch-card .arch-scroll img{background:#FFFFFF}
+*{box-sizing:border-box;margin:0;padding:0}
+html{overflow-x:hidden}
+body{font-family:var(--font-body);color:var(--c-ink);background:var(--c-bg);line-height:1.5;overflow-x:hidden;transition:background-color 150ms ease,color 150ms ease}
+.mono{font-family:var(--font-mono)}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px;width:100%}
+a{color:var(--c-ink);text-underline-offset:2px}
+h1,h2,h3{font-family:var(--font-head),system-ui,-apple-system,'Segoe UI',sans-serif}
+.topbar{border-bottom:1px solid var(--c-line);background:var(--c-bg)}
+.topbar-in{display:flex;align-items:center;gap:16px;padding:12px 0;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;font-size:18px;font-family:var(--font-head),system-ui,sans-serif}
+.brand img{width:40px;height:40px;display:block}
+nav.mainnav{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+.badge{border:1px solid var(--c-line);font-size:12px;padding:2px 8px;white-space:nowrap;background:#fff;border-radius:var(--r-sm)}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--c-ink);padding:12px 24px;text-decoration:none;font-weight:600;min-height:44px;line-height:1.2;background:var(--c-ink);color:var(--c-code-ink);max-width:100%;border-radius:var(--r-sm);font-size:15px;cursor:pointer;transition:background-color 150ms ease,color 150ms ease}
+.btn.ghost{background:#fff;color:var(--c-ink)}
+.btn.accent{background:var(--c-accent);border-color:var(--c-accent);color:#fff}
+.top-actions{margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.stickybar{position:sticky;top:0;z-index:20;background:var(--c-tint);border-bottom:1px solid var(--c-accent)}
+.stickybar-in{display:flex;align-items:center;gap:12px;padding:8px 0;font-size:13px;flex-wrap:wrap}
+.notice-ico{flex:none;width:20px;height:20px;color:var(--c-accent)}
+html[data-theme="dark"] .notice-ico{color:var(--c-accent-sm)}
+.stickybar code{border:1px solid var(--c-line);background:#fff;padding:4px 8px;border-radius:var(--r-sm)}
+.stickybar .x{margin-left:auto;border:1px solid var(--c-line);background:#fff;min-height:44px;min-width:44px;border-radius:var(--r-sm);cursor:pointer;font-size:16px;line-height:1}
+.hero{border-bottom:1px solid var(--c-line)}
+.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:32px;padding:24px 0;align-items:start}
+.kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-mut);margin-bottom:12px}
+h1{font-size:48px;line-height:1.05;letter-spacing:-0.02em;margin-bottom:12px}
+.sub{font-size:17px;margin-bottom:16px;max-width:46ch}
+.installrow{display:flex;gap:8px;align-items:stretch;margin:16px 0;flex-wrap:wrap}
+.installbox{display:flex;align-items:center;gap:8px;border:1px solid var(--c-ink);background:var(--c-code);color:var(--c-code-ink);padding:6px 6px 6px 16px;border-radius:var(--r-sm);max-width:100%}
+.installbox code{font-size:14px;overflow-x:auto;white-space:nowrap}
+.copybtn{border:1px solid var(--c-line);background:#fff;color:var(--c-ink);border-radius:var(--r-sm);min-height:44px;padding:8px 14px;font-size:13px;cursor:pointer;white-space:nowrap;transition:background-color 150ms ease}
+.installbox .copybtn{background:transparent;color:var(--c-code-ink);border-color:var(--c-mut)}
+.copybtn:hover{background:var(--c-line)}
+.installbox .copybtn:hover{background:var(--c-mut)}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.daemon-note{font-size:13px;color:var(--c-mut);border-left:2px solid var(--c-accent);padding-left:12px;max-width:52ch}
+.term{border:1px solid var(--c-line);background:var(--c-code);color:var(--c-code-ink);border-radius:var(--r-md)}
+.term-bar{border-bottom:1px solid var(--c-mut);padding:6px 10px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:60px}
+.ttabs{display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;max-width:100%}
+.ttab{background:transparent;border:1px solid transparent;color:var(--c-code-ink);font-family:var(--font-mono);font-size:12px;min-height:44px;padding:8px 12px;cursor:pointer;border-radius:var(--r-sm);transition:border-color 150ms ease,color 150ms ease;white-space:nowrap;flex:none}
+.ttab[aria-selected="true"]{border-bottom:2px solid var(--c-accent);color:#fff;font-weight:700}
+.term-meta{display:flex;gap:8px;align-items:center;flex:none}
+.term-body{padding:16px;min-height:220px}
+.term-body pre{white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.6}
+.tag{font-size:11px;border:1px solid var(--c-mut);padding:2px 6px;color:var(--c-code-ink);border-radius:var(--r-sm);white-space:nowrap}
+section{padding:32px 0}
+.sec-head{margin-bottom:16px}
+.sec-head h2{font-size:26px;letter-spacing:-0.01em;line-height:1.15}
+.sec-head p{color:var(--c-mut);font-size:14px;max-width:70ch}
+.eco-list{border-top:1px solid var(--c-ink)}
+.eco-row{display:grid;grid-template-columns:64px 1fr 1fr;gap:16px;padding:16px 0;border-bottom:1px solid var(--c-line);align-items:start}
+.eco-num{font-size:28px;font-weight:700;color:var(--c-mut);font-family:var(--font-head),system-ui,sans-serif}
+.eco-name{font-weight:700}
+.eco-meta{font-size:13px;color:var(--c-mut);margin:4px 0 8px}
+.eco-desc{font-size:14px;max-width:52ch}
+.eco-side{border:1px solid var(--c-line);background:#fff;padding:12px;font-size:13px;border-radius:var(--r-sm)}
+.eco-side code{display:block;border:1px solid var(--c-line);background:var(--c-bg);padding:8px;margin-bottom:8px;overflow-x:auto;white-space:nowrap;border-radius:var(--r-sm)}
+.demo-grid{display:grid;grid-template-columns:1fr 44px 1fr;gap:12px;align-items:stretch}
+.codebox{border:1px solid var(--c-line);background:#fff;border-radius:var(--r-sm);min-width:0}
+.codebox h3{font-size:13px;border-bottom:1px solid var(--c-line);padding:8px 12px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.codebox pre{padding:14px;font-size:13px;overflow-x:auto;background:var(--c-code);color:var(--c-code-ink);border-radius:0 0 var(--r-sm) var(--r-sm);min-height:120px;white-space:pre}
+html[data-theme="light"] .codebox.light pre{background:#fff;color:var(--c-ink)}
+.flags{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.flag{border:1px solid var(--c-line);background:#fff;padding:12px;font-size:13px;border-radius:var(--r-sm)}
+.mode-tabs{display:flex;gap:4px;margin-bottom:4px;border-bottom:1px solid var(--c-line)}
+.mtab{background:#fff;border:1px solid var(--c-line);border-bottom:none;color:var(--c-ink);font-size:14px;font-weight:600;min-height:44px;padding:10px 20px;cursor:pointer;border-radius:var(--r-sm) var(--r-sm) 0 0;transition:color 150ms ease,border-color 150ms ease}
+.mtab[aria-selected="true"]{border-bottom:2px solid var(--c-accent);color:var(--c-accent)}
+.mode-expl{font-size:12px;color:var(--c-mut);margin:0 0 12px;max-width:64ch}
+.feat-list{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--c-ink);border-left:1px solid var(--c-ink);background:#fff}
+.feat{border-right:1px solid var(--c-ink);border-bottom:1px solid var(--c-ink);padding:16px}
+.feat-n{font-size:12px;color:var(--c-mut)}
+.feat h3{font-size:16px;margin:4px 0}
+.feat p{font-size:13px}
+.narrow{max-width:720px}
+.step{border:1px solid var(--c-line);background:#fff;border-left:3px solid var(--c-accent);padding:12px 14px;margin-bottom:10px;border-radius:var(--r-sm)}
+.step b{display:block}
+.step code{display:block;margin-top:6px;overflow-x:auto;white-space:nowrap}
+.scroll{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:280px;background:#fff}
+th,td{border:1px solid var(--c-line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--c-bg);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.arch-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px}
+.arch-card{border:1px solid var(--c-line);background:#fff;border-radius:var(--r-sm);padding:12px;min-width:0}
+.arch-card img{width:100%;height:auto;display:block;border:1px solid var(--c-line);border-radius:var(--r-sm);background:var(--c-bg)}
+.arch-card figcaption{font-size:13px;color:var(--c-mut);margin-top:8px}
+.daemon-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+.sock{border:1px solid var(--c-line);background:#fff;padding:14px;border-radius:var(--r-sm)}
+.sockline{display:flex;justify-content:space-between;border-bottom:1px dashed var(--c-line);padding:8px 0;font-size:13px;gap:8px}
+.pg-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.pg-label{font-size:13px;font-weight:600;margin-bottom:6px;display:block}
+.exit-chip{display:inline-block;font-size:12px;font-weight:700;border:1px solid var(--c-line);background:#fff;border-radius:var(--r-sm);padding:6px 12px;margin-top:8px;min-height:44px;line-height:30px}
+.exit-chip.dirty{border-color:var(--c-accent);color:var(--c-accent)}
+.exit-chip.clean{border-color:#15803D;color:#15803D}
+.fullbleed{width:100vw;margin-left:calc(50% - 50vw);background:var(--c-code);color:var(--c-code-ink);border-top:1px solid var(--c-code);border-bottom:1px solid var(--c-code)}
+.fullbleed .wrap{padding-top:28px;padding-bottom:28px}
+.fullbleed h2{font-size:26px;margin-bottom:8px}
+.fullbleed p{font-size:14px;margin-bottom:14px;max-width:72ch}
+.fullbleed table{background:transparent;color:var(--c-code-ink)}
+.fullbleed th,.fullbleed td{border-color:var(--c-mut)}
+.fullbleed th{background:transparent}
+.fullbleed code{border:1px solid var(--c-mut);padding:1px 6px;white-space:nowrap;border-radius:var(--r-sm)}
+footer{border-top:1px solid var(--c-line);padding:28px 0 40px}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:24px}
+.foot-grid h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;color:var(--c-mut)}
+.foot-grid ul{list-style:none}
+.foot-grid li{margin-bottom:6px;font-size:14px}
+.foot-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-family:var(--font-head),system-ui,sans-serif}
+.foot-brand img{width:32px;height:32px}
+.legal{margin-top:20px;padding-top:12px;border-top:1px solid var(--c-line);font-size:13px;color:var(--c-mut);display:flex;gap:16px;flex-wrap:wrap}
+.api-strip{border:1px solid var(--c-line);border-left:3px solid var(--c-accent);background:var(--c-surface);border-radius:var(--r-sm);padding:14px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.api-strip p{font-size:14px;max-width:62ch;flex:1;min-width:200px}
+.api-strip .btn{font-size:13px;padding:10px 18px}
+.tok-k{color:#7DD3FC;font-weight:600}
+.tok-s{color:#86EFAC}
+.tok-c{color:#94A3B8;font-style:italic}
+.tok-t{color:#FDA4AF;font-weight:700}
+html[data-theme="light"] .codebox.light pre .tok-k{color:#0E7490}
+html[data-theme="light"] .codebox.light pre .tok-s{color:#15803D}
+html[data-theme="light"] .codebox.light pre .tok-c{color:#64748B}
+html[data-theme="light"] .codebox.light pre .tok-t{color:#BE123C;font-weight:700}
+.arch-scroll{overflow:auto;max-height:380px;border:1px solid var(--c-line);border-radius:var(--r-sm);background:var(--c-bg)}
+.arch-scroll img{min-width:680px;max-width:none;width:680px;height:auto;display:block;border:none;border-radius:0}
+.arch-scroll.tall{max-height:480px}
+.arch-scroll.tall img{min-width:0;width:100%;max-width:100%;height:auto}
+tr[data-rpc]{cursor:pointer}
+tr[data-rpc]:hover td{background:var(--c-bg)}
+tr[data-rpc].active td{background:var(--c-bg);box-shadow:inset 3px 0 0 var(--c-accent)}
+tr[data-rpc]:focus-visible{outline:2px solid var(--c-accent);outline-offset:-2px}
+.term-bar .tag{white-space:nowrap}
+#rpc-copy{min-height:44px;min-width:112px;max-width:112px;width:112px;padding:8px 10px;font-size:12px;flex:none;text-align:center}
+#rpc-lat{flex:none;min-width:64px;text-align:center}
+.thin-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.thin-row code{flex:1;min-width:0;overflow-x:auto}
+.themebtn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--c-line);background:#fff;color:var(--c-ink);border-radius:var(--r-sm);min-height:44px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer}
+.themebtn svg{width:18px;height:18px}
+.step-num{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--c-accent);margin-right:8px}
+html[data-theme="dark"] .step-num{color:var(--c-accent-sm)}
+.step .thin-row{margin-top:8px}
+.pg-note{font-size:12px;color:var(--c-mut);margin-top:8px}
+.pg-diff{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.pg-diff .codebox.is-active{outline:2px solid var(--c-accent);outline-offset:-2px}
+.codebox .pane-tag{font-size:11px;font-weight:400;border:1px solid var(--c-line);padding:2px 6px;border-radius:var(--r-sm);color:var(--c-mut);margin-left:8px}
+html[data-theme="dark"] .themebtn{background:#1E293B;color:#F1F5F9;border-color:#334155}
+.preset-bar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 8px}
+.preset-btn{display:flex;gap:10px;align-items:flex-start;text-align:left;border:1px solid var(--c-line);background:#fff;color:var(--c-ink);border-radius:var(--r-sm);min-height:44px;padding:10px 12px;cursor:pointer;font-size:13px;font-family:var(--font-body);transition:border-color 150ms ease}
+html[data-theme="dark"] .preset-btn{background:var(--c-surface);color:var(--c-ink);border-color:var(--c-line)}
+.preset-btn svg{flex:none;width:20px;height:20px;margin-top:2px}
+.preset-btn b{display:block;font-size:13px}
+.preset-btn small{display:block;font-size:12px;color:var(--c-mut);font-family:var(--font-mono)}
+.preset-btn[aria-pressed="true"]{border:1px solid var(--c-accent);box-shadow:inset 3px 0 0 var(--c-accent)}
+.preset-btn:hover{border-color:var(--c-accent)}
+.preset-btn:focus-visible{outline:2px solid var(--c-accent);outline-offset:2px}
+.pg-step{font-size:13px;font-weight:700;margin:12px 0 6px}
+.pg-step-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid var(--c-accent);color:var(--c-accent);border-radius:50%;font-size:12px;margin-right:8px;font-family:var(--font-mono)}
+html[data-theme="dark"] .pg-step-num{color:var(--c-accent-sm);border-color:var(--c-accent-sm)}
+.pg-hint{font-size:12px;color:var(--c-mut);margin:0 0 10px;font-family:var(--font-mono)}
+.pg-status{font-size:12px;color:var(--c-mut);margin-top:8px;min-height:18px}
+.eco-side a.eco-link{display:flex;align-items:center;gap:6px;text-decoration:none;font-weight:600;font-size:13px;padding:6px 0;min-height:44px}
+.eco-side a.eco-link:hover{text-decoration:underline}
+.eco-side a.eco-link .eco-arrow{display:inline-flex;flex:none;align-items:center;color:var(--c-accent)}.eco-arrow svg{width:13px;height:13px;display:block}.try-hint svg{width:13px;height:13px;display:block;flex:none}
+html[data-theme="dark"] .eco-side a.eco-link .eco-arrow{color:var(--c-accent-sm)}
+.eco-side .eco-cap{display:block;font-size:12px;color:var(--c-mut);font-weight:400;margin-top:2px}
+.eco-side .eco-rowline{border-left:3px solid transparent;padding-left:8px;margin-bottom:6px}
+.eco-side .eco-rowline:hover{border-left-color:var(--c-accent)}
+.ver-chip{font-size:11px;border:1px solid var(--c-line);padding:2px 6px;border-radius:var(--r-sm);color:var(--c-mut);font-family:var(--font-mono);white-space:nowrap}
+.feat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.feat-card{border:1px solid var(--c-line);background:#fff;padding:14px;border-radius:var(--r-sm);display:flex;flex-direction:column}
+html[data-theme="dark"] .feat-card{background:var(--c-surface);color:var(--c-ink)}
+.feat-card svg{width:28px;height:28px;color:var(--c-accent);display:block;margin-bottom:8px}
+html[data-theme="dark"] .feat-card svg{color:var(--c-accent-sm)}
+.feat-card h3{font-size:15px;margin-bottom:4px}
+.feat-card p{font-size:13px;color:var(--c-mut);flex:1}
+.feat-card a.try-hint{display:inline-flex;align-items:center;gap:6px;font-size:12px;margin-top:auto;padding-top:8px;font-family:var(--font-mono);min-height:44px;line-height:1.4}
+.feat-card a.try-hint svg{width:10px;height:10px}
+.feat-n{font-size:12px;color:var(--c-mut);font-family:var(--font-mono)}
+.cli-timeline{position:relative;padding-left:22px;border-left:2px solid var(--c-line);margin-bottom:14px}
+.cli-timeline .step{position:relative}
+.cli-timeline .step::before{content:"";position:absolute;left:-29px;top:14px;width:12px;height:12px;border-radius:50%;background:var(--c-bg);border:2px solid var(--c-accent)}
+.exit-table tr:hover td{background:var(--c-bg)}
+html[data-theme="dark"] .exit-table tr:hover td{background:var(--c-bg)}
+.compat-timeline{position:relative;padding-left:24px;border-left:2px solid var(--c-line)}
+.compat-node{position:relative;padding:12px 0 16px}
+.compat-node::before{content:"";position:absolute;left:-31px;top:16px;width:12px;height:12px;border-radius:50%;background:var(--c-accent);border:2px solid var(--c-bg)}
+.compat-node .compat-ver{font-size:13px;font-weight:700;border:1px solid var(--c-mut);padding:4px 10px;border-radius:var(--r-sm);font-family:var(--font-mono)}
+.compat-node .compat-scope{font-size:13px;font-weight:600;margin:6px 0 2px}
+.compat-node .compat-note{font-size:13px;max-width:64ch}
+.compat-node .compat-getmiss{font-size:12px;color:var(--c-mut);margin-top:4px}
+.arch-expl{font-size:13px;margin-top:8px;max-width:60ch}
+.paper-cap{font-size:12px;color:var(--c-mut);margin-top:6px}
+html[data-theme="dark"] .arch-card{background:var(--c-surface);border-color:var(--c-line);color:var(--c-ink)}
+html[data-theme="dark"] .arch-card figcaption{color:var(--c-mut)}
+.term-prompt{color:#4ADE80;font-weight:700}
+#rpc-out .tok-k{color:#7DD3FC;font-weight:600}
+#rpc-out .tok-s{color:#86EFAC}
+#rpc-out .tok-n{color:#FDA4AF;font-weight:700}
+#rpc-out .tok-b{color:#FDE68A;font-weight:700}
+html[data-theme="light"] #rpc-out .tok-k{color:#7DD3FC}
+html[data-theme="light"] #rpc-out .tok-s{color:#86EFAC}
+html[data-theme="light"] #rpc-out .tok-n{color:#FDA4AF}
+html[data-theme="light"] #rpc-out .tok-b{color:#FDE68A}
+/* G1 hero compact */
+.hero-demo{border:1px solid var(--c-line);background:var(--c-surface);border-radius:var(--r-sm);padding:12px;max-width:100%}
+.hero-demo .preset-bar{grid-template-columns:repeat(3,1fr)}
+.hero-out{max-height:220px;min-height:220px;overflow:auto;background:var(--c-code);color:var(--c-code-ink);border-radius:var(--r-sm);padding:12px;font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;font-family:var(--font-mono)}
+.hero-out .tok-k{color:#7DD3FC;font-weight:600}
+.hero-out .tok-s{color:#86EFAC}
+.hero-out .tok-c{color:#94A3B8;font-style:italic}
+.hero-out .tok-t{color:#FDA4AF;font-weight:700}
+.real-badge{display:inline-block;font-size:11px;font-weight:700;border:1px solid var(--c-line);padding:4px 8px;border-radius:var(--r-sm);color:var(--c-mut);font-family:var(--font-mono);margin:8px 0;min-height:28px}
+.real-badge.is-real{border-color:var(--c-ok);color:var(--c-ok)}
+.hero-link{display:inline-block;margin-top:4px;font-size:13px;min-height:44px;line-height:44px;font-weight:600}
+/* G4 CLI terminal frames */
+.cli-term{border:1px solid var(--c-line);background:#020617;color:#F1F5F9;border-radius:var(--r-md);margin-bottom:10px;overflow:hidden}
+.cli-term-bar{display:flex;align-items:center;gap:8px;padding:4px 12px;border-bottom:1px solid #334155;font-size:11px;font-family:var(--font-mono);color:#CBD5E1}
+.cli-term-body{padding:10px 12px;font-family:var(--font-mono);font-size:13px;line-height:24px;display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}.cli-term-body .term-prompt{font-size:13px;line-height:24px;display:flex;align-items:center}.cli-term-body .copybtn{flex:none;align-self:center}.step-meta{font-size:12px;color:var(--c-mut);margin-top:8px}.step-meta .k{color:var(--c-accent);font-weight:700}html[data-theme="dark"] .step-meta .k{color:var(--c-accent-sm)}.cli-legend{border:1px solid var(--c-line);background:var(--c-surface);color:var(--c-ink);border-radius:var(--r-sm);padding:12px 14px;font-size:13px;margin:14px 0}.cli-legend b{display:block;margin-bottom:4px}.cli-legend code{font-family:var(--font-mono);font-size:12.5px}.cli-legend .lg-row{display:flex;gap:10px;align-items:baseline;padding:3px 0}.cli-legend .lg-k{font-family:var(--font-mono);font-weight:700;flex:none;min-width:28px}
+.cli-term-body .cmd{min-width:0;overflow-x:auto;white-space:nowrap;font-size:13px;line-height:24px;display:flex;align-items:center;margin-top:0}
+.cli-term .copybtn{background:transparent;color:#F1F5F9;border-color:#475569;min-height:44px}
+.cli-term .copybtn:hover{background:#1E293B}
+/* G5 pipeline strip */
+.pipeline{position:relative;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:0 0 16px}
+.pipeline::before{content:"";position:absolute;top:24px;left:32px;right:32px;height:2px;background:var(--c-line)}
+.pipe-chip{position:relative;text-align:center;border:1px solid var(--c-line);background:var(--c-surface);color:var(--c-ink);border-radius:var(--r-sm);padding:8px 4px;font-size:12px;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.pipe-num{width:22px;height:22px;border:1px solid var(--c-accent);color:var(--c-accent);border-radius:50%;font-size:12px;font-family:var(--font-mono);display:inline-flex;align-items:center;justify-content:center;background:var(--c-bg);flex:none}
+html[data-theme="dark"] .pipe-num{color:var(--c-accent-sm);border-color:var(--c-accent-sm)}
+.pipe-chip b{font-size:12px}
+/* G6 daemon stable terminal */
+.daemon-term{min-height:480px}
+.daemon-term .term-bar{flex-wrap:nowrap}
+.daemon-term .term-body{min-height:380px;max-height:380px;overflow:auto;padding:16px}
+#rpc-out{min-height:340px;max-height:340px;overflow:auto;white-space:pre-wrap;word-break:normal;overflow-wrap:break-word;font-size:13px;line-height:1.7}
+.sec-lede{font-size:16px;color:var(--c-ink);max-width:62ch;line-height:1.65;border-left:4px solid var(--c-accent);padding-left:12px;margin-top:8px}
+.sec-head p.sec-lede{color:var(--c-ink)}
+.fullbleed .sec-lede{color:var(--c-code-ink);border-left-color:var(--c-accent-sm)}
+.pipe-chip{font-family:var(--font-body);cursor:pointer}
+.pipe-chip[aria-expanded="true"]{border-color:var(--c-accent);box-shadow:inset 3px 0 0 var(--c-accent)}
+.pipe-detail{border:1px solid var(--c-line);background:var(--c-surface);color:var(--c-ink);border-radius:var(--r-sm);padding:12px 14px;font-size:13px;margin:0 0 16px;min-height:44px}
+.pipe-detail b{font-weight:700}
+.arch-open{background:var(--c-surface);color:var(--c-ink);border:1px solid var(--c-line);border-radius:var(--r-sm);min-height:44px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;margin-top:8px;width:100%}
+.arch-open:hover{border-color:var(--c-accent)}
+.mmd-link{font-size:13px;min-height:44px;line-height:44px;display:inline-block;font-weight:600}
+dialog#arch-dialog{margin:auto;border:1px solid var(--c-line);border-radius:4px;padding:0;width:min(920px,94vw);height:min(88vh,860px);background:#FFFFFF;color:#0F172A;overflow:hidden}
+dialog#arch-dialog[open]{display:flex;flex-direction:column}
+dialog#arch-dialog::backdrop{background:rgba(15,23,42,.55)}
+.dlg-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #E2E8F0;flex:none}
+.dlg-title{font-weight:700;font-size:14px;flex:1}
+.dlg-body{padding:14px;flex:1 1 0;min-height:0;overflow:auto;background:#FFFFFF}
+.dlg-body img{display:block;background:#FFFFFF;width:100%;max-width:100%;height:auto;transform-origin:top left}
+.dlg-cap{font-size:13px;color:#475569;margin-top:8px}
+.dlg-foot{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 14px;border-top:1px solid #E2E8F0;flex:none;background:#FFFFFF}
+.dlg-btn{min-height:44px;min-width:44px;padding:8px 14px;border:1px solid #0F172A;background:#0F172A;color:#F1F5F9;border-radius:2px;font-size:13px;font-weight:600;cursor:pointer}
+.dlg-btn.ghost{background:#fff;color:#0F172A}
+.dlg-link{font-size:13px;min-height:44px;line-height:44px;font-weight:600;color:#0F172A}
+@media (max-width:1000px){
+.hero-grid{grid-template-columns:1fr 1fr;gap:20px}
+h1{font-size:38px}
+.eco-row{grid-template-columns:48px 1fr}
+.eco-side{grid-column:2}
+.arch-grid{grid-template-columns:1fr 1fr}
+.hero-demo .preset-bar{grid-template-columns:1fr 1fr}
+.pipeline{grid-template-columns:repeat(5,1fr)}
+}
+@media (max-width:768px){
+.hero-grid{grid-template-columns:1fr}
+.demo-grid{grid-template-columns:1fr}
+.flags{grid-template-columns:1fr}
+.feat-list{grid-template-columns:1fr}
+.daemon-grid{grid-template-columns:1fr}
+.pg-grid{grid-template-columns:1fr}
+.pg-diff{grid-template-columns:1fr}
+.arch-grid{grid-template-columns:1fr}
+.eco-row{grid-template-columns:1fr}
+.eco-side{grid-column:auto}
+.foot-grid{grid-template-columns:1fr}
+.top-actions{margin-left:0}
+h1{font-size:32px}
+.feat-grid{grid-template-columns:1fr}
+.pipeline{grid-template-columns:1fr 1fr}
+.pipeline::before{display:none}
+.daemon-term .term-body{min-height:420px;max-height:420px}
+#rpc-out{min-height:380px;max-height:380px}
+}
+@media (max-width:480px){
+body{font-size:15px}
+.btn{width:100%;text-align:center}
+.installbox{width:100%}
+.stickybar-in{font-size:12px}
+.preset-bar{grid-template-columns:1fr}
+.hero-demo .preset-bar{grid-template-columns:1fr}
+.pipeline{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){
+*{transition:none;animation:none}
+}
+</style>
+</head>
+<body>
+<header class="topbar" aria-label="header">
+<div class="wrap topbar-in">
+<a class="brand" href="#"><img src="assets/icons/icon_128x128.png" alt="DocScribe logo" width="40" height="40">DocScribe</a>
+<nav class="mainnav" aria-label="primary">
+<a href="#ecosystem">Gem</a>
+<a href="#vscode">VS Code</a>
+<a href="#rubymine">RubyMine</a>
+<a href="#architecture">Architecture</a>
+<a href="#cli">CLI</a>
+<a href="https://unurgunite.github.io/docscribe_docs">API docs</a>
+</nav>
+<div class="top-actions">
+<span class="badge mono">v1.6.2</span>
+<button class="themebtn" id="theme-toggle" aria-pressed="false" aria-label="Toggle color theme"><svg id="theme-ico-sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="4"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3M3.6 3.6l2.1 2.1M14.3 14.3l2.1 2.1M16.4 3.6l-2.1 2.1M5.7 14.3l-2.1 2.1"/></svg><svg id="theme-ico-moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" style="display:none"><path d="M15 12.5A6.5 6.5 0 0 1 7.5 5 6.5 6.5 0 1 0 15 12.5z"/></svg><span id="theme-label">Dark</span></button>
+<a class="btn ghost" href="https://github.com/unurgunite/docscribe">View on GitHub</a>
+</div>
+</div>
+</header>
+<div class="stickybar" id="stickybar" role="note" aria-label="requirements notice">
+<div class="wrap stickybar-in">
+<svg class="notice-ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M10 2.5 18 17H2z"/><path d="M10 8v4M10 14.5v.5"/></svg>
+<span>Requires Ruby &gt;= 2.7. Prism parser on Ruby &gt;= 3.4.</span>
+<button class="x" id="sticky-x" aria-label="Dismiss install bar">×</button>
+</div>
+</div>
+<main>
+<section class="hero" id="hero" aria-label="hero">
+<div class="wrap hero-grid">
+<div>
+<div class="kicker">DocScribe 1.6.2 - gem plus IDE plugins</div>
+<h1>YARD docs from Ruby AST</h1>
+<p class="sub">Auto-generate inline YARD documentation for Ruby by analyzing code AST. Supports RBS and Sorbet type signatures.</p>
+<div class="installrow">
+<div class="installbox"><code class="mono">gem install docscribe</code><button class="copybtn" data-copy="gem install docscribe">Copy</button></div>
+</div>
+<div class="cta-row">
+<a class="btn accent" href="#cli">Get started</a>
+<a class="btn ghost" href="https://github.com/unurgunite/docscribe">View on GitHub</a>
+</div>
+<p class="daemon-note">One daemon per project serves both IDE plugins over a Unix socket. Falls back to CLI.</p>
+</div>
+<div class="hero-demo" aria-label="preset gallery">
+<div class="preset-bar" id="hero-presets" role="group" aria-label="Preset gallery, six real outputs">
+<button class="preset-btn" data-hexample="greet" aria-pressed="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 4l12 6-12 6z"/></svg><span><b>Plain method</b><small>greet - baseline</small></span></button>
+<button class="preset-btn" data-hexample="kw" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h9"/></svg><span><b>Keyword default</b><small>kw - Integer param</small></span></button>
+<button class="preset-btn" data-hexample="search" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="9" cy="9" r="5"/><path d="M13 13l4 4"/></svg><span><b>Rest plus kw</b><small>search - 3 params typed</small></span></button>
+<button class="preset-btn" data-hexample="fetch" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M10 2l8 14H2z"/><path d="M10 8v4M10 14.5v.5"/></svg><span><b>Rescue track</b><small>fetch - raise tags</small></span></button>
+<button class="preset-btn" data-hexample="adult" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 10a6 6 0 0 1 12 0M7 10a3 3 0 0 1 6 0"/><path d="M10 10v5"/></svg><span><b>Predicate</b><small>adult - Boolean return</small></span></button>
+<button class="preset-btn" data-hexample="label" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="3" width="14" height="14"/><path d="M3 8h14"/></svg><span><b>Attr reader</b><small>label - attr case</small></span></button>
+</div>
+<p class="pg-hint mono" id="hero-hint">plain method, String return</p>
+<span class="real-badge is-real" id="hero-badge">real gem output - 1.6.2</span>
+<pre class="hero-out mono" id="hero-out" aria-live="polite"></pre>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+<button class="copybtn" id="hero-copy">Copy</button>
+<a class="hero-link" href="#cli" style="display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:13px;min-height:44px;line-height:44px;font-weight:600">See CLI quickstart <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg></a>
+</div>
+</div>
+</div>
+</section>
+<section id="ecosystem" aria-label="ecosystem">
+<div class="wrap">
+<div class="sec-head">
+<h2>Ecosystem: gem and editors</h2>
+<p class="sec-lede">Three ways in. Gem for CI, extensions for the editor. Same engine underneath.</p>
+</div>
+<div class="eco-list">
+<div class="eco-row">
+<div class="eco-num mono">01</div>
+<div>
+<div class="eco-name">DocScribe gem 1.6.2</div>
+<div class="eco-meta">Ruby gem - CLI - RBS and Sorbet aware</div>
+<p class="eco-desc">YARD docs from AST. Safe fix with -a, full rebuild with -A. Needs Ruby &gt;= 2.7.</p>
+</div>
+<div class="eco-side">
+<div class="thin-row"><code class="mono">gem install docscribe</code><button class="copybtn" data-copy="gem install docscribe">Copy</button></div>
+<div class="eco-rowline"><a class="eco-link" href="https://rubygems.org/gems/docscribe"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>rubygems.org/gems/docscribe</a><span class="eco-cap">what you get: versioned gem tarball <span class="ver-chip">v1.6.2</span></span></div>
+<div class="eco-rowline"><a class="eco-link" href="https://github.com/unurgunite/docscribe"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>github.com/unurgunite/docscribe</a><span class="eco-cap">what you get: source plus changelog <span class="ver-chip">v1.6.2</span></span></div>
+</div>
+</div>
+<div class="eco-row" id="vscode">
+<div class="eco-num mono">02</div>
+<div>
+<div class="eco-name">VS Code 0.1.3</div>
+<div class="eco-meta">Extension - diagnostics on open and save</div>
+<p class="eco-desc">Missing docs underlined on open and save. One-click fix, RBS types, whole-project check, Cmd+Shift+D chords.</p>
+</div>
+<div class="eco-side">
+<div class="thin-row"><code class="mono">ext install unurgunite.docscribe-vscode</code><button class="copybtn" data-copy="ext install unurgunite.docscribe-vscode">Copy</button></div>
+<div class="eco-rowline"><a class="eco-link" href="https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>Marketplace page</a><span class="eco-cap">what you get: one-click install <span class="ver-chip">v0.1.3</span></span></div>
+<div class="eco-rowline"><a class="eco-link" href="https://github.com/FlorexLabs/docscribe-vscode"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>Extension source</a><span class="eco-cap">what you get: chords plus diagnostics <span class="ver-chip">v0.1.3</span></span></div>
+</div>
+</div>
+<div class="eco-row" id="rubymine">
+<div class="eco-num mono">03</div>
+<div>
+<div class="eco-name">RubyMine plugin 32349</div>
+<div class="eco-meta">Marketplace 32349 - RubyMine 2026.1 plus</div>
+<p class="eco-desc">Talks to the daemon over a Unix socket: annotations plus quick-fixes. CLI when the daemon is off.</p>
+</div>
+<div class="eco-side">
+<div class="thin-row"><code class="mono">Settings - Plugins - DocScribe</code><button class="copybtn" data-copy="Settings - Plugins - DocScribe">Copy</button></div>
+<div class="eco-rowline"><a class="eco-link" href="https://plugins.jetbrains.com/plugin/32349-docscribe"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>JetBrains Marketplace 32349</a><span class="eco-cap">what you get: signed plugin zip <span class="ver-chip">b32349</span></span></div>
+<div class="eco-rowline"><a class="eco-link" href="https://github.com/FlorexLabs/docscribe-rubymine"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>Plugin source</a><span class="eco-cap">what you get: socket client code <span class="ver-chip">b32349</span></span></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="features" aria-label="features">
+<div class="wrap">
+<div class="sec-head">
+<h2>Feature set</h2>
+<p class="sec-lede">Six behaviors that keep docs next to code.</p>
+</div>
+<div class="feat-grid">
+<div class="feat-card"><div class="feat-n mono">01</div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 11 12 14 22 4"/></svg><h3>No reprint</h3><p>Skips files that already carry full docs. Reruns stay clean.</p><a class="try-hint" href="#cli">Try safe fix <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></a></div>
+<div class="feat-card"><div class="feat-n mono">02</div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg><h3>Inline-first</h3><p>Writes YARD above the method, never into side files.</p><a class="try-hint" href="#hero">Try before-after <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg></a></div>
+<div class="feat-card"><div class="feat-n mono">03</div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><h3>RBS and Sorbet</h3><p>Reads sig blocks and RBS to type params.</p><a class="try-hint" href="#hero">Try typed params <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg></a></div>
+<div class="feat-card"><div class="feat-n mono">04</div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><h3>Rescue-aware</h3><p>Turns rescue and raise into @raise tags.</p><a class="try-hint" href="#hero">Try rescue preset <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg></a></div>
+<div class="feat-card"><div class="feat-n mono">05</div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><h3>Visibility</h3><p>Keeps private and protected markers in output.</p><a class="try-hint" href="#hero">Try private scope <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 3l4 4-4 4"/></svg></a></div>
+<div class="feat-card"><div class="feat-n mono">06</div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg><h3>Daemon plus thin client</h3><p>One watcher serves VS Code and RubyMine.</p><a class="try-hint" href="#daemon">Try socket <svg width="10" height="10" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></a></div>
+</div>
+</div>
+</section>
+<section id="cli" aria-label="cli">
+<div class="wrap">
+<div class="sec-head">
+<h2>CLI quickstart</h2>
+<p class="sec-lede">Three commands, in order. Paste and run.</p>
+</div>
+<div class="cli-timeline">
+<div class="step"><b><span class="step-num">01</span>Check a folder</b><div class="cli-term"><div class="cli-term-bar"><span>terminal - check</span></div><div class="cli-term-body"><span class="term-prompt">$</span><code class="mono cmd">docscribe lib</code><button class="copybtn" data-copy="docscribe lib">Copy</button></div></div><p class="step-meta mono"><span class="k">$?</span> 1 here means missing docs, fix with step 02</p></div>
+<div class="step"><b><span class="step-num">02</span>Safe fix in place</b><div class="cli-term"><div class="cli-term-bar"><span>terminal - safe fix</span></div><div class="cli-term-body"><span class="term-prompt">$</span><code class="mono cmd">docscribe -a lib</code><button class="copybtn" data-copy="docscribe -a lib">Copy</button></div></div><p class="step-meta mono"><span class="k">$?</span> 0 means clean, commit the diff</p></div>
+<div class="step"><b><span class="step-num">03</span>Sync inferred types, file-scope</b><div class="cli-term"><div class="cli-term-bar"><span>terminal - type sync</span></div><div class="cli-term-body"><span class="term-prompt">$</span><code class="mono cmd">docscribe update_types lib</code><button class="copybtn" data-copy="docscribe update_types lib">Copy</button></div></div><p class="step-meta mono"><span class="k">$?</span> 0 means synced, 2 means read the errors</p></div>
+</div>
+<div class="cli-legend" aria-label="prompt legend"><b>Reading the terminal</b><div class="lg-row"><span class="lg-k">$</span><code>Type this command, prompt and command share one line</code></div><div class="lg-row"><span class="lg-k">$?</span><code>Exit status of the last run, table below maps each code</code></div></div>
+<div class="scroll">
+<table class="exit-table" aria-label="exit codes">
+<tr><th scope="col">$?</th><th scope="col">Meaning</th><th scope="col">Next action</th></tr>
+<tr><td class="mono">0</td><td>OK, docs complete</td><td>Commit the diff</td></tr>
+<tr><td class="mono">1</td><td>Check found missing docs</td><td>Run with -a flag</td></tr>
+<tr><td class="mono">2</td><td>Had errors</td><td>Read output, fix input</td></tr>
+</table>
+</div>
+</div>
+</section>
+<section id="architecture" aria-label="architecture">
+<div class="wrap">
+<div class="sec-head">
+<h2>Designed, not grown</h2>
+<p class="sec-lede">CLI parses with the parser gem (Prism on Ruby 3.4+), collects methods, then infers types through RBS, Sorbet, and plugin signatures before rewriting the file, safe or aggressive. A daemon keeps parsed files behind a Unix-socket JSON-RPC with a 1000-entry LRU cache, so editor checks return instantly.</p>
+</div>
+<div class="pipeline" aria-label="pipeline strip">
+<button class="pipe-chip" data-pipe="0" aria-expanded="true"><span class="pipe-num">1</span><b>CLI</b></button>
+<button class="pipe-chip" data-pipe="1" aria-expanded="false"><span class="pipe-num">2</span><b>Parse</b></button>
+<button class="pipe-chip" data-pipe="2" aria-expanded="false"><span class="pipe-num">3</span><b>Infer</b></button>
+<button class="pipe-chip" data-pipe="3" aria-expanded="false"><span class="pipe-num">4</span><b>Rewrite</b></button>
+<button class="pipe-chip" data-pipe="4" aria-expanded="false"><span class="pipe-num">5</span><b>Daemon</b></button>
+</div>
+<div class="pipe-detail" id="pipe-detail" aria-live="polite"><b id="pipe-name">CLI</b> <span id="pipe-text">Entry point. Flags, file list, exit codes 0/1/2.</span></div>
+<div class="arch-grid">
+<figure class="arch-card">
+<div class="arch-scroll"><img src="assets/diagrams/architecture.svg" alt="DocScribe system architecture diagram" loading="lazy" data-dlg="0"></div>
+<figcaption>System architecture: CLI, daemon, and thin clients.</figcaption><p class="arch-expl">One watcher parses, thin IDE clients ask over socket.</p>
+<p><a class="mmd-link" href="https://github.com/unurgunite/docscribe/blob/master/assets/diagrams/architecture.mmd">architecture.mmd source</a></p>
+<button class="arch-open" data-dlg="0" aria-haspopup="dialog">Enlarge diagram</button>
+</figure>
+<figure class="arch-card">
+<div class="arch-scroll"><img src="assets/diagrams/dataflow.svg" alt="DocScribe dataflow diagram" loading="lazy" data-dlg="1"></div>
+<figcaption>Dataflow: parse, collect, infer, rewrite.</figcaption><p class="arch-expl">AST in, typed YARD out, safe or aggressive.</p>
+<p><a class="mmd-link" href="https://github.com/unurgunite/docscribe/blob/master/assets/diagrams/dataflow.mmd">dataflow.mmd source</a></p>
+<button class="arch-open" data-dlg="1" aria-haspopup="dialog">Enlarge diagram</button>
+</figure>
+<figure class="arch-card">
+<div class="arch-scroll tall"><img src="assets/diagrams/plugin-gem.svg" alt="DocScribe plugin and gem diagram" loading="lazy" data-dlg="2"></div>
+<figcaption>Plugin and gem: providers plug into the chain.</figcaption><p class="arch-expl">RBS plus Sorbet plus custom providers.</p>
+<p><a class="mmd-link" href="https://github.com/unurgunite/docscribe/blob/master/assets/diagrams/plugin-gem.mmd">plugin-gem.mmd source</a></p>
+<button class="arch-open" data-dlg="2" aria-haspopup="dialog">Enlarge diagram</button>
+</figure>
+</div>
+<p class="paper-cap">diagram paper stays light in dark mode</p>
+
+</div>
+</section>
+<section id="daemon" aria-label="daemon">
+<div class="wrap">
+<div class="sec-head">
+<h2>Daemon for IDEs</h2>
+<p class="sec-lede">Five JSON-RPC methods. Pick one to see its payload.</p>
+</div>
+<div class="daemon-grid">
+<div>
+<div class="scroll">
+<table aria-label="JSON-RPC methods">
+<tr><th scope="col">Method</th><th scope="col">Use</th></tr>
+<tr data-rpc="check" tabindex="0"><td class="mono">check</td><td>Single file check</td></tr>
+<tr data-rpc="fix" tabindex="0"><td class="mono">fix</td><td>Apply missing tags</td></tr>
+<tr data-rpc="check_batch" tabindex="0"><td class="mono">check_batch</td><td>Workspace run</td></tr>
+<tr data-rpc="update_types" tabindex="0"><td class="mono">update_types</td><td>File-scoped type sync, needs 1.6.2</td></tr>
+<tr data-rpc="ping" tabindex="0"><td class="mono">ping</td><td>Health probe</td></tr>
+</table>
+</div>
+<div class="step" style="margin-top:12px"><b>Thin client</b><div class="thin-row"><code class="mono" id="thin-cmd">docscribe-client --check lib/user.rb</code><button class="copybtn" data-copy="docscribe-client --check lib/user.rb">Copy</button></div></div>
+<p style="font-size:13px;color:var(--c-mut);margin-top:10px">RubyMine 2026.1 plus uses annotator plus intention over this socket. Falls back to CLI when daemon is off.</p>
+</div>
+<div class="term daemon-term" aria-label="socket terminal">
+<div class="term-bar mono">
+<div class="ttabs" role="tablist" aria-label="socket method">
+<button class="ttab" role="tab" aria-selected="true" data-rpc="check">check</button>
+<button class="ttab" role="tab" aria-selected="false" data-rpc="fix">fix</button>
+<button class="ttab" role="tab" aria-selected="false" data-rpc="check_batch">check_batch</button>
+<button class="ttab" role="tab" aria-selected="false" data-rpc="update_types">update_types</button>
+<button class="ttab" role="tab" aria-selected="false" data-rpc="ping">ping</button>
+</div>
+<div class="term-meta">
+<span class="tag">socket</span>
+<span class="tag" id="rpc-lat">ms 3</span>
+<button class="copybtn" id="rpc-copy">Copy JSON</button>
+</div>
+</div>
+<div class="term-body mono"><pre id="rpc-out" role="tabpanel" aria-live="polite"></pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="compat" aria-label="compat" style="padding:0">
+<div class="fullbleed">
+<div class="wrap">
+<h2>Compatibility strip</h2>
+<p class="sec-lede">Old gems lack new daemon calls. Match the client to the gem first.</p>
+<div class="compat-timeline">
+<div class="compat-node"><span class="compat-ver">1.6.2</span><p class="compat-scope">File-scoped type sync</p><p class="compat-note">Per-file <code class="mono">update_types</code> flag lands here.</p><p class="compat-getmiss">you get: per-file sync, you miss: nothing current</p></div>
+<div class="compat-node"><span class="compat-ver">1.5.2</span><p class="compat-scope">Batch check</p><p class="compat-note"><code class="mono">check_batch</code> runs whole workspace at once.</p><p class="compat-getmiss">you get: batch runs, you miss: file-scoped sync</p></div>
+<div class="compat-node"><span class="compat-ver">1.5.1</span><p class="compat-scope">CLI plus daemon start</p><p class="compat-note">Daemon ships, use <code class="mono">docscribe lib</code> for plain runs.</p><p class="compat-getmiss">you get: daemon checks, you miss: batch plus sync</p></div>
+</div>
+</div>
+</div>
+</section>
+<dialog id="arch-dialog" aria-label="Diagram viewer">
+<div class="dlg-head"><span class="dlg-title" id="dlg-title">System architecture</span><button class="dlg-btn ghost" id="dlg-close" aria-label="Close diagram viewer">Close</button></div>
+<div class="dlg-body"><img id="dlg-img" src="assets/diagrams/architecture.svg" loading="lazy" alt="DocScribe system architecture diagram"><p class="dlg-cap" id="dlg-cap">System architecture: CLI, daemon, and thin clients.</p></div>
+<div class="dlg-foot"><button class="dlg-btn" id="dlg-zin" aria-label="Zoom in diagram">Zoom in</button><button class="dlg-btn" id="dlg-zout" aria-label="Zoom out diagram">Zoom out</button><a class="dlg-link" id="dlg-mmd" href="https://github.com/unurgunite/docscribe/blob/master/assets/diagrams/architecture.mmd">architecture.mmd source</a></div>
+</dialog>
+<section id="api-docs" aria-label="internal api docs">
+<div class="wrap">
+<div class="api-strip">
+<p><strong>Internal API docs.</strong> Class and method reference for the gem, separate from this page.</p>
+<a class="btn ghost mono" href="https://unurgunite.github.io/docscribe_docs">unurgunite.github.io/docscribe_docs</a>
+</div>
+</div>
+</section>
+</main>
+<footer aria-label="footer">
+<div class="wrap">
+<div class="foot-grid">
+<div>
+<div class="foot-brand"><img src="assets/icons/icon_40x40.png" alt="DocScribe small logo">DocScribe</div>
+<p style="font-size:14px;max-width:40ch;margin-top:8px">YARD docs from Ruby AST for gems and IDEs. MIT licensed.</p>
+<p style="font-size:13px;color:var(--c-mut);margin-top:8px">License: MIT. Ruby &gt;= 2.7.</p>
+</div>
+<div>
+<h3>Packages</h3>
+<ul>
+<li><a href="https://rubygems.org/gems/docscribe">RubyGems - docscribe</a></li>
+<li><a href="https://marketplace.visualstudio.com/items?itemName=unurgunite.docscribe-vscode">VS Code Marketplace</a></li>
+<li><a href="https://plugins.jetbrains.com/plugin/32349-docscribe">RubyMine Marketplace 32349</a></li>
+</ul>
+</div>
+<div>
+<h3>Source</h3>
+<ul>
+<li><a href="https://github.com/unurgunite/docscribe">Gem source</a></li>
+<li><a href="https://github.com/FlorexLabs/docscribe-vscode">VS Code source</a></li>
+<li><a href="https://github.com/FlorexLabs/docscribe-rubymine">RubyMine source</a></li>
+</ul>
+</div>
+<div>
+<h3>Docs</h3>
+<ul>
+<li><a href="https://unurgunite.github.io/docscribe_docs">Internal API docs</a></li>
+<li><a href="#cli">CLI quickstart</a></li>
+<li><a href="#architecture">Architecture</a></li>
+</ul>
+</div>
+</div>
+<div class="legal"><span>MIT</span><span>RBS types supported</span><span>v1.6.2</span></div>
+</div>
+</footer>
+<script>
+(function(){
+"use strict";
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function hiLine(line){
+var out="",re=/(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(def|end|class|module|if|else|elsif|rescue|ensure|raise|return|private|protected|do|yield)\b/g,m,last=0;
+while((m=re.exec(line))){
+out+=esc(line.slice(last,m.index));
+if(m[1]){out+=hiComment(m[1]);}
+else if(m[2]){out+='<span class="tok-s">'+esc(m[2])+"</span>";}
+else{out+='<span class="tok-k">'+esc(m[3])+"</span>";}
+last=m.index+m[0].length;
+}
+return out+esc(line.slice(last));
+}
+function hiComment(c){return '<span class="tok-c">'+esc(c).replace(/(@\w+)/g,'<span class="tok-t">$1</span>')+"</span>";}
+function highlight(src){return src.split("\n").map(hiLine).join("\n");}
+function on(el,ev,fn){el.addEventListener(ev,fn);}
+var REAL_SAFE={
+greet:'# Method documentation.\n#\n# @param [Object] user Param documentation.\n# @return [String]\ndef greet(user)\n  "Hello, #{user.name}"\nend',
+kw:'# Method documentation.\n#\n# @param [Integer] user Param documentation.\n# @return [String]\ndef greet(user: 1)\n  "Hello, #{user.name}"\nend',
+search:'# Method documentation.\n#\n# @param [Object] query Param documentation.\n# @param [Array] tags Param documentation.\n# @param [Integer] limit Param documentation.\n# @return [String]\ndef search(query, limit: 20, *tags)\n  query.to_s\nend',
+fetch:'# Method documentation.\n#\n# @raise [TimeoutError]\n# @param [Object] id Param documentation.\n# @return [Object]\n# @return [nil] if TimeoutError\ndef fetch(id)\n  cache.read(id)\nrescue TimeoutError\n  nil\nend',
+adult:'# Method documentation.\n#\n# @param [Integer] age Param documentation.\n# @return [Boolean]\ndef adult?(age = 18)\n  age >= 18\nend',
+label:'attr_reader :name\n\n# Method documentation.\n#\n# @return [String]\ndef label\n  @name.to_s\nend'
+};
+var HERO_HINTS={greet:"plain method, String return",kw:"keyword default 1 goes to Integer",search:"rest plus kw, 3 params typed",fetch:"rescue maps to raise tags",adult:"default 18 goes to Integer, Boolean return",label:"attr plus method output"};
+var heroKey="greet";
+function stripBoilerplate(code){
+var lines=code.split("\n"),out=[];
+for(var i=0;i<lines.length;i++){
+if(lines[i]==="# Method documentation."){if(lines[i+1]==="#"){i++;}continue;}
+out.push(lines[i]);
+}
+return out.join("\n");
+}
+function runHero(k){
+if(REAL_SAFE[k]){heroKey=k;}
+var code=stripBoilerplate(REAL_SAFE[heroKey]||REAL_SAFE.greet);
+document.getElementById("hero-out").innerHTML=highlight(code);
+var btns=document.querySelectorAll("#hero-presets .preset-btn");
+for(var b=0;b<btns.length;b++){btns[b].setAttribute("aria-pressed",btns[b].getAttribute("data-hexample")===heroKey?"true":"false");}
+var hint=document.getElementById("hero-hint");
+if(hint&&HERO_HINTS[heroKey]){hint.textContent=HERO_HINTS[heroKey];}
+}
+function copyText(text,btn){
+function done(){var o=btn.textContent;btn.textContent="Copied";setTimeout(function(){btn.textContent=o;},1200);}
+if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done,function(){fallback();});}
+else{fallback();}
+function fallback(){var ta=document.createElement("text"+"area");ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){}document.body.removeChild(ta);}
+}
+function setTheme(t){
+document.documentElement.setAttribute("data-theme",t);
+var dark=t==="dark";
+var btn=document.getElementById("theme-toggle");
+btn.setAttribute("aria-pressed",dark?"true":"false");
+document.getElementById("theme-label").textContent=dark?"Light":"Dark";
+document.getElementById("theme-ico-sun").style.display=dark?"none":"";
+document.getElementById("theme-ico-moon").style.display=dark?"":"none";
+try{localStorage.setItem("docscribe-theme",t);}catch(e){}
+}
+function escJ(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function hiJsonLine(line){
+var out="",re=/("[A-Za-z_][\w$-]*")\s*:|("(?:[^"\\\n]|\\.)*")|\b(\d+)\b|\b(true|false|null)\b/g,m,last=0;
+while((m=re.exec(line))){
+out+=escJ(line.slice(last,m.index));
+if(m[1]){out+='<span class="tok-k">'+escJ(m[1])+"</span>";}
+else if(m[2]){out+='<span class="tok-s">'+escJ(m[2])+"</span>";}
+else if(m[3]){out+='<span class="tok-n">'+escJ(m[3])+"</span>";}
+else{out+='<span class="tok-b">'+escJ(m[0])+"</span>";}
+last=m.index+m[0].length;
+}
+return out+escJ(line.slice(last));
+}
+function hiRpc(src){
+var lines=src.split("\n");
+for(var i=0;i<lines.length;i++){
+var ln=lines[i];
+if(ln.charAt(0)==="$"){
+lines[i]='<span class="term-prompt">$</span>'+hiJsonLine(ln.slice(1));
+}else if(ln.charAt(0)===">"||ln.charAt(0)==="<"){
+lines[i]='<span class="term-prompt">'+escJ(ln.charAt(0))+"</span>"+hiJsonLine(ln.slice(1));
+}else{
+lines[i]=hiJsonLine(ln);
+}
+}
+return lines.join("\n");
+}
+var RPC={
+check:'$ docscribe-client --check lib/user.rb\n> {\n>   "method": "check",\n>   "params": {\n>     "file": "lib/user.rb"\n>   }\n> }\n< {\n<   "missing": [\n<     "@param",\n<     "@return"\n<   ],\n<   "ok": false\n< }',
+fix:'$ docscribe-client --fix lib/user.rb\n> {\n>   "method": "fix",\n>   "params": {\n>     "file": "lib/user.rb"\n>   }\n> }\n< {\n<   "fixed": 2,\n<   "ok": true\n< }',
+check_batch:'$ docscribe-client --check-batch lib\n> {\n>   "method": "check_batch",\n>   "params": {\n>     "files": [\n>       "lib/user.rb",\n>       "lib/order.rb"\n>     ]\n>   }\n> }\n< {\n<   "checked": 2,\n<   "missing": 3,\n<   "ok": false\n< }',
+update_types:'$ docscribe update_types lib/user.rb\n> {\n>   "method": "update_types",\n>   "params": {\n>     "file": "lib/user.rb",\n>     "dir": "lib"\n>   }\n> }\n< {\n<   "updated": 1,\n<   "ok": true\n< }',
+ping:'$ docscribe-client --ping\n> {\n>   "method": "ping",\n>   "params": {\n>   }\n> }\n< {\n<   "ok": true,\n<   "ms": 3\n< }'
+};
+var LAT={check:3,fix:5,check_batch:12,update_types:7,ping:1};
+function setRpc(name){
+if(!RPC[name]){return;}
+var tabs=document.querySelectorAll(".ttab");
+for(var i=0;i<tabs.length;i++){tabs[i].setAttribute("aria-selected",tabs[i].getAttribute("data-rpc")===name?"true":"false");}
+var rows=document.querySelectorAll("tr[data-rpc]");
+for(var r=0;r<rows.length;r++){
+if(rows[r].getAttribute("data-rpc")===name){rows[r].classList.add("active");}
+else{rows[r].classList.remove("active");}
+}
+document.getElementById("rpc-out").innerHTML=hiRpc(RPC[name]);
+var lat=document.getElementById("rpc-lat");
+if(lat){lat.textContent="ms "+(LAT[name]||3);}
+}
+on(document.getElementById("theme-toggle"),"click",function(){
+var cur=document.documentElement.getAttribute("data-theme");
+setTheme(cur==="dark"?"light":"dark");
+});
+(function initTheme(){
+var saved=null;
+try{saved=localStorage.getItem("docscribe-theme");}catch(e){}
+if(saved==="light"||saved==="dark"){setTheme(saved);return;}
+if(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches){setTheme("dark");return;}
+setTheme("light");
+})();
+var cbtns=document.querySelectorAll("[data-copy]");
+for(var c=0;c<cbtns.length;c++){
+(function(b){on(b,"click",function(){copyText(b.getAttribute("data-copy"),b);});})(cbtns[c]);
+}
+var cfrom=document.querySelectorAll("[data-copyfrom]");
+for(var d=0;d<cfrom.length;d++){
+(function(b){on(b,"click",function(){var t=document.getElementById(b.getAttribute("data-copyfrom"));copyText(t.textContent,b);});})(cfrom[d]);
+}
+var hbtns=document.querySelectorAll("#hero-presets .preset-btn");
+for(var hb=0;hb<hbtns.length;hb++){
+(function(b){on(b,"click",function(){runHero(b.getAttribute("data-hexample"));});})(hbtns[hb]);
+}
+on(document.getElementById("hero-copy"),"click",function(){copyText(document.getElementById("hero-out").textContent,document.getElementById("hero-copy"));});
+var rtabs=document.querySelectorAll(".ttab");
+for(var t=0;t<rtabs.length;t++){
+(function(b){on(b,"click",function(){setRpc(b.getAttribute("data-rpc"));});})(rtabs[t]);
+}
+var rpcRows=document.querySelectorAll("tr[data-rpc]");
+for(var rr=0;rr<rpcRows.length;rr++){
+(function(row){
+on(row,"click",function(){setRpc(row.getAttribute("data-rpc"));});
+on(row,"keydown",function(ev){if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();setRpc(row.getAttribute("data-rpc"));}});
+})(rpcRows[rr]);
+}
+on(document.getElementById("rpc-copy"),"click",function(){copyText(document.getElementById("rpc-out").textContent,document.getElementById("rpc-copy"));});
+try{if(localStorage.getItem("docscribe-notice")==="hide"){document.getElementById("stickybar").style.display="none";}}catch(e){}
+on(document.getElementById("sticky-x"),"click",function(){document.getElementById("stickybar").style.display="none";try{localStorage.setItem("docscribe-notice","hide");}catch(e){}});
+var PIPE=[{n:"CLI",t:"Entry point. Flags, file list, exit codes 0/1/2."},{n:"Parse",t:"parser gem, or Prism on Ruby 3.4+. No reprinting."},{n:"Infer",t:"Heuristics first, RBS and Sorbet override."},{n:"Rewrite",t:"TreeRewriter edits. Safe merges, aggressive rebuilds."},{n:"Daemon",t:"Unix socket, LRU cache, thin client for IDEs."}];
+function setPipe(i){var chips=document.querySelectorAll(".pipe-chip");for(var k=0;k<chips.length;k++){chips[k].setAttribute("aria-expanded",k===i?"true":"false");}var nm=document.getElementById("pipe-name"),tx=document.getElementById("pipe-text");if(nm&&tx&&PIPE[i]){nm.textContent=PIPE[i].n;tx.textContent=PIPE[i].t;}}
+var pchips=document.querySelectorAll(".pipe-chip");
+for(var p=0;p<pchips.length;p++){(function(b){on(b,"click",function(){setPipe(parseInt(b.getAttribute("data-pipe"),10));});})(pchips[p]);}
+setPipe(0);
+var DLG=[{src:"assets/diagrams/architecture.svg",alt:"DocScribe system architecture diagram",cap:"System architecture: CLI, daemon, and thin clients.",mmd:"https://github.com/unurgunite/docscribe/blob/master/assets/diagrams/architecture.mmd",label:"architecture.mmd source",title:"System architecture"},{src:"assets/diagrams/dataflow.svg",alt:"DocScribe dataflow diagram",cap:"Dataflow: parse, collect, infer, rewrite.",mmd:"https://github.com/unurgunite/docscribe/blob/master/assets/diagrams/dataflow.mmd",label:"dataflow.mmd source",title:"Dataflow"},{src:"assets/diagrams/plugin-gem.svg",alt:"DocScribe plugin and gem diagram",cap:"Plugin and gem: providers plug into the chain.",mmd:"https://github.com/unurgunite/docscribe/blob/master/assets/diagrams/plugin-gem.mmd",label:"plugin-gem.mmd source",title:"Plugin and gem"}];
+var dlgZoom=1;
+function dlgApply(){var im=document.getElementById("dlg-img");if(im){im.style.width=(dlgZoom*100)+"%";im.style.maxWidth="none";}}
+function openDlg(i){var d=DLG[i];if(!d){return;}var el=document.getElementById("arch-dialog");document.getElementById("dlg-img").src=d.src;document.getElementById("dlg-img").alt=d.alt;document.getElementById("dlg-cap").textContent=d.cap;var m=document.getElementById("dlg-mmd");m.href=d.mmd;m.textContent=d.label;document.getElementById("dlg-title").textContent=d.title;dlgZoom=1;dlgApply();if(el&&el.showModal){try{el.showModal();}catch(e){}}var c=document.getElementById("dlg-close");if(c){c.focus();}}
+function closeDlg(){var el=document.getElementById("arch-dialog");if(el&&el.open){el.close();}}
+var openers=document.querySelectorAll("[data-dlg]");
+for(var q=0;q<openers.length;q++){(function(b){var tag=b.tagName.toLowerCase();if(tag==="img"){b.style.cursor="zoom-in";b.tabIndex=0;b.addEventListener("keydown",function(ev){if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();openDlg(parseInt(b.getAttribute("data-dlg"),10));}});}on(b,"click",function(){openDlg(parseInt(b.getAttribute("data-dlg"),10));});})(openers[q]);}
+on(document.getElementById("dlg-close"),"click",function(){closeDlg();});
+on(document.getElementById("dlg-zin"),"click",function(){if(dlgZoom<3){dlgZoom+=0.25;dlgApply();}});
+on(document.getElementById("dlg-zout"),"click",function(){if(dlgZoom>1){dlgZoom-=0.25;dlgApply();}});
+(function(){var el=document.getElementById("arch-dialog");if(el){el.addEventListener("click",function(ev){if(ev.target===el){el.close();}});}})();
+runHero("greet");
+setRpc("check");
+})();
+</script>
+</body>
+</html>
