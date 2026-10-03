@@ -136,13 +136,16 @@ th{background:var(--c-bg);font-size:12px;text-transform:uppercase;letter-spacing
 .fullbleed th{background:transparent}
 .fullbleed code{border:1px solid var(--c-mut);padding:1px 6px;white-space:nowrap;border-radius:var(--r-sm)}
 footer{border-top:1px solid var(--c-line);padding:28px 0 40px}
-.foot-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:24px}
+.foot-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:24px}
 .foot-grid h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;color:var(--c-mut)}
 .foot-grid ul{list-style:none}
 .foot-grid li{margin-bottom:6px;font-size:14px}
 .foot-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-family:var(--font-head),system-ui,sans-serif}
 .foot-brand img{width:32px;height:32px}
 .legal{margin-top:20px;padding-top:12px;border-top:1px solid var(--c-line);font-size:13px;color:var(--c-mut);display:flex;gap:16px;flex-wrap:wrap}
+.api-strip{border:1px solid var(--c-line);border-left:3px solid var(--c-accent);background:var(--c-surface);border-radius:var(--r-sm);padding:14px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.api-strip p{font-size:14px;max-width:62ch;flex:1;min-width:200px}
+.api-strip .btn{font-size:13px;padding:10px 18px}
 .tok-k{color:#7DD3FC;font-weight:600}
 .tok-s{color:#86EFAC}
 .tok-c{color:#94A3B8;font-style:italic}
@@ -335,7 +338,8 @@ body{font-size:15px}
 <a href="#vscode">VS Code</a>
 <a href="#rubymine">RubyMine</a>
 <a href="#architecture">Architecture</a>
-<a href="#cli">Docs</a>
+<a href="#cli">CLI</a>
+<a href="https://unurgunite.github.io/docscribe_docs">API docs</a>
 </nav>
 <div class="top-actions">
 <span class="badge mono">v1.6.2</span>
@@ -570,6 +574,14 @@ body{font-size:15px}
 <div class="dlg-body"><img id="dlg-img" src="assets/diagrams/architecture.svg" loading="lazy" alt="DocScribe system architecture diagram"><p class="dlg-cap" id="dlg-cap">System architecture: CLI, daemon, and thin clients.</p></div>
 <div class="dlg-foot"><button class="dlg-btn" id="dlg-zin" aria-label="Zoom in diagram">Zoom in</button><button class="dlg-btn" id="dlg-zout" aria-label="Zoom out diagram">Zoom out</button><a class="dlg-link" id="dlg-mmd" href="https://github.com/unurgunite/docscribe/blob/master/assets/diagrams/architecture.mmd">architecture.mmd source</a></div>
 </dialog>
+<section id="api-docs" aria-label="internal api docs">
+<div class="wrap">
+<div class="api-strip">
+<p><strong>Internal API docs.</strong> Class and method reference for the gem, separate from this page.</p>
+<a class="btn ghost mono" href="https://unurgunite.github.io/docscribe_docs">unurgunite.github.io/docscribe_docs</a>
+</div>
+</div>
+</section>
 </main>
 <footer aria-label="footer">
 <div class="wrap">
@@ -593,6 +605,14 @@ body{font-size:15px}
 <li><a href="https://github.com/unurgunite/docscribe">Gem source</a></li>
 <li><a href="https://github.com/FlorexLabs/docscribe-vscode">VS Code source</a></li>
 <li><a href="https://github.com/FlorexLabs/docscribe-rubymine">RubyMine source</a></li>
+</ul>
+</div>
+<div>
+<h3>Docs</h3>
+<ul>
+<li><a href="https://unurgunite.github.io/docscribe_docs">Internal API docs</a></li>
+<li><a href="#cli">CLI quickstart</a></li>
+<li><a href="#architecture">Architecture</a></li>
 </ul>
 </div>
 </div>
