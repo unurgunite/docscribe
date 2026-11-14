@@ -29,6 +29,26 @@ RSpec.describe Docscribe::Infer::Returns do
       end
     end
 
+    context 'when the RBS return type is a block-bound type variable' do
+      let(:provider) { Docscribe::Types::RBS::Provider.new(sig_dirs: []) }
+
+      before do
+        skip_unless_rbs_available!
+        require 'docscribe/types/rbs/provider'
+      end
+
+      it 'resolves the free variable instead of emitting a bare name', :aggregate_failures do
+        result = described_class.returns_spec_from_node(
+          Parser::CurrentRuby.parse('def foo(counts); counts.each_with_object([]) { |(k, _v), a| a << k }; end'),
+          param_types: { 'counts' => 'Hash<String, Integer>' },
+          core_rbs_provider: provider
+        )
+
+        expect(result[:normal]).to eq('Object')
+        expect(result[:normal]).not_to match(/\A[A-Z]\z/)
+      end
+    end
+
     context 'when a Hash receiver is rebuilt through each_with_index.to_h' do
       let(:method_source) { 'def foo(counts); counts.each_with_index.to_h; end' }
 

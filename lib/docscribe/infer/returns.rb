@@ -2306,7 +2306,20 @@ module Docscribe
 
         new_rbs = rbs.dup
         mapping.each { |var, val| new_rbs = new_rbs.gsub(/\b#{Regexp.escape(var)}\b/, val) }
-        new_rbs.include?('self') ? new_rbs.gsub(/\bself\b/, recv_type) : new_rbs
+        new_rbs = new_rbs.gsub(/\bself\b/, recv_type) if new_rbs.include?('self')
+        resolve_free_variables(new_rbs)
+      end
+
+      # Replace type variables that stayed unsubstituted with `Object`.
+      #
+      # A remaining single-letter placeholder (`U`, `T`, `Elem`) means the block
+      # or argument that binds it was not analyzed, so no concrete type is known.
+      #
+      # @note module_function: defines #resolve_free_variables (visibility: private)
+      # @param [String] type_str
+      # @return [String]
+      def resolve_free_variables(type_str)
+        type_str.gsub(/\b(?:Elem|E|T|U)\b/, 'Object')
       end
 
       # Extract the inner generic args string from a receiver type like `Array<String>` or `Hash<Integer, String>`.

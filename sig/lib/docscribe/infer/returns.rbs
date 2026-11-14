@@ -125,6 +125,8 @@ module Docscribe
 
       def self?.hash_inner_type: ((Parser::AST::Node | nil) inner_recv, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
 
+      def self?.hash_rebuild_type: ((Parser::AST::Node | nil) inner_recv, ?fallback_type: String?, ?nil_as_optional: bool, ?core_rbs_provider: Types::RBS::Provider?, ?param_types: Hash[String, String]?, ?container: String?, ?signature_provider: Types::ProviderChain?, ?local_var_types: Hash[String, String]?) -> (String | nil)
+
       def self?.extract_array_elem: (String type_str) -> (String | nil)
 
       def self?.extract_enumerator_elem: (String type_str) -> (String | nil)
@@ -264,6 +266,7 @@ module Docscribe
       def self?.fill_other_mapping: (Hash[String, String] mapping, Array[String] args) -> void
 
       def self?.apply_generic_mapping: (String rbs, Hash[String, String] mapping, String recv_type) -> String
+      def self?.resolve_free_variables: (String type_str) -> String
 
       def self?.extract_generic_inner: (String `type`) -> (String | nil)
 
