@@ -14,6 +14,7 @@ module Docscribe
 
     def match_pattern?: (String pattern, String text) -> bool
 
+    def stringify_keys: (Hash[Object, Object] hash) -> Hash[String, Object]
     def deep_merge: (Hash[Object, Object] hash1, (Hash[Object, Object] | nil) hash2) -> Hash[Object, Object]
   end
 end

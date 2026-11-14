@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'docscribe/infer'
+require 'parser/current'
 
 RSpec.describe Docscribe::Infer::Returns do
   describe '.infer_return_type build_priority' do
@@ -25,6 +26,49 @@ RSpec.describe Docscribe::Infer::Returns do
       it 'infers Hash<String, Integer> not Hash<Object, Object>', :aggregate_failures do
         expect(inferred).to eq('Hash<String, Integer>')
         expect(inferred).not_to eq('Hash<Object, Object>')
+      end
+    end
+
+    context 'when the RBS return type is a block-bound type variable' do
+      let(:provider) { Docscribe::Types::RBS::Provider.new(sig_dirs: []) }
+
+      before do
+        skip_unless_rbs_available!
+        require 'docscribe/types/rbs/provider'
+      end
+
+      it 'resolves the free variable instead of emitting a bare name', :aggregate_failures do
+        result = described_class.returns_spec_from_node(
+          Parser::CurrentRuby.parse('def foo(counts); counts.each_with_object([]) { |(k, _v), a| a << k }; end'),
+          param_types: { 'counts' => 'Hash<String, Integer>' },
+          core_rbs_provider: provider
+        )
+
+        expect(result[:normal]).to eq('Object')
+        expect(result[:normal]).not_to match(/\A[A-Z]\z/)
+      end
+    end
+
+    context 'when a Hash receiver is rebuilt through each_with_index.to_h' do
+      let(:method_source) { 'def foo(counts); counts.each_with_index.to_h; end' }
+
+      it 'keeps the hash key and value types', :aggregate_failures do
+        result = described_class.returns_spec_from_node(
+          Parser::CurrentRuby.parse(method_source),
+          param_types: { 'counts' => 'Hash<String, Integer>' }
+        )
+
+        expect(result[:normal]).to eq('Hash<String, Integer>')
+        expect(result[:normal]).not_to eq('Hash<Object, Integer>')
+      end
+
+      it 'leaves an Array receiver untouched' do
+        result = described_class.returns_spec_from_node(
+          Parser::CurrentRuby.parse(method_source),
+          param_types: { 'counts' => 'Array<String>' }
+        )
+
+        expect(result[:normal]).to eq('Hash<String, Integer>')
       end
     end
 
