@@ -177,15 +177,17 @@ module Docscribe
       # Uses MD5 (deterministic across processes) instead of String#hash
       # (which varies per Ruby process due to random seeding).
       # When a config_path is given, its path + mtime are included in the hash
-      # so different configs get different daemons.
+      # so different configs get different daemons, and the config's directory
+      # replaces the working directory as the project root.
       # Environment files (Gemfile.lock, rbs_collection.lock.yaml) are also
       # included so daemon is invalidated when gems or RBS types change.
       #
       # @param [String?] config_path optional config path to differentiate
       # @return [String]
       def socket_path(config_path = nil)
-        seed = +Dir.pwd
-        seed << ":#{env_hash}"
+        root = project_root(config_path)
+        seed = +root
+        seed << ":#{env_hash(root)}"
         if config_path
           resolved = File.expand_path(config_path)
           mtime = File.exist?(resolved) ? File.mtime(resolved).to_f : 0.0
@@ -194,46 +196,65 @@ module Docscribe
         "#{SOCKET_DIR}/docscribe-#{Digest::MD5.hexdigest(seed)}.sock"
       end
 
+      # Directory that environment-file lookups resolve against.
+      #
+      # When a config path is given, its directory is the project root so a
+      # client started from a subdirectory reuses the same daemon. Without a
+      # config path this falls back to the working directory.
+      #
+      # @param [String?] config_path optional config path
+      # @return [String] absolute project root path
+      def project_root(config_path = nil)
+        return File.expand_path(Dir.pwd) unless config_path
+
+        File.expand_path(File.dirname(config_path))
+      end
+
       # Hash of environment files that affect analysis results.
       # When any of these change, the daemon is invalidated (new socket path).
       # Includes Gemfile.lock, rbs_collection.lock.yaml, docscribe.yml and all sig/**/*.rbs.
       #
+      # @param [String] root directory containing the environment files
       # @return [String]
-      def env_hash
-        parts = ENV_FILES.map { |file| env_file_mtime(file) }
-        parts.concat(sig_env_parts)
+      def env_hash(root = File.expand_path(Dir.pwd))
+        parts = ENV_FILES.map { |file| env_file_mtime(file, root) }
+        parts.concat(sig_env_parts(root))
         Digest::MD5.hexdigest(parts.join(':'))
       end
 
       # Hash of RBS signature files for cache invalidation inside daemon.
       # Used by Daemon#rewrite_file to detect sig changes without requiring a new socket.
       #
+      # @param [String] root directory containing the sig files
       # @return [String]
-      def sig_hash
-        files = sig_files
+      def sig_hash(root = File.expand_path(Dir.pwd))
+        files = sig_files(root)
         parts = files.map { |p| "#{p}:#{File.mtime(p).to_f}" }
         parts << "count:#{files.size}"
         Digest::MD5.hexdigest(parts.join('|'))
       end
 
       # @param [String] file
+      # @param [String] root directory containing the file
       # @return [String]
-      def env_file_mtime(file)
-        path = File.join(Dir.pwd, file)
+      def env_file_mtime(file, root = File.expand_path(Dir.pwd))
+        path = File.join(root, file)
         File.exist?(path) ? File.mtime(path).to_f.to_s : '0'
       end
 
+      # @param [String] root directory containing the sig files
       # @return [Array<String>]
-      def sig_env_parts
-        files = sig_files
+      def sig_env_parts(root = File.expand_path(Dir.pwd))
+        files = sig_files(root)
         mtimes = files.map { |p| File.mtime(p).to_f.to_s }
         mtimes << files.size.to_s
         mtimes
       end
 
+      # @param [String] root directory containing the sig files
       # @return [Array<String>]
-      def sig_files
-        Dir.glob(File.join(Dir.pwd, SIG_RBS_GLOB)).sort
+      def sig_files(root = File.expand_path(Dir.pwd))
+        Dir.glob(File.join(root, SIG_RBS_GLOB)).sort
       end
 
       public :read_pid, :pid_path, :socket_path

@@ -429,7 +429,8 @@ module Docscribe
       # @param [Array<String>] dirs
       # @return [Array<String>]
       def sig_rbs_files(dirs)
-        dirs.flat_map { |dir| Dir.glob(File.join(Dir.pwd, dir, '**', '*.rbs')) }.uniq.sort
+        root = config_root
+        dirs.flat_map { |dir| Dir.glob(File.expand_path(File.join(dir, '**', '*.rbs'), root)) }.uniq.sort
       end
 
       # Resolve sig dirs from config, falling back to defaults.
@@ -445,6 +446,14 @@ module Docscribe
         dirs.empty? ? ['sig'] : dirs
       rescue StandardError
         ['sig']
+      end
+
+      # Config root shared by the daemon's config-derived path lookups.
+      #
+      # @private
+      # @return [String]
+      def config_root
+        @config&.config_root || File.expand_path(Dir.pwd)
       end
 
       # Handle update_types request (used by RubyMine plugin).

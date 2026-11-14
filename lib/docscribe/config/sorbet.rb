@@ -92,9 +92,11 @@ module Docscribe
 
     # RBI directories searched by the Sorbet provider.
     #
+    # Relative entries resolve against {#config_root}, not `Dir.pwd`.
+    #
     # @return [Array<String>]
     def sorbet_rbi_dirs
-      Array(raw.dig('sorbet', 'rbi_dirs') || DEFAULT.dig('sorbet', 'rbi_dirs')).map(&:to_s) # steep:ignore
+      Array(raw.dig('sorbet', 'rbi_dirs') || DEFAULT.dig('sorbet', 'rbi_dirs')).map { |dir| resolve_path(dir.to_s) } # steep:ignore
     end
 
     # Whether generic Sorbet/RBI container types should be simplified.
