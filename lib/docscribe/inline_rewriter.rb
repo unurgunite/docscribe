@@ -791,7 +791,7 @@ module Docscribe
       # @private
       # @param [Hash] options kwargs with insertion, config, rewriter, buffer, strategy, changes, file, doc params
       # @return [void]
-      def apply_method_insertion!(**options)
+      def apply_method_insertion!(**options) # rubocop:disable Metrics/AbcSize
         insertion = options[:insertion]
         config = options[:config]
         return unless method_insertion_allowed?(insertion, config)
@@ -799,6 +799,7 @@ module Docscribe
         anchor_bol_range, = method_bol_ranges(options[:buffer], insertion)
         params = build_method_insertion_params(insertion, config, options[:signature_provider],
                                                options[:core_rbs_provider], options[:method_override])
+        seed_declared_param_types!(options[:buffer], insertion, params, config, options[:strategy])
         extract_existing_descriptions!(options[:buffer], insertion, params, options[:strategy], config)
         doc = DocBuilder.build(insertion, **params) # steep:ignore
         dispatch_method_insertion_by_strategy!(anchor_bol_range, options, params, doc)
@@ -935,6 +936,107 @@ module Docscribe
       # @return [Hash<String, String>, nil]
       def resolve_param_types(insertion, external_sig, config)
         DocBuilder.build_param_types_from_node(insertion.node, external_sig: external_sig, config: config)
+      end
+
+      # Fill param types from `@param` tags already present in the source.
+      #
+      # A declared `@param` is only a fallback: it is a human comment and may lie,
+      # so it applies solely where inference left `Object`/`untyped`. Without it a
+      # param like `tag_order` stays `Object`, collapsing
+      # `map { |t| t.strip }.each_with_index.to_h` to `Hash<Object, ...>`.
+      #
+      # Safe mode only: aggressive mode deliberately re-infers param types over
+      # declared ones, and `validate_types` needs the declared type kept separate
+      # so it can report a mismatch.
+      #
+      # @private
+      # @param [Parser::Source::Buffer] buffer the source buffer
+      # @param [Docscribe::InlineRewriter::Collector::Insertion] insertion the collected method insertion
+      # @param [Hash<Symbol, Object>] params insertion params
+      # @param [Docscribe::Config] config the active configuration
+      # @param [Symbol] strategy :safe or :aggressive rewrite mode
+      # @return [void]
+      def seed_declared_param_types!(buffer, insertion, params, config, strategy) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+        return if strategy == :aggressive || config.validate_types?
+
+        declared = DocBuilder.parse_existing_doc_tags(
+          method_doc_comment_info(buffer, insertion)&.dig(:doc_lines) || []
+        )[:param_types]
+
+        # Invalid YARD types must reach the invalid-type fixer untouched.
+        declared = (declared || {}).select { |_name, type| valid_yard_type?(type) }
+        return if declared.empty?
+
+        current = params[:param_types] || {}
+        params[:param_types] = current.merge(declared) { |_name, inferred, decl| merge_param_type(inferred, decl) }
+      end
+
+      # Combine an inferred param type with a declared `@param` type.
+      #
+      # The declared type fills gaps and adds generic detail (`Array` ->
+      # `Array<String>`), but the AST wins a real conflict because it reflects
+      # what the code does, while a `@param` tag is a human comment that can lie.
+      #
+      # @private
+      # @param [String, nil] inferred type derived from the AST
+      # @param [String] declared type from the `@param` tag
+      # @return [String]
+      def merge_param_type(inferred, declared)
+        return declared if inferred.nil? || unknown_type?(inferred)
+        return inferred if unknown_type?(declared)
+        return inferred unless same_base_type?(inferred, declared)
+
+        type_arity(declared) > type_arity(inferred) ? declared : inferred
+      end
+
+      # Whether two types name the same base type, ignoring generic arguments.
+      #
+      # @private
+      # @param [String] left first type
+      # @param [String] right second type
+      # @return [Boolean]
+      def same_base_type?(left, right)
+        base_type_name(left) == base_type_name(right)
+      end
+
+      # Number of generic arguments carried by a type.
+      #
+      # @private
+      # @param [String] type type string
+      # @return [Integer]
+      def type_arity(type)
+        base_type_name(type) == type.to_s.strip ? 0 : 1
+      end
+
+      # Base name of a type, with any generic arguments stripped.
+      #
+      # @private
+      # @param [String] type type string
+      # @return [String]
+      def base_type_name(type)
+        type.to_s.split('<', 2).first.to_s.strip
+      end
+
+      # Whether a param type carries no usable information.
+      #
+      # @private
+      # @param [String, nil] type param type string
+      # @return [Boolean]
+      def unknown_type?(type)
+        type.nil? || %w[Object untyped nil].include?(type)
+      end
+
+      # Whether a declared `@param` type is valid YARD and safe to reuse for inference.
+      #
+      # @private
+      # @param [String, nil] type declared YARD type string
+      # @return [Boolean]
+      def valid_yard_type?(type)
+        return false if type.nil? || type.strip.empty?
+
+        Docscribe::Types::Yard::Validator.valid?(type)
+      rescue StandardError
+        false
       end
 
       # Apply method insertion aggressive
