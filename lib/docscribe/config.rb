@@ -49,7 +49,7 @@ module Docscribe
     # same whether Docscribe runs from the project root or from a subdirectory.
     # Without a config file it falls back to the current working directory.
     #
-    # @raise [StandardError]
+    # @raise [Docscribe::Error] when the config directory no longer exists
     # @return [String] absolute path to the config root
     def config_root
       return File.expand_path(Dir.pwd) unless config_path

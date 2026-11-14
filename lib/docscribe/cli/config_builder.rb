@@ -266,6 +266,7 @@ module Docscribe
       #
       # @note module_function: defines #config_root_for_warning (visibility: private)
       # @param [Docscribe::Config] conf effective config
+      # @raise [Docscribe::Error] when the config directory is gone (caught here)
       # @return [String]
       def config_root_for_warning(conf)
         conf.config_root
