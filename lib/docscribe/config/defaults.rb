@@ -76,6 +76,7 @@ module Docscribe
       'keep_descriptions' => false,
       'skip_anonymous_block_params' => false,
       'validate_types' => false,
+      'warn_invalid_yard' => true,
       'plugins' => {
         'require' => [] #: Array[String]
       }

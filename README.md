@@ -297,6 +297,13 @@ If you pass no files and don't use `--stdin`, Docscribe processes the current di
   Validate YARD types against inferred/RBS types and report mismatches.
   `--no-validate-types` overrides `validate_types: true` from the config file.
 
+- `--[no-]warn-invalid-yard`  
+  Report syntactically broken YARD types such as `[Sym bol]` and apply the safe fix to
+  `[Symbol]`. Enabled by default. Independent of `--validate-types`: syntax validity does
+  not depend on inferred or external types. `--no-warn-invalid-yard` silences it and
+  leaves broken types untouched. `--no-warn-invalid-yard` overrides
+  `warn_invalid_yard: true` from the config file.
+
 - `--include PATTERN`  
   Include PATTERN (method id or file path; glob or `/regex/`).
 
@@ -1764,13 +1771,14 @@ The generated file contains:
 ### Full configuration reference
 
 <details>
-<summary>Click to expand — 43 config keys</summary>
+<summary>Click to expand — 44 config keys</summary>
 
 | Key                                       | Type       | Default                                                                                      | Description                                                                |
 |-------------------------------------------|------------|----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
 | `keep_descriptions`                       | `bool`     | `false`                                                                                      | Preserve existing doc text in aggressive mode                              |
 | `skip_anonymous_block_params`             | `bool`     | `false`                                                                                      | Skip `@param [Proc] block` for anonymous `&` params                        |
 | `validate_types`                          | `bool`     | `false`                                                                                      | Validate YARD types against inferred/RBS types and report mismatches       |
+| `warn_invalid_yard`                       | `bool`     | `true`                                                                                       | Report syntactically broken YARD types (e.g. `[Sym bol]`)                  |
 | `emit.header`                             | `bool`     | `false`                                                                                      | Generate method header line (`+#foo+ -> ...`)                              |
 | `emit.include_default_message`            | `bool`     | `true`                                                                                       | Insert default message (`Method documentation.`)                           |
 | `emit.include_param_documentation`        | `bool`     | `true`                                                                                       | Insert param description text (`Param documentation.`)                     |

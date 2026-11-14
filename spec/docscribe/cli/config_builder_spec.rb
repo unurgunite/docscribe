@@ -204,6 +204,39 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
     end
   end
 
+  describe 'build with warn_invalid_yard' do
+    before do
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(false)
+    end
+
+    it 'defaults to true' do
+      expect(described_class.build(Docscribe::Config.new, default_options).warn_invalid_yard?).to be(true)
+    end
+
+    it 'keeps yml false when the flag was not passed' do
+      base = Docscribe::Config.new('warn_invalid_yard' => false)
+      expect(described_class.build(base, default_options).warn_invalid_yard?).to be(false)
+    end
+
+    it 'lets explicit false override yml true' do
+      base = Docscribe::Config.new('warn_invalid_yard' => true)
+      opts = default_options.merge(warn_invalid_yard: false)
+      expect(described_class.build(base, opts).warn_invalid_yard?).to be(false)
+    end
+
+    it 'lets explicit true re-enable it over yml false' do
+      base = Docscribe::Config.new('warn_invalid_yard' => false)
+      opts = default_options.merge(warn_invalid_yard: true)
+      expect(described_class.build(base, opts).warn_invalid_yard?).to be(true)
+    end
+
+    it 'does not leak a nil override into the config' do
+      expect(described_class.build(Docscribe::Config.new, default_options).raw)
+        .to include('warn_invalid_yard' => true)
+    end
+  end
+
   describe 'build without overrides warns about missing collection' do
     let(:base) { Docscribe::Config.new }
 

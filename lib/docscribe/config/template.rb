@@ -109,6 +109,9 @@ module Docscribe
         # Validate YARD types against inferred/RBS types
         validate_types: false
 
+        # Report syntactically broken YARD types (e.g. [Sym bol])
+        warn_invalid_yard: true
+
         plugins:
           # Load custom plugins
           # Example:

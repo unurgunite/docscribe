@@ -42,8 +42,11 @@ module Docscribe
           include exclude include_file exclude_file
           rbs rbs_collection sig_dirs
           sorbet rbi_dirs
-          validate_types
+          validate_types warn_invalid_yard
         ].freeze
+
+        # [no-] flags where an explicit false must override a `true` from config.
+        NEGATABLE_KEYS = %i[validate_types warn_invalid_yard].freeze
 
         # Run Docscribe for files or STDIN using the selected mode and strategy.
         #
@@ -541,7 +544,9 @@ module Docscribe
           overrides = options.slice(*CLI_OVERRIDE_KEYS)
           acc = {} #: Hash[String, untyped]
           overrides.each do |k, v|
-            next if v.nil? || v == false
+            next if v.nil?
+            # Negations matter for [no-] flags: false must beat a `true` in yml.
+            next if v == false && !NEGATABLE_KEYS.include?(k)
             next if v.is_a?(Array) && v.empty?
 
             acc[k.to_s] = v

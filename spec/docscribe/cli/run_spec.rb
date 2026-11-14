@@ -437,10 +437,13 @@ RSpec.describe Docscribe::CLI::Run do
 
       let(:options) { { keep_descriptions: true, no_boilerplate: false, rbs: false, validate_types: false } }
 
-      it 'filters false values', :aggregate_failures do
+      it 'filters false values for non-negatable flags', :aggregate_failures do
         expect(overrides).not_to have_key('no_boilerplate')
         expect(overrides).not_to have_key('rbs')
-        expect(overrides).not_to have_key('validate_types')
+      end
+
+      it 'keeps explicit false for [no-] flags so it overrides config true' do
+        expect(overrides['validate_types']).to be(false)
       end
 
       it 'keeps true values' do
