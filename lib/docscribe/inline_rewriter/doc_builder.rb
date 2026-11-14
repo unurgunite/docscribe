@@ -1137,15 +1137,32 @@ module Docscribe
       # Called from both param (above) and return (below) validation, so no
       # waterfall placement satisfies the ordering cop — exempt.
       #
+      # A blank type means "no type given" and is not an error here, but for
+      # `@param [<literal>] name` the bracket content is the whole type, and a
+      # bare literal (empty, `:sym`, `42`, `,`) carries no type information.
+      #
       # @note module_function: defines #invalid_yard_type? (visibility: private)
       # @param [String?] type_str
       # @return [Boolean]
       def invalid_yard_type?(type_str) # rubocop:disable SortedMethodsByCall/Waterfall
-        return false if type_str.nil? || type_str.strip.empty?
+        return false if type_str.nil?
+        return true if literal_only_yard_type?(type_str)
         return true if type_str.match?(/\d/)
         return true if type_str.match?(/[^\x00-\x7F]/)
 
         !Types::Yard::Validator.valid?(type_str)
+      end
+
+      # Whether a YARD type string is a bare literal instead of a type name.
+      #
+      # @note module_function: defines #literal_only_yard_type? (visibility: private)
+      # @param [String] type_str
+      # @return [Boolean]
+      def literal_only_yard_type?(type_str)
+        stripped = type_str.strip
+        return true if stripped.empty?
+
+        stripped.start_with?(':') || stripped.match?(/\A\d+\z/) || !stripped.match?(/\w/)
       end
 
       # Whether param validation should run via inferred/external types.

@@ -102,6 +102,58 @@ RSpec.describe Docscribe::InlineRewriter::DocBuilder do
     end
   end
 
+  describe '.invalid_yard_type?' do
+    subject(:invalid) { described_class.invalid_yard_type?(type_str) }
+
+    context 'when the inner type is empty' do
+      let(:type_str) { '' }
+
+      it { is_expected.to be true }
+    end
+
+    context 'when the inner type is blank' do
+      let(:type_str) { ' ' }
+
+      it { is_expected.to be true }
+    end
+
+    context 'when the inner type is a symbol literal' do
+      let(:type_str) { ':sym' }
+
+      it { is_expected.to be true }
+    end
+
+    context 'when the inner type is a numeric literal' do
+      let(:type_str) { '42' }
+
+      it { is_expected.to be true }
+    end
+
+    context 'when the inner type is a comma artefact' do
+      let(:type_str) { ',' }
+
+      it { is_expected.to be true }
+    end
+
+    context 'when the type is nil' do
+      let(:type_str) { nil }
+
+      it { is_expected.to be false }
+    end
+
+    context 'when the type is padded with spaces' do
+      let(:type_str) { ' String ' }
+
+      it { is_expected.to be false }
+    end
+
+    context 'when the type is a deeply nested generic' do
+      let(:type_str) { 'Array<Hash<Symbol, Array<Hash<Symbol, String>>>>' }
+
+      it { is_expected.to be false }
+    end
+  end
+
   describe '.mismatched_return?' do
     subject(:mismatched) { described_class.send(:mismatched_return?, call_context) }
 
