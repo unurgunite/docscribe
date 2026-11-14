@@ -198,6 +198,92 @@ RSpec.describe Docscribe::InlineRewriter do
     end
   end
 
+  describe 'param type without type information' do
+    shared_examples 'a flagged empty type' do
+      it 'reports invalid_type with syntax source', :aggregate_failures do
+        invalid = result[:changes].select { |c| c[:type] == :invalid_type }
+        expect(invalid.size).to eq(1)
+        expect(invalid.first[:source]).to eq('syntax')
+        expect(invalid.first[:message]).to include("invalid YARD type [#{literal}] for @param x")
+      end
+    end
+
+    ['[]', '[ ]', '[:sym]'].each do |doc_type|
+      context "when the @param type is #{doc_type}" do
+        let(:literal) { doc_type[/\[(.*)\]/, 1] }
+        let(:code) do
+          <<~RUBY
+            class Foo
+              # @param #{doc_type} x
+              # @return [String]
+              def bar(x)
+                x
+              end
+            end
+          RUBY
+        end
+
+        it_behaves_like 'a flagged empty type'
+      end
+    end
+
+    context 'when validate_types is disabled' do
+      let(:validate) { false }
+      let(:code) do
+        <<~RUBY
+          class Foo
+            # @param [] x
+            # @return [String]
+            def bar(x)
+              x
+            end
+          end
+        RUBY
+      end
+
+      it 'still reports invalid_type' do
+        expect(result[:changes].any? { |c| c[:type] == :invalid_type }).to be true
+      end
+    end
+
+    context 'when the type has surrounding spaces' do
+      let(:code) do
+        <<~RUBY
+          class Foo
+            # @param [ String ] x
+            # @return [String]
+            def bar(x)
+              x
+            end
+          end
+        RUBY
+      end
+
+      it 'is not flagged' do
+        expect(result[:changes].none? { |c| c[:type] == :invalid_type }).to be true
+      end
+    end
+
+    context 'when the @param literal appears alongside a missing @return' do
+      let(:code) do
+        <<~RUBY
+          class Foo
+            # @param [] x
+            def bar(x)
+              x
+            end
+          end
+        RUBY
+      end
+
+      it 'reports both offenses', :aggregate_failures do
+        types = result[:changes].map { |c| c[:type] }
+        expect(types).to include(:invalid_type)
+        expect(types).to include(:missing_return)
+      end
+    end
+  end
+
   describe 'source field' do
     context 'with syntax source for invalid YARD' do
       let(:code) do
