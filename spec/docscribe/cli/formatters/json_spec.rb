@@ -113,6 +113,30 @@ RSpec.describe Docscribe::CLI::Formatters::Json do
       end
     end
 
+    context 'with machine-readable change types' do
+      let(:offenses) { parse_output['files'][0]['offenses'] }
+
+      before do
+        state.merge!(
+          checked_fail: 3,
+          fail_paths: ['types.rb'],
+          fail_changes: { 'types.rb' => [
+            { type: :updated_return, line: 1, method: 'A#foo', source: 'rbs' },
+            { type: :updated_param, line: 2, method: 'A#bar', source: 'infer' },
+            { type: :invalid_type, line: 3, method: 'A#baz', source: 'syntax' }
+          ] }
+        )
+      end
+
+      it 'emits the type of every offense' do
+        expect(offenses.map { |offense| offense['type'] }).to eq(%w[updated_return updated_param invalid_type])
+      end
+
+      it 'keeps cop_name and source alongside type' do
+        expect(offenses[0]).to include('type' => 'updated_return', 'cop_name' => 'Docscribe/UpdatedReturn', 'source' => 'rbs')
+      end
+    end
+
     context 'with nothing to report' do
       it 'outputs empty files array' do
         expect(parse_output['files']).to eq([])

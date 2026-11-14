@@ -345,6 +345,10 @@ module Docscribe
         # Directories are expanded recursively to `**/*.rb`.
         # If no arguments are provided, the current directory is used.
         #
+        # Deduplication uses the canonical path, so overlapping arguments
+        # that spell one file differently (absolute vs relative, `./`-prefixed,
+        # symlinked) are processed once. The first spelling wins.
+        #
         # @param [Array<String>] args file and/or directory arguments
         # @return [Array<String>] unique sorted Ruby file paths
         def expand_paths(args)
@@ -355,7 +359,32 @@ module Docscribe
             append_expanded_path(files, path)
           end
 
-          files.uniq.sort
+          dedupe_paths(files).sort
+        end
+
+        # Drop later spellings of a file already collected.
+        #
+        # @param [Array<String>] files expanded paths, possibly overlapping
+        # @return [Array<String>] paths with one entry per canonical file
+        def dedupe_paths(files)
+          seen = {} #: Hash[String, true]
+          files.each_with_object([]) do |path, acc| #: Array[String]
+            key = canonical_path(path)
+            next if seen[key]
+
+            seen[key] = true
+            acc << path
+          end
+        end
+
+        # Canonical identity for a path, resolving symlinks and relative segments.
+        #
+        # @param [String] path file path
+        # @return [String]
+        def canonical_path(path)
+          File.realpath(path)
+        rescue SystemCallError, ArgumentError
+          File.expand_path(path)
         end
 
         # Append a file or recursively expand a directory into the files array.

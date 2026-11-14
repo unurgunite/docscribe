@@ -58,6 +58,10 @@ module Docscribe
 
       def self.expand_paths: (Array[String] args) -> Array[String]
 
+      def self.dedupe_paths: (Array[String] files) -> Array[String]
+
+      def self.canonical_path: (String path) -> String
+
       def self.append_expanded_path: (Array[String] files, String path) -> void
 
       def self.run_files: (options: Formatters::opts, conf: Config, paths: Array[String]) -> Integer
