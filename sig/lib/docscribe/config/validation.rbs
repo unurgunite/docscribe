@@ -1,5 +1,7 @@
 module Docscribe
   class Config
     def validate_types?: () -> bool
+
+    def warn_invalid_yard?: () -> bool
   end
 end
