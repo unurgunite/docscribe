@@ -1184,21 +1184,6 @@ module Docscribe
         extract_array_elem_strict(recv_type) || enumerator_object_elem(recv_type)
       end
 
-      # @note module_function: defines #enumerator_recv_type (visibility: private)
-      # @param [Parser::AST::Node, nil] recv
-      # @param [Hash] opts
-      # @return [String, nil]
-      def enumerator_recv_type(recv, **opts)
-        receiver_rbs_type_name(recv, opts[:core_rbs_provider], opts[:local_var_types],
-                               opts[:param_types]) ||
-          run_last_expr_type(recv, fallback_type: nil, nil_as_optional: false,
-                                   local_var_types: opts[:local_var_types],
-                                   param_types: opts[:param_types],
-                                   core_rbs_provider: opts[:core_rbs_provider],
-                                   signature_provider: opts[:signature_provider],
-                                   container: opts[:container])
-      end
-
       # @note module_function: defines #extract_array_elem_strict (visibility: private)
       # @param [String] type_str
       # @return [String, nil]
@@ -1227,8 +1212,40 @@ module Docscribe
         return unless meth == :to_h && recv && recv.type == :send && recv.children[1] == :each_with_index
 
         inner_recv = recv.children[0]
+        # `hash.each_with_index.to_h` rebuilds the same hash, so keep K and V.
+        rebuilt = hash_rebuild_type(inner_recv, **opts)
+        return rebuilt if rebuilt
+
         elem = hash_elem_from_enumerator(inner_recv, **opts) || 'Object'
         "Hash<#{elem}, Integer>"
+      end
+
+      # The rebuilt hash type when `each_with_index` runs over a `Hash`.
+      #
+      # @note module_function: defines #hash_rebuild_type (visibility: private)
+      # @param [Parser::AST::Node, nil] inner_recv the `each_with_index` receiver
+      # @param [Hash] opts
+      # @return [String, nil]
+      def hash_rebuild_type(inner_recv, **opts)
+        source_type = enumerator_recv_type(inner_recv, **opts)
+        return nil unless source_type&.start_with?('Hash<')
+
+        source_type
+      end
+
+      # @note module_function: defines #enumerator_recv_type (visibility: private)
+      # @param [Parser::AST::Node, nil] recv
+      # @param [Hash] opts
+      # @return [String, nil]
+      def enumerator_recv_type(recv, **opts)
+        receiver_rbs_type_name(recv, opts[:core_rbs_provider], opts[:local_var_types],
+                               opts[:param_types]) ||
+          run_last_expr_type(recv, fallback_type: nil, nil_as_optional: false,
+                                   local_var_types: opts[:local_var_types],
+                                   param_types: opts[:param_types],
+                                   core_rbs_provider: opts[:core_rbs_provider],
+                                   signature_provider: opts[:signature_provider],
+                                   container: opts[:container])
       end
 
       # @note module_function: defines #hash_elem_from_enumerator (visibility: private)
