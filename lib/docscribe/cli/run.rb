@@ -380,6 +380,8 @@ module Docscribe
         # Canonical identity for a path, resolving symlinks and relative segments.
         #
         # @param [String] path file path
+        # @raise [SystemCallError] when the file is gone (caught here)
+        # @raise [ArgumentError] when the path is malformed (caught here)
         # @return [String]
         def canonical_path(path)
           File.realpath(path)
