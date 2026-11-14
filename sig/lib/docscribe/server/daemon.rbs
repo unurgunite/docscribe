@@ -84,6 +84,7 @@ module Docscribe
       def sig_hash_for: (Docscribe::Config) -> String
       def sig_rbs_files: (Array[String]) -> Array[String]
       def sig_dirs_for: (Docscribe::Config) -> Array[String]
+      def config_root: () -> String
       def handle_shutdown: (UNIXSocket, (String | Integer)) -> void
       def handle_ping: (UNIXSocket, (String | Integer)) -> void
       def send_result: (UNIXSocket, (String | Integer), Hash[String, Object]) -> void

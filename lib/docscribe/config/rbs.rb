@@ -66,12 +66,10 @@ module Docscribe
     # @return [nil] if LoadError
     def build_rbs_provider
       require 'docscribe/types/rbs/provider'
-      Docscribe::Types::RBS::Provider.new(
-        sig_dirs: rbs_sig_dirs,
-        collection_dirs: rbs_collection_dirs,
-        collapse_generics: rbs_collapse_generics?,
-        collapse_object_generics: rbs_collapse_object_generics?
-      )
+      Docscribe::Types::RBS::Provider.new(sig_dirs: rbs_sig_dirs, collection_dirs: rbs_collection_dirs,
+                                          collapse_generics: rbs_collapse_generics?,
+                                          collapse_object_generics: rbs_collapse_object_generics?,
+                                          config_root: config_root)
     rescue LoadError
       warn 'Docscribe: --rbs requires the `rbs` gem. Add `gem "rbs"` to your Gemfile and run `bundle install`.'
       nil
@@ -85,20 +83,19 @@ module Docscribe
     # @return [nil] if LoadError
     def build_core_rbs_provider
       require 'docscribe/types/rbs/provider'
-      Docscribe::Types::RBS::Provider.new(
-        sig_dirs: [],
-        collapse_generics: false
-      )
+      Docscribe::Types::RBS::Provider.new(sig_dirs: [], collapse_generics: false, config_root: config_root)
     rescue LoadError
       nil
     end
 
     # Signature directories used by the RBS provider.
     #
+    # Relative entries resolve against {#config_root}, not `Dir.pwd`.
+    #
     # @private
     # @return [Array<String>]
     def rbs_sig_dirs
-      Array(raw.dig('rbs', 'sig_dirs') || DEFAULT.dig('rbs', 'sig_dirs')).map(&:to_s) # steep:ignore
+      Array(raw.dig('rbs', 'sig_dirs') || DEFAULT.dig('rbs', 'sig_dirs')).map { |dir| resolve_path(dir.to_s) } # steep:ignore
     end
 
     # RBS collection directories (auto-discovered from rbs_collection.lock.yaml).
@@ -114,7 +111,7 @@ module Docscribe
     # @private
     # @return [Array<String>]
     def rbs_collection_dirs
-      explicit = Array(raw.dig('rbs', 'collection_dirs')).map(&:to_s) # steep:ignore
+      explicit = Array(raw.dig('rbs', 'collection_dirs')).map { |dir| resolve_path(dir.to_s) } # steep:ignore
       return explicit unless explicit.empty?
       return [] unless raw.dig('rbs', 'collection')
 
@@ -129,7 +126,7 @@ module Docscribe
     # @return [nil] if LoadError
     def discovered_collection_dir
       require 'docscribe/types/rbs/collection_loader'
-      Docscribe::Types::RBS::CollectionLoader.resolve
+      Docscribe::Types::RBS::CollectionLoader.resolve(root: config_root)
     rescue LoadError
       nil
     end

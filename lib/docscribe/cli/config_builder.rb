@@ -26,7 +26,7 @@ module Docscribe
 
         raw = Marshal.load(Marshal.dump(base.raw))
         apply_filter_overrides(raw, options)
-        apply_rbs_overrides(raw, options) if rbs_overrides?(options)
+        apply_rbs_overrides(raw, options, base) if rbs_overrides?(options)
         apply_sorbet_overrides(raw, options) if sorbet_overrides?(options)
         apply_output_overrides(raw, options)
         apply_validation_overrides(raw, options) if validation_overrides?(options)
@@ -130,15 +130,16 @@ module Docscribe
       # @note module_function: defines #apply_rbs_overrides (visibility: private)
       # @param [Hash<String, Object>] raw raw config hash
       # @param [Hash<Symbol, Object>] options parsed CLI options
+      # @param [Docscribe::Config] base base config whose root anchors collection lookup
       # @return [void]
-      def apply_rbs_overrides(raw, options)
+      def apply_rbs_overrides(raw, options, base)
         raw['rbs'] ||= {}
         raw['rbs']['enabled'] = true
         raw['rbs']['sig_dirs'] = Array(raw['rbs']['sig_dirs']) + options[:sig_dirs] if options[:sig_dirs].any?
 
         return unless options[:rbs_collection]
 
-        apply_rbs_collection(raw)
+        apply_rbs_collection(raw, base)
       end
 
       # Whether any Sorbet-related CLI options were provided.
@@ -153,12 +154,16 @@ module Docscribe
 
       # Resolve and apply the RBS collection path into the raw config hash.
       #
+      # The lock file is looked up in the config root so that `-C other/dir/docscribe.yml`
+      # finds the collection next to that config rather than under `Dir.pwd`.
+      #
       # @note module_function: defines #apply_rbs_collection (visibility: private)
       # @param [Hash<String, Object>] raw raw config hash
+      # @param [Docscribe::Config] base base config whose root anchors the lookup
       # @return [void]
-      def apply_rbs_collection(raw)
+      def apply_rbs_collection(raw, base)
         require 'docscribe/types/rbs/collection_loader'
-        collection_path = Docscribe::Types::RBS::CollectionLoader.resolve
+        collection_path = Docscribe::Types::RBS::CollectionLoader.resolve(root: base.config_root)
         if collection_path
           raw['rbs']['collection_dirs'] = Array(raw['rbs']['collection_dirs']) + [collection_path]
         else
@@ -231,6 +236,10 @@ module Docscribe
 
       # Warn when rbs_collection.lock.yaml exists but --rbs-collection was not passed.
       #
+      # Fires on plain runs and on runs with unrelated overrides alike: the check
+      # lives outside the `needs_override?` branch. The lock file is looked up in the
+      # config root so the nudge appears regardless of the current directory.
+      #
       # The warning can be suppressed by setting `rbs.warn_missing_collection: false`
       # in the project's `docscribe.yml`.
       #
@@ -242,11 +251,26 @@ module Docscribe
         return if options[:rbs_collection]
         return if conf.raw.dig('rbs', 'collection')
         return unless conf.rbs_warn_missing_collection?
-        return unless File.exist?('rbs_collection.lock.yaml')
+        return unless File.exist?(File.join(config_root_for_warning(conf), 'rbs_collection.lock.yaml'))
 
         warn 'Docscribe: rbs_collection.lock.yaml found but --rbs-collection not set. ' \
              'Pass --rbs-collection or set `rbs.collection: true` in docscribe.yml to enable RBS collection. ' \
              'Set `rbs.warn_missing_collection: false` to suppress this warning.'
+      end
+
+      # Config root for the missing-collection nudge.
+      #
+      # A warning must never abort a run, so an unresolvable config directory
+      # (e.g. a config path pointing at a removed directory) falls back to the
+      # working directory.
+      #
+      # @note module_function: defines #config_root_for_warning (visibility: private)
+      # @param [Docscribe::Config] conf effective config
+      # @return [String]
+      def config_root_for_warning(conf)
+        conf.config_root
+      rescue Docscribe::Error
+        File.expand_path(Dir.pwd)
       end
     end
   end
