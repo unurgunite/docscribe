@@ -72,7 +72,7 @@ module Docscribe
         # "Unexpected type_node" STDERR noise unless DOCSCRIBE_RBS_DEBUG=1.
         #
         # @private
-        # @param [::RBS::Prototype::RBI] parser RBI parser instance
+        # @param [RBS::Prototype::RBI] parser RBI parser instance
         # @param [String] source source text to parse
         # @return [void]
         def parse(parser, source)
