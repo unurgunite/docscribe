@@ -141,6 +141,29 @@ RSpec.describe Docscribe::CLI::Formatters::Sarif do
       end
     end
 
+    context 'with machine-readable change types' do
+      before do
+        state.merge!(
+          checked_fail: 3,
+          fail_paths: ['types.rb'],
+          fail_changes: { 'types.rb' => [
+            { type: :updated_return, line: 1, method: 'A#foo', source: 'rbs' },
+            { type: :updated_param, line: 2, method: 'A#bar', source: 'infer' },
+            { type: :invalid_type, line: 3, method: 'A#baz', source: 'syntax' }
+          ] }
+        )
+      end
+
+      it 'emits the type property of every result' do
+        types = results.map { |result| result['properties']['type'] }
+        expect(types).to eq(%w[updated_return updated_param invalid_type])
+      end
+
+      it 'keeps source alongside type' do
+        expect(results[0]['properties']).to eq({ 'source' => 'rbs', 'type' => 'updated_return' })
+      end
+    end
+
     context 'with errors' do
       before do
         state.merge!(
