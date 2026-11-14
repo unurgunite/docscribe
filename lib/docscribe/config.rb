@@ -23,7 +23,7 @@ module Docscribe
     # @param [Hash<String, Object>] raw user-provided config hash
     # @return [void]
     def initialize(config_path: nil, **raw)
-      @raw = deep_merge(DEFAULT, raw)
+      @raw = deep_merge(DEFAULT, stringify_keys(raw))
       @config_path = config_path
     end
 

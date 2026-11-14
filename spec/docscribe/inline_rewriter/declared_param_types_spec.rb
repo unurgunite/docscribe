@@ -66,7 +66,7 @@ RSpec.describe Docscribe::InlineRewriter do
         end
       RUBY
 
-      output = rewrite(source, config: Docscribe::Config.new('validate_types' => true), core_rbs_provider: provider)
+      output = rewrite(source, config: Docscribe::Config.new(validate_types: true), core_rbs_provider: provider)
       expect(output).to include('@param [Object] counts')
     end
   end
@@ -74,7 +74,7 @@ RSpec.describe Docscribe::InlineRewriter do
   context 'when validate_types is enabled' do
     it 'does not seed declared types, so mismatches stay reportable' do
       output = rewrite(with_param('Hash<String, Integer>', 'counts.each_with_index.to_h'),
-                       config: Docscribe::Config.new('validate_types' => true), core_rbs_provider: provider)
+                       config: Docscribe::Config.new(validate_types: true), core_rbs_provider: provider)
 
       expect(output).to include('@param [Hash<String, Integer>] counts')
       expect(output).not_to include('@return [Hash<String, Integer>]')
@@ -84,7 +84,7 @@ RSpec.describe Docscribe::InlineRewriter do
   context 'with aggressive mode' do
     it 'does not seed declared types over re-inferred ones' do
       output = rewrite(with_param('Hash<String, Integer>', 'counts.each_with_index.to_h'),
-                       strategy: :aggressive, config: Docscribe::Config.new('keep_descriptions' => true),
+                       strategy: :aggressive, config: Docscribe::Config.new(keep_descriptions: true),
                        core_rbs_provider: provider)
 
       expect(output).not_to include('@return [Hash<String, Integer>]')
