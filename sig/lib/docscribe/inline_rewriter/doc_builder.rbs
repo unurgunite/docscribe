@@ -319,6 +319,10 @@ module Docscribe
 
       def self?.invalid_yard_type?: (String? type_str) -> bool
 
+      def self?.literal_only_yard_type?: (String type_str) -> bool
+
+      def self?.warn_invalid_yard_check?: (Hash[Symbol, untyped] ctx) -> bool
+
       def self?.should_validate_param?: (Hash[Symbol, untyped] ctx) -> bool
 
       def self?.param_type_changed?: (String pname, (String | nil) new_type, Hash[Symbol, untyped] ctx) -> bool
