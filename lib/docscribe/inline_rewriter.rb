@@ -980,7 +980,7 @@ module Docscribe
       # @private
       # @param [String, nil] inferred type derived from the AST
       # @param [String] declared type from the `@param` tag
-      # @return [String]
+      # @return [String, nil]
       def merge_param_type(inferred, declared)
         return declared if inferred.nil? || unknown_type?(inferred)
         return inferred if unknown_type?(declared)
@@ -1030,6 +1030,7 @@ module Docscribe
       #
       # @private
       # @param [String, nil] type declared YARD type string
+      # @raise [StandardError] when the YARD type validator fails on odd syntax
       # @return [Boolean]
       def valid_yard_type?(type)
         return false if type.nil? || type.strip.empty?
