@@ -1,3 +1,18 @@
+## 1.7.0
+
+### Added
+
+- **`warn_invalid_yard` config key and `--[no-]warn-invalid-yard` flag** — syntactically broken YARD types
+  (`[Sym bol]`) are reported as `invalid_type` with `source: "syntax"` and get the safe fix to `[Symbol]`.
+  Enabled by default. Independent of `validate_types`, since syntax validity does not depend on inferred or
+  external types; the previous unconditional behaviour is preserved for existing users.
+
+### Fixed
+
+- **Explicit `--no-` flags now override a `true` in `docscribe.yml`** — `--no-validate-types` and
+  `--no-warn-invalid-yard` replace the config value instead of being dropped as falsy, so a project can opt
+  out per run.
+
 ## 1.6.2
 
 ### Added

@@ -221,7 +221,7 @@ module Docscribe
       # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [Boolean]
       def validation_overrides?(options)
-        !options[:validate_types].nil?
+        !options[:validate_types].nil? || !options[:warn_invalid_yard].nil?
       end
 
       # Apply validation-related CLI overrides to the raw config.
@@ -231,7 +231,8 @@ module Docscribe
       # @param [Hash<Symbol, Object>] options parsed CLI options
       # @return [void]
       def apply_validation_overrides(raw, options)
-        raw['validate_types'] = options[:validate_types]
+        raw['validate_types'] = options[:validate_types] unless options[:validate_types].nil?
+        raw['warn_invalid_yard'] = options[:warn_invalid_yard] unless options[:warn_invalid_yard].nil?
       end
 
       # Warn when rbs_collection.lock.yaml exists but --rbs-collection was not passed.

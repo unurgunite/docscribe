@@ -15,5 +15,18 @@ module Docscribe
     def validate_types?
       fetch_bool(%w[validate_types], false)
     end
+
+    # Whether to report syntactically broken YARD types.
+    #
+    # Independent of {#validate_types?}: syntax validity is a property of the
+    # YARD type string itself, not a comparison against inferred or external
+    # types. Enabled by default so a broken `[Sym bol]` is still surfaced (and
+    # safely fixed) on plain runs; set `warn_invalid_yard: false` or pass
+    # `--no-warn-invalid-yard` to silence it.
+    #
+    # @return [Boolean]
+    def warn_invalid_yard?
+      fetch_bool(%w[warn_invalid_yard], true)
+    end
   end
 end

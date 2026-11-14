@@ -1101,7 +1101,7 @@ module Docscribe
       # @return [void]
       def handle_existing_param(pname, param_line, lines, reasons, ctx)
         yard_type = ctx[:info][:param_types][pname]
-        if invalid_yard_type?(yard_type)
+        if warn_invalid_yard_check?(ctx) && invalid_yard_type?(yard_type)
           handle_invalid_param(pname, param_line, yard_type, lines, reasons)
         elsif param_needs_update?(ctx)
           collect_updated_param(param_line, pname, lines, reasons, ctx)
@@ -2033,8 +2033,22 @@ module Docscribe
       def invalid_yard_return?(ctx)
         yard = ctx[:info][:return_type]
         return false unless yard
+        return false unless warn_invalid_yard_check?(ctx)
 
         invalid_yard_type?(yard)
+      end
+
+      # Whether syntactically broken YARD types should be reported.
+      #
+      # Gated by `warn_invalid_yard` (default true), not by `validate_types`:
+      # syntax validity does not depend on inferred or external types. Both the
+      # param branch and the return branch consult this first.
+      #
+      # @note module_function: defines #warn_invalid_yard_check? (visibility: private)
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def warn_invalid_yard_check?(ctx)
+        ctx[:config].respond_to?(:warn_invalid_yard?) && ctx[:config].warn_invalid_yard?
       end
 
       # Record invalid return type.

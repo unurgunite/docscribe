@@ -151,6 +151,53 @@ RSpec.describe Docscribe::InlineRewriter do
     end
   end
 
+  describe 'warn_invalid_yard toggle' do
+    let(:code) do
+      <<~RUBY
+        class Foo
+          # @param [Sym bol] x
+          # @return [Sy mbol]
+          def bar(x = :sym)
+            x
+          end
+        end
+      RUBY
+    end
+
+    context 'when enabled (default)' do
+      it 'reports both param and return invalid types', :aggregate_failures do
+        invalid = result[:changes].select { |c| c[:type] == :invalid_type }
+        expect(invalid.size).to eq(2)
+        expect(invalid.map { |c| c[:source] }.uniq).to eq(['syntax'])
+      end
+
+      it 'still applies the safe fix', :aggregate_failures do
+        expect(result[:output]).to include('@param [Symbol] x')
+        expect(result[:output]).to include('@return [Symbol]')
+      end
+    end
+
+    context 'when disabled' do
+      let(:config) { Docscribe::Config.new('warn_invalid_yard' => false) }
+
+      it 'stays quiet about broken syntax' do
+        expect(result[:changes].any? { |c| c[:type] == :invalid_type }).to be false
+      end
+
+      it 'leaves the broken types untouched' do
+        expect(result[:output]).to include('Sym bol')
+      end
+    end
+
+    context 'when disabled but validate_types enabled' do
+      let(:config) { Docscribe::Config.new('warn_invalid_yard' => false, 'validate_types' => true) }
+
+      it 'still stays quiet about broken syntax' do
+        expect(result[:changes].any? { |c| c[:type] == :invalid_type }).to be false
+      end
+    end
+  end
+
   describe 'source field' do
     context 'with syntax source for invalid YARD' do
       let(:code) do
