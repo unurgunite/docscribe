@@ -9,7 +9,13 @@ module Docscribe
 
       def self.parse_options: (Array[String] argv) -> Hash[Symbol, untyped]
       def self.build_parser: (Hash[Symbol, untyped] opts) -> OptionParser
+      def self.build_config: (Array[String] argv, Hash[Symbol, untyped] opts) -> Docscribe::Config
       def self.parse_cli_overrides: (Array[String] argv) -> Hash[Symbol, untyped]
+      def self.changed_from_defaults: (Hash[String, untyped] effective) -> Hash[String, untyped]
+      def self.diff_against: (Hash[String, untyped] defaults, Hash[String, untyped] effective) -> Hash[String, untyped]
+      def self.render: (Hash[String, untyped] data, Docscribe::Config conf, Hash[Symbol, untyped] opts) -> String
+      def self.render_text: (Hash[String, untyped] data, Docscribe::Config _conf) -> String
+      def self.flatten: (Hash[String, untyped] data, String prefix) -> Hash[String, untyped]
     end
   end
 end
