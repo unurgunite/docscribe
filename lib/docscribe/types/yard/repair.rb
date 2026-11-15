@@ -23,6 +23,7 @@ module Docscribe
 
         # Recursively repair a YARD type string.
         #
+        # @note module_function: defines #repair (visibility: public)
         # @param [String, nil] type_str broken type string
         # @return [String, nil] repaired type, or nil when no safe repair exists
         def repair(type_str)
@@ -80,7 +81,7 @@ module Docscribe
         #
         # @note module_function: defines #split_generic (visibility: private)
         # @param [String] squeezed type string
-        # @return [Array(String, Array<String>), nil] base and args, nil when malformed
+        # @return [(String, Array<String>), nil] base and args, nil when malformed
         def split_generic(squeezed)
           open_idx = squeezed.index('<')
           return nil unless open_idx && squeezed.end_with?('>')
