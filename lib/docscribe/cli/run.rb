@@ -467,15 +467,41 @@ module Docscribe
         # @raise [StandardError]
         # @return [void]
         def run_parallel_workers(options, conf, paths, state)
-          jobs = parallel_job_count(options)
           return if paths.empty?
+          return run_files_sequential(options, conf, paths, state) unless fork_supported?
 
+          jobs = parallel_job_count(options)
           warm_rewrite_env(options, conf, paths)
           slices = split_paths(paths, jobs).reject(&:empty?)
           return if slices.empty?
 
           children = slices.map { |slice| start_forked_slice(slice, options, conf) }
           merge_forked_slices(children, state)
+        end
+
+        # Whether forked workers can run here.
+        #
+        # Without fork (Windows, some locked-down containers) spawning workers
+        # would raise NotImplementedError, so parallel mode silently degrades to
+        # the sequential path. Threads are not used as a fallback: on CPU-bound
+        # rewriting they are measurably slower than a plain sequential run.
+        #
+        # @return [Boolean]
+        def fork_supported?
+          Process.respond_to?(:fork)
+        end
+
+        # Run the same file list sequentially, reusing the shared state.
+        #
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @param [Docscribe::Config] conf
+        # @param [Array<String>] paths
+        # @param [Docscribe::CLI::Formatters::state] state
+        # @return [void]
+        def run_files_sequential(options, conf, paths, state)
+          paths.each do |path|
+            process_one_file(path, options: options, conf: conf, pwd: Pathname.pwd, state: state)
+          end
         end
 
         # Fork one child per slice and return its pipe and pid.

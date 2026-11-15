@@ -150,6 +150,8 @@ module Docscribe
 
       def self.error_only_state: (Array[String] slice, StandardError exception) -> Formatters::state
 
+      def self.fork_supported?: () -> bool
+      def self.run_files_sequential: (Formatters::opts options, Config conf, Array[String] paths, Formatters::state state) -> void
       def self.parallel_job_count: (Formatters::opts options) -> Integer
 
       def self.default_job_count: () -> Integer
