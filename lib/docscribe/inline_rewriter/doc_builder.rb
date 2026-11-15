@@ -4,6 +4,7 @@ require 'docscribe/plugin'
 require 'docscribe/infer'
 require 'docscribe/inline_rewriter/source_helpers'
 require 'docscribe/types/yard/validator'
+require 'docscribe/types/yard/repair'
 require 'docscribe/validator/type_mismatch_validator'
 require 'docscribe/validator/generic_compatibility'
 
@@ -1108,6 +1109,13 @@ module Docscribe
         end
       end
 
+      # Emit an `@param` line, repairing the type when a safe repair exists.
+      #
+      # A broken type such as `[Sym bol]` is rewritten to `[Symbol]` instead
+      # of being passed through untouched, so the doc is fixed rather than
+      # merely reported. When no repair can be proven, the original line is
+      # kept and the offense is reported for a human to resolve.
+      #
       # @note module_function: defines #handle_invalid_param (visibility: private)
       # @param [String] pname
       # @param [String] param_line
@@ -1115,7 +1123,20 @@ module Docscribe
       # @param [Array<String>] lines
       # @param [Array<Hash<Symbol, Object>>] reasons
       # @return [void]
-      def handle_invalid_param(pname, param_line, yard_type, lines, reasons)
+      def handle_invalid_param(pname, param_line, yard_type, lines, reasons) # rubocop:disable Metrics/MethodLength
+        repaired = Docscribe::Types::Yard::Repair.repair(yard_type)
+
+        if repaired
+          lines << "#{replace_param_type(param_line, repaired)}\n"
+          reasons << {
+            type: :invalid_type,
+            message: "invalid YARD type [#{yard_type}] for @param #{pname} (repaired to [#{repaired}])",
+            source: 'syntax',
+            extra: { param: pname, repaired_type: repaired }
+          }
+          return
+        end
+
         lines << "#{param_line}\n"
         reasons << {
           type: :invalid_type,
@@ -1123,6 +1144,20 @@ module Docscribe
           source: 'syntax',
           extra: { param: pname }
         }
+      end
+
+      # Replace the bracketed type in an `@param` line.
+      #
+      # `param_line` reaches here already rebuilt from the AST, so it no
+      # longer carries the original broken type text; the replacement is done
+      # on whatever bracket content is present.
+      #
+      # @note module_function: defines #replace_param_type (visibility: private)
+      # @param [String] param_line
+      # @param [String] new_type
+      # @return [String]
+      def replace_param_type(param_line, new_type)
+        param_line.sub(/\[.*?\]/, "[#{new_type}]")
       end
 
       # @note module_function: defines #param_needs_update? (visibility: private)

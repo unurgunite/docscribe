@@ -311,6 +311,8 @@ module Docscribe
 
       def self?.handle_invalid_param: (String pname, String param_line, String yard_type, Array[String] lines, Array[Hash[Symbol, untyped]] reasons) -> void
 
+      def self?.replace_param_type: (String param_line, String new_type) -> String
+
       def self?.existing_param_type?: (String pname, Hash[Symbol, untyped] ctx) -> bool
 
       def self?.handle_existing_param: (String pname, String param_line, Array[String] lines, Array[Hash[Symbol, untyped]] reasons, Hash[Symbol, untyped] ctx) -> void
