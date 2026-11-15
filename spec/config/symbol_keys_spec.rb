@@ -5,7 +5,12 @@ RSpec.describe Docscribe::Config do
     it 'accepts symbol keys like string keys', :aggregate_failures do
       expect(described_class.new(validate_types: true).validate_types?).to be(true)
       expect(described_class.new('validate_types' => true).validate_types?).to be(true)
-      expect(described_class.new.validate_types?).to be(false)
+      expect(described_class.new(validate_types: false).validate_types?).to be(false)
+      expect(described_class.new('validate_types' => false).validate_types?).to be(false)
+    end
+
+    it 'validates types by default' do
+      expect(described_class.new.validate_types?).to be(true)
     end
 
     it 'keeps symbol overrides visible under the string key' do
