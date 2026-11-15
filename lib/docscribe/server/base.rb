@@ -31,7 +31,7 @@ module Docscribe
       # @param [Boolean] daemonize redirect stdin/stdout/stderr to /dev/null
       # @param [Integer] timeout max seconds to wait for readiness
       # @return [void]
-      def ensure_running!(config_path: nil, daemonize: false, timeout: 5)
+      def ensure_running!(config_path: nil, daemonize: false, timeout: 15)
         return if running?(config_path)
 
         check_platform_support!
@@ -53,7 +53,7 @@ module Docscribe
       # @param [Boolean] raise_on_timeout
       # @raise [StandardError]
       # @return [Boolean]
-      def wait_for_ready(config_path: nil, timeout: 5, raise_on_timeout: true) # rubocop:disable SortedMethodsByCall/Waterfall
+      def wait_for_ready(config_path: nil, timeout: 15, raise_on_timeout: true) # rubocop:disable SortedMethodsByCall/Waterfall
         deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
         loop do
           return true if running?(config_path)
