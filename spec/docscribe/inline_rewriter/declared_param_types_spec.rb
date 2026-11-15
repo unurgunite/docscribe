@@ -28,13 +28,13 @@ RSpec.describe Docscribe::InlineRewriter do
   context 'with a declared @param type that inference cannot recover' do
     it 'seeds the declared type so the chain keeps its element type' do
       output = rewrite(with_param('Hash<String, Integer>', 'counts.each_with_index.to_h'),
-                       config: Docscribe::Config.new, core_rbs_provider: provider)
+                       config: Docscribe::Config.new(validate_types: false), core_rbs_provider: provider)
 
       expect(output).to include('@return [Hash<String, Integer>]')
     end
 
     it 'collapses to Object without the declared type' do
-      output = rewrite(<<~RUBY, config: Docscribe::Config.new, core_rbs_provider: provider)
+      output = rewrite(<<~RUBY, config: Docscribe::Config.new(validate_types: false), core_rbs_provider: provider)
         class Example
           def tally(counts)
             counts.each_with_index.to_h
@@ -49,7 +49,7 @@ RSpec.describe Docscribe::InlineRewriter do
   context 'when the declared type is more precise than the inferred base' do
     it 'keeps the declared generic detail' do
       output = rewrite(with_param('Array<String>', 'return counts.first unless counts.empty?'),
-                       config: Docscribe::Config.new, core_rbs_provider: provider)
+                       config: Docscribe::Config.new(validate_types: false), core_rbs_provider: provider)
 
       expect(output).to include('@param [Array<String>] counts')
     end
@@ -71,10 +71,10 @@ RSpec.describe Docscribe::InlineRewriter do
     end
   end
 
-  context 'when validate_types is enabled' do
+  context 'when validate_types is enabled (the default)' do
     it 'does not seed declared types, so mismatches stay reportable' do
       output = rewrite(with_param('Hash<String, Integer>', 'counts.each_with_index.to_h'),
-                       config: Docscribe::Config.new(validate_types: true), core_rbs_provider: provider)
+                       config: Docscribe::Config.new, core_rbs_provider: provider)
 
       expect(output).to include('@param [Hash<String, Integer>] counts')
       expect(output).not_to include('@return [Hash<String, Integer>]')
@@ -84,7 +84,7 @@ RSpec.describe Docscribe::InlineRewriter do
   context 'with aggressive mode' do
     it 'does not seed declared types over re-inferred ones' do
       output = rewrite(with_param('Hash<String, Integer>', 'counts.each_with_index.to_h'),
-                       strategy: :aggressive, config: Docscribe::Config.new(keep_descriptions: true),
+                       strategy: :aggressive, config: Docscribe::Config.new(keep_descriptions: true, validate_types: false),
                        core_rbs_provider: provider)
 
       expect(output).not_to include('@return [Hash<String, Integer>]')

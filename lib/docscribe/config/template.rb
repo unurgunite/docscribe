@@ -107,7 +107,7 @@ module Docscribe
         skip_anonymous_block_params: false
 
         # Validate YARD types against inferred/RBS types
-        validate_types: false
+        validate_types: true
 
         # Report syntactically broken YARD types (e.g. [Sym bol])
         warn_invalid_yard: true
