@@ -56,7 +56,7 @@ RSpec.describe Docscribe::InlineRewriter do
   end
 
   context 'with invalid YARD syntax in a declared @param' do
-    it 'does not seed the invalid type into inference' do
+    it 'repairs the broken type instead of seeding it' do
       source = <<~RUBY
         class Example
           # @param [Sym bol] counts counts the things
@@ -66,8 +66,8 @@ RSpec.describe Docscribe::InlineRewriter do
         end
       RUBY
 
-      output = rewrite(source, config: Docscribe::Config.new(validate_types: true), core_rbs_provider: provider)
-      expect(output).to include('@param [Object] counts')
+      output = rewrite(source, config: Docscribe::Config.new(validate_types: false), core_rbs_provider: provider)
+      expect(output).to include('@param [Symbol] counts')
     end
   end
 

@@ -1,0 +1,21 @@
+module Docscribe
+  module Types
+    module Yard
+      module Repair
+        def self?.repair: ((String | nil) type_str) -> (String | nil)
+
+        def self?.known_repair: (String squeezed) -> (String | nil)
+
+        def self?.repair_arg: (String arg) -> (String | nil)
+
+        def self?.split_generic: (String squeezed) -> ([String, Array[String]] | nil)
+
+        def self?.split_args: (String inner) -> Array[String]
+
+        def self?.names_known?: (Array[String] names) -> bool
+
+        def self?.known_names: () -> Set[String]
+      end
+    end
+  end
+end
