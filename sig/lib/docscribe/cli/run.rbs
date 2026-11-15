@@ -3,8 +3,6 @@ module Docscribe
     module Run
       type run_ctx = { pwd: Pathname, display_path: String, options: Formatters::opts, state: Formatters::state, conf: Config }
 
-      type pool = { paths: Array[String], state: Formatters::state, options: Formatters::opts, conf: Config, pwd: Pathname, mutex: Mutex, error_mutex: Mutex }
-
       type rewrite_result = { output: String, changes: Array[Formatters::change] }
 
       INITIAL_RUN_STATE: Formatters::state
@@ -142,11 +140,21 @@ module Docscribe
 
       def self.run_parallel_workers: (Formatters::opts options, Config conf, Array[String] paths, Formatters::state state) -> void
 
-      def self.parallel_worker: (pool pool) -> Thread
+      def self.warm_rewrite_env: (Formatters::opts options, Config conf, Array[String] paths) -> void
 
-      def self.fetch_work: (Array[String] paths, Mutex mutex) -> String?
+      def self.start_forked_slice: (Array[String] slice, Formatters::opts options, Config conf) -> [Integer, IO]
 
-      def self.run_and_merge: (String path, pool pool) -> void
+      def self.merge_forked_slices: (Array[[Integer, IO]] children, Formatters::state state) -> void
+
+      def self.run_forked_slice: (Array[String] slice, Formatters::opts options, Config conf, IO writer) -> void
+
+      def self.error_only_state: (Array[String] slice, StandardError exception) -> Formatters::state
+
+      def self.parallel_job_count: (Formatters::opts options) -> Integer
+
+      def self.default_job_count: () -> Integer
+
+      def self.split_paths: (Array[String] paths, Integer jobs) -> Array[Array[String]]
 
       def self.handle_worker_error: (StandardError exception, String path, Formatters::state state, Mutex error_mutex) -> void
 

@@ -28,6 +28,7 @@ module Docscribe
         no_boilerplate: false,
         progress: false,
         parallel: false,
+        jobs: nil, #: Integer? when --jobs is passed
         server: false,
         validate_types: nil, #: true or false when --[no-]validate-types is passed, nil otherwise
         warn_invalid_yard: nil #: true or false when --[no-]warn-invalid-yard is passed, nil otherwise
@@ -408,6 +409,10 @@ module Docscribe
       # @return [void]
       def define_parallel_option(opts, options)
         opts.on('--parallel', 'Process files in parallel (default: sequential)') do
+          options[:parallel] = true
+        end
+        opts.on('--jobs N', Integer, 'Parallel worker count (implies --parallel)') do |n|
+          options[:jobs] = n
           options[:parallel] = true
         end
       end

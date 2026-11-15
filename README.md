@@ -252,8 +252,19 @@ If you pass no files and don't use `--stdin`, Docscribe processes the current di
 - `--progress`  
   Show progress (`[N/total] path/to/file.rb`) on stderr as each file is processed.
 
-- `DOCSCRIBE_THREADS` (env var)  
-  Number of parallel worker threads (default: 4). Set to `1` for sequential processing.
+- `--parallel`
+  Process files in parallel using forked worker processes. Each worker inherits
+  the warmed process (gems, config, RBS environment) through copy-on-write, so
+  forking skips the cold-start cost that made thread-based work slower than a
+  sequential run.
+
+- `--jobs N`
+  Number of parallel workers (implies `--parallel`). Defaults to the number of
+  available CPUs.
+
+- `DOCSCRIBE_THREADS` (env var)
+  Default worker count when `--jobs` is not passed. Falls back to the CPU count.
+  Set to `1` for sequential processing.
 
 - `--quiet` (`-q`)  
   Only show status, no details (suppresses change reasons).

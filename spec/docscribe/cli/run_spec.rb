@@ -684,4 +684,32 @@ RSpec.describe Docscribe::CLI::Run do
       end
     end
   end
+
+  describe '--parallel' do
+    before do
+      %w[a b c].each { |n| File.write("#{dir}/#{n}.rb", code) }
+    end
+
+    it 'reports the same result as a sequential run' do
+      _o, seq_err, seq_status = Open3.capture3('ruby', exe, 'a.rb', 'b.rb', 'c.rb', chdir: dir)
+      _po, par_err, par_status = Open3.capture3('ruby', exe, '--jobs', '2', 'a.rb', 'b.rb', 'c.rb', chdir: dir)
+
+      expect(par_status.exitstatus).to eq(seq_status.exitstatus)
+      expect(par_err.scan(/(\d+) files? checked/)).to eq(seq_err.scan(/(\d+) files? checked/))
+    end
+
+    it 'implies --parallel when --jobs is given' do
+      out, _err, status = Open3.capture3('ruby', exe, '--jobs', '2', 'a.rb', 'b.rb', 'c.rb', chdir: dir)
+
+      expect(status.exitstatus).to eq(1)
+      expect(out).to include('3 need updates')
+    end
+
+    it 'treats --jobs 1 as sequential' do
+      out, _err, status = Open3.capture3('ruby', exe, '--jobs', '1', 'a.rb', 'b.rb', 'c.rb', chdir: dir)
+
+      expect(status.exitstatus).to eq(1)
+      expect(out).to include('3 need updates')
+    end
+  end
 end
