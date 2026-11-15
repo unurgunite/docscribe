@@ -486,7 +486,8 @@ module Docscribe
         # @param [Array<String>] slice paths handled by this child
         # @param [Docscribe::CLI::Formatters::opts] options
         # @param [Docscribe::Config] conf
-        # @return [Array(Process::Status, IO)] pid and reader pipe for the child
+        # @raise [StandardError] when the fork itself fails
+        # @return [(Integer, IO)] pid and reader pipe for the child
         def start_forked_slice(slice, options, conf)
           reader, writer = IO.pipe
           pid = fork { run_forked_slice(slice, options, conf, writer) }
@@ -496,7 +497,7 @@ module Docscribe
 
         # Collect every child's marshalled state and merge it into the parent.
         #
-        # @param [Array<Array(Process::Status, IO)>] children pid and reader pairs
+        # @param [Array<(Integer, IO)>] children pid and reader pairs
         # @param [Docscribe::CLI::Formatters::state] state shared parent state
         # @return [void]
         def merge_forked_slices(children, state)
@@ -518,6 +519,7 @@ module Docscribe
         # @param [Docscribe::CLI::Formatters::opts] options
         # @param [Docscribe::Config] conf
         # @param [Array<String>] paths
+        # @raise [StandardError] when the warm-up rewrite fails (ignored here)
         # @return [void]
         def warm_rewrite_env(options, conf, paths)
           path = paths.first
@@ -591,6 +593,7 @@ module Docscribe
           jobs.positive? ? jobs : 1
         end
 
+        # @raise [StandardError] when processor detection is unavailable
         # @return [Integer] default worker count based on available CPUs
         def default_job_count
           require 'etc'
