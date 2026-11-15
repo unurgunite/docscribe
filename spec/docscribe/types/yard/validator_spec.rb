@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'docscribe/types/yard/validator'
+require 'timeout'
 
 RSpec.describe Docscribe::Types::Yard::Validator do
   describe '.valid?' do
@@ -91,6 +92,35 @@ RSpec.describe Docscribe::Types::Yard::Validator do
 
     it 'returns true for valid' do
       expect(fully_consumed_yard_type?('Symbol')).to be true
+    end
+  end
+
+  describe 'tuples nested inside generic parameters' do
+    # Regression: parse_primary did not recognise '[' as a tuple opener, so
+    # scan_name consumed nothing and parse_generic_args looped forever.
+    [
+      'Array<[String]>',
+      'Enumerator<[String, Integer], Integer>',
+      'Hash<[K, V], Integer>',
+      'Array<[String, Integer]?>'
+    ].each do |type_str|
+      it "terminates and accepts #{type_str}" do
+        result = Timeout.timeout(5) { described_class.valid?(type_str) }
+
+        expect(result).to be true
+      end
+    end
+
+    it 'accepts a bare tuple' do
+      result = Timeout.timeout(5) { described_class.valid?('[String, Integer]') }
+
+      expect(result).to be true
+    end
+
+    it 'rejects an unterminated tuple inside a generic' do
+      result = Timeout.timeout(5) { described_class.valid?('Array<[String>') }
+
+      expect(result).to be false
     end
   end
 end
