@@ -766,8 +766,7 @@ class User
 end
 ```
 
-The output path mirrors the source path relative to the working directory, so `lib/user.rb`
-becomes `sig/lib/user.rbs` (not `sig/user.rbs`).
+The output path mirrors the source path relative to the working directory, so `lib/user.rb`becomes `sig/lib/user.rbs` (not `sig/user.rbs`).
 
 ### `docscribe update_types` — two-pass type-aware documentation update
 
@@ -1342,8 +1341,8 @@ class Demo
 end
 ```
 
-Docscribe will use the Sorbet signature instead of the inferred body type (`emit.header: true`,
-off by default, adds the header line):
+Docscribe will use the Sorbet signature instead of the inferred body type (`emit.header: true`, off by default, adds the
+header line):
 
 ```ruby
 class Demo
@@ -1890,7 +1889,7 @@ docscribe --exclude-file '/^spec\//' lib
 
 > [!NOTE]
 > `/regex/` passed to `--include`/`--exclude` is treated as a **method-id** pattern. Use `--include-file` /
-`--exclude-file` for file regex filters.
+> `--exclude-file` for file regex filters.
 
 Enable attribute-style documentation generation with:
 
