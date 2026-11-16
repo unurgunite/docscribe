@@ -168,9 +168,9 @@ Requires Ruby 2.7+.
 ## Architecture
 
 Docscribe is organized into several subsystems. The CLI layer receives user input and orchestrates configuration
-loading, then delegates to the core engine which parses source code, collects methods (using an AST walker), builds YARD
-doc lines — combining heuristic type inference, external RBS/Sorbet signatures, and plugin output — and finally rewrites
-the source via a strategy (safe merge or aggressive replace).
+loading. It then delegates to the core engine, which parses source code and collects methods using an AST walker. From
+there it builds YARD doc lines, combining heuristic type inference, external RBS/Sorbet signatures, and plugin output.
+Finally, it rewrites the source via a strategy: safe merge or aggressive replace.
 
 In server mode, a persistent daemon (`docscribe server`) keeps the runtime loaded and caches parsed results across
 invocations via an LRU cache, enabling near-instant repeated checks for IDE plugins. A thin client (`docscribe-client`)
