@@ -1,8 +1,19 @@
 flowchart LR
     subgraph Entry["Entry Points"]
         Direct["docscribe lib\n(no --server)"]
+        Parallel["docscribe --parallel\n/ --jobs N"]
         ViaServer["docscribe --server\nor docscribe-client"]
         UpdateTypesFlow["update_types\ntwo-pass: aggressive → safe"]
+    end
+
+    subgraph Fork["Forked Workers (1.7.0+)"]
+        JobCount["parallel_job_count\n--jobs > DOCSCRIBE_THREADS\n> CPU count"]
+        ForkCheck{"Process.respond_to?\n(:fork)?"}
+        Warm["warm_rewrite_env\n· load gems\n· build RBS provider\n· rewrite one file"]
+        Split["split_paths\ncontiguous slices"]
+        Children["fork() per slice\ninherit warm env (COW)"]
+        Fallback["sequential\n(identical results)"]
+        Gather["merge_forked_slices\nMarshal payload over pipe\nmerge_state under mutex"]
     end
 
     subgraph Daemon["Server Daemon (Unix Socket)"]
@@ -12,6 +23,16 @@ flowchart LR
         ApplyOverrides["apply_cli_overrides\n(reset on nil)"]
     end
 
+    Parallel --> JobCount
+    JobCount --> ForkCheck
+    ForkCheck -->|yes| Warm
+    ForkCheck -->|no| Fallback
+    Warm --> Split
+    Split --> Children
+    Children --> Parse
+    Fallback --> Parse
+    Children --> Gather
+    Gather --> Output
     ViaServer --> Socket
     Socket --> ApplyOverrides
     ApplyOverrides --> CacheCheck
@@ -30,7 +51,8 @@ flowchart LR
     Insertions --> Dedup["Deduplicate\n(override by position)"]
     Dedup --> Build["DocBuilder.build\n(entry point)\nper insertion"]
     Build -.-> RescueNote["per-method rescue:\nerror to stderr,\nrest applies"]
-    Build --> Infer["Infer params / returns / raises\n(heuristic fallback)"]
+    Build --> TypeGuard["warn_invalid_yard gate\n· invalid_yard_type?\n· Repair known names\n· else report invalid_type"]
+    TypeGuard --> Infer["Infer params / returns / raises\n(heuristic fallback)"]
     Build --> SigQuery["ProviderChain\nquery external types"]
     Build --> TagPlugins["TagPlugin#call\n(add extra @tags)"]
     Infer --> ResultDoc["Generated YARD doc block"]
@@ -45,5 +67,6 @@ flowchart LR
     Rewritten --> CacheStorage
     CacheStorage --> Socket
     Result -.-> ExitCodes["exit codes:\n0 ok / 1 changes / 2 error"]
+    Children -.-> Progress["--progress\nstderr, per child"]
     Result -->|Direct mode| Output["write-mode: file\ncheck: STDOUT summary"]
     Result -->|Server mode| Socket
