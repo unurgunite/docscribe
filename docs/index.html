@@ -342,7 +342,7 @@ body{font-size:15px}
 <a href="https://unurgunite.github.io/docscribe_docs">API docs</a>
 </nav>
 <div class="top-actions">
-<span class="badge mono">v1.6.2</span>
+<span class="badge mono">v1.7.0</span>
 <button class="themebtn" id="theme-toggle" aria-pressed="false" aria-label="Toggle color theme"><svg id="theme-ico-sun" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10" cy="10" r="4"/><path d="M10 1v3M10 16v3M1 10h3M16 10h3M3.6 3.6l2.1 2.1M14.3 14.3l2.1 2.1M16.4 3.6l-2.1 2.1M5.7 14.3l-2.1 2.1"/></svg><svg id="theme-ico-moon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" style="display:none"><path d="M15 12.5A6.5 6.5 0 0 1 7.5 5 6.5 6.5 0 1 0 15 12.5z"/></svg><span id="theme-label">Dark</span></button>
 <a class="btn ghost" href="https://github.com/unurgunite/docscribe">View on GitHub</a>
 </div>
@@ -359,7 +359,7 @@ body{font-size:15px}
 <section class="hero" id="hero" aria-label="hero">
 <div class="wrap hero-grid">
 <div>
-<div class="kicker">DocScribe 1.6.2 - gem plus IDE plugins</div>
+<div class="kicker">DocScribe 1.7.0 - gem plus IDE plugins</div>
 <h1>YARD docs from Ruby AST</h1>
 <p class="sub">Auto-generate inline YARD documentation for Ruby by analyzing code AST. Supports RBS and Sorbet type signatures.</p>
 <div class="installrow">
@@ -381,7 +381,7 @@ body{font-size:15px}
 <button class="preset-btn" data-hexample="label" aria-pressed="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="3" width="14" height="14"/><path d="M3 8h14"/></svg><span><b>Attr reader</b><small>label - attr case</small></span></button>
 </div>
 <p class="pg-hint mono" id="hero-hint">plain method, String return</p>
-<span class="real-badge is-real" id="hero-badge">real gem output - 1.6.2</span>
+<span class="real-badge is-real" id="hero-badge">real gem output - 1.7.0</span>
 <pre class="hero-out mono" id="hero-out" aria-live="polite"></pre>
 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
 <button class="copybtn" id="hero-copy">Copy</button>
@@ -400,14 +400,14 @@ body{font-size:15px}
 <div class="eco-row">
 <div class="eco-num mono">01</div>
 <div>
-<div class="eco-name">DocScribe gem 1.6.2</div>
+<div class="eco-name">DocScribe gem 1.7.0</div>
 <div class="eco-meta">Ruby gem - CLI - RBS and Sorbet aware</div>
 <p class="eco-desc">YARD docs from AST. Safe fix with -a, full rebuild with -A. Needs Ruby &gt;= 2.7.</p>
 </div>
 <div class="eco-side">
 <div class="thin-row"><code class="mono">gem install docscribe</code><button class="copybtn" data-copy="gem install docscribe">Copy</button></div>
-<div class="eco-rowline"><a class="eco-link" href="https://rubygems.org/gems/docscribe"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>rubygems.org/gems/docscribe</a><span class="eco-cap">what you get: versioned gem tarball <span class="ver-chip">v1.6.2</span></span></div>
-<div class="eco-rowline"><a class="eco-link" href="https://github.com/unurgunite/docscribe"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>github.com/unurgunite/docscribe</a><span class="eco-cap">what you get: source plus changelog <span class="ver-chip">v1.6.2</span></span></div>
+<div class="eco-rowline"><a class="eco-link" href="https://rubygems.org/gems/docscribe"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>rubygems.org/gems/docscribe</a><span class="eco-cap">what you get: versioned gem tarball <span class="ver-chip">v1.7.0</span></span></div>
+<div class="eco-rowline"><a class="eco-link" href="https://github.com/unurgunite/docscribe"><span class="eco-arrow" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 11 11 3M5 3h6v6"/></svg></span>github.com/unurgunite/docscribe</a><span class="eco-cap">what you get: source plus changelog <span class="ver-chip">v1.7.0</span></span></div>
 </div>
 </div>
 <div class="eco-row" id="vscode">
@@ -562,7 +562,8 @@ body{font-size:15px}
 <h2>Compatibility strip</h2>
 <p class="sec-lede">Old gems lack new daemon calls. Match the client to the gem first.</p>
 <div class="compat-timeline">
-<div class="compat-node"><span class="compat-ver">1.6.2</span><p class="compat-scope">File-scoped type sync</p><p class="compat-note">Per-file <code class="mono">update_types</code> flag lands here.</p><p class="compat-getmiss">you get: per-file sync, you miss: nothing current</p></div>
+<div class="compat-node"><span class="compat-ver">1.7.0</span><p class="compat-scope">Forked parallel runs</p><p class="compat-note"><code class="mono">--parallel</code> and <code class="mono">--jobs N</code> split files across forked workers; <code class="mono">validate_types</code> is on by default.</p><p class="compat-getmiss">you get: parallel runs, you miss: nothing current</p></div>
+<div class="compat-node"><span class="compat-ver">1.6.2</span><p class="compat-scope">File-scoped type sync</p><p class="compat-note">Per-file <code class="mono">update_types</code> flag lands here.</p><p class="compat-getmiss">you get: per-file sync, you miss: parallel runs</p></div>
 <div class="compat-node"><span class="compat-ver">1.5.2</span><p class="compat-scope">Batch check</p><p class="compat-note"><code class="mono">check_batch</code> runs whole workspace at once.</p><p class="compat-getmiss">you get: batch runs, you miss: file-scoped sync</p></div>
 <div class="compat-node"><span class="compat-ver">1.5.1</span><p class="compat-scope">CLI plus daemon start</p><p class="compat-note">Daemon ships, use <code class="mono">docscribe lib</code> for plain runs.</p><p class="compat-getmiss">you get: daemon checks, you miss: batch plus sync</p></div>
 </div>
@@ -616,7 +617,7 @@ body{font-size:15px}
 </ul>
 </div>
 </div>
-<div class="legal"><span>MIT</span><span>RBS types supported</span><span>v1.6.2</span></div>
+<div class="legal"><span>MIT</span><span>RBS types supported</span><span>v1.7.0</span></div>
 </div>
 </footer>
 <script>

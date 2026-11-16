@@ -168,27 +168,320 @@ Requires Ruby 2.7+.
 ## Architecture
 
 Docscribe is organized into several subsystems. The CLI layer receives user input and orchestrates configuration
-loading, then delegates to the core engine which parses source code, collects methods (using an AST walker), builds YARD
-doc lines — combining heuristic type inference, external RBS/Sorbet signatures, and plugin output — and finally rewrites
-the source via a strategy (safe merge or aggressive replace).
+loading. It then delegates to the core engine, which parses source code and collects methods using an AST walker. From
+there it builds YARD doc lines, combining heuristic type inference, external RBS/Sorbet signatures, and plugin output.
+Finally, it rewrites the source via a strategy: safe merge or aggressive replace.
 
 In server mode, a persistent daemon (`docscribe server`) keeps the runtime loaded and caches parsed results across
 invocations via an LRU cache, enabling near-instant repeated checks for IDE plugins. A thin client (`docscribe-client`)
 provides minimal-overhead socket communication without loading the full gem.
 
-<img src="assets/diagrams/architecture.svg" alt="Docscribe architecture">
+```mermaid
+flowchart TB
+    subgraph CLI["CLI Layer"]
+        Exe["exe/docscribe\nEntry point"]
+        Run["CLI::Run\nMain execution\n· expand paths\n· iterate files\n· report results"]
+        Options["CLI::Options\nARGV parsing\n(mode, strategy,\nfilters, flags)"]
+        CLIDispatch["CLI.dispatch_subcommand"]
+        InitCmd["CLI::Init\ndocscribe init\nGenerate config"]
+        GenCmd["CLI::Generate\ndocscribe generate\nScaffold plugins"]
+        SigsCmd["CLI::Sigs\ndocscribe sigs\nCheck RBS coverage"]
+        RbsGenCmd["CLI::RbsGen\ndocscribe rbs\nGenerate RBS from YARD"]
+        UpdateTypesCmd["CLI::UpdateTypes\ntwo-pass rebuild"]
+        ConfigDumpCmd["CLI::ConfigDump\ndocscribe config\n· resolved config\n· --only-changed\n· --format yaml/json/text"]
+        CoverageCmd["CLI::Coverage\ndocscribe coverage\nDocumentation coverage\n· text / json report"]
+        CheckCommentsCmd["CLI::CheckForComments\ndocscribe check_for_comments"]
+        ServerCmd["CLI::ServerCmd\ndocscribe server"]
+        JsonFormatter["CLI::Formatters::Json\nJSON offenses\n(type, source)"]
+        SarifFormatter["CLI::Formatters::Sarif\nSARIF 2.1 JSON\nCode Scanning"]
+        ConfigBuilder["CLI::ConfigBuilder\nApply CLI overrides\nto config"]
+    end
 
-Source: [assets/diagrams/architecture.mmd](assets/diagrams/architecture.mmd) — regenerate with `bash assets/diagrams/render.sh`.
+    subgraph Config["Configuration"]
+        ConfigClass["Config\nCentral config object\n· raw hash\n· query methods"]
+        Defaults["config/defaults.rb\nDEFAULT hash"]
+        Loader["config/loader.rb\nYAML loading\n+ deep merge"]
+        Emit["config/emit.rb\nEmission toggles\n(header, tags, etc.)"]
+        Filtering["config/filtering.rb\nFile/method\ninclude/exclude"]
+        RBSConfig["config/rbs.rb\nRBS provider\nfactory"]
+        SorbetConfig["config/sorbet.rb\nSorbet provider\nchain factory"]
+        PluginConfig["config/plugin.rb\nPlugin loading\nfrom YAML"]
+        ValidateCfg["config/validation.rb\nvalidate_types?"]
+        SortingCfg["config/sorting.rb\nsort_tags / tag_order"]
+        TemplateCfg["config/template.rb\ndefault YAML"]
+    end
+
+    subgraph Parsing["Parsing"]
+        ParsingModule["Parsing\nBackend selection\n(:parser / :prism)"]
+        ParserGem["Parser gem\n(whitequark/parser)"]
+        Prism["Prism translator\n(Ruby 3.4+)"]
+    end
+
+    subgraph Core["Core Engine"]
+        InlineRewriter["InlineRewriter\n· parse -> collect\n· deduplicate -> dispatch\n· rewrite"]
+        Collector["Collector\n< Parser::AST::Processor\nAST walker\n· find methods/attrs\n· track visibility\n· track containers"]
+        DocBuilder["DocBuilder\nGenerate YARD doc lines\n· combine inference\n· external signatures\n· plugin tags"]
+        ValidSvc["Validator\nGenericCompatibility +\nTypeMismatchValidator"]
+        RunFork["CLI::Run parallel path\n· --parallel / --jobs N\n· warm env once, then fork\n· COW-inherited RBS env\n· sequential fallback\n  when fork absent"]
+        DocBlock["DocBlock\nSafe strategy:\nparse -> merge -> sort\nexisting doc blocks"]
+        SourceHelpers["SourceHelpers\nPosition/range\nutilities"]
+    end
+
+    subgraph Infer["Inference Engine"]
+        InferModule["Infer\nEntry point"]
+        InferBehavior["Infer::Behavior"]
+        InferConsts["Infer::Constants"]
+        Params["Infer::Params\nParameter type\nfrom name + default"]
+        Returns["Infer::Returns\nReturn type\nfrom method body"]
+        Raises["Infer::Raises\n@raise tags\nfrom raise/rescue"]
+        Literals["Infer::Literals\nAST literal ->\ntype string"]
+        Names["Infer::Names\n:const node ->\nFQN string"]
+        ASTWalk["Infer::ASTWalk\nRecursive DFS\nAST traversal"]
+    end
+
+    subgraph Plugins["Plugin System"]
+        PluginModule["Plugin\nTag/Collector\ndispatch"]
+        Registry["Plugin::Registry\nGlobal registry\n· register -> route\n· tag_entries\n· collector_entries"]
+        TagPlugin["Base::TagPlugin\nOverride #call(context)\n-> Array<Tag>"]
+        CollectorPlugin["Base::CollectorPlugin\nOverride #collect(ast, buffer)\n-> Array<Hash>"]
+        TagValue["Plugin::Tag\nStruct (name, text, types)"]
+        Context["Plugin::Context\nMethod snapshot struct\nnode/container/scope/\nvisibility/method/params/return/source"]
+    end
+
+    subgraph Types["External Type System"]
+        ProviderChain["ProviderChain\nComposite:\nquery in order\nfirst match wins"]
+        RBSProvider["RBS::Provider\n.rbs files\n-> RBS lib"]
+        RBSFormatter["RBS::TypeFormatter\nRBS type ->\nYARD type string"]
+        RBSCollection["RBS::CollectionLoader\nrbs_collection\n.lock.yaml"]
+        SorbetBase["Sorbet::BaseProvider\nRBS::Prototype::RBI\nbridge"]
+        SorbetSource["Sorbet::SourceProvider\nInline sig{}\ndeclarations"]
+        SorbetRBI["Sorbet::RBIProvider\n.rbi files\ndirectories"]
+        OverloadSel["OverloadSelector"]
+    end
+
+    subgraph YardTypes["YARD Type Parser"]
+        YParser["Yard::Parser\nParse YARD type\nstrings -> AST"]
+        YFormatter["Yard::Formatter\nYARD AST ->\nRBS string"]
+        YTypes["Yard::Types\n9 AST node types\n(Named, Generic, etc.)"]
+        YRepair["Yard::Repair\nRepair whitespace-split\ntype names\n([Sym bol] -> [Symbol])\nonly known primitives"]
+    end
+
+    subgraph Server["Server / Daemon"]
+        ThinClient["exe/docscribe-client\nThin client\n· socket send/receive\n· no gem load\nexcept --ensure"]
+        ServerDaemon["Server::Daemon\nSocket listener\n· check / fix / check_batch\n· update_types / ping / shutdown\n· JSON-RPC 2.0"]
+        Cache["Docscribe::LRUCache\nFile result cache\n(max 1000, key [file, strategy])\nhit = mtime== AND sig_hash=="]
+    end
+
+    Exe --> Run
+    Exe --> CLIDispatch
+    Exe --> ServerCmd
+    ServerCmd --> ServerDaemon
+    CLIDispatch --> Run
+    CLIDispatch --> InitCmd
+    CLIDispatch --> GenCmd
+    CLIDispatch --> SigsCmd
+    CLIDispatch --> RbsGenCmd
+    CLIDispatch --> ConfigDumpCmd
+    CLIDispatch --> CoverageCmd
+    CLIDispatch --> CheckCommentsCmd
+    ThinClient --> ServerDaemon
+    ServerDaemon --> ConfigClass
+    ServerDaemon --> Cache
+    ServerDaemon --> InlineRewriter
+    Options --> Run
+    Run --> JsonFormatter
+    Run --> SarifFormatter
+    Run --> ConfigBuilder
+    Run --> UpdateTypesCmd
+    Run --> RunFork
+    RunFork --> InlineRewriter
+    ConfigDumpCmd --> ConfigClass
+    ConfigDumpCmd --> Options
+    CoverageCmd --> InlineRewriter
+    ConfigBuilder --> ValidationOverrides["validation overrides\n(validate_types,\nwarn_invalid_yard)"]
+    ValidationOverrides --> ConfigClass
+    ConfigBuilder --> ConfigClass
+    ConfigClass --> Defaults
+    ConfigClass --> Loader
+    ConfigClass --> Emit
+    ConfigClass --> Filtering
+    ConfigClass --> RBSConfig
+    ConfigClass --> SorbetConfig
+    ConfigClass --> PluginConfig
+    ConfigClass --> ValidateCfg
+    ConfigClass --> SortingCfg
+    ConfigClass --> TemplateCfg
+    Run --> InlineRewriter
+    InlineRewriter --> ParsingModule
+    ParsingModule --> ParserGem
+    ParsingModule --> Prism
+    InlineRewriter --> Collector
+    Collector --> PluginModule
+    PluginModule --> Registry
+    Registry --> CollectorPlugin
+    InlineRewriter --> DocBuilder
+    DocBuilder --> InferModule
+    DocBuilder --> ValidSvc
+    InferModule --> InferBehavior
+    InferModule --> InferConsts
+    InferModule --> Params
+    InferModule --> Returns
+    InferModule --> Raises
+    Params --> Literals
+    Returns --> Literals
+    Raises --> ASTWalk
+    Raises --> Names
+    DocBuilder --> ProviderChain
+    ProviderChain --> OverloadSel
+    ProviderChain --> SorbetSource
+    ProviderChain --> SorbetRBI
+    ProviderChain --> RBSProvider
+    SorbetSource --> SorbetBase
+    SorbetRBI --> SorbetBase
+    RBSProvider --> RBSFormatter
+    RBSProvider --> RBSCollection
+    DocBuilder --> PluginModule
+    PluginModule --> Registry
+    Registry --> TagPlugin
+    TagPlugin --> TagValue
+    TagPlugin --> Context
+    InlineRewriter --> DocBlock
+    InlineRewriter --> SourceHelpers
+    RbsGenCmd --> ParsingModule
+    RbsGenCmd --> YParser
+    YParser --> YTypes
+    YParser --> YFormatter
+    DocBuilder --> YRepair
+    YRepair --> YParser
+```
+
+Source: [assets/diagrams/architecture.mmd](assets/diagrams/architecture.mmd) — GitHub renders this block directly; `bash assets/diagrams/render.sh` produces SVG for viewers without Mermaid support.
 
 ### Data flow
 
-<img src="assets/diagrams/dataflow.svg" alt="Docscribe data flow">
+```mermaid
+flowchart LR
+    subgraph Entry["Entry Points"]
+        Direct["docscribe lib\n(no --server)"]
+        Parallel["docscribe --parallel\n/ --jobs N"]
+        ViaServer["docscribe --server\nor docscribe-client"]
+        UpdateTypesFlow["update_types\ntwo-pass: aggressive → safe"]
+    end
+
+    subgraph Fork["Forked Workers (1.7.0+)"]
+        JobCount["parallel_job_count\n--jobs > DOCSCRIBE_THREADS\n> CPU count"]
+        ForkCheck{"Process.respond_to?\n(:fork)?"}
+        Warm["warm_rewrite_env\n· load gems\n· build RBS provider\n· rewrite one file"]
+        Split["split_paths\ncontiguous slices"]
+        Children["fork() per slice\ninherit warm env (COW)"]
+        Fallback["sequential\n(identical results)"]
+        Gather["merge_forked_slices\nMarshal payload over pipe\nmerge_state under mutex"]
+    end
+
+    subgraph Daemon["Server Daemon (Unix Socket)"]
+        Socket["Daemon#listen_loop\nJSON-RPC 2.0 dispatch"]
+        CacheCheck{"File cached &\nmtime fresh?"}
+        CacheStorage["LRUCache\n(1000 entries)"]
+        ApplyOverrides["apply_cli_overrides\n(reset on nil)"]
+    end
+
+    Parallel --> JobCount
+    JobCount --> ForkCheck
+    ForkCheck -->|yes| Warm
+    ForkCheck -->|no| Fallback
+    Warm --> Split
+    Split --> Children
+    Children --> Parse
+    Fallback --> Parse
+    Children --> Gather
+    Gather --> Output
+    ViaServer --> Socket
+    Socket --> ApplyOverrides
+    ApplyOverrides --> CacheCheck
+    CacheCheck -->|Hit| Socket
+    CacheCheck -->|Miss| Parse
+    Direct --> Parse
+    Entry --> UpdateTypesFlow
+    UpdateTypesFlow --> Parse
+    Parse["Parsing.parse_buffer\nParser gem / Prism"]
+    Parse --> AST["AST"]
+    AST -.-> CommentScan["comment scan\n(buffer text)"]
+    AST --> Collect["Collector.process\n· Find methods\n· Track visibility\n· Find attr_*"]
+    AST --> CollectPlugins["CollectorPlugin#collect\n· Custom AST walks\n· Non-standard constructs"]
+    Collect --> Insertions["Insertion list\n(sorted by position)\n(sort_by pos at dispatch)"]
+    CollectPlugins --> Insertions
+    Insertions --> Dedup["Deduplicate\n(override by position)"]
+    Dedup --> Build["DocBuilder.build\n(entry point)\nper insertion"]
+    Build -.-> RescueNote["per-method rescue:\nerror to stderr,\nrest applies"]
+    Build --> TypeGuard["warn_invalid_yard gate\n· invalid_yard_type?\n· Repair known names\n· else report invalid_type"]
+    TypeGuard --> Infer["Infer params / returns / raises\n(heuristic fallback)"]
+    Build --> SigQuery["ProviderChain\nquery external types"]
+    Build --> TagPlugins["TagPlugin#call\n(add extra @tags)"]
+    Infer --> ResultDoc["Generated YARD doc block"]
+    SigQuery --> ResultDoc
+    TagPlugins --> ResultDoc
+    ResultDoc --> Strategy{"Strategy?"}
+    Strategy -->|Safe| Merge["DocBlock.merge\npreserve + append + sort"]
+    Strategy -->|Aggressive| Replace["Replace entirely"]
+    Merge --> Rewritten["TreeRewriter#process\n(Parser::Source)\n-> rewritten source"]
+    Replace --> Rewritten
+    Rewritten --> Result["Result / response"]
+    Rewritten --> CacheStorage
+    CacheStorage --> Socket
+    Result -.-> ExitCodes["exit codes:\n0 ok / 1 changes / 2 error"]
+    Children -.-> Progress["--progress\nstderr, per child"]
+    Result -->|Direct mode| Output["write-mode: file\ncheck: STDOUT summary"]
+    Result -->|Server mode| Socket
+```
 
 Source: [assets/diagrams/dataflow.mmd](assets/diagrams/dataflow.mmd) — regenerate with `bash assets/diagrams/render.sh`.
 
 ### IDE plugin and gem interaction
 
-<img src="assets/diagrams/plugin-gem.svg" alt="RubyMine plugin and gem interaction">
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User / IDE
+    participant A as DocscribeAnnotator<br/>(ExternalAnnotator)
+    participant R as Runner<br/>(DocscribeDaemon)
+    participant D as Gem daemon<br/>(Unix socket, JSON-RPC 2.0)
+    participant E as Engine<br/>(InlineRewriter)
+    Note over A: open / type / save (.rb, .rake, Rakefile)
+    A ->> A: collectInformation (EDT)<br/>filters, unsaved-skip (non-RBS),<br/>configHash w/o I/O, PSI stamp
+    U ->> A: background pass
+    A ->> A: doAnnotate - generation++<br/>bgConfigHash + rbsHash(sig/**)
+    A ->> A: cache get (project, file, hash)<br/>+ stamp check
+    alt cache hit (incl. empty = clean)
+        A ->> U: apply cached / null (no gem call)
+    else cache miss
+        A ->> A: saveDocument (so daemon sees disk)
+        A ->> R: executeWithFallback(check)<br/>RunOptions(file, CHECK, json)
+        R ->> R: ensureRunning - socket alive?<br/>gem 1.5.1 or newer? ruby/SDK resolve<br/>start ruby -e (15s timeout)
+        alt daemon OK
+            R ->> D: check {file, project_dir,<br/>no_boilerplate, cli_overrides?}
+            Note over R, D: cli_overrides - rbs / rbs_collection<br/>(RbsDetector) + validate_types (setting)
+            D ->> E: rewrite_with_report (safe)
+            E ->> D: changes[] {type, line, method,<br/>message, source?}
+            D ->> R: {status ok/fail, changed, changes}
+            R ->> R: buildCheckJson to parseJson
+        else daemon down / RPC null
+            R ->> R: CLI fallback - bundle exec<br/>docscribe --format json file
+        end
+        R ->> A: RunResult(success, exit, stdout, stderr)
+        A ->> A: generation still current?<br/>else discard (null)
+        alt success is false
+            A ->> A: synthetic Docscribe/Error at 1:1<br/>do NOT cache
+        else blank stdout
+            A ->> A: empty result (legit clean, cache it)
+        else parsed
+            A ->> A: cache put (non-error only)
+        end
+        A ->> U: apply - line = findYardTagLine<br/>(at-param/at-return above def)<br/>WARNING squiggle + fix by cop<br/>Updated to UpdateTypes<br/>InvalidType to Fix YARD (local)<br/>other to safe Fix / Error no fix
+    end
+
+    Note over U, R: Quick-fix (bulb) - save to fix {strategy}<br/>or update_types {dir} (whole project)<br/>refresh + balloon. Check action -<br/>same check, balloon with counts.
+    Note over U, R: Workspace - menu to collectRubyFiles<br/>chunks of 10 to check_batch {files}<br/>aggregate balloon only (no squigglies -<br/>error files counted, not shown)
+```
 
 Source: [assets/diagrams/plugin-gem.mmd](assets/diagrams/plugin-gem.mmd) — regenerate with `bash assets/diagrams/render.sh`.
 
@@ -463,15 +756,17 @@ end
 
 ```shell
 docscribe rbs lib
-# Generated sig/user.rbs
+# Generated sig/lib/user.rbs
 ```
 
 ```ruby.rbs
-# sig/user.rbs
+# sig/lib/user.rbs
 class User
-    def initialize: (String name, Integer age) -> User
+  def initialize: (String name, Integer age) -> User
 end
 ```
+
+The output path mirrors the source path relative to the working directory, so `lib/user.rb`becomes `sig/lib/user.rbs` (not `sig/user.rbs`).
 
 ### `docscribe update_types` — two-pass type-aware documentation update
 
@@ -531,17 +826,22 @@ about your project and writes a tailored configuration.
 # Create docscribe.yml interactively
 docscribe init
 
-# Create with default settings (non-interactive)
-docscribe init --default
+# Write the default config without prompting
+docscribe init --force
+
+# Print the template to stdout instead of writing a file
+docscribe init --stdout
 ```
 
 **Flags:**
 
+- `--config PATH` — where to write the config (default: `docscribe.yml`).
+- `-f`, `--force` — overwrite if the file already exists.
+- `--stdout` — print the config template to stdout instead of writing a file.
 - `--pre-commit` — generate and install a Git pre-commit hook that checks documentation on staged `.rb` files using
   `docscribe --verbose`. The hook exits with a warning if staged files lack documentation.
 - `--pre-commit --uninstall` — remove the pre-commit hook.
 - `--pre-commit --dry-run` — preview the hook script without installing.
-- `--default` — skip interactive prompts, write default config.
 - `-h`, `--help` — show help.
 
 ### `docscribe config` — view resolved configuration
@@ -782,7 +1082,8 @@ In write modes:
 
 > [!IMPORTANT]
 > The `M` marker only appears when `--rbs` or `--sorbet` is enabled, since type mismatches are detected by
-> comparing external signatures against inferred types.
+> comparing external signatures against inferred types. It also requires `--no-validate-types`: with
+> `validate_types` on (the default) a signature mismatch is reported as a fixable difference (`F`), not as `M`.
 
 With `--verbose`, Docscribe prints per-file statuses instead; type mismatches show as `MT` with the specific difference.
 
@@ -922,7 +1223,8 @@ class Demo
 end
 ```
 
-Generated docs will prefer the RBS signature over inferred Ruby types:
+Generated docs will prefer the RBS signature over inferred Ruby types (`emit.header: true`
+in the example below adds the `+#foo+ -> ...` header line; it is off by default):
 
 ```ruby
 class Demo
@@ -1039,7 +1341,8 @@ class Demo
 end
 ```
 
-Docscribe will use the Sorbet signature instead of the inferred body type:
+Docscribe will use the Sorbet signature instead of the inferred body type (`emit.header: true`, off by default, adds the
+header line):
 
 ```ruby
 class Demo
@@ -1112,7 +1415,7 @@ class Demo
 end
 ```
 
-Example output:
+Example output (with `emit.header: true`; off by default):
 
 ```ruby
 # demo.rb
@@ -1461,7 +1764,9 @@ plugins:
     - ./docscribe_plugins
 ```
 
-Each entry is passed to `require`. The path is expanded relative to the current working directory.
+Each entry is passed to `require`. A relative path is expanded from the directory holding
+`docscribe.yml` (not from the current working directory), so the plugin resolves the same way
+no matter where you invoke `docscribe` from.
 
 Duck typing is also supported — any object responding to `#call` is treated as a `TagPlugin`, any object responding to
 `#collect` is treated as a `CollectorPlugin`:
@@ -1584,7 +1889,7 @@ docscribe --exclude-file '/^spec\//' lib
 
 > [!NOTE]
 > `/regex/` passed to `--include`/`--exclude` is treated as a **method-id** pattern. Use `--include-file` /
-`--exclude-file` for file regex filters.
+> `--exclude-file` for file regex filters.
 
 Enable attribute-style documentation generation with:
 
@@ -1788,7 +2093,7 @@ The generated file contains:
 |-------------------------------------------|------------|----------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
 | `keep_descriptions`                       | `bool`     | `false`                                                                                      | Preserve existing doc text in aggressive mode                              |
 | `skip_anonymous_block_params`             | `bool`     | `false`                                                                                      | Skip `@param [Proc] block` for anonymous `&` params                        |
-| `validate_types`                          | `bool`     | `false`                                                                                      | Validate YARD types against inferred/RBS types and report mismatches       |
+| `validate_types`                          | `bool`     | `true`                                                                                       | Validate YARD types against inferred/RBS types and report mismatches       |
 | `warn_invalid_yard`                       | `bool`     | `true`                                                                                       | Report syntactically broken YARD types (e.g. `[Sym bol]`)                  |
 | `emit.header`                             | `bool`     | `false`                                                                                      | Generate method header line (`+#foo+ -> ...`)                              |
 | `emit.include_default_message`            | `bool`     | `true`                                                                                       | Insert default message (`Method documentation.`)                           |

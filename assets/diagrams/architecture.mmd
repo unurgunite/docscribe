@@ -9,7 +9,11 @@ flowchart TB
         SigsCmd["CLI::Sigs\ndocscribe sigs\nCheck RBS coverage"]
         RbsGenCmd["CLI::RbsGen\ndocscribe rbs\nGenerate RBS from YARD"]
         UpdateTypesCmd["CLI::UpdateTypes\ntwo-pass rebuild"]
+        ConfigDumpCmd["CLI::ConfigDump\ndocscribe config\n· resolved config\n· --only-changed\n· --format yaml/json/text"]
+        CoverageCmd["CLI::Coverage\ndocscribe coverage\nDocumentation coverage\n· text / json report"]
+        CheckCommentsCmd["CLI::CheckForComments\ndocscribe check_for_comments"]
         ServerCmd["CLI::ServerCmd\ndocscribe server"]
+        JsonFormatter["CLI::Formatters::Json\nJSON offenses\n(type, source)"]
         SarifFormatter["CLI::Formatters::Sarif\nSARIF 2.1 JSON\nCode Scanning"]
         ConfigBuilder["CLI::ConfigBuilder\nApply CLI overrides\nto config"]
     end
@@ -39,6 +43,7 @@ flowchart TB
         Collector["Collector\n< Parser::AST::Processor\nAST walker\n· find methods/attrs\n· track visibility\n· track containers"]
         DocBuilder["DocBuilder\nGenerate YARD doc lines\n· combine inference\n· external signatures\n· plugin tags"]
         ValidSvc["Validator\nGenericCompatibility +\nTypeMismatchValidator"]
+        RunFork["CLI::Run parallel path\n· --parallel / --jobs N\n· warm env once, then fork\n· COW-inherited RBS env\n· sequential fallback\n  when fork absent"]
         DocBlock["DocBlock\nSafe strategy:\nparse -> merge -> sort\nexisting doc blocks"]
         SourceHelpers["SourceHelpers\nPosition/range\nutilities"]
     end
@@ -79,6 +84,7 @@ flowchart TB
         YParser["Yard::Parser\nParse YARD type\nstrings -> AST"]
         YFormatter["Yard::Formatter\nYARD AST ->\nRBS string"]
         YTypes["Yard::Types\n9 AST node types\n(Named, Generic, etc.)"]
+        YRepair["Yard::Repair\nRepair whitespace-split\ntype names\n([Sym bol] -> [Symbol])\nonly known primitives"]
     end
 
     subgraph Server["Server / Daemon"]
@@ -96,14 +102,25 @@ flowchart TB
     CLIDispatch --> GenCmd
     CLIDispatch --> SigsCmd
     CLIDispatch --> RbsGenCmd
+    CLIDispatch --> ConfigDumpCmd
+    CLIDispatch --> CoverageCmd
+    CLIDispatch --> CheckCommentsCmd
     ThinClient --> ServerDaemon
     ServerDaemon --> ConfigClass
     ServerDaemon --> Cache
     ServerDaemon --> InlineRewriter
     Options --> Run
+    Run --> JsonFormatter
     Run --> SarifFormatter
     Run --> ConfigBuilder
     Run --> UpdateTypesCmd
+    Run --> RunFork
+    RunFork --> InlineRewriter
+    ConfigDumpCmd --> ConfigClass
+    ConfigDumpCmd --> Options
+    CoverageCmd --> InlineRewriter
+    ConfigBuilder --> ValidationOverrides["validation overrides\n(validate_types,\nwarn_invalid_yard)"]
+    ValidationOverrides --> ConfigClass
     ConfigBuilder --> ConfigClass
     ConfigClass --> Defaults
     ConfigClass --> Loader
@@ -155,3 +172,5 @@ flowchart TB
     RbsGenCmd --> YParser
     YParser --> YTypes
     YParser --> YFormatter
+    DocBuilder --> YRepair
+    YRepair --> YParser
