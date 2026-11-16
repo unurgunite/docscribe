@@ -311,6 +311,8 @@ module Docscribe
 
       def self?.handle_invalid_param: (String pname, String param_line, String yard_type, Array[String] lines, Array[Hash[Symbol, untyped]] reasons) -> void
 
+      def self?.replace_param_type: (String param_line, String new_type) -> String
+
       def self?.existing_param_type?: (String pname, Hash[Symbol, untyped] ctx) -> bool
 
       def self?.handle_existing_param: (String pname, String param_line, Array[String] lines, Array[Hash[Symbol, untyped]] reasons, Hash[Symbol, untyped] ctx) -> void
@@ -318,6 +320,10 @@ module Docscribe
       def self?.param_needs_update?: (Hash[Symbol, untyped] ctx) -> bool
 
       def self?.invalid_yard_type?: (String? type_str) -> bool
+
+      def self?.literal_only_yard_type?: (String type_str) -> bool
+
+      def self?.warn_invalid_yard_check?: (Hash[Symbol, untyped] ctx) -> bool
 
       def self?.should_validate_param?: (Hash[Symbol, untyped] ctx) -> bool
 

@@ -135,7 +135,7 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
       allow(Docscribe::Types::RBS::CollectionLoader).to receive(:resolve).and_return(nil)
 
       raw = Marshal.load(Marshal.dump(Docscribe::Config.new.raw))
-      expect { described_class.apply_rbs_collection(raw) }
+      expect { described_class.apply_rbs_collection(raw, Docscribe::Config.new) }
         .to output(/rbs_collection\.lock\.yaml not found/).to_stderr
     end
 
@@ -182,14 +182,14 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
   describe 'build with validate_types' do
     it 'keeps yml true when the flag was not passed', :aggregate_failures do
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(false)
+      allow(File).to receive(:exist?).with(File.join(File.expand_path(Dir.pwd), 'rbs_collection.lock.yaml')).and_return(false)
       base = Docscribe::Config.new('validate_types' => true)
       expect(described_class.build(base, default_options).validate_types?).to be(true)
     end
 
     it 'lets explicit false override yml true' do
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(false)
+      allow(File).to receive(:exist?).with(File.join(File.expand_path(Dir.pwd), 'rbs_collection.lock.yaml')).and_return(false)
       base = Docscribe::Config.new('validate_types' => true)
       opts = default_options.merge(validate_types: false)
       expect(described_class.build(base, opts).validate_types?).to be(false)
@@ -197,10 +197,43 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
 
     it 'lets explicit true enable validation without yml' do
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(false)
+      allow(File).to receive(:exist?).with(File.join(File.expand_path(Dir.pwd), 'rbs_collection.lock.yaml')).and_return(false)
       base = Docscribe::Config.new
       opts = default_options.merge(validate_types: true)
       expect(described_class.build(base, opts).validate_types?).to be(true)
+    end
+  end
+
+  describe 'build with warn_invalid_yard' do
+    before do
+      allow(File).to receive(:exist?).and_call_original
+      allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(false)
+    end
+
+    it 'defaults to true' do
+      expect(described_class.build(Docscribe::Config.new, default_options).warn_invalid_yard?).to be(true)
+    end
+
+    it 'keeps yml false when the flag was not passed' do
+      base = Docscribe::Config.new('warn_invalid_yard' => false)
+      expect(described_class.build(base, default_options).warn_invalid_yard?).to be(false)
+    end
+
+    it 'lets explicit false override yml true' do
+      base = Docscribe::Config.new('warn_invalid_yard' => true)
+      opts = default_options.merge(warn_invalid_yard: false)
+      expect(described_class.build(base, opts).warn_invalid_yard?).to be(false)
+    end
+
+    it 'lets explicit true re-enable it over yml false' do
+      base = Docscribe::Config.new('warn_invalid_yard' => false)
+      opts = default_options.merge(warn_invalid_yard: true)
+      expect(described_class.build(base, opts).warn_invalid_yard?).to be(true)
+    end
+
+    it 'does not leak a nil override into the config' do
+      expect(described_class.build(Docscribe::Config.new, default_options).raw)
+        .to include('warn_invalid_yard' => true)
     end
   end
 
@@ -209,27 +242,27 @@ RSpec.describe Docscribe::CLI::ConfigBuilder do
 
     it 'warns when the lock file exists' do
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(true)
+      allow(File).to receive(:exist?).with(File.join(File.expand_path(Dir.pwd), 'rbs_collection.lock.yaml')).and_return(true)
       expect { described_class.build(base, default_options) }
         .to output(/rbs_collection\.lock\.yaml found but --rbs-collection not set/).to_stderr
     end
 
     it 'returns the base config object' do
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(true)
+      allow(File).to receive(:exist?).with(File.join(File.expand_path(Dir.pwd), 'rbs_collection.lock.yaml')).and_return(true)
       expect(described_class.build(base, default_options)).to be(base)
     end
 
     it 'stays silent without the lock file' do
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(false)
+      allow(File).to receive(:exist?).with(File.join(File.expand_path(Dir.pwd), 'rbs_collection.lock.yaml')).and_return(false)
       expect { described_class.build(base, default_options) }.not_to output.to_stderr
     end
 
     it 'stays silent when suppression is configured' do
       base = Docscribe::Config.new('rbs' => { 'warn_missing_collection' => false })
       allow(File).to receive(:exist?).and_call_original
-      allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(true)
+      allow(File).to receive(:exist?).with(File.join(File.expand_path(Dir.pwd), 'rbs_collection.lock.yaml')).and_return(true)
       expect { described_class.build(base, default_options) }.not_to output.to_stderr
     end
   end

@@ -4,6 +4,7 @@ require 'docscribe/plugin'
 require 'docscribe/infer'
 require 'docscribe/inline_rewriter/source_helpers'
 require 'docscribe/types/yard/validator'
+require 'docscribe/types/yard/repair'
 require 'docscribe/validator/type_mismatch_validator'
 require 'docscribe/validator/generic_compatibility'
 
@@ -1101,13 +1102,20 @@ module Docscribe
       # @return [void]
       def handle_existing_param(pname, param_line, lines, reasons, ctx)
         yard_type = ctx[:info][:param_types][pname]
-        if invalid_yard_type?(yard_type)
+        if warn_invalid_yard_check?(ctx) && invalid_yard_type?(yard_type)
           handle_invalid_param(pname, param_line, yard_type, lines, reasons)
         elsif param_needs_update?(ctx)
           collect_updated_param(param_line, pname, lines, reasons, ctx)
         end
       end
 
+      # Emit an `@param` line, repairing the type when a safe repair exists.
+      #
+      # A broken type such as `[Sym bol]` is rewritten to `[Symbol]` instead
+      # of being passed through untouched, so the doc is fixed rather than
+      # merely reported. When no repair can be proven, the original line is
+      # kept and the offense is reported for a human to resolve.
+      #
       # @note module_function: defines #handle_invalid_param (visibility: private)
       # @param [String] pname
       # @param [String] param_line
@@ -1115,7 +1123,20 @@ module Docscribe
       # @param [Array<String>] lines
       # @param [Array<Hash<Symbol, Object>>] reasons
       # @return [void]
-      def handle_invalid_param(pname, param_line, yard_type, lines, reasons)
+      def handle_invalid_param(pname, param_line, yard_type, lines, reasons) # rubocop:disable Metrics/MethodLength
+        repaired = Docscribe::Types::Yard::Repair.repair(yard_type)
+
+        if repaired
+          lines << "#{replace_param_type(param_line, repaired)}\n"
+          reasons << {
+            type: :invalid_type,
+            message: "invalid YARD type [#{yard_type}] for @param #{pname} (repaired to [#{repaired}])",
+            source: 'syntax',
+            extra: { param: pname, repaired_type: repaired }
+          }
+          return
+        end
+
         lines << "#{param_line}\n"
         reasons << {
           type: :invalid_type,
@@ -1123,6 +1144,20 @@ module Docscribe
           source: 'syntax',
           extra: { param: pname }
         }
+      end
+
+      # Replace the bracketed type in an `@param` line.
+      #
+      # `param_line` reaches here already rebuilt from the AST, so it no
+      # longer carries the original broken type text; the replacement is done
+      # on whatever bracket content is present.
+      #
+      # @note module_function: defines #replace_param_type (visibility: private)
+      # @param [String] param_line
+      # @param [String] new_type
+      # @return [String]
+      def replace_param_type(param_line, new_type)
+        param_line.sub(/\[.*?\]/, "[#{new_type}]")
       end
 
       # @note module_function: defines #param_needs_update? (visibility: private)
@@ -1137,15 +1172,32 @@ module Docscribe
       # Called from both param (above) and return (below) validation, so no
       # waterfall placement satisfies the ordering cop — exempt.
       #
+      # A blank type means "no type given" and is not an error here, but for
+      # `@param [<literal>] name` the bracket content is the whole type, and a
+      # bare literal (empty, `:sym`, `42`, `,`) carries no type information.
+      #
       # @note module_function: defines #invalid_yard_type? (visibility: private)
       # @param [String?] type_str
       # @return [Boolean]
       def invalid_yard_type?(type_str) # rubocop:disable SortedMethodsByCall/Waterfall
-        return false if type_str.nil? || type_str.strip.empty?
+        return false if type_str.nil?
+        return true if literal_only_yard_type?(type_str)
         return true if type_str.match?(/\d/)
         return true if type_str.match?(/[^\x00-\x7F]/)
 
         !Types::Yard::Validator.valid?(type_str)
+      end
+
+      # Whether a YARD type string is a bare literal instead of a type name.
+      #
+      # @note module_function: defines #literal_only_yard_type? (visibility: private)
+      # @param [String] type_str
+      # @return [Boolean]
+      def literal_only_yard_type?(type_str)
+        stripped = type_str.strip
+        return true if stripped.empty?
+
+        stripped.start_with?(':') || stripped.match?(/\A\d+\z/) || !stripped.match?(/\w/)
       end
 
       # Whether param validation should run via inferred/external types.
@@ -2033,8 +2085,22 @@ module Docscribe
       def invalid_yard_return?(ctx)
         yard = ctx[:info][:return_type]
         return false unless yard
+        return false unless warn_invalid_yard_check?(ctx)
 
         invalid_yard_type?(yard)
+      end
+
+      # Whether syntactically broken YARD types should be reported.
+      #
+      # Gated by `warn_invalid_yard` (default true), not by `validate_types`:
+      # syntax validity does not depend on inferred or external types. Both the
+      # param branch and the return branch consult this first.
+      #
+      # @note module_function: defines #warn_invalid_yard_check? (visibility: private)
+      # @param [Hash<Symbol, Object>] ctx
+      # @return [Boolean]
+      def warn_invalid_yard_check?(ctx)
+        ctx[:config].respond_to?(:warn_invalid_yard?) && ctx[:config].warn_invalid_yard?
       end
 
       # Record invalid return type.

@@ -435,7 +435,8 @@ RSpec.describe Docscribe::Server::Daemon do
         with_cache_dir do |daemon, _test_file|
           daemon.instance_variable_set(:@config, Docscribe::Config.new)
           allow(File).to receive(:exist?).and_call_original
-          allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(true)
+          allow(File).to receive(:exist?).with(File.join(File.expand_path(Dir.pwd), 'rbs_collection.lock.yaml'))
+                                         .and_return(true)
           expect { daemon.send(:build_effective_config, {}) }
             .to output(/rbs_collection\.lock\.yaml found but --rbs-collection not set/).to_stderr
         end
@@ -445,7 +446,8 @@ RSpec.describe Docscribe::Server::Daemon do
         with_cache_dir do |daemon, _test_file|
           daemon.instance_variable_set(:@config, Docscribe::Config.new)
           allow(File).to receive(:exist?).and_call_original
-          allow(File).to receive(:exist?).with('rbs_collection.lock.yaml').and_return(false)
+          allow(File).to receive(:exist?).with(File.join(File.expand_path(Dir.pwd), 'rbs_collection.lock.yaml'))
+                                         .and_return(false)
           expect { daemon.send(:build_effective_config, {}) }.not_to output.to_stderr
         end
       end

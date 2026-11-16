@@ -42,8 +42,11 @@ module Docscribe
           include exclude include_file exclude_file
           rbs rbs_collection sig_dirs
           sorbet rbi_dirs
-          validate_types
+          validate_types warn_invalid_yard
         ].freeze
+
+        # [no-] flags where an explicit false must override a `true` from config.
+        NEGATABLE_KEYS = %i[validate_types warn_invalid_yard].freeze
 
         # Run Docscribe for files or STDIN using the selected mode and strategy.
         #
@@ -345,6 +348,10 @@ module Docscribe
         # Directories are expanded recursively to `**/*.rb`.
         # If no arguments are provided, the current directory is used.
         #
+        # Deduplication uses the canonical path, so overlapping arguments
+        # that spell one file differently (absolute vs relative, `./`-prefixed,
+        # symlinked) are processed once. The first spelling wins.
+        #
         # @param [Array<String>] args file and/or directory arguments
         # @return [Array<String>] unique sorted Ruby file paths
         def expand_paths(args)
@@ -355,7 +362,34 @@ module Docscribe
             append_expanded_path(files, path)
           end
 
-          files.uniq.sort
+          dedupe_paths(files).sort
+        end
+
+        # Drop later spellings of a file already collected.
+        #
+        # @param [Array<String>] files expanded paths, possibly overlapping
+        # @return [Array<String>] paths with one entry per canonical file
+        def dedupe_paths(files)
+          seen = {} #: Hash[String, true]
+          files.each_with_object([]) do |path, acc| #: Array[String]
+            key = canonical_path(path)
+            next if seen[key]
+
+            seen[key] = true
+            acc << path
+          end
+        end
+
+        # Canonical identity for a path, resolving symlinks and relative segments.
+        #
+        # @param [String] path file path
+        # @raise [SystemCallError] when the file is gone (caught here)
+        # @raise [ArgumentError] when the path is malformed (caught here)
+        # @return [String]
+        def canonical_path(path)
+          File.realpath(path)
+        rescue SystemCallError, ArgumentError
+          File.expand_path(path)
         end
 
         # Append a file or recursively expand a directory into the files array.
@@ -405,7 +439,7 @@ module Docscribe
           run_exit_code(options, state)
         end
 
-        # Process files in parallel using a Thread pool.
+        # Process files in parallel using forked workers.
         #
         # @param [Docscribe::CLI::Formatters::opts] options parsed CLI options
         # @param [Docscribe::Config] conf effective config
@@ -420,53 +454,147 @@ module Docscribe
           run_exit_code(options, state)
         end
 
+        # Split the work across forked children and merge their states.
+        #
+        # Children inherit the warmed process (gems, config, RBS env) through
+        # copy-on-write, so each fork skips the cold-start cost that made the
+        # earlier thread implementation slower than a sequential run.
+        #
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @param [Docscribe::Config] conf
+        # @param [Array<String>] paths
+        # @param [Docscribe::CLI::Formatters::state] state
+        # @raise [StandardError]
+        # @return [void]
+        def run_parallel_workers(options, conf, paths, state)
+          return if paths.empty?
+          return run_files_sequential(options, conf, paths, state) unless fork_supported?
+
+          jobs = parallel_job_count(options)
+          warm_rewrite_env(options, conf, paths)
+          slices = split_paths(paths, jobs).reject(&:empty?)
+          return if slices.empty?
+
+          children = slices.map { |slice| start_forked_slice(slice, options, conf) }
+          merge_forked_slices(children, state)
+        end
+
+        # Whether forked workers can run here.
+        #
+        # Without fork (Windows, some locked-down containers) spawning workers
+        # would raise NotImplementedError, so parallel mode silently degrades to
+        # the sequential path. Threads are not used as a fallback: on CPU-bound
+        # rewriting they are measurably slower than a plain sequential run.
+        #
+        # @return [Boolean]
+        def fork_supported?
+          Process.respond_to?(:fork)
+        end
+
+        # Run the same file list sequentially, reusing the shared state.
+        #
         # @param [Docscribe::CLI::Formatters::opts] options
         # @param [Docscribe::Config] conf
         # @param [Array<String>] paths
         # @param [Docscribe::CLI::Formatters::state] state
         # @return [void]
-        def run_parallel_workers(options, conf, paths, state)
-          pool = {
-            paths: paths, state: state, options: options, conf: conf,
-            pwd: Pathname.pwd, mutex: Mutex.new, error_mutex: Mutex.new
-          }
-          thread_count = [ENV.fetch('DOCSCRIBE_THREADS', PARALLEL_DEFAULT_THREADS).to_i, 1].max
-          thread_count.times.map { parallel_worker(pool) }.each(&:join)
-        end
-
-        # @param [Docscribe::CLI::Run::pool] pool
-        # @return [Thread]
-        def parallel_worker(pool)
-          Thread.new do
-            loop do
-              path = fetch_work(pool[:paths], pool[:mutex]) or break
-              run_and_merge(path, pool)
-            end
+        def run_files_sequential(options, conf, paths, state)
+          paths.each do |path|
+            process_one_file(path, options: options, conf: conf, pwd: Pathname.pwd, state: state)
           end
         end
 
-        # @param [Array<String>] paths
-        # @param [Thread::Mutex] mutex
-        # @return [String?]
-        def fetch_work(paths, mutex)
-          path = nil
-          mutex.synchronize { path = paths.shift }
-          path
+        # Fork one child per slice and return its pipe and pid.
+        #
+        # All children are started before any is collected, so the slices
+        # actually overlap instead of running one after another.
+        #
+        # @param [Array<String>] slice paths handled by this child
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @param [Docscribe::Config] conf
+        # @raise [StandardError] when the fork itself fails
+        # @return [(Integer, IO)] pid and reader pipe for the child
+        def start_forked_slice(slice, options, conf)
+          reader, writer = IO.pipe
+          pid = fork { run_forked_slice(slice, options, conf, writer) }
+          writer.close
+          [pid, reader]
         end
 
-        # @param [String] path
-        # @param [Docscribe::CLI::Run::pool] pool
+        # Collect every child's marshalled state and merge it into the parent.
+        #
+        # @param [Array<(Integer, IO)>] children pid and reader pairs
+        # @param [Docscribe::CLI::Formatters::state] state shared parent state
+        # @return [void]
+        def merge_forked_slices(children, state)
+          mutex = Mutex.new
+          children.each do |(pid, reader)|
+            payload = reader.read
+            reader.close
+            Process.wait(pid)
+            local_state = Marshal.load(payload) if payload && !payload.empty? # rubocop:disable Security/MarshalLoad
+            merge_state(state, local_state, mutex) if local_state
+          end
+        end
+
+        # Warm the shared rewrite environment once before forking.
+        #
+        # Doing the first rewrite here means every child inherits the built
+        # RBS provider instead of racing to construct its own.
+        #
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @param [Docscribe::Config] conf
+        # @param [Array<String>] paths
+        # @raise [StandardError] when the warm-up rewrite fails (ignored here)
+        # @return [void]
+        def warm_rewrite_env(options, conf, paths)
+          path = paths.first
+          return unless path
+
+          warm_state = initial_run_state
+          process_one_file(path, options: options, conf: conf, pwd: Pathname.pwd, state: warm_state)
+        rescue StandardError
+          nil
+        end
+
+        # Child-process body: process a slice and ship its state back.
+        #
+        # @param [Array<String>] slice
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @param [Docscribe::Config] conf
+        # @param [IO] writer pipe back to the parent
         # @raise [StandardError]
         # @return [void]
-        # @return [Object] if StandardError
-        def run_and_merge(path, pool)
+        def run_forked_slice(slice, options, conf, writer)
           local_state = initial_run_state
-          process_one_file(path, options: pool[:options], conf: pool[:conf], pwd: pool[:pwd], state: local_state)
-          merge_state(pool[:state], local_state, pool[:error_mutex])
+          slice.each do |path|
+            process_one_file(path, options: options, conf: conf, pwd: Pathname.pwd, state: local_state)
+          end
+          writer.write(Marshal.dump(local_state))
         rescue StandardError => e
-          handle_worker_error(e, path, pool[:state], pool[:error_mutex])
+          writer.write(Marshal.dump(error_only_state(slice, e)))
+        ensure
+          writer.close
+          exit!(0)
         end
 
+        # Build a state carrying just the error for a failed slice.
+        #
+        # @param [Array<String>] slice
+        # @param [StandardError] exception
+        # @return [Docscribe::CLI::Formatters::state]
+        def error_only_state(slice, exception)
+          local_state = initial_run_state
+          local_state[:had_errors] = true
+          slice.each do |path|
+            local_state[:error_paths] << path
+            local_state[:error_messages][path] = "#{exception.class}: #{exception.message}"
+          end
+          local_state
+        end
+
+        # Record a worker failure on the shared state.
+        #
         # @param [StandardError] exception
         # @param [String] path
         # @param [Docscribe::CLI::Formatters::state] state
@@ -479,6 +607,38 @@ module Docscribe
             state[:error_messages][path] = "#{exception.class}: #{exception.message}"
           end
           $stderr.print('E')
+        end
+
+        # Resolve the worker count: --jobs, then DOCSCRIBE_THREADS, then CPU count.
+        #
+        # @param [Docscribe::CLI::Formatters::opts] options
+        # @return [Integer] positive worker count
+        def parallel_job_count(options)
+          requested = options[:jobs] || ENV.fetch('DOCSCRIBE_THREADS', nil)&.to_i
+          jobs = requested || default_job_count
+          jobs.positive? ? jobs : 1
+        end
+
+        # @raise [StandardError] when processor detection is unavailable
+        # @return [Integer] default worker count based on available CPUs
+        def default_job_count
+          require 'etc'
+          Etc.nprocessors
+        rescue StandardError
+          PARALLEL_DEFAULT_THREADS
+        end
+
+        # Split paths into contiguous slices of roughly equal size.
+        #
+        # @param [Array<String>] paths
+        # @param [Integer] jobs
+        # @return [Array<Array<String>>]
+        def split_paths(paths, jobs)
+          return [paths] if jobs <= 1
+
+          size = (paths.size.to_f / jobs).ceil
+          size = 1 if size < 1
+          paths.each_slice(size).to_a
         end
 
         # Merge a thread-local state into the shared state under mutex protection.
@@ -541,7 +701,9 @@ module Docscribe
           overrides = options.slice(*CLI_OVERRIDE_KEYS)
           acc = {} #: Hash[String, untyped]
           overrides.each do |k, v|
-            next if v.nil? || v == false
+            next if v.nil?
+            # Negations matter for [no-] flags: false must beat a `true` in yml.
+            next if v == false && !NEGATABLE_KEYS.include?(k)
             next if v.is_a?(Array) && v.empty?
 
             acc[k.to_s] = v

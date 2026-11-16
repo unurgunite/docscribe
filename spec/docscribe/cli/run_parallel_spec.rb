@@ -3,21 +3,26 @@
 require 'docscribe/cli/run'
 
 RSpec.describe Docscribe::CLI::Run do
-  describe '#fetch_work' do
-    it 'pops the first path from array under mutex' do
-      paths = %w[a b c]
-      result = described_class.fetch_work(paths, Mutex.new)
-      expect(result).to eq('a')
+  describe '#split_paths' do
+    it 'returns one slice when jobs is 1' do
+      expect(described_class.send(:split_paths, %w[a b c], 1)).to eq([%w[a b c]])
     end
 
-    it 'removes popped path from array' do
-      paths = %w[a b c]
-      described_class.fetch_work(paths, Mutex.new)
-      expect(paths).to eq(%w[b c])
+    it 'splits paths into roughly equal contiguous slices' do
+      expect(described_class.send(:split_paths, %w[a b c d], 2)).to eq([%w[a b], %w[c d]])
     end
 
-    it 'returns nil when paths is empty' do
-      expect(described_class.fetch_work([], Mutex.new)).to be_nil
+    it 'never returns an empty slice' do
+      slices = described_class.send(:split_paths, %w[a b c], 8)
+
+      expect(slices).to eq([%w[a], %w[b], %w[c]])
+    end
+
+    it 'covers every path exactly once' do
+      paths = (1..10).map { |i| "f#{i}.rb" }
+      slices = described_class.send(:split_paths, paths, 3)
+
+      expect(slices.flatten).to eq(paths)
     end
   end
 
@@ -176,6 +181,22 @@ RSpec.describe Docscribe::CLI::Run do
     it 'returns 0 on success' do
       state = described_class.send(:initial_run_state)
       expect(described_class.send(:run_exit_code, opts, state)).to eq(0)
+    end
+  end
+
+  describe '#fork_supported?' do
+    it 'reports true when Process responds to fork' do
+      allow(Process).to receive(:respond_to?).and_call_original
+      allow(Process).to receive(:respond_to?).with(:fork).and_return(true)
+
+      expect(described_class.send(:fork_supported?)).to be true
+    end
+
+    it 'reports false when Process cannot fork' do
+      allow(Process).to receive(:respond_to?).and_call_original
+      allow(Process).to receive(:respond_to?).with(:fork).and_return(false)
+
+      expect(described_class.send(:fork_supported?)).to be false
     end
   end
 end

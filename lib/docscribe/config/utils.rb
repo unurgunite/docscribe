@@ -82,6 +82,21 @@ module Docscribe
       end
     end
 
+    # Recursively convert hash keys to strings.
+    #
+    # `Config.new` receives overrides as Ruby keyword arguments (symbol keys)
+    # while the defaults and every reader use string keys, so mixed hashes would
+    # silently keep the default value instead of the override.
+    #
+    # @private
+    # @param [Hash<Object, Object>] hash the hash to normalize
+    # @return [Hash<String, Object>]
+    def stringify_keys(hash)
+      hash.each_with_object({}) do |(key, value), out|
+        out[key.to_s] = value.is_a?(Hash) ? stringify_keys(value) : value
+      end
+    end
+
     # Deep-merge two hashes, preferring values from the second hash.
     #
     # Nested hashes are merged recursively; non-hash values are replaced.

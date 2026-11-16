@@ -18,7 +18,7 @@ module Docscribe
 
         @collection_dropped: bool
 
-        def initialize: (sig_dirs: Array[String], ?collection_dirs: Array[String], ?collapse_generics: bool, ?collapse_object_generics: bool) -> void
+        def initialize: (sig_dirs: Array[String], ?collection_dirs: Array[String], ?collapse_generics: bool, ?collapse_object_generics: bool, ?config_root: String) -> void
 
         def signature_for: (container: String, scope: Symbol, name: (Symbol | String)) -> (Types::MethodSignature | nil)
 

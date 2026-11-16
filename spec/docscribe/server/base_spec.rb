@@ -90,11 +90,13 @@ RSpec.describe Docscribe::Server do
     end
 
     it 'calls fork' do
+      skip_unless_fork!
       described_class.ensure_running!
       expect(Process).to have_received(:fork)
     end
 
     it 'calls wait_for_ready after fork' do
+      skip_unless_fork!
       described_class.ensure_running!
       expect(described_class).to have_received(:wait_for_ready).at_least(:once)
     end
@@ -186,7 +188,7 @@ RSpec.describe Docscribe::Server do
 
       let(:initial_hash) { described_class.send(:env_hash) }
       let(:updated_hash) do
-        sleep 0.02
+        sleep 1.1
         File.write('sig/a.rbs', 'class A; def foo: () -> String; end')
         described_class.send(:env_hash)
       end
@@ -260,7 +262,7 @@ RSpec.describe Docscribe::Server do
 
       let(:initial_hash) { described_class.sig_hash }
       let(:updated_hash) do
-        sleep 0.02
+        sleep 1.1
         File.write('sig/x.rbs', 'class X; def bar: () -> String; end')
         described_class.sig_hash
       end
@@ -300,7 +302,7 @@ RSpec.describe Docscribe::Server do
 
       let(:initial_path) { described_class.socket_path }
       let(:updated_path) do
-        sleep 0.02
+        sleep 1.1
         File.write('sig/a.rbs', 'class A; def foo: () -> Integer; end')
         described_class.socket_path
       end

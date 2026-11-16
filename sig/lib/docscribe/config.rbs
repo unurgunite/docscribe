@@ -7,6 +7,8 @@ module Docscribe
     attr_reader config_path: String?
 
     def initialize: (?config_path: String?, **Hash[String, Object] raw) -> void
+    def config_root: () -> String
+    def resolve_path: (String) -> String
     def to_h: () -> untyped
   end
 end

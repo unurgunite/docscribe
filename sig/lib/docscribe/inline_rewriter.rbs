@@ -128,6 +128,20 @@ module Docscribe
 
     def self.resolve_param_types: (Collector::Insertion insertion, (Types::MethodSignature | nil) external_sig, Config config) -> (Hash[String, String] | nil)
 
+    def self.seed_declared_param_types!: (Parser::Source::Buffer buffer, Collector::Insertion insertion, Hash[Symbol, Object] params, Config config, Symbol strategy) -> void
+
+    def self.valid_yard_type?: ((String | nil) type) -> bool
+
+    def self.unknown_type?: ((String | nil) type) -> bool
+
+    def self.merge_param_type: ((String | nil) inferred, (String | nil) declared) -> (String | nil)
+
+    def self.same_base_type?: (String left, String right) -> bool
+
+    def self.type_arity: (String type) -> Integer
+
+    def self.base_type_name: (String type) -> String
+
     def self.apply_method_insertion_aggressive!: (rewriter: Parser::Source::TreeRewriter, buffer: Parser::Source::Buffer, insertion: Collector::Insertion, anchor_bol_range: Parser::Source::Range, doc: (String | nil), changes: Array[changeRecord], file: String) -> void
 
     def self.remove_method_comment_block: (Parser::Source::TreeRewriter rewriter, Parser::Source::Buffer buffer, Collector::Insertion insertion) -> void

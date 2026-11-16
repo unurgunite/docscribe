@@ -367,6 +367,74 @@ RSpec.describe Docscribe::CLI::Run do
     end
   end
 
+  describe 'with --format json and overlapping path arguments' do
+    let(:abs_path) { File.join(dir, 'foo.rb') }
+
+    describe 'mixed absolute and relative spellings of one file' do
+      let(:args) { ['--format', 'json', abs_path, 'foo.rb'] }
+      let(:parsed) { JSON.parse(result[0]) }
+
+      it 'lists one file entry' do
+        expect(parsed['files'].size).to eq(1)
+      end
+
+      it 'keeps every offense of that file' do
+        expect(parsed['files'][0]['offenses'].size).to eq(2)
+      end
+
+      it 'counts the file and its offenses once' do
+        expect(parsed['summary']).to include('target_file_count' => 1, 'offense_count' => 2)
+      end
+
+      it 'keeps the first spelling of the path' do
+        expect(parsed['files'][0]['path']).to eq(abs_path)
+      end
+    end
+
+    describe 'a directory argument overlapping a file argument' do
+      let(:args) { ['--format', 'json', dir, abs_path] }
+      let(:parsed) { JSON.parse(result[0]) }
+
+      it 'lists one file entry' do
+        expect(parsed['files'].size).to eq(1)
+      end
+
+      it 'keeps every offense of that file' do
+        expect(parsed['files'][0]['offenses'].size).to eq(2)
+      end
+    end
+
+    describe 'two distinct files' do
+      before { File.write(File.join(dir, 'bar.rb'), code) }
+
+      let(:args) { ['--format', 'json', 'foo.rb', './bar.rb'] }
+      let(:parsed) { JSON.parse(result[0]) }
+
+      it 'lists one entry per file' do
+        expect(parsed['files'].size).to eq(2)
+      end
+
+      it 'keeps every offense across files' do
+        expect(parsed['summary']['offense_count']).to eq(4)
+      end
+    end
+  end
+
+  describe 'with --format sarif and overlapping path arguments' do
+    let(:abs_path) { File.join(dir, 'foo.rb') }
+    let(:args) { ['--format', 'sarif', abs_path, 'foo.rb'] }
+    let(:parsed) { JSON.parse(result[0]) }
+
+    it 'produces one result per offense, not per spelling' do
+      expect(parsed['runs'][0]['results'].size).to eq(2)
+    end
+
+    it 'carries a type property on every result' do
+      types = parsed['runs'][0]['results'].map { |r| r['properties']['type'] }
+      expect(types).to all(be_a(String))
+    end
+  end
+
   context 'when all files are fine' do
     let(:code) { <<~RUBY }
       # documentation
@@ -385,6 +453,59 @@ RSpec.describe Docscribe::CLI::Run do
 
     it 'exits 0' do
       expect(result[2].exitstatus).to eq(0)
+    end
+  end
+
+  describe '.expand_paths' do
+    it 'returns one entry for an absolute and a relative spelling of one file' do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, 'a.rb')
+        File.write(path, '')
+        expect(Dir.chdir(dir) { described_class.send(:expand_paths, [path, 'a.rb']) }).to eq([path])
+      end
+    end
+
+    it 'returns one entry for ./-prefixed and bare spellings' do
+      Dir.mktmpdir do |dir|
+        File.write(File.join(dir, 'a.rb'), '')
+        expect(Dir.chdir(dir) { described_class.send(:expand_paths, ['./a.rb', 'a.rb']) }).to eq(['./a.rb'])
+      end
+    end
+
+    it 'returns one entry when a file is also covered by a directory argument' do
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, 'a.rb')
+        File.write(path, '')
+        File.write(File.join(dir, 'b.rb'), '')
+        expanded = described_class.send(:expand_paths, [dir, path])
+        expect(expanded).to eq([path, File.join(dir, 'b.rb')].sort)
+      end
+    end
+
+    it 'returns one entry for a symlinked spelling of one file' do
+      Dir.mktmpdir do |dir|
+        real = File.join(dir, 'real.rb')
+        link = File.join(dir, 'link.rb')
+        File.write(real, '')
+        File.symlink(real, link)
+        expect(described_class.send(:expand_paths, [real, link]).size).to eq(1)
+      end
+    end
+
+    it 'keeps distinct files' do
+      Dir.mktmpdir do |dir|
+        File.write(File.join(dir, 'a.rb'), '')
+        File.write(File.join(dir, 'b.rb'), '')
+        expect(described_class.send(:expand_paths, [dir]).size).to eq(2)
+      end
+    end
+
+    it 'sorts the result deterministically' do
+      Dir.mktmpdir do |dir|
+        File.write(File.join(dir, 'b.rb'), '')
+        File.write(File.join(dir, 'a.rb'), '')
+        expect(described_class.send(:expand_paths, [dir])).to eq([File.join(dir, 'a.rb'), File.join(dir, 'b.rb')])
+      end
     end
   end
 
@@ -437,10 +558,13 @@ RSpec.describe Docscribe::CLI::Run do
 
       let(:options) { { keep_descriptions: true, no_boilerplate: false, rbs: false, validate_types: false } }
 
-      it 'filters false values', :aggregate_failures do
+      it 'filters false values for non-negatable flags', :aggregate_failures do
         expect(overrides).not_to have_key('no_boilerplate')
         expect(overrides).not_to have_key('rbs')
-        expect(overrides).not_to have_key('validate_types')
+      end
+
+      it 'keeps explicit false for [no-] flags so it overrides config true' do
+        expect(overrides['validate_types']).to be(false)
       end
 
       it 'keeps true values' do
@@ -558,6 +682,34 @@ RSpec.describe Docscribe::CLI::Run do
         expect(overrides['keep_descriptions']).to eq('')
         expect(overrides).not_to have_key('rbs')
       end
+    end
+  end
+
+  describe '--parallel' do
+    before do
+      %w[a b c].each { |n| File.write("#{dir}/#{n}.rb", code) }
+    end
+
+    it 'reports the same result as a sequential run' do
+      _o, seq_err, seq_status = Open3.capture3('ruby', exe, 'a.rb', 'b.rb', 'c.rb', chdir: dir)
+      _po, par_err, par_status = Open3.capture3('ruby', exe, '--jobs', '2', 'a.rb', 'b.rb', 'c.rb', chdir: dir)
+
+      expect(par_status.exitstatus).to eq(seq_status.exitstatus)
+      expect(par_err.scan(/(\d+) files? checked/)).to eq(seq_err.scan(/(\d+) files? checked/))
+    end
+
+    it 'implies --parallel when --jobs is given' do
+      out, _err, status = Open3.capture3('ruby', exe, '--jobs', '2', 'a.rb', 'b.rb', 'c.rb', chdir: dir)
+
+      expect(status.exitstatus).to eq(1)
+      expect(out).to include('3 need updates')
+    end
+
+    it 'treats --jobs 1 as sequential' do
+      out, _err, status = Open3.capture3('ruby', exe, '--jobs', '1', 'a.rb', 'b.rb', 'c.rb', chdir: dir)
+
+      expect(status.exitstatus).to eq(1)
+      expect(out).to include('3 need updates')
     end
   end
 end

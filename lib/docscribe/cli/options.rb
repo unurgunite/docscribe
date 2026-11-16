@@ -28,8 +28,10 @@ module Docscribe
         no_boilerplate: false,
         progress: false,
         parallel: false,
+        jobs: nil, #: Integer? when --jobs is passed
         server: false,
-        validate_types: nil #: true or false when --[no-]validate-types is passed, nil otherwise
+        validate_types: nil, #: true or false when --[no-]validate-types is passed, nil otherwise
+        warn_invalid_yard: nil #: true or false when --[no-]warn-invalid-yard is passed, nil otherwise
       }.freeze
 
       module_function
@@ -205,6 +207,7 @@ module Docscribe
         define_rbi_dir_option(opts, options)
         define_rbs_collection_option(opts, options)
         define_validate_types_option(opts, options)
+        define_warn_invalid_yard_option(opts, options)
       end
 
       # Define rbs option
@@ -279,6 +282,18 @@ module Docscribe
       def define_validate_types_option(opts, options)
         opts.on('--[no-]validate-types', 'Validate YARD types against inferred/RBS types and report mismatches') do |value|
           options[:validate_types] = value
+        end
+      end
+
+      # Define warn invalid yard option
+      #
+      # @note module_function: defines #define_warn_invalid_yard_option (visibility: private)
+      # @param [OptionParser] opts the option parser to configure
+      # @param [Hash<Symbol, Object>] options mutable parsed options hash
+      # @return [void]
+      def define_warn_invalid_yard_option(opts, options)
+        opts.on('--[no-]warn-invalid-yard', 'Report syntactically broken YARD types (default: on)') do |value|
+          options[:warn_invalid_yard] = value
         end
       end
 
@@ -394,6 +409,10 @@ module Docscribe
       # @return [void]
       def define_parallel_option(opts, options)
         opts.on('--parallel', 'Process files in parallel (default: sequential)') do
+          options[:parallel] = true
+        end
+        opts.on('--jobs N', Integer, 'Parallel worker count (implies --parallel)') do |n|
+          options[:jobs] = n
           options[:parallel] = true
         end
       end

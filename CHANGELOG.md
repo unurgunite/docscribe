@@ -1,3 +1,51 @@
+## 1.7.0
+
+### Changed
+
+- **`validate_types` is now enabled by default.** Type mismatches against inferred and RBS types are reported
+  without any flag, and `@param`/`@return` types get corrected in place. This is a behaviour change for
+  existing projects: runs that were previously silent now report `updated @param`/`updated @return` findings
+  and can exit non-zero. Set `validate_types: false` in `docscribe.yml` or pass `--no-validate-types` to
+  restore the old behaviour.
+- **`--parallel` is rewritten on forked worker processes instead of threads.** Ruby threads do not run
+  CPU-bound work in parallel (GIL), so the previous implementation was *slower* than a sequential run
+  (1.76s / 3.41s / 10.45s at 1 / 4 / 16 threads on the same 74 files). Workers fork from a warmed process and
+  inherit gems, config and the RBS environment through copy-on-write, skipping cold start: 42s → 23.1s → 12.7s
+  → 8.0s for sequential / `--jobs 2` / `4` / `8` on 60 copies of a large file. Where `Process.fork` is
+  unavailable the run falls back to sequential processing with identical results instead of failing.
+- **Server start timeout raised from 5s to 15s** (`ensure_running!`, `wait_for_ready`). The old budget was too
+  short on loaded CI runners and produced spurious `server failed to start` errors.
+
+### Added
+
+- **`--jobs N` flag** — number of parallel workers, implies `--parallel`. Defaults to the number of available
+  CPUs; `DOCSCRIBE_THREADS` remains as an override.
+- **`docscribe config --only-changed` and `--format yaml|json|text`** — print the fully resolved configuration,
+  optionally limited to keys that differ from the defaults, as YAML (default), JSON or flattened `a.b.c=value`
+  text. Useful for verifying that a `docscribe.yml` or CLI override actually took effect.
+- **Broken YARD types are repaired, not just reported.** A type split by stray whitespace (`[Sym bol]`,
+  `Array<Str ing>`, `Hash<Str ing, Array<Int eger>>`) is rewritten to its real name when every part is a known
+  primitive (`[Symbol]`, `Array<String>`, `Hash<String, Array<Integer>>`). Repair only fires for names that
+  exist in the type dictionary; anything ambiguous is left untouched, so an unknown typename is never guessed
+  into a valid-but-wrong one.
+- **`warn_invalid_yard` config key and `--[no-]warn-invalid-yard` flag** — syntactically broken YARD types
+  are reported as `invalid_type` with `source: "syntax"` and get the safe fix to `[Symbol]`.
+  Enabled by default. Independent of `validate_types`, since syntax validity does not depend on inferred or
+  external types; the previous unconditional behaviour is preserved for existing users.
+- **Windows CI job** covering `windows-latest` on Ruby 3.2/3.3/3.4: full RSpec plus RuboCop, and an end-to-end
+  `--parallel --jobs 4` run proving the fork-less fallback produces correct results. Server mode is
+  unsupported on Windows by design (no AF_UNIX sockets, no `Process.fork`) and refuses with a clear error.
+
+### Fixed
+
+- **YARD type parser hung forever on a tuple nested inside a generic parameter.** `Array<[String]>` and
+  `Enumerator<[String, Integer], Integer>` sent `parse_generic_args` into an infinite loop, because `[` was
+  not handled by `parse_primary` and the cursor never advanced. Such types are now parsed correctly, and a
+  no-progress guard prevents any similar non-consuming branch from looping.
+- **Explicit `--no-` flags now override a `true` in `docscribe.yml`** — `--no-validate-types` and
+  `--no-warn-invalid-yard` replace the config value instead of being dropped as falsy, so a project can opt
+  out per run.
+
 ## 1.6.2
 
 ### Added

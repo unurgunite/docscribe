@@ -81,7 +81,7 @@ module Docscribe
         def parse_primary
           skip_space
           case peek
-          when '(' then parse_tuple
+          when '(', '[' then parse_tuple
           when '{' then parse_hash_map
           when '#' then parse_duck_type
           else
@@ -131,12 +131,16 @@ module Docscribe
 
         # @private
         # @return [Array<Docscribe::Types::Yard::node>]
-        def parse_generic_args
+        def parse_generic_args # rubocop:disable Metrics/MethodLength
           args = [] #: Array[untyped]
           skip_space
           while peek && peek != '>'
+            before = @i
             args << parse_generic_arg
             skip_space
+            # A branch that consumed nothing would otherwise loop forever.
+            break if @i == before
+
             next unless peek == ','
 
             @i += 1
@@ -148,13 +152,14 @@ module Docscribe
         # @private
         # @return [Docscribe::Types::Yard::Tuple]
         def parse_tuple
+          close = peek == '[' ? ']' : ')'
           @i += 1
           types = [] #: Array[untyped]
-          while peek && peek != ')'
+          while peek && peek != close
             types << parse_tuple_element
             @i += 1 and skip_space if peek == ','
           end
-          @i += 1 if peek == ')'
+          @i += 1 if peek == close
           Tuple.new(types: types)
         end
 

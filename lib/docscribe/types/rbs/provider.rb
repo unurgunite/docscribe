@@ -21,13 +21,16 @@ module Docscribe
         # @param [Array<String>] collection_dirs RBS collection directories
         # @param [Boolean] collapse_generics whether generic container types
         # @param [Boolean] collapse_object_generics collapse Object generics flag
+        # @param [String] config_root directory holding `rbs_collection.lock.yaml`
         # @return [void]
-        def initialize(sig_dirs:, collection_dirs: [], collapse_generics: false, collapse_object_generics: false)
+        def initialize(sig_dirs:, collection_dirs: [], collapse_generics: false, collapse_object_generics: false,
+                       config_root: Dir.pwd)
           require 'rbs'
           @sig_dirs = Array(sig_dirs).map(&:to_s)
           @collection_dirs = Array(collection_dirs).map(&:to_s)
           @collapse_generics = !!collapse_generics
           @collapse_object_generics = !!collapse_object_generics
+          @config_root = config_root
           @env = nil
           @builder = nil
           @warned = false
@@ -223,7 +226,7 @@ module Docscribe
         # @return [void]
         # @return [nil] if StandardError
         def load_stdlib_libraries!(loader)
-          lock_path = File.join(Dir.pwd, 'rbs_collection.lock.yaml')
+          lock_path = File.join(@config_root, 'rbs_collection.lock.yaml')
           return unless File.exist?(lock_path)
 
           lock = YAML.safe_load_file(lock_path) # steep:ignore
