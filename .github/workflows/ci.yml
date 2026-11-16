@@ -150,10 +150,10 @@ jobs:
 
               # Sample method.
               #
-              # @param x [Integer] value
+              # @param value [Integer] the value
               # @return [Integer]
-              def sample#{i}(x)
-                x + 1
+              def sample#{i}(value)
+                value + 1
               end
             RUBY_SAMPLE
           end
@@ -163,6 +163,9 @@ jobs:
 
           changed = Dir['tmp/win/*.rb'].reject { |f| File.read(f).include?('Sample method.') }
           abort "parallel run rewrote clean files: #{changed.join(', ')}" unless changed.empty?
+
+          # Not part of the project; keep it out of later RuboCop runs.
+          FileUtils.rm_rf('tmp/win')
 
       - name: RuboCop
         run: bundle exec rubocop
