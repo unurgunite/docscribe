@@ -164,5 +164,10 @@ jobs:
           changed = Dir['tmp/win/*.rb'].reject { |f| File.read(f).include?('Sample method.') }
           abort "parallel run rewrote clean files: #{changed.join(', ')}" unless changed.empty?
 
-      - name: RSpec (fork-less paths)
-        run: bundle exec rspec spec/docscribe/cli/run_parallel_spec.rb spec/docscribe/cli/run_spec.rb spec/docscribe/types spec/docscribe/infer
+      - name: RuboCop
+        run: bundle exec rubocop
+
+      - name: RSpec
+        # Examples that need AF_UNIX sockets or a real Process.fork skip
+        # themselves via PlatformHelper; everything else must run here.
+        run: bundle exec rspec

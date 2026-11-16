@@ -90,11 +90,13 @@ RSpec.describe Docscribe::Server do
     end
 
     it 'calls fork' do
+      skip_unless_fork!
       described_class.ensure_running!
       expect(Process).to have_received(:fork)
     end
 
     it 'calls wait_for_ready after fork' do
+      skip_unless_fork!
       described_class.ensure_running!
       expect(described_class).to have_received(:wait_for_ready).at_least(:once)
     end
