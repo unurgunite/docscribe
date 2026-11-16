@@ -1083,7 +1083,8 @@ In write modes:
 
 > [!IMPORTANT]
 > The `M` marker only appears when `--rbs` or `--sorbet` is enabled, since type mismatches are detected by
-> comparing external signatures against inferred types.
+> comparing external signatures against inferred types. It also requires `--no-validate-types`: with
+> `validate_types` on (the default) a signature mismatch is reported as a fixable difference (`F`), not as `M`.
 
 With `--verbose`, Docscribe prints per-file statuses instead; type mismatches show as `MT` with the specific difference.
 
@@ -1223,7 +1224,8 @@ class Demo
 end
 ```
 
-Generated docs will prefer the RBS signature over inferred Ruby types:
+Generated docs will prefer the RBS signature over inferred Ruby types (`emit.header: true`
+in the example below adds the `+#foo+ -> ...` header line; it is off by default):
 
 ```ruby
 class Demo
@@ -1340,7 +1342,8 @@ class Demo
 end
 ```
 
-Docscribe will use the Sorbet signature instead of the inferred body type:
+Docscribe will use the Sorbet signature instead of the inferred body type (`emit.header: true`,
+off by default, adds the header line):
 
 ```ruby
 class Demo
@@ -1413,7 +1416,7 @@ class Demo
 end
 ```
 
-Example output:
+Example output (with `emit.header: true`; off by default):
 
 ```ruby
 # demo.rb
