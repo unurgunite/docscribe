@@ -39,7 +39,9 @@ RSpec.describe Docscribe::Server::Daemon do
 
     it 'changes the hash when a sig file under the config root changes' do
       before_hash = daemon.send(:sig_hash_for, sig_config)
-      sleep 0.05
+      # The hash is mtime-based and Windows filesystems have coarse mtime
+      # granularity, so the write must land in a later tick than the read.
+      sleep 1.1
       File.write(File.join(project, 'sig', 'demo.rbs'), "class Demo\n  def foo: () -> String\nend\n")
 
       expect(daemon.send(:sig_hash_for, sig_config)).not_to eq(before_hash)

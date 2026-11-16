@@ -78,6 +78,7 @@ RSpec.describe Docscribe::CLI do
       end
 
       it 'makes hook executable' do
+        skip_unless_posix_modes!
         result
         hook_path = File.join(dir, '.git', 'hooks', 'pre-commit')
         expect(File.stat(hook_path).mode & 0o777).to eq(0o755)
