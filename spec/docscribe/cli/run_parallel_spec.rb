@@ -183,4 +183,20 @@ RSpec.describe Docscribe::CLI::Run do
       expect(described_class.send(:run_exit_code, opts, state)).to eq(0)
     end
   end
+
+  describe '#fork_supported?' do
+    it 'reports true when Process responds to fork' do
+      allow(Process).to receive(:respond_to?).and_call_original
+      allow(Process).to receive(:respond_to?).with(:fork).and_return(true)
+
+      expect(described_class.send(:fork_supported?)).to be true
+    end
+
+    it 'reports false when Process cannot fork' do
+      allow(Process).to receive(:respond_to?).and_call_original
+      allow(Process).to receive(:respond_to?).with(:fork).and_return(false)
+
+      expect(described_class.send(:fork_supported?)).to be false
+    end
+  end
 end
