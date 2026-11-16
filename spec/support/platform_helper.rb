@@ -14,6 +14,7 @@ module PlatformHelper
     spec/docscribe/server/client_spec.rb
     spec/docscribe/server/client_status_spec.rb
     spec/docscribe/server/daemon_spec.rb
+    spec/docscribe/cli/server_spec.rb
   ].freeze
 
   # Skips the example unless AF_UNIX sockets and fork are available.
@@ -22,6 +23,17 @@ module PlatformHelper
   def skip_unless_unix_sockets!
     skip 'AF_UNIX sockets are unavailable on this platform' unless defined?(UNIXSocket)
     skip 'Process.fork is unavailable on this platform' unless Process.respond_to?(:fork)
+  end
+
+  # Skips the example unless POSIX file modes are meaningful.
+  #
+  # Windows reports synthesized modes, so mode bits cannot be asserted there.
+  #
+  # @return [void]
+  def skip_unless_posix_modes!
+    return if File::ALT_SEPARATOR.nil?
+
+    skip 'POSIX file modes are unavailable on this platform'
   end
 
   # Skips the example unless `Process.fork` is available.
