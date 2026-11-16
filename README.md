@@ -756,15 +756,18 @@ end
 
 ```shell
 docscribe rbs lib
-# Generated sig/user.rbs
+# Generated sig/lib/user.rbs
 ```
 
 ```ruby.rbs
-# sig/user.rbs
+# sig/lib/user.rbs
 class User
-    def initialize: (String name, Integer age) -> User
+  def initialize: (String name, Integer age) -> User
 end
 ```
+
+The output path mirrors the source path relative to the working directory, so `lib/user.rb`
+becomes `sig/lib/user.rbs` (not `sig/user.rbs`).
 
 ### `docscribe update_types` — two-pass type-aware documentation update
 
@@ -824,17 +827,22 @@ about your project and writes a tailored configuration.
 # Create docscribe.yml interactively
 docscribe init
 
-# Create with default settings (non-interactive)
-docscribe init --default
+# Write the default config without prompting
+docscribe init --force
+
+# Print the template to stdout instead of writing a file
+docscribe init --stdout
 ```
 
 **Flags:**
 
+- `--config PATH` — where to write the config (default: `docscribe.yml`).
+- `-f`, `--force` — overwrite if the file already exists.
+- `--stdout` — print the config template to stdout instead of writing a file.
 - `--pre-commit` — generate and install a Git pre-commit hook that checks documentation on staged `.rb` files using
   `docscribe --verbose`. The hook exits with a warning if staged files lack documentation.
 - `--pre-commit --uninstall` — remove the pre-commit hook.
 - `--pre-commit --dry-run` — preview the hook script without installing.
-- `--default` — skip interactive prompts, write default config.
 - `-h`, `--help` — show help.
 
 ### `docscribe config` — view resolved configuration
@@ -1754,7 +1762,9 @@ plugins:
     - ./docscribe_plugins
 ```
 
-Each entry is passed to `require`. The path is expanded relative to the current working directory.
+Each entry is passed to `require`. A relative path is expanded from the directory holding
+`docscribe.yml` (not from the current working directory), so the plugin resolves the same way
+no matter where you invoke `docscribe` from.
 
 Duck typing is also supported — any object responding to `#call` is treated as a `TagPlugin`, any object responding to
 `#collect` is treated as a `CollectorPlugin`:
